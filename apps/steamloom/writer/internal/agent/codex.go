@@ -199,6 +199,7 @@ func emitCodexStream(req Request, line string, tools map[string]streamedTool) {
 			Text      string          `json:"text"`
 			Server    string          `json:"server"`
 			Tool      string          `json:"tool"`
+			Status    string          `json:"status"`
 			Arguments json.RawMessage `json:"arguments"`
 		} `json:"item"`
 	}
@@ -222,6 +223,10 @@ func emitCodexStream(req Request, line string, tools map[string]streamedTool) {
 		if name == "" {
 			name = tool.Name
 		}
-		req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: name, ToolTarget: tool.Target})
+		typeName := StreamToolCompleted
+		if event.Item.Status == "failed" {
+			typeName = StreamToolFailed
+		}
+		req.emitStream(StreamEvent{Type: typeName, ToolName: name, ToolTarget: tool.Target})
 	}
 }

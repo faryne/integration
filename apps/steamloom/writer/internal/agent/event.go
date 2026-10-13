@@ -9,6 +9,7 @@ const (
 	EventTaskStarted      = "task.started"
 	EventTaskToolStarted  = "task.tool.started"
 	EventTaskToolFinished = "task.tool.completed"
+	EventTaskToolFailed   = "task.tool.failed"
 	EventTaskCompleted    = "task.completed"
 	EventTaskFailed       = "task.failed"
 	EventTaskCanceled     = "task.canceled"
@@ -62,7 +63,8 @@ func normalizeEvent(line ChatLine) (ChatLine, bool) {
 		return line, true
 	}
 	switch line.Type {
-	case EventMessageUser:
+	case EventMessageUser, EventProposalApproved, EventProposalRejected:
+		// 提案決策是使用者動作，在對話中保留成右側的決策紀錄。
 		line.Role = "user"
 	case EventMessageAssistant, EventMessagePartial:
 		line.Role = "assistant"

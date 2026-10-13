@@ -111,6 +111,8 @@ func recordTaskActivity(agentID, projectID, threadID, taskID, typeName, toolName
 	text := "Agent 開始使用 " + toolName
 	if typeName == EventTaskToolFinished {
 		text = "Agent 已完成 " + toolName
+	} else if typeName == EventTaskToolFailed {
+		text = "Agent 執行失敗 " + toolName
 	}
 	event := taskEvent(typeName, taskID, text)
 	event.ToolName = toolName

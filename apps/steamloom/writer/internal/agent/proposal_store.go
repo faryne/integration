@@ -287,9 +287,9 @@ func proposalApplyLifecycle(path, proposalID string) (proposalDecision, bool) {
 
 // DecideProposal 以 append-only event 作為決策事實來源；重複送出相同決策不會新增第二筆事件。
 func DecideProposal(agentID, projectID, threadID, proposalID, decision string) (Proposal, error) {
-	status, eventType, text := ProposalApproved, EventProposalApproved, "你已允許 Agent 寫入，等待 Agent 執行"
+	status, eventType := ProposalApproved, EventProposalApproved
 	if decision == ProposalDecisionReject {
-		status, eventType, text = ProposalRejected, EventProposalRejected, "你已否決這批變更；Agent 不會寫入"
+		status, eventType = ProposalRejected, EventProposalRejected
 	} else if decision != ProposalDecisionApprove {
 		return Proposal{}, errors.New("不支援的提案決策")
 	}
@@ -343,6 +343,7 @@ func DecideProposal(agentID, projectID, threadID, proposalID, decision string) (
 	if proposal.Status != ProposalAwaitingConfirmation {
 		return Proposal{}, errors.New("這批提案已經不在等待確認狀態")
 	}
+	text := proposalDecisionText(proposal, decision)
 	event := taskEvent(eventType, proposal.TaskID, text)
 	event.ProposalID, event.ContentHash = proposal.ID, proposal.ContentHash
 	if err := appendLines(logPath, []ChatLine{event}); err != nil {
@@ -358,6 +359,27 @@ func DecideProposal(agentID, projectID, threadID, proposalID, decision string) (
 		return Proposal{}, err
 	}
 	return proposal, nil
+}
+
+func proposalDecisionText(proposal Proposal, decision string) string {
+	items := make([]string, 0, len(proposal.Items))
+	for _, item := range proposal.Items {
+		kind := map[string]string{ProposalKindStory: "故事", ProposalKindLore: "設定", ProposalKindAsset: "圖片"}[item.Kind]
+		title := strings.TrimSpace(item.Title)
+		if title == "" {
+			title = strings.TrimSpace(item.FileName)
+		}
+		if title != "" {
+			items = append(items, fmt.Sprintf("%s〈%s〉", kind, title))
+		} else {
+			items = append(items, kind)
+		}
+	}
+	action := "同意套用"
+	if decision == ProposalDecisionReject {
+		action = "否決"
+	}
+	return fmt.Sprintf("你已%s %d 項變更：%s", action, len(items), strings.Join(items, "、"))
 }
 
 func writeProposal(path string, proposal Proposal) error {

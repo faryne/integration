@@ -437,6 +437,48 @@ func TestTaskManagerPersistsApplyConflictWithoutRetry(t *testing.T) {
 	}
 }
 
+func TestTaskManagerCompletesSuccessfulMutationWithoutFinalResult(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskID, _ := newThreadID()
+	proposal, err := SaveProposal("claude", "project", page.CurrentID, taskID, "", []ProposalItem{{
+		Kind: ProposalKindLore, Title: "許芷瑄", Content: "新設定",
+		Operations: []ProposalOperation{{Tool: "storyteller_upsert_lore", Arguments: map[string]any{"project_public_id": "project", "title": "許芷瑄", "content": "新設定"}}},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposal, err = DecideProposal("claude", "project", page.CurrentID, proposal.ID, ProposalDecisionApprove)
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := make(chan TaskEvent, 20)
+	manager := NewTaskManager(context.Background(), func(_ context.Context, _ string, req Request) (Reply, error) {
+		req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: "mcp__storyteller__storyteller_upsert_lore"})
+		return Reply{}, errors.New("Agent 沒有回傳寫入結果")
+	}, func(event TaskEvent) { events <- event })
+	defer manager.Close()
+	applyTask, err := manager.Apply(proposal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	event := waitTaskEvent(t, events, applyTask.ID, EventApplyCompleted)
+	if event.Task.State != TaskApplied || event.Proposal == nil || event.Proposal.Status != ProposalApplied {
+		t.Fatalf("successful mutation remained failed: %#v", event)
+	}
+	stored, err := Proposals("claude", "project", page.CurrentID)
+	if err != nil || len(stored) != 1 || stored[0].Status != ProposalApplied || stored[0].GrantID != "" {
+		t.Fatalf("successful mutation was not persisted: %#v, %v", stored, err)
+	}
+	threads, err := ProjectThreads("project")
+	if err != nil || len(threads) != 1 || threads[0].LastTaskState != TaskApplied {
+		t.Fatalf("thread does not show the completed write: %#v, %v", threads, err)
+	}
+}
+
 func TestTaskManagerRequiresScopedAssetUploadBetweenPresignAndConfirm(t *testing.T) {
 	withTempConfig(t)
 	page, err := NewChat("grok", "project")

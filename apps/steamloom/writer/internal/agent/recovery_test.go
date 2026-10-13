@@ -63,3 +63,43 @@ func TestRecoverInterruptedApplyIsDurableAndIdempotent(t *testing.T) {
 		t.Fatalf("expected one durable interruption event, got %d", count)
 	}
 }
+
+func TestRecoverCompletedApplyFromPersistedToolEvents(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalTaskID, _ := newThreadID()
+	proposal, err := SaveProposal("claude", "project", page.CurrentID, originalTaskID, "", []ProposalItem{{
+		Kind: ProposalKindLore, Title: "許芷瑄", Content: "設定",
+		Operations: []ProposalOperation{{Tool: "storyteller_upsert_lore", Arguments: map[string]any{
+			"project_public_id": "project", "title": "許芷瑄", "content": "設定",
+		}}},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposal, err = DecideProposal("claude", "project", page.CurrentID, proposal.ID, ProposalDecisionApprove)
+	if err != nil {
+		t.Fatal(err)
+	}
+	applyTaskID, _ := newThreadID()
+	if _, err := recordApplyStarted("claude", "project", page.CurrentID, proposal.ID, applyTaskID); err != nil {
+		t.Fatal(err)
+	}
+	if err := recordTaskActivity("claude", "project", page.CurrentID, applyTaskID, EventTaskToolFinished, "mcp__storyteller__storyteller_upsert_lore", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := RecoverInterruptedApplies("project"); err != nil {
+		t.Fatal(err)
+	}
+	proposals, err := Proposals("claude", "project", page.CurrentID)
+	if err != nil || len(proposals) != 1 || proposals[0].Status != ProposalApplied {
+		t.Fatalf("persisted successful mutation was not recovered as applied: %#v, %v", proposals, err)
+	}
+	threads, err := ProjectThreads("project")
+	if err != nil || len(threads) != 1 || threads[0].LastTaskState != TaskApplied {
+		t.Fatalf("recovered thread is not applied: %#v, %v", threads, err)
+	}
+}

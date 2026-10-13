@@ -42,6 +42,38 @@ func TestClaudeStreamEmitsDeltaAndToolLifecycle(t *testing.T) {
 	}
 }
 
+func TestProviderStreamsDoNotCountFailedToolsAsCompleted(t *testing.T) {
+	tests := []struct {
+		name string
+		emit func(Request)
+	}{
+		{"claude", func(req Request) {
+			tools := map[string]streamedTool{}
+			emitClaudeStream(req, `{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tool-1","name":"storyteller_upsert_lore"}]}}`, tools)
+			emitClaudeStream(req, `{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool-1","is_error":true}]}}`, tools)
+		}},
+		{"codex", func(req Request) {
+			tools := map[string]streamedTool{}
+			emitCodexStream(req, `{"type":"item.started","item":{"id":"tool-1","type":"mcp_tool_call","server":"SteamLoom","tool":"storyteller_upsert_lore"}}`, tools)
+			emitCodexStream(req, `{"type":"item.completed","item":{"id":"tool-1","type":"mcp_tool_call","status":"failed"}}`, tools)
+		}},
+		{"grok", func(req Request) {
+			tools := map[string]streamedTool{}
+			emitGrokStream(req, `{"update":{"sessionUpdate":"tool_call","toolCallId":"tool-1","title":"storyteller_upsert_lore"}}`, tools)
+			emitGrokStream(req, `{"update":{"sessionUpdate":"tool_call_update","toolCallId":"tool-1","status":"failed"}}`, tools)
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var events []StreamEvent
+			test.emit(Request{emit: func(event StreamEvent) { events = append(events, event) }})
+			if len(events) != 2 || events[1].Type != StreamToolFailed {
+				t.Fatalf("failed tool lifecycle was not preserved: %#v", events)
+			}
+		})
+	}
+}
+
 func TestParseCodexUsesLastAgentMessage(t *testing.T) {
 	stdout := "" +
 		`{"type":"thread.started","thread_id":"codex-session"}` + "\n" +

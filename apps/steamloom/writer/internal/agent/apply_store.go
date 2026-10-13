@@ -88,7 +88,12 @@ func recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, propos
 	if err := appendLines(filepath.Join(dir, threadID+".jsonl"), events); err != nil {
 		return Proposal{}, err
 	}
-	proposal.Status, proposal.AppliedAt, proposal.GrantExpiresAt = proposalState, event.CreatedAt, ""
+	proposal.Status, proposal.GrantID, proposal.GrantExpiresAt = proposalState, "", ""
+	if proposalState == ProposalVerificationRequired {
+		proposal.InterruptedAt = event.CreatedAt
+	} else {
+		proposal.AppliedAt = event.CreatedAt
+	}
 	if err := writeProposal(path, proposal); err != nil {
 		return Proposal{}, err
 	}

@@ -77,6 +77,7 @@
       "runningTitle": "Agent activity",
       "completedTitle": "Agent completed",
       "failedTitle": "Agent failed",
+      "attentionTitle": "Write result needs confirmation",
       "canceledTitle": "Task stopped",
       "collapse": "Collapse activity",
       "expand": "Expand activity",
@@ -84,6 +85,7 @@
       "started": "Agent started working",
       "toolStarted": "{{tool}}",
       "toolCompleted": "Completed: {{tool}}",
+      "toolFailed": "Failed: {{tool}}",
       "completed": "Agent completed the task",
       "failed": "Agent execution failed",
       "canceled": "Task stopped",
@@ -91,7 +93,7 @@
       "applyCompleted": "Agent finished applying changes",
       "applyFailed": "Agent failed to apply changes",
       "applyConflict": "A version conflict was detected; content was not overwritten",
-      "applyInterrupted": "The write was interrupted and needs verification"
+      "applyInterrupted": "The final write result was not received and needs confirmation"
     },
     "login": {
       "title": "Agent sign-in required",
@@ -113,19 +115,19 @@
       "applied": "Applied",
       "apply_failed": "Apply failed",
       "conflict": "Version conflict",
-      "verification_required": "Write result needs verification"
+      "verification_required": "Write result needs confirmation"
     },
     "proposal": {
       "awaiting": "The agent finished this result; it has not been written to SteamLoom",
       "status": {
         "awaiting_confirmation": "The agent finished this result; it has not been written to SteamLoom",
-        "approved": "You approved these results; waiting for the agent to apply them",
+        "approved": "You approved applying these results",
         "rejected": "You rejected these results; the agent will not write them",
         "applying": "The agent is applying the changes you approved",
         "applied": "The agent finished applying these results",
         "apply_failed": "The agent could not finish applying these results",
         "conflict": "A newer version exists; the agent did not overwrite it",
-        "verification_required": "Writer closed during the write; it will not retry automatically until the result is verified"
+        "verification_required": "Writer did not receive the agent's final write result; it will not retry automatically until you confirm the content"
       },
       "review": "Review result",
       "view": "View content",

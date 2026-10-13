@@ -302,6 +302,9 @@ func (m *TaskManager) runApply(ctx context.Context, managed *managedTask) {
 					m.flushProposalStream(managed)
 					if ctx.Err() != nil {
 						err = ctx.Err()
+					} else if err != nil && verifyCompletedTools(grant, managed.completedTools) == nil {
+						// Agent 回傳的每個 mutation 都已明確成功；即使缺少最終 envelope，也不能把已寫入的工作說成失敗。
+						reply.Text, err = visibleApplyText(managed.task.Partial), nil
 					}
 					if err == nil {
 						err = verifyApplyReply(grant, reply, managed.completedTools)
@@ -358,15 +361,26 @@ func (m *TaskManager) runApply(ctx context.Context, managed *managedTask) {
 }
 
 func verifyApplyReply(grant ApprovalGrant, reply Reply, completedTools []string) error {
-	if reply.applyResult == nil {
-		return errors.New("Agent 沒有回傳寫入結果")
-	}
-	if reply.applyResult.Status == "failed" {
+	if reply.applyResult != nil && reply.applyResult.Status == "failed" {
 		return errors.New(reply.applyResult.Error)
 	}
-	if reply.applyResult.Status == "conflict" {
+	if reply.applyResult != nil && reply.applyResult.Status == "conflict" {
 		return fmt.Errorf("%w：%s", errApplyConflict, reply.applyResult.Error)
 	}
+	if err := verifyCompletedTools(grant, completedTools); err != nil {
+		return err
+	}
+	return nil
+}
+
+func visibleApplyText(text string) string {
+	if position := strings.Index(text, applyEnvelopeStart); position >= 0 {
+		text = text[:position]
+	}
+	return strings.TrimSpace(text)
+}
+
+func verifyCompletedTools(grant ApprovalGrant, completedTools []string) error {
 	position := 0
 	for _, item := range grant.Items {
 		for index, operation := range item.Operations {
@@ -438,13 +452,17 @@ func (m *TaskManager) stream(managed *managedTask, stream StreamEvent) {
 		managed.task.Activity = stream.ToolName
 		managed.task.ActivityTarget = stream.ToolTarget
 		activityType = EventTaskToolStarted
-	case StreamToolCompleted:
+	case StreamToolCompleted, StreamToolFailed:
 		if managed.task.Activity == stream.ToolName || stream.ToolName == "" {
 			managed.task.Activity = ""
 			managed.task.ActivityTarget = ""
 		}
-		managed.completedTools = append(managed.completedTools, stream.ToolName)
-		activityType = EventTaskToolFinished
+		if stream.Type == StreamToolCompleted {
+			managed.completedTools = append(managed.completedTools, stream.ToolName)
+			activityType = EventTaskToolFinished
+		} else {
+			activityType = EventTaskToolFailed
+		}
 	}
 	task := managed.task
 	m.mu.Unlock()

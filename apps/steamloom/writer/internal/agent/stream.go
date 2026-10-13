@@ -4,6 +4,7 @@ const (
 	StreamAssistantDelta = "assistant.delta"
 	StreamToolStarted    = "tool.started"
 	StreamToolCompleted  = "tool.completed"
+	StreamToolFailed     = "tool.failed"
 )
 
 // StreamEvent 是各家 CLI 輸出正規化後的暫態事件；delta 不逐段落盤，task 中斷時才合併保存。

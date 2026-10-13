@@ -30,6 +30,17 @@ func TestVerifyApplyReplyClassifiesVersionConflict(t *testing.T) {
 	}
 }
 
+func TestVerifyApplyReplyAcceptsSuccessfulToolsWithoutFinalResult(t *testing.T) {
+	grant := ApprovalGrant{Items: []ProposalItem{{Operations: []ProposalOperation{{Tool: "storyteller_upsert_lore"}}}}}
+	err := verifyApplyReply(grant, Reply{}, []string{"mcp__storyteller__storyteller_upsert_lore"})
+	if err != nil {
+		t.Fatalf("successful mutation was rejected because the final envelope was missing: %v", err)
+	}
+	if err := verifyApplyReply(grant, Reply{}, nil); err == nil {
+		t.Fatalf("an operation that never completed must remain a failure: %v", err)
+	}
+}
+
 func TestApprovalGrantExposesOnlyApprovedMutationTools(t *testing.T) {
 	proposal := Proposal{
 		ID: "proposal-1", ProjectID: "project", Status: ProposalApplying, ContentHash: strings.Repeat("a", 64), GrantID: "grant-1", GrantExpiresAt: "2026-10-13T12:00:00+08:00",

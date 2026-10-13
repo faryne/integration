@@ -5,7 +5,7 @@ import { TaskActivityCard } from "@writer/pages/workspace/TaskActivityCard.tsx";
 import type { ChatLine } from "@writer/pages/workspace/useChatLog.ts";
 
 const activityTypes = new Set([
-  "task.queued", "task.started", "task.tool.started", "task.tool.completed", "task.completed", "task.failed", "task.canceled",
+  "task.queued", "task.started", "task.tool.started", "task.tool.completed", "task.tool.failed", "task.completed", "task.failed", "task.canceled",
   "apply.started", "apply.completed", "apply.failed", "apply.conflict", "apply.interrupted",
 ]);
 

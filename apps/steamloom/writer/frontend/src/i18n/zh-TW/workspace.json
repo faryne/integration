@@ -77,6 +77,7 @@
       "runningTitle": "Agent 執行紀錄",
       "completedTitle": "Agent 已完成",
       "failedTitle": "Agent 執行失敗",
+      "attentionTitle": "寫入結果需要確認",
       "canceledTitle": "工作已停止",
       "collapse": "收合執行紀錄",
       "expand": "展開執行紀錄",
@@ -84,6 +85,7 @@
       "started": "Agent 已開始處理",
       "toolStarted": "{{tool}}",
       "toolCompleted": "已完成：{{tool}}",
+      "toolFailed": "執行失敗：{{tool}}",
       "completed": "Agent 已完成工作",
       "failed": "Agent 執行失敗",
       "canceled": "工作已停止",
@@ -91,7 +93,7 @@
       "applyCompleted": "Agent 已完成寫入",
       "applyFailed": "Agent 寫入失敗",
       "applyConflict": "偵測到版本衝突，未覆寫內容",
-      "applyInterrupted": "寫入中斷，結果需要查證"
+      "applyInterrupted": "未取得最終寫入結果，需要確認"
     },
     "login": {
       "title": "需要重新登入 Agent",
@@ -113,19 +115,19 @@
       "applied": "已寫入",
       "apply_failed": "寫入失敗",
       "conflict": "版本衝突",
-      "verification_required": "寫入結果待查證"
+      "verification_required": "寫入結果需要確認"
     },
     "proposal": {
       "awaiting": "Agent 已完成成果，尚未寫入 SteamLoom",
       "status": {
         "awaiting_confirmation": "Agent 已完成成果，尚未寫入 SteamLoom",
-        "approved": "你已允許這批成果，等待 Agent 執行",
+        "approved": "你已同意套用這批成果",
         "rejected": "你已否決這批成果，Agent 不會寫入",
         "applying": "Agent 正在執行你核准的寫入",
         "applied": "Agent 已完成這批成果的寫入",
         "apply_failed": "Agent 未能完成這批成果的寫入",
         "conflict": "內容已有新版本，Agent 未覆寫變更",
-        "verification_required": "Writer 曾在寫入途中關閉；不會自動重送，請先查證結果"
+        "verification_required": "Writer 沒有取得 Agent 的最終寫入結果；不會自動重送，請先確認內容"
       },
       "review": "檢視成果",
       "view": "查看內容",

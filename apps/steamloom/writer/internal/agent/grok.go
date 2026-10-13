@@ -210,7 +210,11 @@ func emitGrokStream(req Request, line string, tools map[string]streamedTool) {
 	case "tool_call_update":
 		if result.Update.Status == "completed" || result.Update.Status == "failed" {
 			tool := tools[result.Update.ToolCallID]
-			req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: tool.Name, ToolTarget: tool.Target})
+			typeName := StreamToolCompleted
+			if result.Update.Status == "failed" {
+				typeName = StreamToolFailed
+			}
+			req.emitStream(StreamEvent{Type: typeName, ToolName: tool.Name, ToolTarget: tool.Target})
 		}
 	}
 }

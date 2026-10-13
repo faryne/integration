@@ -130,6 +130,7 @@ func emitClaudeStream(req Request, line string, tools map[string]streamedTool) {
 				ID        string          `json:"id"`
 				Name      string          `json:"name"`
 				ToolUseID string          `json:"tool_use_id"`
+				IsError   bool            `json:"is_error"`
 				Input     json.RawMessage `json:"input"`
 			} `json:"content"`
 		} `json:"message"`
@@ -151,7 +152,11 @@ func emitClaudeStream(req Request, line string, tools map[string]streamedTool) {
 			req.emitStream(StreamEvent{Type: StreamToolStarted, ToolName: tool.Name, ToolTarget: tool.Target})
 		case "tool_result":
 			tool := tools[content.ToolUseID]
-			req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: tool.Name, ToolTarget: tool.Target})
+			typeName := StreamToolCompleted
+			if content.IsError {
+				typeName = StreamToolFailed
+			}
+			req.emitStream(StreamEvent{Type: typeName, ToolName: tool.Name, ToolTarget: tool.Target})
 		}
 	}
 }

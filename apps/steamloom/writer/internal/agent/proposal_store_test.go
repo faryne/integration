@@ -147,6 +147,37 @@ func TestSaveProposalStagesAssetAndDeleteChatRemovesIt(t *testing.T) {
 	}
 }
 
+func TestApproveProposalPersistsUserDecisionAndClearsPendingState(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskID, _ := newThreadID()
+	proposal, err := SaveProposal("claude", "project", page.CurrentID, taskID, "", []ProposalItem{{
+		Kind: ProposalKindLore, Title: "許芷瑄", Content: "新設定",
+		Operations: []ProposalOperation{{Tool: "storyteller_upsert_lore", Arguments: map[string]any{"project_public_id": "project", "title": "許芷瑄", "content": "新設定"}}},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := DecideProposal("claude", "project", page.CurrentID, proposal.ID, ProposalDecisionApprove); err != nil {
+		t.Fatal(err)
+	}
+	chat, err := OpenChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	decision := chat.Messages[len(chat.Messages)-1]
+	if decision.Type != EventProposalApproved || decision.Role != "user" || !strings.Contains(decision.Text, "你已同意套用 1 項變更：設定〈許芷瑄〉") {
+		t.Fatalf("approval was not persisted as a user decision: %#v", decision)
+	}
+	threads, err := ProjectThreads("project")
+	if err != nil || len(threads) != 1 || threads[0].LastTaskState != TaskApproved {
+		t.Fatalf("approved proposal remained pending: %#v, %v", threads, err)
+	}
+}
+
 func TestSaveProposalRejectsUnsafeScopeAndIncompleteBase(t *testing.T) {
 	withTempConfig(t)
 	page, err := NewChat("codex", "project")
