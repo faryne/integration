@@ -324,6 +324,59 @@ export function WorkspaceEditableSummary({
   );
 }
 
+// 屬性按鈕本體（單選／多選共用）。停用時（沒得選或不能改）拿掉下拉箭頭、文字與圖示都換成停用色、
+// 值不再加粗，跟可以點的按鈕一眼就分得出來。
+function AttributeTrigger({
+  icon,
+  label,
+  valueLabel,
+  disabled,
+  onOpen,
+}: {
+  icon: ReactNode;
+  label: string;
+  valueLabel: string;
+  disabled?: boolean;
+  onOpen: (anchor: HTMLElement) => void;
+}) {
+  return (
+    <Button
+      size="small"
+      disabled={disabled}
+      startIcon={icon}
+      endIcon={disabled ? undefined : <ExpandMoreIcon fontSize="small" />}
+      onClick={(event) => onOpen(event.currentTarget)}
+      sx={{
+        justifyContent: "flex-start",
+        color: "text.secondary",
+        borderRadius: 1,
+        px: 1,
+        minHeight: 30,
+        bgcolor: "transparent",
+        "&:hover": { bgcolor: "action.hover" },
+        "&.Mui-disabled": { color: "text.disabled" },
+        "&.Mui-disabled .MuiButton-startIcon": { opacity: 0.5 },
+      }}
+    >
+      <Stack direction="row" spacing={0.75} alignItems="center">
+        <Typography
+          variant="caption"
+          color={disabled ? "text.disabled" : "text.secondary"}
+        >
+          {label}
+        </Typography>
+        <Typography
+          variant="body2"
+          color={disabled ? "text.disabled" : "text.primary"}
+          fontWeight={disabled ? 400 : 700}
+        >
+          {valueLabel}
+        </Typography>
+      </Stack>
+    </Button>
+  );
+}
+
 export function WorkspaceEditorSelectButton({
   icon,
   label,
@@ -344,31 +397,13 @@ export function WorkspaceEditorSelectButton({
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   return (
     <Stack spacing={0.75} alignItems="flex-start">
-      <Button
-        size="small"
+      <AttributeTrigger
+        icon={icon}
+        label={label}
+        valueLabel={selectedOptionLabel(options, value)}
         disabled={disabled}
-        startIcon={icon}
-        endIcon={<ExpandMoreIcon fontSize="small" />}
-        onClick={(event) => setAnchorEl(event.currentTarget)}
-        sx={{
-          justifyContent: "flex-start",
-          color: "text.secondary",
-          borderRadius: 1,
-          px: 1,
-          minHeight: 30,
-          bgcolor: "transparent",
-          "&:hover": { bgcolor: "action.hover" },
-        }}
-      >
-        <Stack direction="row" spacing={0.75} alignItems="center">
-          <Typography variant="caption" color="text.secondary">
-            {label}
-          </Typography>
-          <Typography variant="body2" color="text.primary" fontWeight={700}>
-            {selectedOptionLabel(options, value)}
-          </Typography>
-        </Stack>
-      </Button>
+        onOpen={setAnchorEl}
+      />
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
@@ -412,31 +447,13 @@ export function WorkspaceEditorMultiSelectButton({
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   return (
     <Stack spacing={0.75} alignItems="flex-start">
-      <Button
-        size="small"
+      <AttributeTrigger
+        icon={icon}
+        label={label}
+        valueLabel={selectedOptionsLabel(options, values)}
         disabled={disabled}
-        startIcon={icon}
-        endIcon={<ExpandMoreIcon fontSize="small" />}
-        onClick={(event) => setAnchorEl(event.currentTarget)}
-        sx={{
-          justifyContent: "flex-start",
-          color: "text.secondary",
-          borderRadius: 1,
-          px: 1,
-          minHeight: 30,
-          bgcolor: "transparent",
-          "&:hover": { bgcolor: "action.hover" },
-        }}
-      >
-        <Stack direction="row" spacing={0.75} alignItems="center">
-          <Typography variant="caption" color="text.secondary">
-            {label}
-          </Typography>
-          <Typography variant="body2" color="text.primary" fontWeight={700}>
-            {selectedOptionsLabel(options, values)}
-          </Typography>
-        </Stack>
-      </Button>
+        onOpen={setAnchorEl}
+      />
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}

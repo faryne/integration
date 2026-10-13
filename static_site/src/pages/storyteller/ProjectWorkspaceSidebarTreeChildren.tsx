@@ -16,6 +16,7 @@ import {
 import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
 import { useStorytellerLores } from "@/apis/storyteller.ts";
+import { WorkspaceSortArrows } from "./WorkspaceSortArrows.tsx";
 import {
   ungroupedId,
   type SelectedItem,
@@ -25,6 +26,12 @@ import type { StorytellerStory } from "@/types/storyteller.ts";
 
 type SidebarSelectedItem = { type: SelectedItem["type"]; publicId: string };
 type SelectSidebarItem = (item: SelectedItem, collectionId: string) => void;
+// 同一冊內調整作品順序：把 draggedId 插到 beforeId 前面（null＝最後）
+export type ReorderSidebarItem = (
+  collectionId: string,
+  draggedId: string,
+  beforeId: string | null,
+) => void;
 
 type SidebarRowData = {
   id: string;
@@ -37,12 +44,16 @@ export function SidebarCollectionChildren({
   projectPublicId,
   selectedItem,
   onSelectItem,
+  sorting,
+  onReorderItem,
 }: {
   row: SidebarRowData;
   section: WorkspaceSection;
   projectPublicId?: string;
   selectedItem?: SidebarSelectedItem;
   onSelectItem: SelectSidebarItem;
+  sorting?: boolean;
+  onReorderItem?: ReorderSidebarItem;
 }) {
   if (section === "stories") {
     return (
@@ -51,6 +62,7 @@ export function SidebarCollectionChildren({
         collectionId={row.id}
         selectedItem={selectedItem}
         onSelectItem={onSelectItem}
+        onReorderItem={sorting ? onReorderItem : undefined}
       />
     );
   }
@@ -67,20 +79,23 @@ export function SidebarCollectionChildren({
   return null;
 }
 
+// onReorderItem 有值（排序模式）時每一篇右側出現上移／下移，跟 SteamLoom Writer 一樣只在同一冊內排序
 function SidebarStoryChildren({
   stories,
   collectionId,
   selectedItem,
   onSelectItem,
+  onReorderItem,
 }: {
   stories: StorytellerStory[];
   collectionId: string;
   selectedItem?: SidebarSelectedItem;
   onSelectItem: SelectSidebarItem;
+  onReorderItem?: ReorderSidebarItem;
 }) {
   return (
     <List dense disablePadding sx={sidebarChildListSx}>
-      {stories.map((story) => (
+      {stories.map((story, index) => (
         <SidebarTreeItem
           key={story.public_id}
           title={story.title}
@@ -97,6 +112,24 @@ function SidebarStoryChildren({
           }
           onClick={() =>
             onSelectItem({ type: "story", row: story }, collectionId)
+          }
+          extra={
+            onReorderItem && (
+              <WorkspaceSortArrows
+                index={index}
+                count={stories.length}
+                onMove={(delta) =>
+                  onReorderItem(
+                    collectionId,
+                    story.public_id,
+                    // 上移：插到前一篇前面；下移：插到下下一篇前面（沒有就排最後）
+                    delta < 0
+                      ? stories[index - 1].public_id
+                      : (stories[index + 2]?.public_id ?? null),
+                  )
+                }
+              />
+            )
           }
         />
       ))}
@@ -167,11 +200,14 @@ function SidebarTreeItem({
   icon,
   selected,
   onClick,
+  extra,
 }: {
   title: string;
   icon: ReactNode;
   selected: boolean;
   onClick: () => void;
+  // 列右側的操作（排序模式的上移／下移）
+  extra?: ReactNode;
 }) {
   return (
     <ListItemButton
@@ -197,6 +233,7 @@ function SidebarTreeItem({
         }
         sx={{ minWidth: 0 }}
       />
+      {extra}
     </ListItemButton>
   );
 }

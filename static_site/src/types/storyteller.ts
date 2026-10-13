@@ -794,6 +794,14 @@ export interface StorytellerStoryPatchRequest {
   status?: "draft" | "completed";
   // 目標冊的 public_id；空字串代表移出冊。冊本身不能帶。
   parent_id?: string;
+  // 署名（0＝本人）；冊沒有署名
+  profile_ids?: number[];
+}
+
+// 設定的屬性異動（PATCH，不寫版本、不進編輯歷史）；collection_id 空字串＝未歸類
+export interface StorytellerLorePatchRequest {
+  status?: "draft" | "completed";
+  collection_id?: string;
 }
 
 export interface StorytellerStoryRequest {

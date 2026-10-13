@@ -1,6 +1,4 @@
-import CloseIcon from "@mui/icons-material/Close";
 import CollectionsIcon from "@mui/icons-material/Collections";
-import EditNoteIcon from "@mui/icons-material/EditNote";
 import FolderIcon from "@mui/icons-material/Folder";
 import PersonIcon from "@mui/icons-material/Person";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -9,11 +7,6 @@ import {
   Alert,
   Box,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
   LinearProgress,
   MenuItem,
   Paper,
@@ -24,6 +17,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
+  usePatchStorytellerStory,
   useSaveStorytellerStory,
   useStorytellerImageStoryPages,
   useStorytellerLores,
@@ -65,10 +59,11 @@ import {
 } from "@/pages/storyteller/StorytellerShell.tsx";
 import { StorytellerAssetDropzone } from "@/pages/storyteller/StorytellerAssetDropzone.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
-import { StorytellerWysiwygEditor } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
 import { registerWorkspaceLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
 import { ACCOUNT_PROFILE_ID } from "@/helpers/storytellerAuthors.ts";
-import type { StorytellerAsset } from "@/types/storyteller.ts";
+import type { EditorPickerAsset } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
+import { ImageEpisodePageList } from "@/pages/storyteller/ImageEpisodePageList.tsx";
+import { withDraftAttributes } from "@/pages/storyteller/editorDraftAttributes.ts";
 import { publishLoreLinkWarning } from "@/pages/storyteller/storytellerLoreLinkCheck.ts";
 
 interface PendingPage {
@@ -165,6 +160,7 @@ export default function StorytellerImageEpisodeEditor({
   );
 
   const saveStory = useSaveStorytellerStory(project?.public_id);
+  const patchStory = usePatchStorytellerStory(project?.public_id);
   const uploadAssets = useUploadStorytellerAssets(project?.public_id);
   const { data: userProfile } = useStorytellerUserProfile();
 
@@ -176,8 +172,6 @@ export default function StorytellerImageEpisodeEditor({
     ACCOUNT_PROFILE_ID,
   ]);
   const [pages, setPages] = useState<PendingPage[]>([]);
-  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
-  const [editingPageId, setEditingPageId] = useState<string | null>(null);
   const [assetPickerOpen, setAssetPickerOpen] = useState(false);
   const [progress, setProgress] = useState<
     Record<string, { loaded: number; total: number }>
@@ -490,7 +484,7 @@ export default function StorytellerImageEpisodeEditor({
     setPages((current) => [...current, ...nextPages]);
   }
 
-  function addAssetPage(asset: StorytellerAsset) {
+  function addAssetPage(asset: EditorPickerAsset) {
     if (pages.length >= STORYTELLER_IMAGE_PAGE_MAX_COUNT) {
       setFileWarning(`一話最多 ${STORYTELLER_IMAGE_PAGE_MAX_COUNT} 頁`);
       setAssetPickerOpen(false);
@@ -528,9 +522,57 @@ export default function StorytellerImageEpisodeEditor({
     });
   }
 
+  // 狀態／冊／署名一變更就走 PATCH 即時存（不寫版本、不進編輯歷史，跟 StoryEditor 一致）；
+  // 新建的話還沒有 public_id，先留在草稿裡等上傳時一起送。失敗就還原並提示。
+  function changeEpisodeAttributes(patch: {
+    status?: "draft" | "completed";
+    selectedVolumeId?: string;
+    profileIds?: number[];
+  }) {
+    const previous = {
+      status,
+      selectedVolumeId,
+      profileIds: selectedProfileIds,
+    };
+    const apply = (next: typeof previous) => {
+      setStatus(next.status);
+      setSelectedVolumeId(next.selectedVolumeId);
+      setSelectedProfileIds(next.profileIds);
+    };
+    apply({ ...previous, ...patch });
+    if (isNewEpisode || !existingStory?.public_id) {
+      return;
+    }
+    patchStory.mutate(
+      {
+        storyPublicId: existingStory.public_id,
+        input: {
+          status: patch.status,
+          parent_id: patch.selectedVolumeId,
+          profile_ids: patch.profileIds,
+        },
+      },
+      {
+        onSuccess: () => {
+          lastSavedDraftRef.current = withDraftAttributes(
+            lastSavedDraftRef.current,
+            patch,
+          );
+        },
+        onError: (error) => {
+          apply(previous);
+          setUploadError(
+            error instanceof Error ? error.message : "屬性更新失敗，請重試。",
+          );
+          setSaveErrorSnackOpen(true);
+        },
+      },
+    );
+  }
+
   // 切換公開狀態；改成公開時檢查頁面說明裡的設定連結，連到未公開或已刪除的設定就提醒
   function changeStatus(next: "draft" | "completed") {
-    setStatus(next);
+    changeEpisodeAttributes({ status: next });
     if (next === "completed") {
       setPublishWarning(
         publishLoreLinkWarning(
@@ -663,9 +705,6 @@ export default function StorytellerImageEpisodeEditor({
     }
   }
 
-  const editingPage = pages.find((page) => page.id === editingPageId) ?? null;
-  const editingPageIndex = editingPage ? pages.indexOf(editingPage) : -1;
-
   // 既有頁面（沒有本機 file）不需要上傳，size 算 0，不會被計進總體進度裡。
   const totalBytes = pages.reduce(
     (sum, page) => sum + (page.file?.size ?? 0),
@@ -795,17 +834,22 @@ export default function StorytellerImageEpisodeEditor({
             label="冊"
             value={selectedVolumeId}
             options={volumeOptions}
-            disabled={isSubmitting}
-            onChange={setSelectedVolumeId}
+            // 沒有冊（只剩不分冊）、沒有其他筆名時沒得選，停用
+            disabled={isSubmitting || volumeOptions.length <= 1}
+            onChange={(value) =>
+              changeEpisodeAttributes({ selectedVolumeId: value })
+            }
           />
           <WorkspaceEditorMultiSelectButton
             icon={<PersonIcon fontSize="small" />}
             label="署名"
             values={selectedProfileIds.map(String)}
             options={profileOptions}
-            disabled={isSubmitting}
+            disabled={isSubmitting || profileOptions.length <= 1}
             onChange={(values) =>
-              setSelectedProfileIds(values.map((value) => Number(value)))
+              changeEpisodeAttributes({
+                profileIds: values.map((value) => Number(value)),
+              })
             }
           />
         </Stack>
@@ -916,8 +960,12 @@ export default function StorytellerImageEpisodeEditor({
                   select
                   label="冊"
                   value={selectedVolumeId}
-                  disabled={isSubmitting}
-                  onChange={(event) => setSelectedVolumeId(event.target.value)}
+                  disabled={isSubmitting || apiVolumes.length === 0}
+                  onChange={(event) =>
+                    changeEpisodeAttributes({
+                      selectedVolumeId: event.target.value,
+                    })
+                  }
                   helperText="未選擇時視為不分冊。"
                 >
                   <MenuItem value="">不分冊</MenuItem>
@@ -932,7 +980,7 @@ export default function StorytellerImageEpisodeEditor({
                   select
                   label="署名"
                   value={selectedProfileIds.map(String)}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || profileOptions.length <= 1}
                   slotProps={{
                     select: { multiple: true },
                   }}
@@ -940,11 +988,11 @@ export default function StorytellerImageEpisodeEditor({
                     const value = event.target.value;
                     const next =
                       typeof value === "string" ? value.split(",") : value;
-                    setSelectedProfileIds(
-                      next
+                    changeEpisodeAttributes({
+                      profileIds: next
                         .map((item) => Number(item))
                         .filter((id) => !Number.isNaN(id)),
-                    );
+                    });
                   }}
                   helperText="可多選；預設為本人。"
                 >
@@ -956,118 +1004,21 @@ export default function StorytellerImageEpisodeEditor({
                 </TextField>
               </>
             )}
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                頁面（{pages.length} 頁）
-              </Typography>
-              <StorytellerAssetDropzone
-                accept={STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES}
-                hint="拖曳圖片到這裡，或點擊選擇檔案（可一次選多張，支援批次上傳）"
-                onFilesSelected={addFiles}
-              />
-              <Stack direction="row" justifyContent="flex-end" sx={{ mt: 1.5 }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<CollectionsIcon />}
-                  disabled={isSubmitting}
-                  onClick={() => setAssetPickerOpen(true)}
-                >
-                  從資產集加入
-                </Button>
-              </Stack>
-              {pages.length > 0 && (
-                <Stack
-                  direction="row"
-                  flexWrap="wrap"
-                  useFlexGap
-                  spacing={1.5}
-                  sx={{ mt: 2 }}
-                >
-                  {pages.map((page, index) => (
-                    <Paper
-                      key={page.id}
-                      variant="outlined"
-                      draggable
-                      onDragStart={() => setDraggingIndex(index)}
-                      onDragOver={(event) => event.preventDefault()}
-                      onDrop={(event) => {
-                        event.preventDefault();
-                        if (draggingIndex !== null && draggingIndex !== index) {
-                          movePage(draggingIndex, index);
-                        }
-                        setDraggingIndex(null);
-                      }}
-                      onClick={() => setEditingPageId(page.id)}
-                      sx={{
-                        position: "relative",
-                        width: 120,
-                        height: 160,
-                        overflow: "hidden",
-                        cursor: "grab",
-                        opacity: draggingIndex === index ? 0.4 : 1,
-                      }}
-                    >
-                      <Box
-                        component="img"
-                        src={page.previewUrl}
-                        alt={`第 ${index + 1} 頁`}
-                        sx={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                      />
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          position: "absolute",
-                          left: 4,
-                          bottom: 4,
-                          px: 0.5,
-                          bgcolor: "rgba(0,0,0,0.6)",
-                          color: "#fff",
-                          borderRadius: 0.5,
-                        }}
-                      >
-                        {index + 1}
-                      </Typography>
-                      <EditNoteIcon
-                        fontSize="small"
-                        sx={{
-                          position: "absolute",
-                          right: 4,
-                          bottom: 4,
-                          color: page.description.trim()
-                            ? "success.light"
-                            : "#fff",
-                          bgcolor: "rgba(0,0,0,0.6)",
-                          borderRadius: 0.5,
-                        }}
-                      />
-                      <IconButton
-                        size="small"
-                        disabled={isSubmitting}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          removePage(page.id);
-                        }}
-                        sx={{
-                          position: "absolute",
-                          top: 2,
-                          right: 2,
-                          bgcolor: "rgba(0,0,0,0.6)",
-                          color: "#fff",
-                          "&:hover": { bgcolor: "rgba(0,0,0,0.8)" },
-                        }}
-                      >
-                        <CloseIcon fontSize="inherit" />
-                      </IconButton>
-                    </Paper>
-                  ))}
-                </Stack>
-              )}
-            </Box>
+            <ImageEpisodePageList
+              pages={pages}
+              disabled={isSubmitting}
+              addControl={
+                <StorytellerAssetDropzone
+                  accept={STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES}
+                  hint="拖曳圖片到這裡，或點擊選擇檔案（可一次選多張，支援批次上傳）"
+                  onFilesSelected={addFiles}
+                />
+              }
+              onPickAsset={() => setAssetPickerOpen(true)}
+              onMove={movePage}
+              onRemove={removePage}
+              onDescriptionChange={updatePageDescription}
+            />
             {phase !== "idle" && pages.length > 0 && (
               <Box>
                 <Stack
@@ -1146,30 +1097,6 @@ export default function StorytellerImageEpisodeEditor({
         </Paper>
       </Stack>
 
-      <Dialog
-        open={editingPage !== null}
-        onClose={() => setEditingPageId(null)}
-        fullWidth
-        maxWidth="md"
-      >
-        <DialogTitle>第 {editingPageIndex + 1} 頁描述</DialogTitle>
-        <DialogContent>
-          {editingPage && (
-            <Box sx={{ minHeight: 320, mt: 1 }}>
-              <StorytellerWysiwygEditor
-                value={editingPage.description}
-                onChange={(markdown) =>
-                  updatePageDescription(editingPage.id, markdown)
-                }
-                enabledFeatures={[]}
-              />
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditingPageId(null)}>完成</Button>
-        </DialogActions>
-      </Dialog>
       <StorytellerAssetPickerDialog
         open={assetPickerOpen}
         projectPublicId={project.public_id}

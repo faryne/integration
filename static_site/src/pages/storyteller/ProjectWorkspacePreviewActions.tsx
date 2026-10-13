@@ -226,18 +226,21 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   // 把故事拖到另一個看不到的冊——跨冊搬移還是走既有的「移動到冊」選單。這裡只
   // 處理「同一組內」重新排序：把 draggedPublicId 插到 beforePublicId 前面
   // （null 代表插到最後），只送真的動到 sort 的那幾筆存檔請求。
+  // collectionId：要排序的那一組（冊的 public_id 或 ungroupedId）；預設是目前列表選到的分組，
+  // 側邊列排序模式會指定作品所在的冊。
   function reorderStory(
     draggedPublicId: string,
     beforePublicId: string | null,
+    collectionId: string = selected.collectionId,
   ) {
     if (draggedPublicId === beforePublicId) {
       return;
     }
     const parentId =
-      selected.collectionId === ungroupedId
+      collectionId === ungroupedId
         ? null
-        : (volumes.find((volume) => volume.public_id === selected.collectionId)
-            ?.id ?? null);
+        : (volumes.find((volume) => volume.public_id === collectionId)?.id ??
+          null);
     const group = stories
       .filter((story) => !story.is_volume && story.parent_id === parentId)
       .sort((left, right) => left.sort - right.sort);
@@ -724,14 +727,6 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       </Menu>
       <WorkspaceRowActionMenu
         anchorEl={storyActionMenu?.anchorEl ?? null}
-        editTo={
-          storyActionMenu
-            ? steamloomPath(
-                `my/workspace/${projectId}/${storyActionMenu.story.content_type === "image" ? "image" : "story"}/${storyActionMenu.story.public_id}${fromQuery}`,
-              )
-            : "#"
-        }
-        editLabel="編輯作品"
         moveLabel="移動到冊…"
         deleteLabel="刪除作品"
         status={storyActionMenu?.story.status}
@@ -761,14 +756,6 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       />
       <WorkspaceRowActionMenu
         anchorEl={loreActionMenu?.anchorEl ?? null}
-        editTo={
-          loreActionMenu
-            ? steamloomPath(
-                `my/workspace/${projectId}/lore/${loreActionMenu.lore.public_id}${fromQuery}`,
-              )
-            : "#"
-        }
-        editLabel="編輯設定"
         moveLabel="移動至設定集…"
         deleteLabel="刪除設定"
         onClose={() => setLoreActionMenu(null)}

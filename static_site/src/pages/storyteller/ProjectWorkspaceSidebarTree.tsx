@@ -1,9 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
-import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import DoneIcon from "@mui/icons-material/Done";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import FolderIcon from "@mui/icons-material/Folder";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import RemoveIcon from "@mui/icons-material/Remove";
@@ -31,7 +28,11 @@ import {
   type SelectedNode,
   type WorkspaceSection,
 } from "./ProjectWorkspacePreviewTypes.ts";
-import { SidebarCollectionChildren } from "./ProjectWorkspaceSidebarTreeChildren.tsx";
+import {
+  SidebarCollectionChildren,
+  type ReorderSidebarItem,
+} from "./ProjectWorkspaceSidebarTreeChildren.tsx";
+import { WorkspaceSortArrows } from "./WorkspaceSortArrows.tsx";
 import type { StorytellerStory } from "@/types/storyteller.ts";
 
 export type SidebarRowData = {
@@ -54,6 +55,7 @@ export function SidebarGroup({
   onCreate,
   createLabel,
   onReorder,
+  onReorderItem,
 }: {
   title: string;
   section: WorkspaceSection;
@@ -69,9 +71,11 @@ export function SidebarGroup({
   // 這個按鈕實際上只會新增「冊」，不會新增「作品」，沿用預設會變成語意不對的
   // 「新增作品與冊」，所以呼叫端可以自己指定更精確的文字。
   createLabel?: string;
+  // 排序模式（比照 SteamLoom Writer）：分組（冊、設定集）與冊內作品右側出現上移／下移，
+  // 頭尾不顯示；不再用拖曳。onReorder 排分組，onReorderItem 排冊內作品。
   onReorder?: (draggedId: string, beforeId: string | null) => void;
+  onReorderItem?: ReorderSidebarItem;
 }) {
-  const [draggingId, setDraggingId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
   const [sorting, setSorting] = useState(false);
   const reorderableRows = rows.filter(
@@ -146,49 +150,30 @@ export function SidebarGroup({
                 projectPublicId={projectPublicId}
                 selected={selected}
                 selectedItem={selectedItem}
-                draggingId={draggingId}
                 sorting={sorting}
                 onSelect={onSelect}
                 onSelectItem={onSelectItem}
-                onReorder={onReorder}
-                onMoveUp={
-                  reorderIndex > 0
-                    ? () =>
-                        onReorder?.(
+                onReorderItem={onReorderItem}
+                sortArrows={
+                  sorting && onReorder && reorderIndex >= 0 ? (
+                    <WorkspaceSortArrows
+                      index={reorderIndex}
+                      count={reorderableRows.length}
+                      onMove={(delta) =>
+                        onReorder(
                           row.id,
-                          reorderableRows[reorderIndex - 1].id,
+                          // 上移：插到前一個前面；下移：插到下下一個前面（沒有就排最後）
+                          delta < 0
+                            ? reorderableRows[reorderIndex - 1].id
+                            : (reorderableRows[reorderIndex + 2]?.id ?? null),
                         )
-                    : undefined
+                      }
+                    />
+                  ) : undefined
                 }
-                onMoveDown={
-                  reorderIndex >= 0 && reorderIndex < reorderableRows.length - 1
-                    ? () =>
-                        onReorder?.(
-                          row.id,
-                          reorderableRows[reorderIndex + 2]?.id ?? null,
-                        )
-                    : undefined
-                }
-                onDragStart={setDraggingId}
-                onDragEnd={() => setDraggingId(null)}
               />
             );
           })}
-          {sorting && onReorder && (
-            // 補一塊有實際高度的拖放目標放在清單最後，讓使用者能把冊拖到最後一個
-            // 位置（跟 WorkspacePane 作品清單拖曳排序同一個道理）。
-            <Box
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={(event) => {
-                event.preventDefault();
-                if (draggingId) {
-                  onReorder(draggingId, null);
-                }
-                setDraggingId(null);
-              }}
-              sx={{ minHeight: 10 }}
-            />
-          )}
         </List>
       </Collapse>
       <Divider sx={{ my: 0.75, opacity: 0.35 }} />
@@ -202,40 +187,29 @@ export function SidebarCollectionRow({
   projectPublicId,
   selected,
   selectedItem,
-  draggingId,
   sorting,
   onSelect,
   onSelectItem,
-  onReorder,
-  onMoveUp,
-  onMoveDown,
-  onDragStart,
-  onDragEnd,
+  onReorderItem,
+  sortArrows,
 }: {
   row: SidebarRowData;
   section: WorkspaceSection;
   projectPublicId?: string;
   selected: SelectedNode;
   selectedItem?: { type: SelectedItem["type"]; publicId: string };
-  draggingId: string | null;
   sorting: boolean;
   onSelect: (section: WorkspaceSection, collectionId: string) => void;
   onSelectItem: (item: SelectedItem, collectionId: string) => void;
-  onReorder?: (draggedId: string, beforeId: string | null) => void;
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
-  onDragStart: (id: string) => void;
-  onDragEnd: () => void;
+  onReorderItem?: ReorderSidebarItem;
+  // 排序模式下這一列的上移／下移（「全部」「未分冊／未分類」這類虛擬節點沒有）
+  sortArrows?: ReactNode;
 }) {
   const [childrenExpanded, setChildrenExpanded] = useState(false);
   const [childrenLoaded, setChildrenLoaded] = useState(false);
   const canExpandChildren = section !== "assets";
   const hasChildren =
     canExpandChildren && row.id !== "" && (row.count ?? 0) > 0;
-  // 「全部」「未分類/未分冊」是虛擬節點，不是實際的冊資料列，不能被拖曳排序，
-  // 也不能當拖放目標；第三層展開則仍可支援未分冊/未分類。
-  const reorderable =
-    Boolean(onReorder) && row.id !== "" && row.id !== ungroupedId;
   const isSelected =
     selected.section === section && selected.collectionId === row.id;
 
@@ -256,131 +230,63 @@ export function SidebarCollectionRow({
   return (
     <>
       <Stack direction="row" alignItems="center" sx={{ minWidth: 0 }}>
-        <Tooltip
-          title={sorting && reorderable ? "拖曳調整順序" : ""}
-          placement="right"
+        <ListItemButton
+          selected={isSelected}
+          onClick={() => onSelect(section, row.id)}
+          sx={{ ...sidebarTreeRowSx, flex: 1 }}
         >
-          <ListItemButton
-            selected={isSelected}
-            onClick={() => onSelect(section, row.id)}
-            draggable={sorting && reorderable}
-            onDragStart={
-              sorting && reorderable ? () => onDragStart(row.id) : undefined
-            }
-            onDragOver={
-              sorting && reorderable
-                ? (event) => event.preventDefault()
-                : undefined
-            }
-            onDrop={
-              sorting && reorderable
-                ? (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (draggingId) {
-                      onReorder?.(draggingId, row.id);
-                    }
-                    onDragEnd();
-                  }
-                : undefined
-            }
+          {canExpandChildren && (
+            <Tooltip title={childrenExpanded ? "收合項目" : "展開項目"}>
+              <Box
+                onClick={toggleChildren}
+                sx={{
+                  width: 16,
+                  lineHeight: 0,
+                  flexShrink: 0,
+                  visibility: hasChildren ? "visible" : "hidden",
+                  cursor: hasChildren ? "pointer" : undefined,
+                }}
+              >
+                <KeyboardArrowRightIcon
+                  fontSize="inherit"
+                  sx={{
+                    transform: childrenExpanded ? "rotate(90deg)" : "none",
+                    transition: "transform 120ms ease",
+                  }}
+                />
+              </Box>
+            </Tooltip>
+          )}
+          <ListItemIcon
             sx={{
-              ...sidebarTreeRowSx,
-              flex: 1,
-              cursor: sorting && reorderable ? "grab" : undefined,
-              opacity: draggingId === row.id ? 0.55 : 1,
+              minWidth: 26,
+              color: isSelected ? "primary.main" : "inherit",
             }}
           >
-            {sorting && reorderable && (
-              <DragIndicatorIcon
-                fontSize="small"
-                sx={{
-                  display: { xs: "none", md: "block" },
-                  mr: 0.5,
-                  opacity: 0.55,
-                }}
-              />
-            )}
-            {canExpandChildren && (
-              <Tooltip title={childrenExpanded ? "收合項目" : "展開項目"}>
-                <Box
-                  onClick={toggleChildren}
-                  sx={{
-                    width: 16,
-                    lineHeight: 0,
-                    flexShrink: 0,
-                    visibility: hasChildren ? "visible" : "hidden",
-                    cursor: hasChildren ? "pointer" : undefined,
-                  }}
-                >
-                  <KeyboardArrowRightIcon
-                    fontSize="inherit"
-                    sx={{
-                      transform: childrenExpanded ? "rotate(90deg)" : "none",
-                      transition: "transform 120ms ease",
-                    }}
-                  />
-                </Box>
-              </Tooltip>
-            )}
-            <ListItemIcon
-              sx={{
-                minWidth: 26,
-                color: isSelected ? "primary.main" : "inherit",
-              }}
+            <FolderIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary={row.label}
+            primaryTypographyProps={{
+              fontWeight: 700,
+              noWrap: true,
+              fontSize: 13,
+            }}
+            sx={{ minWidth: 0 }}
+          />
+          {row.count !== undefined && (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ flexShrink: 0 }}
             >
-              <FolderIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText
-              primary={row.label}
-              primaryTypographyProps={{
-                fontWeight: 700,
-                noWrap: true,
-                fontSize: 13,
-              }}
-              sx={{ minWidth: 0 }}
-            />
-            {row.count !== undefined && (
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ flexShrink: 0 }}
-              >
-                {row.count}
-              </Typography>
-            )}
-          </ListItemButton>
-        </Tooltip>
-        {sorting && reorderable && (
-          // 行動版不依賴 HTML5 drag；排序模式明確顯示上下移動，桌面仍保留拖曳。
-          <Stack
-            direction="row"
-            sx={{ display: { xs: "flex", md: "none" }, flexShrink: 0 }}
-          >
-            <Tooltip title="往上移">
-              <span>
-                <IconButton
-                  size="small"
-                  aria-label={`${row.label}往上移`}
-                  disabled={!onMoveUp}
-                  onClick={onMoveUp}
-                >
-                  <ArrowUpwardIcon fontSize="inherit" />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="往下移">
-              <span>
-                <IconButton
-                  size="small"
-                  aria-label={`${row.label}往下移`}
-                  disabled={!onMoveDown}
-                  onClick={onMoveDown}
-                >
-                  <ArrowDownwardIcon fontSize="inherit" />
-                </IconButton>
-              </span>
-            </Tooltip>
+              {row.count}
+            </Typography>
+          )}
+        </ListItemButton>
+        {sortArrows && (
+          <Stack direction="row" sx={{ flexShrink: 0 }}>
+            {sortArrows}
           </Stack>
         )}
       </Stack>
@@ -393,6 +299,8 @@ export function SidebarCollectionRow({
               projectPublicId={projectPublicId}
               selectedItem={selectedItem}
               onSelectItem={onSelectItem}
+              sorting={sorting}
+              onReorderItem={onReorderItem}
             />
           )}
         </Collapse>
