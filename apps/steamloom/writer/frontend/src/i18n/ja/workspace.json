@@ -142,6 +142,59 @@
       "lore": "設定を削除しました。"
     },
     "published": "作品を公開しました。",
-    "unpublished": "作品を非公開にしました。"
+    "unpublished": "作品を非公開にしました。",
+    "empty": {
+      "asset": {
+        "description": "このプロジェクトにはまだアセットがありません。",
+        "title": "アセットがありません"
+      },
+      "lore": {
+        "description": "このプロジェクトにはまだ設定がありません。",
+        "title": "設定がありません"
+      },
+      "story": {
+        "description": "このプロジェクトにはまだ作品がありません。",
+        "title": "作品がありません"
+      }
+    }
+  },
+  "actions": {
+    "create": "作成",
+    "moveDown": "下へ移動",
+    "moveLore": "設定集へ移動",
+    "moveStory": "巻へ移動",
+    "moveUp": "上へ移動",
+    "sort": "並べ替え",
+    "sortDone": "並べ替えを終了"
+  },
+  "all": {
+    "assets": "すべてのアセット",
+    "lores": "すべての設定",
+    "stories": "すべての作品"
+  },
+  "create": {
+    "cancel": "キャンセル",
+    "collection": "設定集",
+    "kinds": {
+      "asset-collection": "アセット集",
+      "asset-upload": "アセットをアップロード",
+      "image": "画像作品",
+      "lore": "設定",
+      "lore-collection": "設定集",
+      "story": "ストーリー",
+      "volume": "巻"
+    },
+    "name": "名前",
+    "submit": "作成",
+    "title": "{{kind}}を作成",
+    "volume": "巻"
+  },
+  "upload": {
+    "cancel": "キャンセル",
+    "collection": "アセット集",
+    "pick": "ファイルを選んでアップロード",
+    "skipped": "{{count}} 件のファイルはアップロードされませんでした：JPEG／PNG／WebP／GIF のみ、1 ファイル 15 MB まで、一度に最大 60 枚",
+    "title": "アセットをアップロード",
+    "uncategorized": "未分類"
   }
 }

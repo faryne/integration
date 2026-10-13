@@ -10,5 +10,13 @@
     "later": "以后再说",
     "install": "下载并更新",
     "installing": "正在更新"
+  },
+  "about": {
+    "tagline": "桌面写作工作台",
+    "currentVersion": "当前版本",
+    "checkUpdate": "检查更新",
+    "checking": "正在检查",
+    "upToDate": "已是最新版 {{version}}",
+    "close": "关闭"
   }
 }

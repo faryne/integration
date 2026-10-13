@@ -142,6 +142,59 @@
       "lore": "设定已删除。"
     },
     "published": "作品已公开。",
-    "unpublished": "作品已设为未公开。"
+    "unpublished": "作品已设为未公开。",
+    "empty": {
+      "asset": {
+        "description": "这个项目目前没有资产。",
+        "title": "没有资产"
+      },
+      "lore": {
+        "description": "这个项目目前没有设定。",
+        "title": "没有设定"
+      },
+      "story": {
+        "description": "这个项目目前没有作品。",
+        "title": "没有作品"
+      }
+    }
+  },
+  "actions": {
+    "create": "创建",
+    "moveDown": "下移",
+    "moveLore": "移动到设定集",
+    "moveStory": "移动到册",
+    "moveUp": "上移",
+    "sort": "调整顺序",
+    "sortDone": "完成排序"
+  },
+  "all": {
+    "assets": "全部资产",
+    "lores": "全部设定",
+    "stories": "全部作品"
+  },
+  "create": {
+    "cancel": "取消",
+    "collection": "设定集",
+    "kinds": {
+      "asset-collection": "资产集",
+      "asset-upload": "上传资产",
+      "image": "图像作品",
+      "lore": "设定",
+      "lore-collection": "设定集",
+      "story": "故事",
+      "volume": "册"
+    },
+    "name": "名称",
+    "submit": "创建",
+    "title": "创建{{kind}}",
+    "volume": "册"
+  },
+  "upload": {
+    "cancel": "取消",
+    "collection": "资产集",
+    "pick": "选择文件并上传",
+    "skipped": "{{count}} 个文件没有上传：只支持 JPEG／PNG／WebP／GIF，单个文件 15 MB 以内，一次最多 60 张",
+    "title": "上传资产",
+    "uncategorized": "未分类"
   }
 }

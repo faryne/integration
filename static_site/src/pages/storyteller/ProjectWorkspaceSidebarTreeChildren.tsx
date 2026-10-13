@@ -2,6 +2,7 @@ import ArticleIcon from "@mui/icons-material/Article";
 import DescriptionIcon from "@mui/icons-material/Description";
 import ImageIcon from "@mui/icons-material/Image";
 import {
+  Box,
   CircularProgress,
   List,
   ListItemButton,
@@ -223,7 +224,10 @@ function SidebarTreeItem({
       >
         {icon}
       </ListItemIcon>
+      {/* disableTypography：不要再多包一層 Typography，否則長標題（尤其沒有斷點的英文）的省略號失效、
+          文字溢出蓋住右側的排序箭頭；overflow 隱藏再保險一次 */}
       <ListItemText
+        disableTypography
         primary={
           <Tooltip title={title} placement="right">
             <Typography fontWeight={700} fontSize={12.5} noWrap>
@@ -231,9 +235,9 @@ function SidebarTreeItem({
             </Typography>
           </Tooltip>
         }
-        sx={{ minWidth: 0 }}
+        sx={{ minWidth: 0, overflow: "hidden" }}
       />
-      {extra}
+      {extra && <Box sx={{ display: "flex", flexShrink: 0 }}>{extra}</Box>}
     </ListItemButton>
   );
 }
