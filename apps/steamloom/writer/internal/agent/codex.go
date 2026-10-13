@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strconv"
 	"strings"
 )
@@ -58,17 +59,22 @@ func codexMCPConfig(server string, allowed []string) []string {
 		return nil
 	}
 	tools, _ := json.Marshal(allowed)
-	key := "mcp_servers." + strconv.Quote(server)
+	key := "mcp_servers." + server
 	// Codex 自行使用既有 MCP 設定；未列入 enabled_tools 的 mutation 不會進入這輪工具集合。
 	return []string{"-c", key + ".enabled_tools=" + string(tools), "-c", key + `.default_tools_approval_mode="approve"`}
 }
 
-func codexRequestArgs(req Request, dir string) []string {
+func codexRequestArgs(req Request, dir string) ([]string, error) {
+	// Codex 0.147 的 -c 不會把 quoted dotted key 合併回既有 MCP table，反而會建立
+	// 名稱含引號的新 server 並報 invalid transport；只接受 TOML bare key 可表示的名稱。
+	if req.mcpServer != "" && !codexBareKey(req.mcpServer) {
+		return nil, errors.New("Codex 的 SteamLoom MCP 名稱只能使用英數字、- 或 _，請重新命名後再試")
+	}
 	args := codexArgsWithTools(req.SessionID, dir, req.mcpServer, req.mcpTools())
 	if req.grant == nil || req.grant.assetMCP == nil {
-		return args
+		return args, nil
 	}
-	key := "mcp_servers." + strconv.Quote(assetMCPServerName)
+	key := "mcp_servers." + assetMCPServerName
 	serverArgs, _ := json.Marshal(req.grant.assetMCP.Args)
 	toolNames, _ := json.Marshal([]string{assetMCPToolName})
 	config := []string{
@@ -82,11 +88,27 @@ func codexRequestArgs(req Request, dir string) []string {
 		tail = 2
 	}
 	position := len(args) - tail
-	return append(append(append([]string{}, args[:position]...), config...), args[position:]...)
+	return append(append(append([]string{}, args[:position]...), config...), args[position:]...), nil
+}
+
+func codexBareKey(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, char := range value {
+		if (char < 'a' || char > 'z') && (char < 'A' || char > 'Z') && (char < '0' || char > '9') && char != '-' && char != '_' {
+			return false
+		}
+	}
+	return true
 }
 
 func (c codexClient) Ask(ctx context.Context, req Request) (Reply, error) {
 	dir, err := req.dir()
+	if err != nil {
+		return Reply{}, err
+	}
+	args, err := codexRequestArgs(req, dir)
 	if err != nil {
 		return Reply{}, err
 	}
@@ -95,7 +117,7 @@ func (c codexClient) Ask(ctx context.Context, req Request) (Reply, error) {
 		name:   "Codex",
 		bin:    c.bin,
 		dir:    dir,
-		args:   codexRequestArgs(req, dir),
+		args:   args,
 		stdin:  req.body(),
 		parse:  parseCodex,
 		stream: func(line string) { emitCodexStream(req, line, tools) },

@@ -49,7 +49,7 @@ func TestProviderArgsExposeOnlySteamLoomReadTools(t *testing.T) {
 	}
 
 	codex := strings.Join(codexArgs("", "/tmp/writer", "SteamLoom"), " ")
-	if !strings.Contains(codex, `mcp_servers."SteamLoom".enabled_tools=`) || !strings.Contains(codex, "storyteller_get_story") || strings.Contains(codex, "upsert") {
+	if !strings.Contains(codex, `mcp_servers.SteamLoom.enabled_tools=`) || strings.Contains(codex, `mcp_servers."SteamLoom"`) || !strings.Contains(codex, "storyteller_get_story") || strings.Contains(codex, "upsert") {
 		t.Fatalf("Codex must receive only the Writer read allowlist: %s", codex)
 	}
 
@@ -76,7 +76,11 @@ func TestProviderArgsAddAssetMCPWithoutShell(t *testing.T) {
 	grant := &ApprovalGrant{Tools: []string{"storyteller_presign_asset_upload", "storyteller_confirm_asset_upload"}, assetMCP: invocation}
 	req := Request{SessionID: "session", mcpServer: "SteamLoom", grant: grant}
 	claude := strings.Join(claudeRequestArgs(req), " ")
-	codex := strings.Join(codexRequestArgs(req, "/tmp/writer"), " ")
+	codexArgs, err := codexRequestArgs(req, "/tmp/writer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	codex := strings.Join(codexArgs, " ")
 	dir := t.TempDir()
 	grokArgs, err := grokRequestArgs(req, dir, filepath.Join(dir, "prompt.txt"))
 	if err != nil {
@@ -87,6 +91,13 @@ func TestProviderArgsAddAssetMCPWithoutShell(t *testing.T) {
 		if !strings.Contains(args, assetMCPToolName) || strings.Contains(args, "Bash(") || strings.Contains(args, "network_access=true") {
 			t.Fatalf("%s asset grant is not narrowly scoped: %s", name, args)
 		}
+	}
+}
+
+func TestCodexRejectsMCPNameThatCannotBeOverriddenSafely(t *testing.T) {
+	_, err := codexRequestArgs(Request{mcpServer: "Steam.Loom"}, "/tmp/writer")
+	if err == nil || !strings.Contains(err.Error(), "英數字") {
+		t.Fatalf("Codex must reject MCP names that require a quoted dotted key: %v", err)
 	}
 }
 

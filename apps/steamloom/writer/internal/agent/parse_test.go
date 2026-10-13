@@ -1,11 +1,21 @@
 package agent
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestJSONObjectTakesLastCompleteObjectAroundWarnings(t *testing.T) {
 	raw := jsonObject("warning: config {not-json}\n{\"type\":\"notice\"}\n{\"text\":\"完成\",\"nested\":{\"ok\":true}}\nwarning {still-not-json}")
 	if string(raw) != `{"text":"完成","nested":{"ok":true}}` {
 		t.Fatalf("unexpected JSON object: %s", raw)
+	}
+}
+
+func TestCommandErrorExplainsClaudeLogin(t *testing.T) {
+	err := commandError("Claude Code", errors.New("exit status 1"), "Failed to authenticate: OAuth session expired and could not be refreshed")
+	if err.Error() != "Claude Code 登入已過期，請先在 Terminal 執行 `claude auth login` 後再試" {
+		t.Fatalf("unexpected Claude auth error: %v", err)
 	}
 }
 
@@ -61,6 +71,23 @@ func TestParseGrokStreamingJSON(t *testing.T) {
 	reply, err := parseGrok(stdout)
 	if err != nil || reply.Text != "前半後半" || reply.SessionID != "grok-session" {
 		t.Fatalf("unexpected Grok streaming reply: %#v, %v", reply, err)
+	}
+}
+
+func TestParseGrokCurrentStreamingJSON(t *testing.T) {
+	stdout := `{"type":"thought","data":"思考中"}` + "\n" +
+		`{"type":"text","data":"前半"}` + "\n" +
+		`{"type":"text","data":"後半"}` + "\n" +
+		`{"type":"end","sessionId":"grok-session","stopReason":"end_turn"}`
+	reply, err := parseGrok(stdout)
+	if err != nil || reply.Text != "前半後半" || reply.SessionID != "grok-session" {
+		t.Fatalf("unexpected current Grok streaming reply: %#v, %v", reply, err)
+	}
+
+	var events []StreamEvent
+	emitGrokStream(Request{emit: func(event StreamEvent) { events = append(events, event) }}, `{"type":"text","data":"串流片段"}`, map[string]string{})
+	if len(events) != 1 || events[0].Type != StreamAssistantDelta || events[0].Text != "串流片段" {
+		t.Fatalf("unexpected current Grok stream events: %#v", events)
 	}
 }
 

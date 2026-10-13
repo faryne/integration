@@ -115,10 +115,11 @@ func (c grokClient) Ask(ctx context.Context, req Request) (Reply, error) {
 }
 
 type grokResult struct {
-	Type      string `json:"type"`
-	Message   string `json:"message"`
-	Text      string `json:"text"`
-	SessionID string `json:"sessionId"`
+	Type      string          `json:"type"`
+	Message   string          `json:"message"`
+	Text      string          `json:"text"`
+	Data      json.RawMessage `json:"data"`
+	SessionID string          `json:"sessionId"`
 }
 
 func parseGrok(stdout string) (Reply, error) {
@@ -133,6 +134,14 @@ func parseGrok(stdout string) (Reply, error) {
 		}
 		if result.Type == "error" {
 			failed = strings.TrimSpace(result.Message)
+			if failed == "" {
+				failed = grokDataText(result.Data)
+			}
+		}
+		// Grok Build 1.0.50 的 streaming-json 改成 {"type":"text","data":"..."}；
+		// 舊版 ACP 的 agent_message_chunk 仍保留相容，避免使用者尚未更新時中斷。
+		if result.Type == "text" {
+			text += grokDataText(result.Data)
 		}
 		if strings.TrimSpace(result.Text) != "" {
 			finalText = result.Text
@@ -153,6 +162,14 @@ func parseGrok(stdout string) (Reply, error) {
 	return Reply{SessionID: sessionID, Text: text}, nil
 }
 
+func grokDataText(raw json.RawMessage) string {
+	var text string
+	if json.Unmarshal(raw, &text) != nil {
+		return ""
+	}
+	return text
+}
+
 type grokStreamResult struct {
 	grokResult
 	Update struct {
@@ -169,6 +186,12 @@ type grokStreamResult struct {
 func emitGrokStream(req Request, line string, tools map[string]string) {
 	var result grokStreamResult
 	if json.Unmarshal([]byte(line), &result) != nil {
+		return
+	}
+	if result.Type == "text" {
+		if text := grokDataText(result.Data); text != "" {
+			req.emitStream(StreamEvent{Type: StreamAssistantDelta, Text: text})
+		}
 		return
 	}
 	switch result.Update.SessionUpdate {

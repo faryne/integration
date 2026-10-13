@@ -128,6 +128,12 @@ func commandError(name string, err error, stderr string) error {
 	if detail == "" {
 		return fmt.Errorf("%s 執行失敗：%w", name, err)
 	}
+	if name == "Claude Code" {
+		lower := strings.ToLower(detail)
+		if strings.Contains(lower, "oauth session expired") || strings.Contains(lower, "failed to authenticate") {
+			return errors.New("Claude Code 登入已過期，請先在 Terminal 執行 `claude auth login` 後再試")
+		}
+	}
 	return fmt.Errorf("%s 執行失敗：%s", name, detail)
 }
 
