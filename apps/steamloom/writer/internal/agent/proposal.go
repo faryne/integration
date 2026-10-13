@@ -130,6 +130,7 @@ func normalizeProposalItem(item *ProposalItem, projectID string) error {
 		return errors.New("缺少建議執行的 SteamLoom tool")
 	}
 	targetMatched := item.TargetID == ""
+	expectedUpsert := map[string]string{ProposalKindStory: "storyteller_upsert_story", ProposalKindLore: "storyteller_upsert_lore"}[item.Kind]
 	for index := range item.Operations {
 		operation := &item.Operations[index]
 		if !strings.HasPrefix(operation.Tool, "storyteller_") || writerReadOnlyTool(operation.Tool) {
@@ -146,6 +147,14 @@ func normalizeProposalItem(item *ProposalItem, projectID string) error {
 		if item.TargetID != "" && writerConditionalTool(operation.Tool) {
 			operation.Arguments["abort_on_conflict"] = true
 		}
+		if writerConditionalTool(operation.Tool) {
+			if operation.Tool != expectedUpsert {
+				return fmt.Errorf("tool %q 與提案類型 %q 不一致", operation.Tool, item.Kind)
+			}
+			// review 欄位是作者實際核准的內容，也是唯一事實來源；不要信任 Agent 在 arguments 裡重複的一份。
+			operation.Arguments["title"], operation.Arguments["summary"] = item.Title, item.Summary
+			operation.Arguments["content_type"], operation.Arguments["content"] = item.ContentType, item.Content
+		}
 		arguments, err := canonicalArguments(operation.Arguments)
 		if err != nil {
 			return fmt.Errorf("tool %q 的參數無法序列化：%w", operation.Tool, err)
@@ -157,16 +166,6 @@ func normalizeProposalItem(item *ProposalItem, projectID string) error {
 					return fmt.Errorf("tool %q 的 %s 與提案目標不一致", operation.Tool, targetKey)
 				}
 				targetMatched = true
-			}
-		}
-		if content, exists := arguments["content"]; exists {
-			if text, ok := content.(string); !ok || text != item.Content {
-				return fmt.Errorf("tool %q 的 content 與 review 內容不一致", operation.Tool)
-			}
-		}
-		if title, exists := arguments["title"]; exists && item.Title != "" {
-			if text, ok := title.(string); !ok || text != item.Title {
-				return fmt.Errorf("tool %q 的 title 與 review 標題不一致", operation.Tool)
 			}
 		}
 		if item.TargetID != "" && writerConditionalTool(operation.Tool) {

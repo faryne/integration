@@ -268,9 +268,64 @@ func TestTaskManagerPersistsProposalAndEmitsAwaitingConfirmation(t *testing.T) {
 	if event.Task.Partial != "草稿完成\n" {
 		t.Fatalf("proposal envelope leaked into task partial: %q", event.Task.Partial)
 	}
+	chat, err := OpenChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assistant, completed := 0, 0
+	for _, line := range chat.Messages {
+		if line.Role == "assistant" {
+			assistant++
+		}
+		if line.Type == EventTaskCompleted {
+			completed++
+		}
+	}
+	if assistant != 1 || completed != 1 || chat.SessionID != "session" {
+		t.Fatalf("proposal reply was not persisted exactly once: assistants=%d completed=%d session=%q", assistant, completed, chat.SessionID)
+	}
 	stored, err := Proposals("claude", "project", page.CurrentID)
 	if err != nil || len(stored) != 1 || stored[0].Status != ProposalAwaitingConfirmation {
 		t.Fatalf("proposal was not persisted: %#v, %v", stored, err)
+	}
+}
+
+func TestTaskManagerDoesNotCompleteBeforeProposalValidation(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := make(chan TaskEvent, 20)
+	manager := NewTaskManager(context.Background(), func(_ context.Context, _ string, req Request) (Reply, error) {
+		req.emitStream(StreamEvent{Type: StreamAssistantDelta, Text: "提案摘要"})
+		return Reply{Text: "提案摘要", proposals: []ProposalItem{{
+			Kind: ProposalKindStory, Content: "內容",
+			Operations: []ProposalOperation{{Tool: "storyteller_get_story", Arguments: map[string]any{"project_public_id": "project"}}},
+		}}}, nil
+	}, func(event TaskEvent) { events <- event })
+	defer manager.Close()
+
+	task, err := manager.Start("claude", Request{ThreadID: page.CurrentID, ProjectID: "project", Prompt: "建立故事"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitTaskEvent(t, events, task.ID, EventTaskFailed)
+	chat, err := OpenChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assistant, completed := 0, 0
+	for _, line := range chat.Messages {
+		if line.Role == "assistant" {
+			assistant++
+		}
+		if line.Type == EventTaskCompleted {
+			completed++
+		}
+	}
+	if assistant != 1 || completed != 0 || chat.Messages[len(chat.Messages)-1].Type != EventTaskFailed {
+		t.Fatalf("invalid proposal left duplicate/completed events: %#v", chat.Messages)
 	}
 }
 

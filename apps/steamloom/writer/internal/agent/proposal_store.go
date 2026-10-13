@@ -25,6 +25,15 @@ var proposalAssetExtensions = map[string]string{
 
 // SaveProposal 將 Agent 回傳的成果搬進 Writer 管理的本機目錄，再追加 proposal.ready event。
 func SaveProposal(agentID, projectID, threadID, taskID, assetRoot string, items []ProposalItem) (Proposal, error) {
+	return saveProposal(agentID, projectID, threadID, taskID, assetRoot, Reply{}, items)
+}
+
+// saveTaskProposal 在提案驗證成功後才把摘要、completed 與 proposal.ready 一起落盤。
+func saveTaskProposal(agentID, projectID, threadID, taskID, assetRoot string, reply Reply, items []ProposalItem) (Proposal, error) {
+	return saveProposal(agentID, projectID, threadID, taskID, assetRoot, reply, items)
+}
+
+func saveProposal(agentID, projectID, threadID, taskID, assetRoot string, reply Reply, items []ProposalItem) (Proposal, error) {
 	chatMu.Lock()
 	defer chatMu.Unlock()
 	dir, idx, err := loadChat(agentID, projectID)
@@ -69,9 +78,17 @@ func SaveProposal(agentID, projectID, threadID, taskID, assetRoot string, items 
 	}
 	event := taskEvent(EventProposalReady, taskID, fmt.Sprintf("Agent 已提出 %d 項成果，等待確認", len(proposal.Items)))
 	event.ProposalID = proposal.ID
-	if err := appendLines(filepath.Join(dir, thread.ID+".jsonl"), []ChatLine{event}); err != nil {
+	events := make([]ChatLine, 0, 3)
+	if reply.Text != "" {
+		events = append(events, messageEvent("assistant", reply.Text), taskEvent(EventTaskCompleted, taskID, "Agent 已完成工作"))
+	}
+	events = append(events, event)
+	if err := appendLines(filepath.Join(dir, thread.ID+".jsonl"), events); err != nil {
 		_ = os.RemoveAll(finalDir)
 		return Proposal{}, err
+	}
+	if reply.SessionID != "" {
+		thread.SessionID = reply.SessionID
 	}
 	thread.UpdatedAt = now()
 	thread.LastTaskState = TaskAwaitingConfirmation

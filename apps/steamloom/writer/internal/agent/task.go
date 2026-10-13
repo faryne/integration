@@ -253,9 +253,6 @@ func (m *TaskManager) runQueue(key string) {
 				var reply Reply
 				reply, err = m.run(ctx, task.AgentID, req)
 				m.flushProposalStream(managed)
-				if err == nil {
-					err = recordTaskCompleted(task.AgentID, task.ProjectID, task.ThreadID, task.ID, reply)
-				}
 				if err == nil && len(reply.proposals) > 0 {
 					assetRoot := ""
 					if proposalHasAsset(reply.proposals) {
@@ -263,11 +260,13 @@ func (m *TaskManager) runQueue(key string) {
 					}
 					if err == nil {
 						var proposal Proposal
-						proposal, err = SaveProposal(task.AgentID, task.ProjectID, task.ThreadID, task.ID, assetRoot, reply.proposals)
+						proposal, err = saveTaskProposal(task.AgentID, task.ProjectID, task.ThreadID, task.ID, assetRoot, reply, reply.proposals)
 						if err == nil {
 							managed.proposal = &proposal
 						}
 					}
+				} else if err == nil {
+					err = recordTaskCompleted(task.AgentID, task.ProjectID, task.ThreadID, task.ID, reply)
 				}
 			}
 		}
