@@ -204,6 +204,59 @@
       "lore": "설정을 삭제했습니다."
     },
     "published": "작품을 공개했습니다.",
-    "unpublished": "작품을 비공개로 바꿨습니다."
+    "unpublished": "작품을 비공개로 바꿨습니다.",
+    "empty": {
+      "asset": {
+        "description": "이 프로젝트에는 아직 에셋이 없습니다.",
+        "title": "에셋 없음"
+      },
+      "lore": {
+        "description": "이 프로젝트에는 아직 설정이 없습니다.",
+        "title": "설정 없음"
+      },
+      "story": {
+        "description": "이 프로젝트에는 아직 작품이 없습니다.",
+        "title": "작품 없음"
+      }
+    }
+  },
+  "actions": {
+    "create": "만들기",
+    "moveDown": "아래로 이동",
+    "moveLore": "설정집으로 이동",
+    "moveStory": "권으로 이동",
+    "moveUp": "위로 이동",
+    "sort": "순서 조정",
+    "sortDone": "순서 조정 완료"
+  },
+  "all": {
+    "assets": "모든 에셋",
+    "lores": "모든 설정",
+    "stories": "모든 작품"
+  },
+  "create": {
+    "cancel": "취소",
+    "collection": "설정집",
+    "kinds": {
+      "asset-collection": "에셋 모음",
+      "asset-upload": "에셋 업로드",
+      "image": "이미지 작품",
+      "lore": "설정",
+      "lore-collection": "설정집",
+      "story": "이야기",
+      "volume": "권"
+    },
+    "name": "이름",
+    "submit": "만들기",
+    "title": "{{kind}} 만들기",
+    "volume": "권"
+  },
+  "upload": {
+    "cancel": "취소",
+    "collection": "에셋 모음",
+    "pick": "파일 선택 후 업로드",
+    "skipped": "{{count}}개 파일은 업로드되지 않았습니다: JPEG／PNG／WebP／GIF만, 파일당 15MB 이하, 한 번에 최대 60장",
+    "title": "에셋 업로드",
+    "uncategorized": "미분류"
   }
 }

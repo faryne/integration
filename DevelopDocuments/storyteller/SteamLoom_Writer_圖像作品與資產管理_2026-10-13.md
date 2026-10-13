@@ -113,6 +113,15 @@
 - **Writer「全部作品／全部設定」對齊網站**：列改用網站的 `StoryRow`／`LoreRow`（從 `ProjectWorkspacePreviewRows.tsx` 抽到共用的 `WorkspaceDocumentRows.tsx`），標出所屬冊／設定集；右側 ⋮ 用網站的 `WorkspaceRowActionMenu`（作品：設為公開／草稿、移動到冊、刪除；設定：移動到設定集、刪除），刪除要輸入名稱確認。Go 新增 `DeleteDocument`，列表資料補 `group_id` 與圖像作品的 `latest_content`（算頁數）。
 - **網站列操作選單拿掉「編輯」**：點列本身就會打開編輯頁；選單也因此不再依賴 router，Writer 可以直接共用。
 - **網站側邊列排序比照 Writer**：「調整順序」模式下冊／設定集與冊內作品都顯示上移／下移（共用 `WorkspaceSortArrows`，頭尾不顯示），拿掉拖曳；作品列表的拖曳排序維持現狀（使用者只要求側邊列）。`reorderStory` 多一個分組參數給側邊列指定冊。
-- 已知遺留：Writer 的 zh-CN／en／ja／ko 語系檔少了先前「工作台編輯」那一輪只加在 zh-TW 的 52 個 key（畫面目前固定 zh-TW，沒有實際影響）。
+- ~~已知遺留：Writer 的 zh-CN／en／ja／ko 語系檔缺 key~~ → 已補齊（workspace.json 35 個、app.json 的 About 6 個），各語系與 zh-TW 對齊。
 
 驗證：網站與 Writer 型別檢查、lint、build、網站 54 個測試、CI 模擬通過；測試帳號在網站側邊列實測冊與冊內作品的上移／下移，伺服器 sort 正確；Writer 列表、⋮ 選單、圖像作品無分頁列以唯讀方式確認。
+
+## 已知 Bug 記錄
+
+### 側邊列冊內作品標題太長時排序箭頭不見（2026-10-13，已修）
+
+- **現象**：網站側邊列「調整順序」模式下，冊底下的作品標題太長時看不到上移／下移箭頭，無法排序。
+- **Root cause**：`SidebarTreeItem` 把自己的 `<Typography noWrap>` 放進 `ListItemText` 的 `primary`，`ListItemText` 又多包一層 Typography；省略號只作用在內層，外層沒有裁切，長標題溢出蓋住右側箭頭。
+- **解法**：`ListItemText` 加 `disableTypography`、`overflow: hidden`；箭頭外包 `flexShrink: 0` 的 Box；分組列的 `ListItemButton` 加 `minWidth: 0`、`ListItemText` 加 `overflow: hidden`。
+- **狀態**：使用者確認箭頭已出現，細節確認中（分支 `fix/steamloom-sidebar-sort-and-i18n`，未 commit）。

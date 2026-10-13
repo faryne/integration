@@ -210,6 +210,59 @@
       "lore": "Lore deleted."
     },
     "published": "Work published.",
-    "unpublished": "Work set to unpublished."
+    "unpublished": "Work set to unpublished.",
+    "empty": {
+      "asset": {
+        "description": "This project has no assets yet.",
+        "title": "No assets"
+      },
+      "lore": {
+        "description": "This project has no lore yet.",
+        "title": "No lore"
+      },
+      "story": {
+        "description": "This project has no works yet.",
+        "title": "No works"
+      }
+    }
+  },
+  "actions": {
+    "create": "Create",
+    "moveDown": "Move down",
+    "moveLore": "Move to collection",
+    "moveStory": "Move to volume",
+    "moveUp": "Move up",
+    "sort": "Reorder",
+    "sortDone": "Done reordering"
+  },
+  "all": {
+    "assets": "All assets",
+    "lores": "All lore",
+    "stories": "All works"
+  },
+  "create": {
+    "cancel": "Cancel",
+    "collection": "Collection",
+    "kinds": {
+      "asset-collection": "asset collection",
+      "asset-upload": "Upload assets",
+      "image": "image work",
+      "lore": "lore",
+      "lore-collection": "lore collection",
+      "story": "story",
+      "volume": "volume"
+    },
+    "name": "Name",
+    "submit": "Create",
+    "title": "Create {{kind}}",
+    "volume": "Volume"
+  },
+  "upload": {
+    "cancel": "Cancel",
+    "collection": "Asset collection",
+    "pick": "Choose files and upload",
+    "skipped": "{{count}} file(s) weren't uploaded: only JPEG/PNG/WebP/GIF up to 15 MB each, at most 60 at a time",
+    "title": "Upload assets",
+    "uncategorized": "Uncategorized"
   }
 }

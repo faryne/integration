@@ -10,5 +10,13 @@
     "later": "あとで",
     "install": "ダウンロードして更新",
     "installing": "更新しています"
+  },
+  "about": {
+    "tagline": "デスクトップ執筆ワークスペース",
+    "currentVersion": "現在のバージョン",
+    "checkUpdate": "アップデートを確認",
+    "checking": "確認中",
+    "upToDate": "最新版 {{version}} です",
+    "close": "閉じる"
   }
 }
