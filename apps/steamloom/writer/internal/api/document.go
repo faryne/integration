@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// Document 是編輯分頁要顯示的單篇故事或設定（目前唯讀）。
+// Document 是編輯分頁打開的單篇故事或設定。LatestVersionID 存檔時帶回去當 base_version_id。
 type Document struct {
 	Kind            DocumentKind `json:"kind"`
 	PublicID        string       `json:"public_id"`
@@ -17,6 +17,8 @@ type Document struct {
 	LatestVersionID *uint64      `json:"latest_version_id"`
 	WordCount       uint         `json:"word_count"`
 	UpdatedAt       string       `json:"updated_at"`
+	// ProfileIDs 是故事的署名（0＝本人），設定沒有這個欄位
+	ProfileIDs []uint64 `json:"profile_ids"`
 }
 
 // Version 是編輯歷史的一列；後端回傳的版本含完整內文，這裡丟掉不傳給前端。

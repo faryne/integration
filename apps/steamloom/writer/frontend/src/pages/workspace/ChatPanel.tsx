@@ -4,17 +4,17 @@ import { Box, Button, CircularProgress, IconButton, MenuItem, Paper, Select, Sta
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EventsOn } from "../../../wailsjs/runtime/runtime";
-import { useSnack } from "@/components/SnackProvider.tsx";
-import { backend, errorMessage, type AgentProposal, type AgentProposalItem, type AgentTask, type AgentTaskEvent, type AgentThread, type Workspace } from "@/lib/backend.ts";
-import { AgentPromptEditor } from "@/pages/workspace/AgentPromptEditor.tsx";
-import { useBackendData } from "@/lib/useBackendData.ts";
-import { ActiveTaskStatus } from "@/pages/workspace/ActiveTaskStatus.tsx";
-import { AssistantSetup } from "@/pages/workspace/AssistantSetup.tsx";
-import { ProposalCard } from "@/pages/workspace/ProposalCard.tsx";
-import { ProposalReviewDialog } from "@/pages/workspace/ProposalReviewDialog.tsx";
-import { TaskRail } from "@/pages/workspace/TaskRail.tsx";
-import { ThreadDeleteDialog } from "@/pages/workspace/ThreadDeleteDialog.tsx";
-import { useChatLog } from "@/pages/workspace/useChatLog.ts";
+import { useSnack } from "@writer/components/SnackProvider.tsx";
+import { backend, errorMessage, type AgentProposal, type AgentProposalItem, type AgentTask, type AgentTaskEvent, type AgentThread, type Workspace } from "@writer/lib/backend.ts";
+import { useBackendData } from "@writer/lib/useBackendData.ts";
+import { ActiveTaskStatus } from "@writer/pages/workspace/ActiveTaskStatus.tsx";
+import { AgentPromptEditor } from "@writer/pages/workspace/AgentPromptEditor.tsx";
+import { AssistantSetup } from "@writer/pages/workspace/AssistantSetup.tsx";
+import { ProposalCard } from "@writer/pages/workspace/ProposalCard.tsx";
+import { ProposalReviewDialog } from "@writer/pages/workspace/ProposalReviewDialog.tsx";
+import { TaskRail } from "@writer/pages/workspace/TaskRail.tsx";
+import { ThreadDeleteDialog } from "@writer/pages/workspace/ThreadDeleteDialog.tsx";
+import { useChatLog } from "@writer/pages/workspace/useChatLog.ts";
 
 // 專案層的 AI 助理。每條 thread 各自綁定 provider session，同一 provider 也能同時執行多條。
 export function ChatPanel({ projectID, projectName, workspace }: { projectID: string; projectName: string; workspace: Workspace }) {

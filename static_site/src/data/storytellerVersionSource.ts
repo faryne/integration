@@ -1,4 +1,4 @@
-// 網站與 SteamLoom Writer 共用；Writer 透過 alias 直接 import，這支檔案只能用相對路徑 import。
+// 網站與 SteamLoom Writer 共用；Writer 透過 alias 直接 import（改這支也會影響 Writer）。
 
 // 對應後端 story/lore version 的 source 欄位：web_auto／web_manual／web_agent_apply
 // 是網頁編輯頁自己存的，"mcp:<token label>" 是外部工具透過 MCP 用哪把 Personal

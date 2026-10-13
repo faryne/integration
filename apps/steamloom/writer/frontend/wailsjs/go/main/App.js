@@ -14,6 +14,14 @@ export function Ask(arg1, arg2) {
   return window['go']['main']['App']['Ask'](arg1, arg2);
 }
 
+export function Asset(arg1, arg2) {
+  return window['go']['main']['App']['Asset'](arg1, arg2);
+}
+
+export function Assets(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['Assets'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function CancelLogin() {
   return window['go']['main']['App']['CancelLogin']();
 }
@@ -54,8 +62,24 @@ export function CheckForUpdate() {
   return window['go']['main']['App']['CheckForUpdate']();
 }
 
+export function Create(arg1, arg2) {
+  return window['go']['main']['App']['Create'](arg1, arg2);
+}
+
 export function DecideProposal(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['DecideProposal'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function DeleteAsset(arg1, arg2) {
+  return window['go']['main']['App']['DeleteAsset'](arg1, arg2);
+}
+
+export function DeleteAssetCollection(arg1, arg2) {
+  return window['go']['main']['App']['DeleteAssetCollection'](arg1, arg2);
+}
+
+export function DeleteDocument(arg1, arg2, arg3) {
+  return window['go']['main']['App']['DeleteDocument'](arg1, arg2, arg3);
 }
 
 export function Document(arg1, arg2, arg3) {
@@ -66,8 +90,16 @@ export function EnsureSkill(arg1) {
   return window['go']['main']['App']['EnsureSkill'](arg1);
 }
 
+export function ImagePages(arg1, arg2) {
+  return window['go']['main']['App']['ImagePages'](arg1, arg2);
+}
+
 export function InstallUpdate() {
   return window['go']['main']['App']['InstallUpdate']();
+}
+
+export function ListDocuments(arg1, arg2) {
+  return window['go']['main']['App']['ListDocuments'](arg1, arg2);
 }
 
 export function Login() {
@@ -78,12 +110,36 @@ export function Logout() {
   return window['go']['main']['App']['Logout']();
 }
 
+export function Lores(arg1) {
+  return window['go']['main']['App']['Lores'](arg1);
+}
+
 export function McpInstalled(arg1) {
   return window['go']['main']['App']['McpInstalled'](arg1);
 }
 
 export function Me() {
   return window['go']['main']['App']['Me']();
+}
+
+export function MoveAsset(arg1, arg2, arg3) {
+  return window['go']['main']['App']['MoveAsset'](arg1, arg2, arg3);
+}
+
+export function MoveLore(arg1, arg2, arg3) {
+  return window['go']['main']['App']['MoveLore'](arg1, arg2, arg3);
+}
+
+export function MoveStory(arg1, arg2, arg3) {
+  return window['go']['main']['App']['MoveStory'](arg1, arg2, arg3);
+}
+
+export function PatchDocument(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['PatchDocument'](arg1, arg2, arg3, arg4);
+}
+
+export function PickImageFiles() {
+  return window['go']['main']['App']['PickImageFiles']();
 }
 
 export function Projects() {
@@ -94,8 +150,36 @@ export function ProposalAssetPreview(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['ProposalAssetPreview'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function Reorder(arg1, arg2, arg3) {
+  return window['go']['main']['App']['Reorder'](arg1, arg2, arg3);
+}
+
+export function SaveDocument(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SaveDocument'](arg1, arg2, arg3, arg4);
+}
+
+export function SetUnsaved(arg1) {
+  return window['go']['main']['App']['SetUnsaved'](arg1);
+}
+
 export function StartTask(arg1, arg2) {
   return window['go']['main']['App']['StartTask'](arg1, arg2);
+}
+
+export function UpdateAsset(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateAsset'](arg1, arg2, arg3);
+}
+
+export function UpdateAssetCollection(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['UpdateAssetCollection'](arg1, arg2, arg3, arg4);
+}
+
+export function UploadAssets(arg1, arg2) {
+  return window['go']['main']['App']['UploadAssets'](arg1, arg2);
+}
+
+export function UploadLocalImages(arg1, arg2) {
+  return window['go']['main']['App']['UploadLocalImages'](arg1, arg2);
 }
 
 export function VersionDetail(arg1, arg2, arg3, arg4) {

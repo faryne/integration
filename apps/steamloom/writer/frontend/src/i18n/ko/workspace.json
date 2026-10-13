@@ -17,11 +17,6 @@
     "draft": "초고",
     "completed": "공개 중"
   },
-  "meta": {
-    "status": "상태",
-    "wordCount": "{{words}}자",
-    "updatedAt": "{{date}}에 업데이트"
-  },
   "chat": {
     "placeholder": "메시지를 입력하세요. @story: 또는 @lore:로 프로젝트 내용을 참조할 수 있습니다…",
     "references": {
@@ -104,5 +99,111 @@
     "source": "출처",
     "wordCount": "글자 수",
     "createdAt": "만든 시간"
+  },
+  "editor": {
+    "titlePlaceholder": {
+      "story": "제목 없는 이야기",
+      "lore": "제목 없는 설정",
+      "image": "제목 없는 이미지 작품"
+    },
+    "summaryPlaceholder": {
+      "story": "요약 추가...",
+      "lore": "독자용 요약 추가...",
+      "image": "설명 추가..."
+    },
+    "status": "상태",
+    "group": {
+      "story": "권",
+      "lore": "설정집"
+    },
+    "authors": "서명",
+    "autoSave": {
+      "label": "자동 저장",
+      "off": "자동 저장 안 함",
+      "every": "{{minutes}}분마다",
+      "custom": "사용자 지정",
+      "range": "{{min}}-{{max}}분"
+    },
+    "titleRequired": "저장하기 전에 제목을 입력하세요.",
+    "saved": "저장했습니다.",
+    "autoSaved": "자동 저장했습니다.",
+    "saveFailed": "저장에 실패했습니다. 다시 시도하세요: ",
+    "autoSaveFailed": "자동 저장에 실패했습니다. 직접 저장하세요: ",
+    "conflict": {
+      "story": "저장한 뒤 이 이야기가 도중에 다른 곳에서 수정된 것을 확인했습니다. 최신 버전 뒤에 새 버전으로 저장했습니다.",
+      "lore": "저장한 뒤 이 설정이 도중에 다른 곳에서 수정된 것을 확인했습니다. 최신 버전 뒤에 새 버전으로 저장했습니다.",
+      "viewHistory": "편집 기록 보기"
+    },
+    "unsaved": {
+      "title": "저장하지 않은 변경 사항을 버릴까요?",
+      "cancel": "계속 편집",
+      "discard": "버리기"
+    },
+    "self": "본인({{penName}})",
+    "selfOnly": "본인",
+    "attributeFailed": "속성을 업데이트하지 못했습니다. 다시 시도하세요: "
+  },
+  "assets": {
+    "search": "에셋 검색",
+    "refresh": "새로고침",
+    "upload": "이미지 업로드",
+    "editCollection": "에셋 모음 편집",
+    "deleteCollection": "에셋 모음 삭제",
+    "deleteCollectionDescription": "다른 에셋 모음에는 영향이 없습니다. 확인을 위해 에셋 모음 이름을 입력하세요.",
+    "move": "에셋 이동",
+    "delete": "에셋 삭제",
+    "referenced": "아직 작품에서 사용 중인 에셋입니다. 먼저 참조를 제거하세요.",
+    "moveToUncategorized": "미분류로 이동",
+    "deleteTitle": "에셋 삭제",
+    "deleteDescription": "삭제하면 되돌릴 수 없습니다. 확인을 위해 에셋 이름을 입력하세요.",
+    "deleted": "에셋을 삭제했습니다.",
+    "moved": "에셋을 이동했습니다.",
+    "collection": "에셋 모음",
+    "collectionSaved": "에셋 모음을 업데이트했습니다.",
+    "collectionDeleted": "에셋 모음을 삭제했습니다."
+  },
+  "image": {
+    "save": "저장",
+    "saving": "처리 중...",
+    "noPages": "저장하려면 페이지가 하나 이상 있어야 합니다.",
+    "uploadIncomplete": "일부 이미지가 에셋으로 만들어지지 않았습니다. 다시 시도하세요.",
+    "partial": "일부 파일은 추가되지 않았습니다: {{reasons}}",
+    "rejected": "JPEG／PNG／WebP／GIF만, 한 장당 15MB까지",
+    "tooMany": "한 화는 최대 {{max}}페이지",
+    "pickHint": "클릭해서 이미지 선택(여러 장 가능)",
+    "pickerTitle": "에셋에서 페이지 추가"
+  },
+  "list": {
+    "actions": {
+      "story": "작품 작업",
+      "lore": "설정 작업"
+    },
+    "move": {
+      "story": "권으로 이동…",
+      "lore": "설정집으로 이동…"
+    },
+    "moveToUngrouped": {
+      "story": "권에서 빼기",
+      "lore": "미분류로 이동"
+    },
+    "delete": {
+      "story": "작품 삭제",
+      "lore": "설정 삭제",
+      "image": "화 삭제"
+    },
+    "deleteDescription": {
+      "story": "작품과 버전 데이터가 삭제됩니다. 확인을 위해 작품 제목을 입력하세요.",
+      "lore": "이 설정과 버전 데이터가 삭제됩니다. 확인을 위해 설정 제목을 입력하세요."
+    },
+    "moved": {
+      "story": "작품을 이동했습니다.",
+      "lore": "설정을 이동했습니다."
+    },
+    "deleted": {
+      "story": "작품을 삭제했습니다.",
+      "lore": "설정을 삭제했습니다."
+    },
+    "published": "작품을 공개했습니다.",
+    "unpublished": "작품을 비공개로 바꿨습니다."
   }
 }

@@ -6,6 +6,7 @@ import type {
   StorytellerLore,
   StorytellerLoreCollection,
   StorytellerLoreCollectionRequest,
+  StorytellerLorePatchRequest,
   StorytellerLoreRequest,
   StorytellerLoreVersion,
 } from "@/types/storyteller.ts";
@@ -153,6 +154,31 @@ export function useMoveStorytellerLore(projectPublicId?: string) {
       const response = await axios.put<CommonResponse<StorytellerLore>>(
         `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}/move`,
         { collection_id: collectionId },
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+// 設定的狀態／設定集即時異動：走 PATCH，不寫版本、不進編輯歷史（跟故事的 usePatchStorytellerStory 對稱）
+export function usePatchStorytellerLore(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      lorePublicId,
+      input,
+    }: {
+      lorePublicId: string;
+      input: StorytellerLorePatchRequest;
+    }) => {
+      const response = await axios.patch<CommonResponse<StorytellerLore>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}`,
+        input,
         { headers: sessionHeaders(session!.encrypt_key) },
       );
       return response.data.data;

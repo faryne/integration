@@ -15,12 +15,12 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
-import { useStorytellerAssets } from "@/apis/storyteller.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
-import { steamloomPath } from "@/helpers/steamloom.ts";
+import {
+  useEditorData,
+  type EditorPickerAsset,
+} from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 import { storytellerAssetTitle } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
-import type { StorytellerAsset } from "@/types/storyteller.ts";
 
 const pickerPageSize = 12;
 
@@ -29,9 +29,10 @@ interface StorytellerAssetPickerDialogProps {
   projectPublicId?: string;
   title?: string;
   onClose: () => void;
-  onSelect: (asset: StorytellerAsset) => void;
+  onSelect: (asset: EditorPickerAsset) => void;
 }
 
+// 資產清單從 StorytellerEditorDataContext 取（網站 react-query、SteamLoom Writer 走 Go 綁定），兩邊共用這個對話框
 export function StorytellerAssetPickerDialog({
   open,
   projectPublicId,
@@ -41,7 +42,8 @@ export function StorytellerAssetPickerDialog({
 }: StorytellerAssetPickerDialogProps) {
   const [keyword, setKeyword] = useState("");
   const [page, setPage] = useState(1);
-  const assetsQuery = useStorytellerAssets(
+  const { useAssets, assetUploadAction } = useEditorData();
+  const assetsQuery = useAssets(
     open ? projectPublicId : undefined,
     page,
     pickerPageSize,
@@ -76,18 +78,9 @@ export function StorytellerAssetPickerDialog({
               title="沒有可用資產"
               description="請先在資產集上傳圖片。"
               action={
-                projectPublicId ? (
-                  <Button
-                    component={RouterLink}
-                    to={steamloomPath(`my/workspace/${projectPublicId}/assets`)}
-                    target="_blank"
-                    rel="noopener"
-                    size="small"
-                    variant="outlined"
-                  >
-                    前往資產集上傳
-                  </Button>
-                ) : undefined
+                projectPublicId
+                  ? assetUploadAction?.(projectPublicId)
+                  : undefined
               }
             />
           ) : (

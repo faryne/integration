@@ -12,8 +12,8 @@ import {
   type StorytellerAgentReferenceKind,
 } from "@steamloom-web/pages/storyteller/storytellerAgentReferences.ts";
 import { StorytellerPromptHighlightOverlay } from "@steamloom-web/pages/storyteller/StorytellerPromptHighlightOverlay.tsx";
-import type { DocumentItem, Workspace } from "@/lib/backend.ts";
-import { workspaceDocuments } from "@/pages/workspace/workspaceTree.ts";
+import type { DocumentItem, Workspace } from "@writer/lib/backend.ts";
+import { workspaceDocuments } from "@writer/pages/workspace/workspaceTree.ts";
 
 interface PromptSelection {
   start: number;

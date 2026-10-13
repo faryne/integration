@@ -193,6 +193,8 @@ func Storyteller(app *fiber.App) {
 	authenticated.Post("/projects/:project/stories", storyteller.CreateStory)
 	authenticated.Get("/projects/:project/stories/:story", storyteller.Story)
 	authenticated.Put("/projects/:project/stories/:story", storyteller.UpdateStory)
+	// 只改排序／狀態／冊隸屬（故事與冊共用），不寫版本
+	authenticated.Patch("/projects/:project/stories/:story", storyteller.PatchStory)
 	authenticated.Delete("/projects/:project/stories/:story", storyteller.DeleteStory)
 	authenticated.Get("/projects/:project/stories/:story/chat-messages/:message/reference-content", aiGate, storyteller.StoryChatMessageReferenceContent)
 	authenticated.Get("/projects/:project/agentic-proposals/:proposal/reference-content", aiGate, storyteller.AgentProposalReferenceContent)
@@ -243,6 +245,8 @@ func Storyteller(app *fiber.App) {
 	authenticated.Post("/projects/:project/lores", storyteller.CreateLore)
 	authenticated.Get("/projects/:project/lores/:lore", storyteller.Lore)
 	authenticated.Put("/projects/:project/lores/:lore", storyteller.UpdateLore)
+	// 狀態／設定集等屬性異動，不寫版本（對應故事的 PATCH）
+	authenticated.Patch("/projects/:project/lores/:lore", storyteller.PatchLore)
 	authenticated.Put("/projects/:project/lores/:lore/move", storyteller.MoveLore)
 	authenticated.Delete("/projects/:project/lores/:lore", storyteller.DeleteLore)
 	authenticated.Get("/projects/:project/lores/:lore/chat-messages/:message/reference-content", aiGate, storyteller.LoreChatMessageReferenceContent)

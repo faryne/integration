@@ -1,7 +1,7 @@
 import StopCircleOutlinedIcon from "@mui/icons-material/StopCircleOutlined";
 import { CircularProgress, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
-import type { AgentTask } from "@/lib/backend.ts";
+import type { AgentTask } from "@writer/lib/backend.ts";
 
 // 同一 thread 只會有一個 running task，其餘維持 queued；不同 thread 不共用這個狀態。
 export function ActiveTaskStatus({ task, queued, canceling, onCancel }: { task: AgentTask; queued: number; canceling: boolean; onCancel: () => void }) {

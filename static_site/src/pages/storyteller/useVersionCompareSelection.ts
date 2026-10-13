@@ -2,7 +2,7 @@ import { useState } from "react";
 
 // 編輯歷史「選兩個版本比對」的選取規則，StoryEditor／LoreEditor／SteamLoom Writer 共用：
 // 右邊（新版本）必須比左邊（舊版本）新；換了左邊之後右邊不再合法就清掉，讓使用者重選。
-// Writer 透過 alias 直接 import，這支檔案只能用相對路徑 import。
+// Writer 透過 alias 直接 import（改這支也會影響 Writer）。
 export function useVersionCompareSelection(
   items: { id: string; createdAt: string }[],
 ) {
@@ -16,9 +16,9 @@ export function useVersionCompareSelection(
   ) =>
     Boolean(
       right &&
-        left &&
-        right.id !== left.id &&
-        new Date(right.createdAt) > new Date(left.createdAt),
+      left &&
+      right.id !== left.id &&
+      new Date(right.createdAt) > new Date(left.createdAt),
     );
 
   return {

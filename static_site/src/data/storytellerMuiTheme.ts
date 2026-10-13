@@ -13,8 +13,7 @@ import {
 } from "./storytellerTheme";
 
 // SteamLoom 的 MUI theme 與全域樣式，網站（StorytellerLayout）跟 SteamLoom Writer 桌面版共用。
-// Writer 透過 Vite alias 直接 import 這支檔案，它那邊的 "@" 指向自己的 src，
-// 所以這支（以及它 import 的檔案）只能用相對路徑，不能用 "@/" alias。
+// Writer 透過 Vite alias 直接 import 這支檔案（改這支也會影響 Writer）。
 
 export function createStorytellerTheme(appearance: StorytellerAppearance) {
   const tokens = storytellerThemeTokens[appearance];

@@ -1,8 +1,8 @@
 import { Box, Card, CardActionArea, Chip, Stack, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
-import type { Project } from "@/lib/backend.ts";
-import { dateTimeFormat } from "@/lib/format.ts";
+import type { Project } from "@writer/lib/backend.ts";
+import { dateTimeFormat } from "@writer/lib/format.ts";
 
 // 專案卡片：版型比照網站工作台；沒有封面時用菱形織框當佔位圖。
 export function ProjectCard({ project, onOpen }: { project: Project; onOpen: () => void }) {

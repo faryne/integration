@@ -1,7 +1,7 @@
 import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
 import { Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
-import type { AgentProposal, AgentProposalItem } from "@/lib/backend.ts";
+import type { AgentProposal, AgentProposalItem } from "@writer/lib/backend.ts";
 
 export function ProposalCard({ proposal, onReview }: { proposal: AgentProposal; onReview: (item: AgentProposalItem) => void }) {
   const { t } = useTranslation();

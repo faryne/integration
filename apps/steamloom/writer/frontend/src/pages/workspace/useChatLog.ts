@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSnack } from "@/components/SnackProvider.tsx";
-import { backend, errorMessage } from "@/lib/backend.ts";
+import { useSnack } from "@writer/components/SnackProvider.tsx";
+import { backend, errorMessage } from "@writer/lib/backend.ts";
 
 // 不用 wails 產生的 class：那些 class 帶了 convertValues，物件字面值塞不回去。
 type ChatThread = { id: string; title: string; session_id: string; updated_at: string; last_task_state?: string; active_task_id?: string };

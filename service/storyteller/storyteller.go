@@ -1046,6 +1046,13 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 // （比照 MoveLore：純粹分類異動不算內容變更）。跟 UpdateStory 不同，呼叫端不需要先讀出
 // 目前的 title/content 才能搬移，避免 agent 類的呼叫端漏帶內容而意外覆蓋掉故事。
 func (s *Service) MoveStory(userID uint64, projectPublicID, storyPublicID string, input storytellerModel.StoryMoveRequest) (*storytellerModel.Story, error) {
+	return s.PatchStory(userID, projectPublicID, storyPublicID, storytellerModel.StoryPatchRequest{ParentID: &input.VolumePublicID})
+}
+
+// PatchStory 只改排序／狀態／冊隸屬／署名（排序、狀態、冊隸屬故事與冊共用；署名只有故事），不寫入版本：
+// 這些屬性異動都不進編輯歷史，只記 audit。網站與 SteamLoom Writer 的側邊列、編輯頁屬性列，
+// 以及 MCP 的 move_story 都走這裡。
+func (s *Service) PatchStory(userID uint64, projectPublicID, storyPublicID string, input storytellerModel.StoryPatchRequest) (*storytellerModel.Story, error) {
 	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
 	if err != nil {
 		return nil, err
@@ -1054,18 +1061,61 @@ func (s *Service) MoveStory(userID uint64, projectPublicID, storyPublicID string
 	if err != nil {
 		return nil, err
 	}
-	if story.IsVolume {
-		return nil, errors.New("cannot move a volume itself")
+	fields := map[string]any{}
+	if input.Sort != nil {
+		story.Sort = *input.Sort
+		fields["sort"] = story.Sort
 	}
-	parent, err := s.resolveVolumeParent(project.ID, &input.VolumePublicID)
-	if err != nil {
-		return nil, err
+	if input.Status != nil {
+		switch *input.Status {
+		case storytellerModel.StoryStatusDraft, storytellerModel.StoryStatusCompleted:
+		default:
+			return nil, fmt.Errorf("invalid status")
+		}
+		story.Status = *input.Status
+		fields["status"] = story.Status
 	}
-	previousParentID := story.ParentID
-	story.ParentID = parentID(parent)
-	volumeEvent := volumeMoveEvent(previousParentID, story.ParentID)
-	if err := s.repo.MoveStory(story, volumeEvent); err != nil {
-		return nil, err
+	var volumeEvent *storytellerModel.StoryVolumeEvent
+	if input.ParentID != nil {
+		if story.IsVolume {
+			return nil, errors.New("cannot move a volume itself")
+		}
+		parent, err := s.resolveVolumeParent(project.ID, input.ParentID)
+		if err != nil {
+			return nil, err
+		}
+		previousParentID := story.ParentID
+		story.ParentID = parentID(parent)
+		volumeEvent = volumeMoveEvent(previousParentID, story.ParentID)
+		fields["parent_id"] = story.ParentID
+	}
+	var profileIDs []uint64
+	if input.ProfileIDs != nil {
+		if story.IsVolume {
+			return nil, errors.New("a volume has no author profiles")
+		}
+		if profileIDs, err = s.resolveStoryProfileIDs(userID, input.ProfileIDs, false); err != nil {
+			return nil, err
+		}
+	}
+	if len(fields) == 0 && profileIDs == nil {
+		return nil, errors.New("nothing to update: sort, status, parent_id or profile_ids is required")
+	}
+	if len(fields) > 0 {
+		if err := s.repo.PatchStoryFields(story, fields, volumeEvent); err != nil {
+			return nil, err
+		}
+	}
+	if profileIDs != nil {
+		if err := s.repo.ReplaceStoryProfiles(story.ID, profileIDs); err != nil {
+			return nil, err
+		}
+		story.ProfileIDs = profileIDs
+	}
+	// 狀態（公開與否）、所屬冊、署名都會影響搜尋索引；只改排序不用動。冊本身不在索引裡
+	_, sortOnly := fields["sort"]
+	if !story.IsVolume && !(sortOnly && len(fields) == 1 && profileIDs == nil) {
+		s.syncStorySearchIndex(project, story)
 	}
 	return story, nil
 }

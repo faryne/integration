@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type DependencyList } from "react";
-import { useSnack } from "@/components/SnackProvider.tsx";
-import { errorMessage, isNotLoggedIn } from "@/lib/backend.ts";
+import { useSnack } from "@writer/components/SnackProvider.tsx";
+import { errorMessage, isNotLoggedIn } from "@writer/lib/backend.ts";
 
 // 呼叫 API 時發現授權失效（過期或在網站上被撤銷）要通知外層切回登入頁，由 App 的 Shell 提供。
 export const SessionExpiredContext = createContext<() => void>(() => {});
@@ -16,7 +16,9 @@ export function useBackendData<T>(load: () => Promise<T>, deps: DependencyList):
     // 快速切換時忽略已過期的回應，避免舊資料蓋掉新資料
     let active = true;
     setData(null);
-    load()
+    // 包一層 Promise：load 同步丟例外（例如綁定不存在）也走同一套錯誤處理，不會讓整個畫面當掉
+    Promise.resolve()
+      .then(load)
       .then((result) => active && setData(result))
       .catch((err) => {
         if (!active) return;

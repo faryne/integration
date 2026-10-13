@@ -2,8 +2,8 @@ import { SteamLoomMark } from "@steamloom-web/components/storyteller/SteamLoomMa
 import { Box, Button, CircularProgress, Paper, Typography } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSnack } from "@/components/SnackProvider.tsx";
-import { backend, errorMessage, isLoginCanceled } from "@/lib/backend.ts";
+import { useSnack } from "@writer/components/SnackProvider.tsx";
+import { backend, errorMessage, isLoginCanceled } from "@writer/lib/backend.ts";
 
 // 未登入的主頁：按下登入後由 Go 端開系統瀏覽器走 OAuth，這裡只顯示等待中＋取消。
 // 授權完成後交給外層 onLoggedIn 載入作者資料（跟啟動時同一套流程）。

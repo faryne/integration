@@ -1,52 +1,77 @@
-import { stripMarkerForDiffLine } from "@steamloom-web/pages/storyteller/wysiwygCore/parser.ts";
-import { Box, CircularProgress, Stack, Typography } from "@mui/material";
-import { useTranslation } from "react-i18next";
-import { backend, type DocumentItem } from "@/lib/backend.ts";
-import { dateTimeFormat } from "@/lib/format.ts";
-import { useBackendData } from "@/lib/useBackendData.ts";
+import { WorkspaceEditorSaveButton, WorkspaceEditorStatusInfo } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
+import { StoryWritingWorkspace } from "@/pages/storyteller/StoryWritingWorkspace.tsx";
+import { StorytellerWysiwygEditor } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
+import { contentWordCount } from "@/pages/storyteller/storytellerContentWordCount.ts";
+import { editorStatusItems } from "@/pages/storyteller/workspaceEditorStatusItems.tsx";
+import { Box, CircularProgress } from "@mui/material";
+import { useMemo, useState } from "react";
+import { backend, type Document, type DocumentItem, type Profile } from "@writer/lib/backend.ts";
+import { useBackendData } from "@writer/lib/useBackendData.ts";
+import { DocumentHeader } from "@writer/pages/workspace/DocumentHeader.tsx";
+import { EditorAutoSaveButton, initialAutoSaveMinutes } from "@writer/pages/workspace/EditorAutoSaveButton.tsx";
+import { ImageDocumentEditor } from "@writer/pages/workspace/ImageDocumentEditor.tsx";
+import { useDocumentDraft } from "@writer/pages/workspace/useDocumentDraft.ts";
+import type { MoveTarget } from "@writer/pages/workspace/workspaceTree.ts";
 
-// 編輯分頁：版面比照網站編輯區（標題、狀態列、摘要、內文）。
-// 目前唯讀，內文逐行顯示（用網站的 stripMarkerForDiffLine 拿掉段落／行內 marker）；之後換成網站的 WYSIWYG 編輯器。
-export function EditorPanel({ project, item }: { project: string; item: DocumentItem }) {
-  const { t } = useTranslation();
+export type EditorPanelProps = {
+  project: string;
+  item: DocumentItem;
+  // 所在冊／設定集的 public_id（空字串＝未分冊／未歸類）與可選的冊／設定集（第一個是未分冊／未歸類）
+  groupId: string;
+  groupTargets: MoveTarget[];
+  profile: Profile | null;
+  // 有沒有未存檔內容，外層據此在換文件、離開專案前先問
+  onDirtyChange: (dirty: boolean) => void;
+  onSaved: () => void;
+  onShowHistory: () => void;
+};
+
+// 編輯分頁：先載入文件，文字作品（故事、設定）用網站的所見即所得編輯器，圖像作品用 ImageDocumentEditor。
+export function EditorPanel(props: EditorPanelProps) {
+  const { project, item } = props;
   const doc = useBackendData(() => backend.Document(project, item.kind, item.public_id), [project, item.kind, item.public_id]);
   if (doc === null) return <CircularProgress size={24} sx={{ m: 4 }} />;
   if (!doc) return null;
-  // 圖像作品的內容是 JSON，不能當文字顯示
-  const paragraphs =
-    doc.content_type === "image"
-      ? []
-      : (doc.latest_content ?? "")
-          .split("\n")
-          .map(stripMarkerForDiffLine)
-          .filter((line) => line.trim());
+  return doc.content_type === "image" ? <ImageDocumentEditor {...props} doc={doc} /> : <TextDocumentEditor {...props} doc={doc} />;
+}
+
+// 文字作品：直接用網站的編輯器（右鍵選單、slash 指令、浮動工具列、表格、腳注…全部一致），
+// 外框（標題、屬性列、摘要、底部狀態列與存檔按鈕）也用網站工作台內嵌編輯頁的同一組元件。
+function TextDocumentEditor({ project, item, doc, groupId, groupTargets, profile, onDirtyChange, onSaved, onShowHistory }: EditorPanelProps & { doc: Document }) {
+  const [autoSaveMinutes, setAutoSaveMinutes] = useState(() => initialAutoSaveMinutes(profile));
+  const state = useDocumentDraft({ project, item, doc, groupId, autoSaveMinutes, onSaved, onDirtyChange });
+  const { draft, setContent, saving, updatedAt, save } = state;
+  const wordCount = useMemo(() => contentWordCount(draft.content), [draft.content]);
+
   return (
-    <Box sx={{ flex: 1, overflow: "auto" }}>
-      <Box component="article" sx={{ maxWidth: 860, mx: "auto", px: 5, pt: 3.25, pb: 7.5 }}>
-        <Typography variant="h1" sx={{ fontSize: 34, mb: 1.5 }}>
-          {doc.title}
-        </Typography>
-        <Stack direction="row" spacing={2.25} sx={{ color: "text.secondary", fontSize: 12.5, mb: 1.25 }}>
-          {doc.status && (
-            <span>
-              {t("workspace.meta.status")} <b>{t(`workspace.status.${doc.status}`, doc.status)}</b>
-            </span>
-          )}
-          <span>{t("workspace.meta.wordCount", { words: doc.word_count.toLocaleString() })}</span>
-          <span>{t("workspace.meta.updatedAt", { date: dateTimeFormat.format(new Date(doc.updated_at)) })}</span>
-        </Stack>
-        {doc.summary && (
-          <Typography color="text.secondary" sx={{ fontSize: 13, mb: 2.75 }}>
-            {doc.summary}
-          </Typography>
-        )}
-        <Box sx={{ borderTop: 1, borderColor: "divider", pt: 2.75 }}>
-          {paragraphs.map((line, index) => (
-            <Typography key={index} sx={{ fontSize: 16, lineHeight: 2, mb: 1.5 }}>
-              {line}
-            </Typography>
-          ))}
-        </Box>
+    <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", px: 2.5, pt: 1.5 }}>
+      <DocumentHeader
+        project={project}
+        item={item}
+        variant={item.kind === "lore" ? "lore" : "story"}
+        state={state}
+        profile={profile}
+        groupTargets={groupTargets}
+        warningSource={draft.content}
+        extraControls={<EditorAutoSaveButton minutes={autoSaveMinutes} onChange={setAutoSaveMinutes} />}
+        onShowHistory={onShowHistory}
+      />
+      <Box sx={{ flex: 1, minHeight: 0, pb: 1.5 }}>
+        <StoryWritingWorkspace
+          fillHeight
+          editor={
+            <StorytellerWysiwygEditor
+              value={draft.content}
+              onChange={setContent}
+              toolbarPlacement="bottom"
+              fitParentHeight
+              bottomStatusContent={<WorkspaceEditorStatusInfo items={editorStatusItems({ wordCount, updatedAt, autoSaveMinutes })} />}
+              bottomActionContent={<WorkspaceEditorSaveButton pending={saving} disabled={saving} onClick={() => void save()} />}
+              exportBaseName={draft.title}
+              projectPublicId={project}
+            />
+          }
+        />
       </Box>
     </Box>
   );

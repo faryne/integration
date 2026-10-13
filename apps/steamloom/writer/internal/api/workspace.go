@@ -2,11 +2,8 @@ package api
 
 import (
 	"context"
-	"errors"
 	"slices"
 	"sync"
-
-	"faryne.dev/apps/steamloom/writer/internal/auth"
 )
 
 // DocumentKind 區分故事與設定；兩者在 Writer 裡共用同一套分頁（對話／編輯／歷史）。
@@ -27,9 +24,11 @@ type DocumentItem struct {
 
 // Group 是側邊列上的一個分組（冊／設定集／資產集），Items 為空代表不展開。
 type Group struct {
-	PublicID string         `json:"public_id"`
-	Name     string         `json:"name"`
-	Items    []DocumentItem `json:"items"`
+	PublicID string `json:"public_id"`
+	Name     string `json:"name"`
+	// Description 是設定集／資產集的用途筆記（編輯對話框預填用），冊沒有
+	Description string         `json:"description"`
+	Items       []DocumentItem `json:"items"`
 }
 
 // Workspace 是專案工作台側邊列的完整樹狀資料，在 Go 端組好，前端只負責畫。
@@ -59,9 +58,10 @@ type loreRow struct {
 }
 
 type collectionRow struct {
-	PublicID string `json:"public_id"`
-	Name     string `json:"name"`
-	Sort     int    `json:"sort"`
+	PublicID    string `json:"public_id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Sort        int    `json:"sort"`
 }
 
 // Workspace 平行抓故事、冊、設定、設定集、資產集，再依 parent_id／collection_id 分組。
@@ -93,14 +93,8 @@ func (c *Client) Workspace(ctx context.Context, project string) (*Workspace, err
 	})
 	fetch(func() (err error) { assetGroups, err = get[[]collectionRow](ctx, c, base+"/asset-collections"); return })
 	wg.Wait()
-	// 授權失效時每個請求都會回 not_logged_in，單獨回傳這個代碼前端才認得出來
-	for _, err := range errs {
-		if errors.Is(err, auth.ErrNotLoggedIn) {
-			return nil, err
-		}
-	}
-	if len(errs) > 0 {
-		return nil, errors.Join(errs...)
+	if err := joinErrors(errs); err != nil {
+		return nil, err
 	}
 	return buildWorkspace(stories, volumes, lores, loreCollections, assetGroups), nil
 }
@@ -140,10 +134,10 @@ func buildWorkspace(stories, volumes []storyRow, lores []loreRow, loreCollection
 		}
 	}
 	for _, collection := range loreCollections {
-		ws.LoreCollections = append(ws.LoreCollections, Group{PublicID: collection.PublicID, Name: collection.Name, Items: loresByCollection[collection.PublicID]})
+		ws.LoreCollections = append(ws.LoreCollections, Group{PublicID: collection.PublicID, Name: collection.Name, Description: collection.Description, Items: loresByCollection[collection.PublicID]})
 	}
 	for _, collection := range assetGroups {
-		ws.AssetCollections = append(ws.AssetCollections, Group{PublicID: collection.PublicID, Name: collection.Name})
+		ws.AssetCollections = append(ws.AssetCollections, Group{PublicID: collection.PublicID, Name: collection.Name, Description: collection.Description})
 	}
 	return ws
 }

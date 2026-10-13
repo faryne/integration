@@ -1,7 +1,7 @@
 import AddIcon from "@mui/icons-material/Add";
 import { Box, Button, Chip, CircularProgress, Stack, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
-import type { AgentTask, AgentThread } from "@/lib/backend.ts";
+import type { AgentTask, AgentThread } from "@writer/lib/backend.ts";
 
 const providerNames: Record<string, string> = { claude: "Claude Code", codex: "Codex", grok: "Grok Builds" };
 

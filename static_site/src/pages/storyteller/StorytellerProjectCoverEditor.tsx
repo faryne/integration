@@ -27,7 +27,7 @@ import {
 } from "@/data/storyteller.ts";
 import { WorkLandingHero } from "@/pages/storyteller/ReaderWorkLanding.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
-import type { StorytellerAsset } from "@/types/storyteller.ts";
+import type { EditorPickerAsset } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 
 type CoverLayout = "split" | "immersive";
 type CoverFocalPoint = { x: number; y: number };
@@ -233,7 +233,7 @@ export function StorytellerProjectCoverEditor({
   const maxMB = Math.floor(STORYTELLER_IMAGE_PAGE_MAX_BYTES / 1024 / 1024);
   const hasCover = Boolean(coverAssetPublicId || coverUrl);
 
-  function handleSelect(asset: StorytellerAsset) {
+  function handleSelect(asset: EditorPickerAsset) {
     onChange(asset.public_id, asset.preview_url);
     setPickerOpen(false);
   }

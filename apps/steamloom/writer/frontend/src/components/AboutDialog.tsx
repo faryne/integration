@@ -3,7 +3,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import { Box, Button, Chip, CircularProgress, Dialog, DialogContent, Divider, IconButton, Stack, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import appIcon from "@/assets/appicon.png";
+import appIcon from "@writer/assets/appicon.png";
 
 type Props = {
   open: boolean;

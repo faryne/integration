@@ -31,7 +31,7 @@ import {
   useMoveStorytellerLore,
   useSaveStorytellerAssetCollection,
   useSaveStorytellerLoreCollection,
-  useSaveStorytellerStory,
+  usePatchStorytellerStory,
   useSaveStorytellerVolume,
 } from "@/apis/storyteller.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
@@ -156,9 +156,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   const [collectionName, setCollectionName] = useState("");
   const [collectionDescription, setCollectionDescription] = useState("");
 
-  const saveStory = useSaveStorytellerStory(projectId);
   const deleteStory = useDeleteStorytellerStory(projectId);
   const saveVolume = useSaveStorytellerVolume(projectId);
+  // 排序、移動到冊、狀態切換只送變動欄位（PATCH），後端不寫版本、不會拿舊內文蓋掉新內容
+  const patchStory = usePatchStorytellerStory(projectId);
   const saveLoreCollection = useSaveStorytellerLoreCollection(projectId);
   const deleteLoreCollection = useDeleteStorytellerLoreCollection(projectId);
   const moveLore = useMoveStorytellerLore(projectId);
@@ -168,12 +169,6 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   const moveAsset = useMoveStorytellerAsset(projectId);
   const deleteAsset = useDeleteStorytellerAsset(projectId);
 
-  function storyParentPublicId(story: StorytellerStory) {
-    return (
-      volumes.find((volume) => volume.id === story.parent_id)?.public_id ?? ""
-    );
-  }
-
   function storyCountForVolume(parentId: number | null) {
     return stories.filter(
       (story) => !story.is_volume && story.parent_id === parentId,
@@ -182,25 +177,23 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
 
   function saveStoryPatch(
     story: StorytellerStory,
-    patch: Partial<StorytellerStory>,
+    patch: Partial<Pick<StorytellerStory, "sort" | "status" | "parent_id">>,
     onError: (error: unknown) => void,
     onSuccess?: () => void,
   ) {
     // 排序會在同一輪連續更新多筆；mutateAsync 讓每筆失敗都能進入各自的回呼。
-    void saveStory
+    void patchStory
       .mutateAsync({
         storyPublicId: story.public_id,
         input: {
-          title: patch.title ?? story.title,
-          summary: patch.summary ?? story.summary,
-          status: patch.status ?? story.status,
-          sort: patch.sort ?? story.sort,
-          content: patch.latest_content ?? story.latest_content,
+          sort: patch.sort,
+          status: patch.status,
+          // parent_id 是冊的內部 id，API 要的是冊的 public_id；不分冊送空字串
           parent_id:
             patch.parent_id !== undefined
               ? (volumes.find((volume) => volume.id === patch.parent_id)
                   ?.public_id ?? "")
-              : storyParentPublicId(story),
+              : undefined,
         },
       })
       .then(() => onSuccess?.())
@@ -233,18 +226,21 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   // 把故事拖到另一個看不到的冊——跨冊搬移還是走既有的「移動到冊」選單。這裡只
   // 處理「同一組內」重新排序：把 draggedPublicId 插到 beforePublicId 前面
   // （null 代表插到最後），只送真的動到 sort 的那幾筆存檔請求。
+  // collectionId：要排序的那一組（冊的 public_id 或 ungroupedId）；預設是目前列表選到的分組，
+  // 側邊列排序模式會指定作品所在的冊。
   function reorderStory(
     draggedPublicId: string,
     beforePublicId: string | null,
+    collectionId: string = selected.collectionId,
   ) {
     if (draggedPublicId === beforePublicId) {
       return;
     }
     const parentId =
-      selected.collectionId === ungroupedId
+      collectionId === ungroupedId
         ? null
-        : (volumes.find((volume) => volume.public_id === selected.collectionId)
-            ?.id ?? null);
+        : (volumes.find((volume) => volume.public_id === collectionId)?.id ??
+          null);
     const group = stories
       .filter((story) => !story.is_volume && story.parent_id === parentId)
       .sort((left, right) => left.sort - right.sort);
@@ -304,15 +300,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       if (volume.sort === index) {
         return;
       }
-      void saveVolume
+      void patchStory
         .mutateAsync({
-          volumePublicId: volume.public_id,
-          input: {
-            title: volume.title,
-            sort: index,
-            status: volume.status,
-            summary: volume.summary,
-          },
+          storyPublicId: volume.public_id,
+          input: { sort: index },
         })
         .catch((error: unknown) =>
           setSnack(errorMessage(error, "冊排序更新失敗。"), "error"),
@@ -365,14 +356,11 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   }
 
   function toggleVolumeStatus(volume: StorytellerStory) {
-    saveVolume.mutate(
+    patchStory.mutate(
       {
-        volumePublicId: volume.public_id,
+        storyPublicId: volume.public_id,
         input: {
-          title: volume.title,
-          sort: volume.sort,
           status: volume.status === "completed" ? "draft" : "completed",
-          summary: volume.summary,
         },
       },
       {
@@ -517,7 +505,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
               color={
                 currentVolume.status === "completed" ? "primary" : "inherit"
               }
-              disabled={saveVolume.isPending}
+              disabled={patchStory.isPending}
               onClick={() => toggleVolumeStatus(currentVolume)}
               sx={{
                 minHeight: 24,
@@ -739,18 +727,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       </Menu>
       <WorkspaceRowActionMenu
         anchorEl={storyActionMenu?.anchorEl ?? null}
-        editTo={
-          storyActionMenu
-            ? steamloomPath(
-                `my/workspace/${projectId}/${storyActionMenu.story.content_type === "image" ? "image" : "story"}/${storyActionMenu.story.public_id}${fromQuery}`,
-              )
-            : "#"
-        }
-        editLabel="編輯作品"
         moveLabel="移動到冊…"
         deleteLabel="刪除作品"
         status={storyActionMenu?.story.status}
-        disabled={saveStory.isPending}
+        disabled={patchStory.isPending}
         onClose={() => setStoryActionMenu(null)}
         onToggleStatus={() => {
           if (storyActionMenu) {
@@ -776,14 +756,6 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       />
       <WorkspaceRowActionMenu
         anchorEl={loreActionMenu?.anchorEl ?? null}
-        editTo={
-          loreActionMenu
-            ? steamloomPath(
-                `my/workspace/${projectId}/lore/${loreActionMenu.lore.public_id}${fromQuery}`,
-              )
-            : "#"
-        }
-        editLabel="編輯設定"
         moveLabel="移動至設定集…"
         deleteLabel="刪除設定"
         onClose={() => setLoreActionMenu(null)}
@@ -799,7 +771,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       <MoveMenu
         anchorEl={storyMoveMenu?.anchorEl ?? null}
         open={Boolean(storyMoveMenu)}
-        disabled={saveStory.isPending}
+        disabled={patchStory.isPending}
         currentId={storyMoveMenu?.story.parent_id ?? null}
         rows={volumes.map((volume) => ({
           id: volume.id,

@@ -22,7 +22,7 @@ import {
   type NodeViewProps,
 } from "@tiptap/react";
 import { useEffect, useState } from "react";
-import { useStorytellerAsset } from "@/apis/storyteller.ts";
+import { useEditorAsset } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 import {
   ASSET_IMAGE_LAYOUT_OPTIONS,
   ASSET_IMAGE_SIZE_OPTIONS,
@@ -60,10 +60,9 @@ function AssetImageView({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [altDraft, setAltDraft] = useState(alt);
   const [captionDraft, setCaptionDraft] = useState(caption);
-  const [layoutDraft, setLayoutDraft] =
-    useState<AssetImageLayoutValue>(layout);
+  const [layoutDraft, setLayoutDraft] = useState<AssetImageLayoutValue>(layout);
   const [sizeDraft, setSizeDraft] = useState<AssetImageSizeValue>(size);
-  const assetQuery = useStorytellerAsset(projectPublicId, publicId);
+  const assetQuery = useEditorAsset(projectPublicId, publicId);
   const asset = assetQuery.data;
   const previewUrl = asset?.preview_url || src;
   const title = alt || asset?.title || asset?.original_filename || publicId;
@@ -252,9 +251,7 @@ function AssetImageView({
               label="版面"
               value={layoutDraft}
               onChange={(event) =>
-                setLayoutDraft(
-                  normalizeAssetImageLayout(event.target.value),
-                )
+                setLayoutDraft(normalizeAssetImageLayout(event.target.value))
               }
               fullWidth
             >

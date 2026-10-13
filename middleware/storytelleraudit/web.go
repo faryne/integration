@@ -77,6 +77,7 @@ func webSuccess(lookup webAuditLookup) fiber.Handler {
 			}
 		}
 		actionName = resolvedWebStoryAction(actionName, before.storyBefore, data)
+		actionName = resolvedWebLoreAction(actionName, ctx.Method(), arguments)
 		// 授權頁按「拒絕」也走同一條路由，記成 oauth.deny 才不會在活動紀錄裡看起來像同意
 		if result, ok := data.(*storytellerModel.OAuthAuthorizeOutput); ok && actionName == "oauth.authorize" && !result.Approved {
 			actionName = "oauth.deny"
@@ -198,28 +199,44 @@ func resolvedWebStoryAction(action string, before *storytellerModel.Story, after
 		return "volume.delete"
 	}
 	changes := auditService.ChangedFields(before, after, "parent_id", "sort", "title", "summary", "status", "latest_version_id")
+	// PATCH 走 stories 路徑也能改冊（排序、狀態），依改動前的資料判斷是不是冊
+	if action == "story.update" && before.IsVolume {
+		action = "volume.update"
+	}
 	if action == "story.update" {
 		if _, changed := changes["parent_id"]; changed {
 			return "story.move"
 		}
-		if len(changes) == 2 {
-			if _, sortChanged := changes["sort"]; sortChanged {
-				if _, versionChanged := changes["latest_version_id"]; versionChanged {
-					return "story.reorder"
-				}
-			}
+		if onlySortChanged(changes) {
+			return "story.reorder"
 		}
 	}
-	if action == "volume.update" {
-		if len(changes) == 2 {
-			if _, sortChanged := changes["sort"]; sortChanged {
-				if _, versionChanged := changes["latest_version_id"]; versionChanged {
-					return "volume.reorder"
-				}
-			}
-		}
+	if action == "volume.update" && onlySortChanged(changes) {
+		return "volume.reorder"
 	}
 	return action
+}
+
+// resolvedWebLoreAction：設定的 PATCH 有帶 collection_id 就是搬移設定集（lore.move），
+// 只改狀態記成 lore.update；整篇存檔（PUT）帶 collection_id 仍是 lore.update。
+func resolvedWebLoreAction(action, method string, arguments map[string]any) string {
+	if action != "lore.update" || !strings.EqualFold(method, "PATCH") {
+		return action
+	}
+	if _, moved := arguments["collection_id"]; moved {
+		return "lore.move"
+	}
+	return action
+}
+
+// onlySortChanged：只動到 sort 才算排序。整篇 PUT 每次都會多寫一個版本（latest_version_id 跟著變），
+// PATCH 不寫版本，所以兩種都要認得。
+func onlySortChanged(changes map[string]any) bool {
+	if _, sortChanged := changes["sort"]; !sortChanged {
+		return false
+	}
+	_, versionChanged := changes["latest_version_id"]
+	return len(changes) == 1 || (len(changes) == 2 && versionChanged)
 }
 
 func projectPublicIDFromPath(path string) string {

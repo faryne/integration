@@ -37,7 +37,7 @@ import {
   useSaveStorytellerVolume,
   useStorytellerImageStoryPages,
   useStorytellerProjects,
-  useSaveStorytellerStory,
+  usePatchStorytellerStory,
   useStorytellerStories,
   useStorytellerVolumes,
 } from "@/apis/storyteller.ts";
@@ -349,7 +349,8 @@ export default function StorytellerProjectDetail() {
     (storiesPage - 1) * storyPageSize,
     storiesPage * storyPageSize,
   );
-  const saveStory = useSaveStorytellerStory(apiProject?.public_id);
+  // 排序、移動到冊、狀態切換只送變動欄位（PATCH），後端不寫版本、不會拿舊內文蓋掉新內容
+  const patchStory = usePatchStorytellerStory(apiProject?.public_id);
   const saveVolume = useSaveStorytellerVolume(apiProject?.public_id);
   const deleteStory = useDeleteStorytellerStory(apiProject?.public_id);
   const deleteProject = useDeleteStorytellerProject();
@@ -417,16 +418,8 @@ export default function StorytellerProjectDetail() {
         return;
       }
       // 同一次拖曳會送多筆更新；每筆 Promise 都要接錯誤，不能只靠最後一次 mutate 回呼。
-      void saveVolume
-        .mutateAsync({
-          volumePublicId: item.public_id,
-          input: {
-            title: item.title,
-            sort: index,
-            status: item.status,
-            summary: item.summary,
-          },
-        })
+      void patchStory
+        .mutateAsync({ storyPublicId: item.public_id, input: { sort: index } })
         .catch(() => setReorderError("冊排序更新失敗，請重新整理後再試。"));
     });
   }
@@ -510,15 +503,11 @@ export default function StorytellerProjectDetail() {
         update.parentId !== undefined && update.parentId !== null
           ? apiVolumes.find((volume) => volume.id === update.parentId)
           : undefined;
-      void saveStory
+      void patchStory
         .mutateAsync({
           storyPublicId,
           input: {
-            title: item.title,
-            summary: item.summary,
-            status: item.status,
             sort: update.sort,
-            content: item.latest_content,
             ...(update.parentId !== undefined
               ? { parent_id: targetVolume?.public_id ?? "" }
               : {}),
@@ -583,15 +572,10 @@ export default function StorytellerProjectDetail() {
 
   function toggleVolumeStatus(volume: StorytellerStory) {
     const completed = volume.status !== "completed";
-    saveVolume.mutate(
+    patchStory.mutate(
       {
-        volumePublicId: volume.public_id,
-        input: {
-          title: volume.title,
-          sort: volume.sort,
-          status: completed ? "completed" : "draft",
-          summary: volume.summary,
-        },
+        storyPublicId: volume.public_id,
+        input: { status: completed ? "completed" : "draft" },
       },
       {
         onSuccess: () =>
@@ -623,17 +607,10 @@ export default function StorytellerProjectDetail() {
       ),
     );
     setStoryMoveMenu(null);
-    saveStory.mutate(
+    patchStory.mutate(
       {
         storyPublicId: story.public_id,
-        input: {
-          title: story.title,
-          summary: story.summary,
-          status: story.status,
-          sort: nextSort,
-          content: story.latest_content,
-          parent_id: volumePublicId,
-        },
+        input: { sort: nextSort, parent_id: volumePublicId },
       },
       {
         onSuccess: () => notifyAction("作品已移動。"),
@@ -730,7 +707,7 @@ export default function StorytellerProjectDetail() {
         story={story}
         projectId={projectId}
         draggingStoryId={draggingStoryId}
-        saving={saveStory.isPending}
+        saving={patchStory.isPending}
         onDragOverAllowVolumeOnly={Boolean(draggingVolumeId)}
         onDragStart={() => {
           setDraggingVolumeId(null);
@@ -738,16 +715,10 @@ export default function StorytellerProjectDetail() {
         }}
         onDrop={() => handleDropStory(story.parent_id, story.public_id)}
         onTogglePublish={(checked) =>
-          saveStory.mutate(
+          patchStory.mutate(
             {
               storyPublicId: story.public_id,
-              input: {
-                title: story.title,
-                summary: story.summary,
-                status: checked ? "completed" : "draft",
-                sort: story.sort,
-                content: story.latest_content,
-              },
+              input: { status: checked ? "completed" : "draft" },
             },
             {
               onSuccess: () =>
@@ -1026,7 +997,7 @@ export default function StorytellerProjectDetail() {
                       >
                         <MenuItem
                           disabled={
-                            saveStory.isPending ||
+                            patchStory.isPending ||
                             storyMoveMenu?.story.parent_id === null
                           }
                           onClick={() =>
@@ -1043,7 +1014,7 @@ export default function StorytellerProjectDetail() {
                           <MenuItem
                             key={volume.public_id}
                             disabled={
-                              saveStory.isPending ||
+                              patchStory.isPending ||
                               storyMoveMenu?.story.parent_id === volume.id
                             }
                             onClick={() =>
@@ -1200,7 +1171,7 @@ export default function StorytellerProjectDetail() {
                               }
                             >
                               <Button
-                                disabled={saveVolume.isPending}
+                                disabled={patchStory.isPending}
                                 onClick={() => toggleVolumeStatus(volume)}
                               >
                                 {volume.status === "completed"

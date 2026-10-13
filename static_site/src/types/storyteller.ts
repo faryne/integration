@@ -788,6 +788,22 @@ export interface StorytellerAgentUsageLogPage {
   per_page: number;
 }
 
+// 只改排序／狀態／冊隸屬的局部更新（PATCH，故事與冊共用），不送內文、不寫版本；省略的欄位不動。
+export interface StorytellerStoryPatchRequest {
+  sort?: number;
+  status?: "draft" | "completed";
+  // 目標冊的 public_id；空字串代表移出冊。冊本身不能帶。
+  parent_id?: string;
+  // 署名（0＝本人）；冊沒有署名
+  profile_ids?: number[];
+}
+
+// 設定的屬性異動（PATCH，不寫版本、不進編輯歷史）；collection_id 空字串＝未歸類
+export interface StorytellerLorePatchRequest {
+  status?: "draft" | "completed";
+  collection_id?: string;
+}
+
 export interface StorytellerStoryRequest {
   title: string;
   summary: string;

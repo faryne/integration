@@ -17,8 +17,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StorytellerVersionCompareDialog, type StorytellerVersionCompareEntry } from "@steamloom-web/pages/storyteller/StorytellerVersionCompareDialog.tsx";
 import { stripMarkerForDiffContent } from "@steamloom-web/pages/storyteller/wysiwygCore/parser.ts";
-import { useSnack } from "@/components/SnackProvider.tsx";
-import { backend, errorMessage, type AgentProposal, type AgentProposalItem, type Document } from "@/lib/backend.ts";
+import { useSnack } from "@writer/components/SnackProvider.tsx";
+import { backend, errorMessage, type AgentProposal, type AgentProposalItem, type Document } from "@writer/lib/backend.ts";
 
 export function ProposalReviewDialog({
   agentID,
