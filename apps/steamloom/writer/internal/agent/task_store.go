@@ -3,6 +3,7 @@ package agent
 import (
 	"errors"
 	"path/filepath"
+	"strings"
 )
 
 // prepareTask 先把使用者訊息與 queued event 落盤；成功後 TaskManager 才能真的排程。
@@ -86,8 +87,55 @@ func recordTaskStopped(agentID, projectID, threadID, taskID, state, detail, part
 	if partial != "" {
 		events = append(events, ChatLine{Type: EventMessagePartial, Role: "assistant", Text: partial, CreatedAt: now(), TaskID: taskID})
 	}
-	events = append(events, taskEvent(typeName, taskID, text))
+	event := taskEvent(typeName, taskID, text)
+	event.Action, event.Commands = loginAction(agentID, detail)
+	events = append(events, event)
 	return recordTaskState(agentID, projectID, threadID, taskID, state, events...)
+}
+
+// 工具執行紀錄屬於對話歷史，不改變 task/thread 狀態；重開 Writer 後仍能回看 Agent 做過什麼。
+func recordTaskActivity(agentID, projectID, threadID, taskID, typeName, toolName string) error {
+	if toolName == "" {
+		return nil
+	}
+	chatMu.Lock()
+	defer chatMu.Unlock()
+	dir, idx, err := loadChat(agentID, projectID)
+	if err != nil {
+		return err
+	}
+	thread, ok := threadByID(idx, threadID)
+	if !ok {
+		return errors.New("找不到這段對話")
+	}
+	text := "Agent 開始使用 " + toolName
+	if typeName == EventTaskToolFinished {
+		text = "Agent 已完成 " + toolName
+	}
+	event := taskEvent(typeName, taskID, text)
+	event.ToolName = toolName
+	if err := appendLines(filepath.Join(dir, thread.ID+".jsonl"), []ChatLine{event}); err != nil {
+		return err
+	}
+	thread.UpdatedAt = now()
+	idx.Threads = upsertFront(idx.Threads, thread)
+	return saveIndex(dir, idx)
+}
+
+// 登入由使用者在 Terminal 完成；Writer 只把可執行指令附在失敗事件，不碰 Agent 憑證。
+func loginAction(agentID, detail string) (string, []string) {
+	lower := strings.ToLower(detail)
+	loginRequired := strings.Contains(lower, "oauth session expired") || strings.Contains(lower, "failed to authenticate") ||
+		strings.Contains(lower, "not logged in") || strings.Contains(lower, "login required") ||
+		strings.Contains(detail, "未登入") || strings.Contains(detail, "登入已過期")
+	if !loginRequired {
+		return "", nil
+	}
+	commands := map[string]string{"claude": "claude auth login", "codex": "codex login", "grok": "grok login"}
+	if command := commands[agentID]; command != "" {
+		return "agent.login", []string{command}
+	}
+	return "", nil
 }
 
 func recordTaskState(agentID, projectID, threadID, taskID, state string, events ...ChatLine) error {

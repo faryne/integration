@@ -81,7 +81,7 @@ const selectThread = (key) => {
   $(".thread").innerHTML = threadHTML[key];
   document.querySelectorAll(".task-card").forEach((card) => card.classList.toggle("selected", card.dataset.task === key));
   $(".task-detail-head .engine-tag").innerHTML = `<span class="status-dot"></span>${threadMeta[key].provider}`;
-  $(".task-detail-head h3").textContent = threadMeta[key].title;
+  $(".task-title-input").value = threadMeta[key].title;
   $(".task-detail-head > .task-state").textContent = $(`.task-card[data-task='${key}'] .task-state`).textContent;
 };
 const appendThreadEvent = (key, html) => {
@@ -129,6 +129,18 @@ const actions = {
   "login-cancel": () => { clearTimeout(actions.loginTimer); $("#login-card").dataset.state = ""; },
   "engine-toggle": () => $("#engine").classList.toggle("open"),
   "engine-pick": (el) => { $("#engine-name").textContent = el.dataset.name; $("#engine").classList.remove("open"); },
+  "task-group-toggle": (el) => {
+    el.classList.toggle("open");
+    el.nextElementSibling.classList.toggle("collapsed", !el.classList.contains("open"));
+  },
+  "save-task-title": () => {
+    const title = $(".task-title-input").value.trim();
+    if (!title) return notify("任務標題不可為空白");
+    threadMeta[activeThread].title = title;
+    const card = $(`.task-card[data-task='${activeThread}'] b`);
+    if (card) card.textContent = title;
+    notify("任務標題已儲存", true);
+  },
   send: () => { body.classList.add("running"); syncMock(); },
   stop: () => { body.classList.remove("running"); syncMock(); },
   diff: () => tab("history"),
@@ -183,7 +195,7 @@ const actions = {
   "thread-delete-confirm": () => {
     $("#thread-delete").classList.remove("show");
     $(".task-card.selected").remove();
-    $(".task-detail-head h3").textContent = "Thread 已刪除";
+    $(".task-title-input").value = "Thread 已刪除";
     $(".task-detail-head > .task-state").textContent = "本機紀錄已移除";
     notify("Writer thread 與本機暫存成果已永久刪除；Grok Builds session 保留", true);
   },
@@ -217,6 +229,21 @@ prompt.addEventListener("input", () => { renderPromptReferences(); syncMentionOp
 prompt.addEventListener("click", syncMentionOptions);
 prompt.addEventListener("keyup", syncMentionOptions);
 prompt.addEventListener("scroll", () => { $(".composer-highlight").scrollTop = prompt.scrollTop; });
+$("#task-search").addEventListener("input", (event) => {
+  const query = event.target.value.trim().toLowerCase();
+  document.querySelectorAll(".task-group-items").forEach((group) => {
+    let matches = 0;
+    group.querySelectorAll(".task-card").forEach((card) => {
+      const matched = !query || card.querySelector("b").textContent.toLowerCase().includes(query);
+      card.hidden = !matched;
+      if (matched) matches += 1;
+    });
+    const head = group.previousElementSibling;
+    head.hidden = matches === 0;
+    if (query && matches > 0) { head.classList.add("open"); group.classList.remove("collapsed"); }
+  });
+});
+$(".task-title-input").addEventListener("keydown", (event) => { if (event.key === "Enter") actions["save-task-title"](); });
 
 renderPromptReferences();
 syncMock();

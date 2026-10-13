@@ -34,6 +34,41 @@
     "taskQueuedCount": "{{count}}개 더 대기 중",
     "stopTask": "이 작업 중지",
     "tasks": "AI 작업",
+    "searchTasks": "작업 제목 검색",
+    "noMatchingTasks": "검색 조건과 일치하는 작업이 없습니다",
+    "threadTitle": "작업 제목",
+    "saveThreadTitle": "작업 제목 저장",
+    "dateGroups": {
+      "today": "오늘",
+      "yesterday": "어제",
+      "dayBefore": "그저께"
+    },
+    "activity": {
+      "runningTitle": "Agent 실행 기록",
+      "completedTitle": "Agent 완료",
+      "failedTitle": "Agent 실행 실패",
+      "canceledTitle": "작업 중지됨",
+      "collapse": "실행 기록 접기",
+      "expand": "실행 기록 펼치기",
+      "queued": "작업이 대기열에 추가됨",
+      "started": "Agent가 처리를 시작함",
+      "toolStarted": "{{tool}} 사용 시작",
+      "toolCompleted": "{{tool}} 완료",
+      "completed": "Agent가 작업을 완료함",
+      "failed": "Agent 실행 실패",
+      "canceled": "작업 중지됨",
+      "applyStarted": "Agent가 승인된 내용 기록을 시작함",
+      "applyCompleted": "Agent가 기록을 완료함",
+      "applyFailed": "Agent 기록 실패",
+      "applyConflict": "버전 충돌이 감지되어 내용을 덮어쓰지 않음",
+      "applyInterrupted": "기록이 중단되어 결과 확인이 필요함"
+    },
+    "login": {
+      "title": "Agent 재로그인 필요",
+      "description": "터미널에서 아래 명령을 직접 실행한 뒤 Writer에서 다시 시도하세요. Writer는 로그인 자격 증명을 읽거나 저장하지 않습니다.",
+      "copy": "명령 복사",
+      "copied": "복사함"
+    },
     "states": {
       "queued": "대기 중",
       "running": "실행 중",

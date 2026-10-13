@@ -158,7 +158,7 @@ func TestSaveProposalRejectsUnsafeScopeAndIncompleteBase(t *testing.T) {
 		{Kind: ProposalKindStory, Operations: []ProposalOperation{{Tool: "storyteller_get_story", Arguments: map[string]any{"project_public_id": "project"}}}, Content: "內容"},
 		{Kind: ProposalKindLore, Operations: []ProposalOperation{{Tool: "storyteller_upsert_lore", Arguments: map[string]any{"project_public_id": "other"}}}, Content: "內容"},
 		{Kind: ProposalKindStory, Operations: []ProposalOperation{{Tool: "storyteller_upsert_story", Arguments: map[string]any{"project_public_id": "project"}}}, TargetID: "story-1", Content: "內容"},
-		{Kind: ProposalKindStory, Operations: []ProposalOperation{{Tool: "storyteller_upsert_story", Arguments: map[string]any{"content": "被偷換", "project_public_id": "project"}}}, Content: "審閱內容"},
+		{Kind: ProposalKindStory, Operations: []ProposalOperation{{Tool: "storyteller_upsert_lore", Arguments: map[string]any{"project_public_id": "project"}}}, Content: "內容"},
 		{Kind: ProposalKindLore, Operations: []ProposalOperation{{Tool: "storyteller_upsert_lore", Arguments: map[string]any{"project_public_id": "project", "lore_public_id": "lore-2"}}}, TargetID: "lore-1", BaseVersionID: "42", Base: &ProposalSnapshot{Content: "舊內容"}, Content: "新內容"},
 		{Kind: ProposalKindStory, Operations: []ProposalOperation{{Tool: "storyteller_upsert_story", Arguments: map[string]any{"base_version_id": 43, "project_public_id": "project", "story_public_id": "story-1"}}}, TargetID: "story-1", BaseVersionID: "42", Base: &ProposalSnapshot{Content: "舊內容"}, Content: "新內容"},
 	}
@@ -170,5 +170,29 @@ func TestSaveProposalRejectsUnsafeScopeAndIncompleteBase(t *testing.T) {
 	stored, err := Proposals("codex", "project", page.CurrentID)
 	if err != nil || len(stored) != 0 {
 		t.Fatalf("rejected proposal left payloads behind: %#v, %v", stored, err)
+	}
+}
+
+func TestSaveProposalUsesReviewedFieldsAsOperationSource(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskID, _ := newThreadID()
+	proposal, err := SaveProposal("claude", "project", page.CurrentID, taskID, "", []ProposalItem{{
+		Kind: ProposalKindStory, Title: "作者看到的標題", Summary: "作者看到的摘要", ContentType: "text", Content: "作者看到的正文",
+		Operations: []ProposalOperation{{Tool: "storyteller_upsert_story", Arguments: map[string]any{
+			"project_public_id": "project", "title": "隱藏標題", "summary": "隱藏摘要", "content_type": "markdown", "content": "隱藏正文",
+		}}},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	arguments := proposal.Items[0].Operations[0].Arguments
+	for key, want := range map[string]string{"title": "作者看到的標題", "summary": "作者看到的摘要", "content_type": "text", "content": "作者看到的正文"} {
+		if got := arguments[key]; got != want {
+			t.Fatalf("operation %s did not use reviewed value: got %#v, want %q", key, got, want)
+		}
 	}
 }

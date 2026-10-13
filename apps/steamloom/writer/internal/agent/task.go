@@ -253,9 +253,6 @@ func (m *TaskManager) runQueue(key string) {
 				var reply Reply
 				reply, err = m.run(ctx, task.AgentID, req)
 				m.flushProposalStream(managed)
-				if err == nil {
-					err = recordTaskCompleted(task.AgentID, task.ProjectID, task.ThreadID, task.ID, reply)
-				}
 				if err == nil && len(reply.proposals) > 0 {
 					assetRoot := ""
 					if proposalHasAsset(reply.proposals) {
@@ -263,11 +260,13 @@ func (m *TaskManager) runQueue(key string) {
 					}
 					if err == nil {
 						var proposal Proposal
-						proposal, err = SaveProposal(task.AgentID, task.ProjectID, task.ThreadID, task.ID, assetRoot, reply.proposals)
+						proposal, err = saveTaskProposal(task.AgentID, task.ProjectID, task.ThreadID, task.ID, assetRoot, reply, reply.proposals)
 						if err == nil {
 							managed.proposal = &proposal
 						}
 					}
+				} else if err == nil {
+					err = recordTaskCompleted(task.AgentID, task.ProjectID, task.ThreadID, task.ID, reply)
 				}
 			}
 		}
@@ -419,6 +418,7 @@ func (m *TaskManager) finish(managed *managedTask, runErr, contextErr error) {
 
 func (m *TaskManager) stream(managed *managedTask, stream StreamEvent) {
 	m.mu.Lock()
+	activityType := ""
 	switch stream.Type {
 	case StreamAssistantDelta:
 		stream.Text = managed.proposalFilter.Push(stream.Text)
@@ -429,14 +429,19 @@ func (m *TaskManager) stream(managed *managedTask, stream StreamEvent) {
 		managed.task.Partial += stream.Text
 	case StreamToolStarted:
 		managed.task.Activity = stream.ToolName
+		activityType = EventTaskToolStarted
 	case StreamToolCompleted:
 		if managed.task.Activity == stream.ToolName || stream.ToolName == "" {
 			managed.task.Activity = ""
 		}
 		managed.completedTools = append(managed.completedTools, stream.ToolName)
+		activityType = EventTaskToolFinished
 	}
 	task := managed.task
 	m.mu.Unlock()
+	if activityType != "" {
+		_ = recordTaskActivity(task.AgentID, task.ProjectID, task.ThreadID, task.ID, activityType, stream.ToolName)
+	}
 	m.emit(TaskEvent{Type: stream.Type, Task: task, Stream: &stream})
 }
 

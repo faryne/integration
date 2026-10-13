@@ -4,7 +4,18 @@ import { backend, errorMessage } from "@writer/lib/backend.ts";
 
 // 不用 wails 產生的 class：那些 class 帶了 convertValues，物件字面值塞不回去。
 type ChatThread = { id: string; title: string; session_id: string; updated_at: string; last_task_state?: string; active_task_id?: string };
-type ChatLine = { type?: string; role?: string; text: string; created_at?: string; task_id?: string; proposal_id?: string; event_id?: string };
+export type ChatLine = {
+  type?: string;
+  role?: string;
+  text: string;
+  created_at?: string;
+  task_id?: string;
+  proposal_id?: string;
+  event_id?: string;
+  tool_name?: string;
+  action?: string;
+  commands?: string[];
+};
 type ChatPage = {
   threads: ChatThread[];
   current_id: string;
@@ -99,6 +110,17 @@ export function useChatLog(projectID: string, agentID: string) {
     }
   };
 
+  const renameCurrent = async (title: string) => {
+    if (!agentID || !page?.current_id) return false;
+    try {
+      replace(await backend.ChatRename(agentID, projectID, page.current_id, title));
+      return true;
+    } catch (err) {
+      showError(errorMessage(err));
+      return false;
+    }
+  };
+
   const deleteCurrent = async () => {
     if (!agentID || !page?.current_id) return false;
     try {
@@ -134,5 +156,5 @@ export function useChatLog(projectID: string, agentID: string) {
     }
   };
 
-  return { page, box, loadingOlder, selectThread, openThread, refreshVisibleThread, startNew, deleteCurrent, loadOlder };
+  return { page, box, loadingOlder, selectThread, openThread, refreshVisibleThread, startNew, renameCurrent, deleteCurrent, loadOlder };
 }

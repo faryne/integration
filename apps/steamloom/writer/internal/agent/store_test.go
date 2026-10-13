@@ -6,6 +6,31 @@ import (
 	"testing"
 )
 
+func TestRenameChatPersistsTitleWithoutChangingActivityTime(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SaveTurn("claude", "project", page.CurrentID, "原始標題", "answer", "session"); err != nil {
+		t.Fatal(err)
+	}
+	before, err := OpenChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	renamed, err := RenameChat("claude", "project", page.CurrentID, "  新的任務標題  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if renamed.Threads[0].Title != "新的任務標題" || renamed.Threads[0].UpdatedAt != before.Threads[0].UpdatedAt || renamed.SessionID != "session" || len(renamed.Messages) != 2 {
+		t.Fatalf("unexpected renamed chat: %#v", renamed)
+	}
+	if _, err := RenameChat("claude", "project", page.CurrentID, "   "); err == nil {
+		t.Fatal("blank title was accepted")
+	}
+}
+
 func withTempConfig(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()

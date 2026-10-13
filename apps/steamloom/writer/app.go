@@ -150,6 +150,11 @@ func (a *App) ChatNew(agentID, projectID string) (*agent.ChatPage, error) {
 	return chatPage(agent.NewChat(agentID, projectID))
 }
 
+// ChatRename 只更新 Writer 的 thread 標題，不修改 Agent provider session。
+func (a *App) ChatRename(agentID, projectID, threadID, title string) (*agent.ChatPage, error) {
+	return chatPage(agent.RenameChat(agentID, projectID, threadID, title))
+}
+
 // ChatDelete 永久移除 Writer 本機對話；不刪除 Agent provider session，也不碰 SteamLoom。
 func (a *App) ChatDelete(agentID, projectID, threadID string) (*agent.ChatPage, error) {
 	if a.tasks != nil {

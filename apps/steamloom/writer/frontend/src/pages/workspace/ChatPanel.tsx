@@ -10,7 +10,8 @@ import { useBackendData } from "@writer/lib/useBackendData.ts";
 import { ActiveTaskStatus } from "@writer/pages/workspace/ActiveTaskStatus.tsx";
 import { AgentPromptEditor } from "@writer/pages/workspace/AgentPromptEditor.tsx";
 import { AssistantSetup } from "@writer/pages/workspace/AssistantSetup.tsx";
-import { ProposalCard } from "@writer/pages/workspace/ProposalCard.tsx";
+import { ChatTranscript } from "@writer/pages/workspace/ChatTranscript.tsx";
+import { ChatThreadHeader } from "@writer/pages/workspace/ChatThreadHeader.tsx";
 import { ProposalReviewDialog } from "@writer/pages/workspace/ProposalReviewDialog.tsx";
 import { TaskRail } from "@writer/pages/workspace/TaskRail.tsx";
 import { ThreadDeleteDialog } from "@writer/pages/workspace/ThreadDeleteDialog.tsx";
@@ -41,6 +42,7 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
     [chat.page?.current_id, selected, tasks],
   );
   const activeTask = activeTasks.find((task) => task.state === "applying" || task.state === "running") ?? activeTasks[0];
+  const currentTitle = chat.page?.threads.find((thread) => thread.id === chat.page?.current_id)?.title || t("workspace.chat.newThread");
 
   const loadThreads = useCallback(async () => {
     try {
@@ -71,7 +73,7 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
   useEffect(() => EventsOn("agent:task", (event: AgentTaskEvent) => {
     if (event.task.project_id !== projectID) return;
     setTasks((current) => ({ ...current, [event.task.id]: event.task }));
-    if (event.type.startsWith("task.") || event.type.startsWith("apply.") || event.type === "proposal.ready") {
+    if (event.type.startsWith("task.") || event.type.startsWith("tool.") || event.type.startsWith("apply.") || event.type === "proposal.ready") {
       void loadThreads();
       if (event.task.agent_id === selected) {
         void chat.refreshVisibleThread(event.task.thread_id);
@@ -104,6 +106,12 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
   const startNew = async () => {
     setPendingThread(null);
     if (await chat.startNew()) await loadThreads();
+  };
+
+  const renameThread = async (title: string) => {
+    if (!(await chat.renameCurrent(title))) return false;
+    await loadThreads();
+    return true;
   };
 
   const send = async () => {
@@ -180,6 +188,7 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
         onNew={() => void startNew()}
       />
       <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
+        <ChatThreadHeader threadID={chat.page?.current_id ?? ""} title={currentTitle} onSave={renameThread} />
         <Box ref={chat.box} sx={{ flex: 1, overflow: "auto" }}>
         <Stack spacing={1.25} sx={{ maxWidth: 780, mx: "auto", px: 2.5, py: 2.5 }}>
           {selected && <AssistantSetup agentID={selected} />}
@@ -194,22 +203,15 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
             </Button>
           )}
           {chat.page === null && selected && <CircularProgress size={18} sx={{ alignSelf: "center", mt: 4 }} />}
-          {chat.page?.messages.map((message, index) => {
-            const system = message.role === "system";
-            const proposal = message.type === "proposal.ready" ? proposals?.find((item) => item.id === message.proposal_id) : undefined;
-            if (proposal) {
-              return <ProposalCard key={message.event_id ?? `${chat.page?.start ?? 0}:${index}`} proposal={proposal} onReview={(item) => setReview({ proposal, item })} />;
-            }
-            return (
-            <Box key={`${chat.page?.start ?? 0}:${index}`} sx={{ display: "flex", justifyContent: system ? "center" : message.role === "user" ? "flex-end" : "flex-start" }}>
-              <Paper
-                variant="outlined"
-                sx={{ px: 1.5, py: 1, maxWidth: system ? "100%" : "80%", borderRadius: 2, bgcolor: system ? "action.hover" : message.role === "user" ? "action.selected" : "transparent" }}
-              >
-                <Typography color={system ? "text.secondary" : "text.primary"} sx={{ fontSize: system ? 12.5 : 14, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{message.text}</Typography>
-              </Paper>
-            </Box>
-          )})}
+          {chat.page && (
+            <ChatTranscript
+              agentID={selected}
+              messages={chat.page.messages}
+              start={chat.page.start}
+              proposals={proposals}
+              onReview={(proposal, item) => setReview({ proposal, item })}
+            />
+          )}
           {activeTask && <ActiveTaskStatus task={activeTask} queued={Math.max(0, activeTasks.length - 1)} canceling={canceling === activeTask.id} onCancel={() => void cancelTask()} />}
         </Stack>
         </Box>

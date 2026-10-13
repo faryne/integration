@@ -170,7 +170,7 @@ func (r Request) mcpTools() []string {
 
 func (r Request) proposalRules() string {
 	return `
-成果規則：只有作者明確要求建立、修改或上傳 SteamLoom 內容時，才在一般回覆摘要之後附上一個 Writer proposal；討論、分析、腦力激盪或文筆示範不要附。proposal 只是本機待確認資料，不得呼叫任何寫入工具。格式必須以獨立行 <<<STEAMLOOM_WRITER_PROPOSAL_V1>>> 開始、<<<END_STEAMLOOM_WRITER_PROPOSAL_V1>>> 結束，中間是單一 JSON object：{"items":[...]}。每個 item 只用 kind（story／lore／asset）、operations（陣列，每項有 tool 與 arguments）、target_id、base_version_id、title、summary、content_type、content、base、local_path、file_name、mime_type、alt_text、collection_id。更新既有 story／lore 時必須附 target_id、讀取時取得的 base_version_id，以及包含 title／summary／content_type／content 的 base snapshot；新增時省略。asset 的 local_path 必須是目前工作目錄內的絕對路徑。operations 只描述確認後可能執行的 SteamLoom 寫入步驟與完整參數，不代表現在獲准執行。結束標記後不要再輸出任何內容。`
+成果規則：只有作者明確要求建立、修改或上傳 SteamLoom 內容時，才在一般回覆摘要之後附上一個 Writer proposal；討論、分析、腦力激盪或文筆示範不要附。proposal 只是本機待確認資料，不得呼叫任何寫入工具。格式必須以獨立行 <<<STEAMLOOM_WRITER_PROPOSAL_V1>>> 開始、<<<END_STEAMLOOM_WRITER_PROPOSAL_V1>>> 結束，中間是單一 JSON object：{"items":[...]}。每個 item 只用 kind（story／lore／asset）、operations（陣列，每項有 tool 與 arguments）、target_id、base_version_id、title、summary、content_type、content、base、local_path、file_name、mime_type、alt_text、collection_id。更新既有 story／lore 時必須附 target_id、讀取時取得的 base_version_id，以及包含 title／summary／content_type／content 的 base snapshot；新增時省略。story／lore 的 review 欄位 title、summary、content_type、content 是作者實際確認的唯一版本，必須填完整；Writer 會以它們覆蓋對應 upsert operation 的重複 arguments。asset 的 local_path 必須是目前工作目錄內的絕對路徑。operations 只描述確認後可能執行的 SteamLoom 寫入步驟與完整參數，不代表現在獲准執行。結束標記後不要再輸出任何內容。`
 }
 
 // Writer 只傳遞原始指示詞，不展開內容；名稱解析與讀取都由 Agent 的 MCP 工具完成。

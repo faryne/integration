@@ -30,6 +30,8 @@ export function ChatOpen(arg1:string,arg2:string):Promise<agent.ChatPage>;
 
 export function ChatProposals(arg1:string,arg2:string,arg3:string):Promise<Array<agent.Proposal>>;
 
+export function ChatRename(arg1:string,arg2:string,arg3:string,arg4:string):Promise<agent.ChatPage>;
+
 export function ChatSelect(arg1:string,arg2:string,arg3:string):Promise<agent.ChatPage>;
 
 export function ChatThreads(arg1:string):Promise<Array<agent.ProjectThread>>;

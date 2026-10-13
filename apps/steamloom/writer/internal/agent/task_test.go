@@ -2,12 +2,74 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 )
+
+func TestTaskManagerPersistsToolActivity(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := make(chan TaskEvent, 20)
+	manager := NewTaskManager(context.Background(), func(_ context.Context, _ string, req Request) (Reply, error) {
+		req.emitStream(StreamEvent{Type: StreamToolStarted, ToolName: "storyteller_get_story"})
+		req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: "storyteller_get_story"})
+		return Reply{Text: "done"}, nil
+	}, func(event TaskEvent) { events <- event })
+	defer manager.Close()
+
+	task, err := manager.Start("claude", Request{ThreadID: page.CurrentID, ProjectID: "project", Prompt: "read"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitTaskEvent(t, events, task.ID, EventTaskCompleted)
+	chat, err := OpenChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var activity []ChatLine
+	for _, line := range chat.Messages {
+		if line.Type == EventTaskToolStarted || line.Type == EventTaskToolFinished {
+			activity = append(activity, line)
+		}
+	}
+	if len(activity) != 2 || activity[0].ToolName != "storyteller_get_story" || activity[1].ToolName != "storyteller_get_story" {
+		t.Fatalf("tool activity was not persisted: %#v", activity)
+	}
+}
+
+func TestTaskManagerPersistsLoginCommand(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := make(chan TaskEvent, 20)
+	manager := NewTaskManager(context.Background(), func(context.Context, string, Request) (Reply, error) {
+		return Reply{}, errors.New("Failed to authenticate: OAuth session expired and could not be refreshed")
+	}, func(event TaskEvent) { events <- event })
+	defer manager.Close()
+
+	task, err := manager.Start("claude", Request{ThreadID: page.CurrentID, ProjectID: "project", Prompt: "read"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitTaskEvent(t, events, task.ID, EventTaskFailed)
+	chat, err := OpenChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	failed := chat.Messages[len(chat.Messages)-1]
+	if failed.Action != "agent.login" || len(failed.Commands) != 1 || failed.Commands[0] != "claude auth login" {
+		t.Fatalf("login action was not persisted: %#v", failed)
+	}
+}
 
 func TestTaskManagerRunsDifferentThreadsConcurrently(t *testing.T) {
 	withTempConfig(t)
@@ -206,9 +268,64 @@ func TestTaskManagerPersistsProposalAndEmitsAwaitingConfirmation(t *testing.T) {
 	if event.Task.Partial != "草稿完成\n" {
 		t.Fatalf("proposal envelope leaked into task partial: %q", event.Task.Partial)
 	}
+	chat, err := OpenChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assistant, completed := 0, 0
+	for _, line := range chat.Messages {
+		if line.Role == "assistant" {
+			assistant++
+		}
+		if line.Type == EventTaskCompleted {
+			completed++
+		}
+	}
+	if assistant != 1 || completed != 1 || chat.SessionID != "session" {
+		t.Fatalf("proposal reply was not persisted exactly once: assistants=%d completed=%d session=%q", assistant, completed, chat.SessionID)
+	}
 	stored, err := Proposals("claude", "project", page.CurrentID)
 	if err != nil || len(stored) != 1 || stored[0].Status != ProposalAwaitingConfirmation {
 		t.Fatalf("proposal was not persisted: %#v, %v", stored, err)
+	}
+}
+
+func TestTaskManagerDoesNotCompleteBeforeProposalValidation(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := make(chan TaskEvent, 20)
+	manager := NewTaskManager(context.Background(), func(_ context.Context, _ string, req Request) (Reply, error) {
+		req.emitStream(StreamEvent{Type: StreamAssistantDelta, Text: "提案摘要"})
+		return Reply{Text: "提案摘要", proposals: []ProposalItem{{
+			Kind: ProposalKindStory, Content: "內容",
+			Operations: []ProposalOperation{{Tool: "storyteller_get_story", Arguments: map[string]any{"project_public_id": "project"}}},
+		}}}, nil
+	}, func(event TaskEvent) { events <- event })
+	defer manager.Close()
+
+	task, err := manager.Start("claude", Request{ThreadID: page.CurrentID, ProjectID: "project", Prompt: "建立故事"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitTaskEvent(t, events, task.ID, EventTaskFailed)
+	chat, err := OpenChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assistant, completed := 0, 0
+	for _, line := range chat.Messages {
+		if line.Role == "assistant" {
+			assistant++
+		}
+		if line.Type == EventTaskCompleted {
+			completed++
+		}
+	}
+	if assistant != 1 || completed != 0 || chat.Messages[len(chat.Messages)-1].Type != EventTaskFailed {
+		t.Fatalf("invalid proposal left duplicate/completed events: %#v", chat.Messages)
 	}
 }
 
