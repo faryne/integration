@@ -32,18 +32,20 @@ type Service struct {
 
 func New(currentVersion string) (*Service, error) {
 	filter := []string{assetPattern(runtime.GOOS, runtime.GOARCH)}
-	detector, err := selfupdate.NewUpdater(selfupdate.Config{Filters: filter})
+	detector, err := selfupdate.NewUpdater(updaterConfig(filter, nil))
 	if err != nil {
 		return nil, fmt.Errorf("初始化更新檢查失敗：%w", err)
 	}
-	installer, err := selfupdate.NewUpdater(selfupdate.Config{
-		Filters:   filter,
-		Validator: &selfupdate.ChecksumValidator{UniqueFilename: "checksums.txt"},
-	})
+	installer, err := selfupdate.NewUpdater(updaterConfig(filter, &selfupdate.ChecksumValidator{UniqueFilename: "checksums.txt"}))
 	if err != nil {
 		return nil, fmt.Errorf("初始化更新服務失敗：%w", err)
 	}
 	return &Service{currentVersion: currentVersion, detector: detector, installer: installer}, nil
+}
+
+// Writer 目前是內測 alpha channel；安裝 alpha 後會繼續追蹤 GitHub prerelease。
+func updaterConfig(filters []string, validator selfupdate.Validator) selfupdate.Config {
+	return selfupdate.Config{Filters: filters, Validator: validator, Prerelease: true}
 }
 
 // Check 尋找適用目前平台的最新 Writer release；開發版不主動檢查。

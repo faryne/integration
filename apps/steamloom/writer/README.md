@@ -44,21 +44,23 @@ wails build
 
 - main 或 PR 有動到 Writer（或它共用的 static_site 檔案）才編譯，產物在該次 workflow 的 artifacts（保留 14 天）。
 - 平台：macOS universal、Windows amd64／arm64、Linux amd64／arm64。
-- 發佈版本：推 `steamloom-writer-v<版號>` tag，編譯完會建立 GitHub Release；CI 會用 tag 的版號覆寫 `wails.json` 的 `info.productVersion`，app 資訊以 tag 為準。
+- 發佈版本：推 `steamloom-writer-v<版號>` tag，編譯完會建立 GitHub Release；app 版號以 tag 為準。含 `-alpha` 的 tag 會標記為不穩定內測版。
 
 ### 出新版號
 
-1. 把 `wails.json` 的 `info.productVersion` 改成新版號並 commit（只影響本機 `wails build`，保持跟 tag 一致比較不會搞混）。
+1. 把 `VERSION` 改成完整 SemVer（例如 `0.2.1-alpha`）；`wails.json` 的 `info.productVersion` 保持對應的三段數字版（`0.2.1`），供 Windows／macOS native metadata 使用。
 2. 確認新版需要的後端已經部署到正式站（Writer 預設連正式站）。
 3. 在要發佈的 commit 上打 tag 並推上去，CI 會編譯五個平台並建立 Release：
 
 ```bash
-git tag steamloom-writer-v0.2.0
+git tag steamloom-writer-v0.2.1-alpha
 ```
 
 ```bash
-git push origin steamloom-writer-v0.2.0
+git push origin steamloom-writer-v0.2.1-alpha
 ```
+
+`0.2.0` 的 updater 預設忽略 GitHub prerelease，第一次切到 alpha channel 需手動安裝；安裝 `0.2.1-alpha` 後就會繼續檢查後續 alpha 更新。
 
 macOS 版沒有簽名／notarization，第一次開啟要在 Finder 按右鍵選「打開」。
 

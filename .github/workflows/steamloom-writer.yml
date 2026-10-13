@@ -135,13 +135,14 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
 
-      # release tag 優先；一般 workflow build 則沿用 wails.json 版號。
+      # VERSION 是 Writer 的 SemVer；Wails native metadata 只接受數字版號，所以會移除 -alpha 等 suffix。
       - name: Resolve app version
         working-directory: ${{ env.APP_DIR }}
         run: |
-          version="$(jq -r '.info.productVersion' wails.json)"
+          version="$(tr -d '[:space:]' < VERSION)"
           if [[ "$GITHUB_REF" == refs/tags/steamloom-writer-v* ]]; then version="${GITHUB_REF_NAME#steamloom-writer-v}"; fi
-          jq --arg v "$version" '.info.productVersion = $v' wails.json > wails.json.tmp && mv wails.json.tmp wails.json
+          native_version="${version%%-*}"
+          jq --arg v "$native_version" '.info.productVersion = $v' wails.json > wails.json.tmp && mv wails.json.tmp wails.json
           echo "APP_VERSION=$version" >> "$GITHUB_ENV"
 
       - name: Build
@@ -192,4 +193,5 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           name: SteamLoom Writer ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: dist/*

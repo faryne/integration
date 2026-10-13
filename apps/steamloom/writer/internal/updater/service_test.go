@@ -1,6 +1,18 @@
 package updater
 
-import "testing"
+import (
+	"testing"
+
+	selfupdate "github.com/creativeprojects/go-selfupdate"
+)
+
+func TestUpdaterUsesAlphaChannelAndChecksumValidator(t *testing.T) {
+	validator := &selfupdate.ChecksumValidator{UniqueFilename: "checksums.txt"}
+	config := updaterConfig([]string{"asset"}, validator)
+	if !config.Prerelease || len(config.Filters) != 1 || config.Filters[0] != "asset" || config.Validator != validator {
+		t.Fatalf("alpha updater config is incomplete: %#v", config)
+	}
+}
 
 func TestAssetPattern(t *testing.T) {
 	tests := []struct {
