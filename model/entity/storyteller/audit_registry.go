@@ -49,9 +49,9 @@ var StorytellerAuditActions = []AuditActionDefinition{
 	{Name: "volume.reorder", Category: "story", Importance: AuditImportanceNormal, Routes: []AuditRouteRef{route("PUT", "/storyteller/projects/:project/volumes/:volume"), route("PATCH", "/storyteller/projects/:project/stories/:story")}, Tools: []string{"storyteller_update_volume"}},
 
 	{Name: "lore.create", Category: "lore", Importance: AuditImportanceNormal, Routes: []AuditRouteRef{route("POST", "/storyteller/projects/:project/lores")}, Tools: []string{"storyteller_upsert_lore"}},
-	{Name: "lore.update", Category: "lore", Importance: AuditImportanceNormal, Routes: []AuditRouteRef{route("PUT", "/storyteller/projects/:project/lores/:lore")}, Tools: []string{"storyteller_upsert_lore", "storyteller_patch_lore", "storyteller_search_replace_lore", "storyteller_search_replace_lore_batch"}},
+	{Name: "lore.update", Category: "lore", Importance: AuditImportanceNormal, Routes: []AuditRouteRef{route("PUT", "/storyteller/projects/:project/lores/:lore"), route("PATCH", "/storyteller/projects/:project/lores/:lore")}, Tools: []string{"storyteller_upsert_lore", "storyteller_patch_lore", "storyteller_search_replace_lore", "storyteller_search_replace_lore_batch"}},
 	{Name: "lore.delete", Category: "lore", Importance: AuditImportanceHigh, Routes: []AuditRouteRef{route("DELETE", "/storyteller/projects/:project/lores/:lore")}, Tools: []string{"storyteller_delete_lore"}},
-	{Name: "lore.move", Category: "lore", Importance: AuditImportanceNormal, Routes: []AuditRouteRef{route("PUT", "/storyteller/projects/:project/lores/:lore/move")}, Tools: []string{"storyteller_move_lore"}},
+	{Name: "lore.move", Category: "lore", Importance: AuditImportanceNormal, Routes: []AuditRouteRef{route("PUT", "/storyteller/projects/:project/lores/:lore/move"), route("PATCH", "/storyteller/projects/:project/lores/:lore")}, Tools: []string{"storyteller_move_lore"}},
 	{Name: "lore.revert", Category: "lore", Importance: AuditImportanceHigh, Routes: []AuditRouteRef{route("POST", "/storyteller/projects/:project/lores/:lore/versions/:version/revert")}, Tools: []string{"storyteller_revert_lore"}},
 
 	{Name: "lore_collection.create", Category: "lore", Importance: AuditImportanceNormal, Routes: []AuditRouteRef{route("POST", "/storyteller/projects/:project/lore-collections")}, Tools: []string{"storyteller_create_lore_collection"}},

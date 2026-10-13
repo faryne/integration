@@ -245,6 +245,8 @@ func Storyteller(app *fiber.App) {
 	authenticated.Post("/projects/:project/lores", storyteller.CreateLore)
 	authenticated.Get("/projects/:project/lores/:lore", storyteller.Lore)
 	authenticated.Put("/projects/:project/lores/:lore", storyteller.UpdateLore)
+	// 狀態／設定集等屬性異動，不寫版本（對應故事的 PATCH）
+	authenticated.Patch("/projects/:project/lores/:lore", storyteller.PatchLore)
 	authenticated.Put("/projects/:project/lores/:lore/move", storyteller.MoveLore)
 	authenticated.Delete("/projects/:project/lores/:lore", storyteller.DeleteLore)
 	authenticated.Get("/projects/:project/lores/:lore/chat-messages/:message/reference-content", aiGate, storyteller.LoreChatMessageReferenceContent)

@@ -163,7 +163,14 @@ func (s *Service) DeleteLoreCollection(userID uint64, projectPublicID, collectio
 	return s.repo.DeleteLoreCollection(row)
 }
 
+// MoveLore 只搬移設定集，委派給 PatchLore（MCP 的 move_lore 與既有 /move 路由沿用）。
 func (s *Service) MoveLore(userID uint64, projectPublicID, lorePublicID string, input storytellerModel.LoreMoveRequest) (*storytellerModel.Lore, error) {
+	return s.PatchLore(userID, projectPublicID, lorePublicID, storytellerModel.LorePatchRequest{CollectionID: &input.CollectionID})
+}
+
+// PatchLore 只改狀態／設定集，不寫入版本：跟 PatchStory 對稱，這些屬性異動不進編輯歷史，只記 audit。
+// 網站與 SteamLoom Writer 編輯頁的屬性列、側邊列「移動到設定集」都走這裡。
+func (s *Service) PatchLore(userID uint64, projectPublicID, lorePublicID string, input storytellerModel.LorePatchRequest) (*storytellerModel.Lore, error) {
 	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
 	if err != nil {
 		return nil, err
@@ -172,12 +179,26 @@ func (s *Service) MoveLore(userID uint64, projectPublicID, lorePublicID string, 
 	if err != nil {
 		return nil, err
 	}
-	collectionID, err := s.resolveLoreCollectionID(project.ID, input.CollectionID)
-	if err != nil {
-		return nil, err
+	fields := map[string]any{}
+	if input.Status != nil {
+		// 狀態驗證沿用整篇存檔的規則（只能 draft／completed）
+		if err := applyLorePublishing(lore, storytellerModel.LoreRequest{Status: input.Status}); err != nil {
+			return nil, err
+		}
+		fields["status"] = lore.Status
 	}
-	lore.CollectionID = collectionID
-	if err := s.repo.MoveLore(lore); err != nil {
+	if input.CollectionID != nil {
+		collectionID, err := s.resolveLoreCollectionID(project.ID, *input.CollectionID)
+		if err != nil {
+			return nil, err
+		}
+		lore.CollectionID = collectionID
+		fields["collection_id"] = lore.CollectionID
+	}
+	if len(fields) == 0 {
+		return nil, errors.New("nothing to update: status or collection_id is required")
+	}
+	if err := s.repo.PatchLoreFields(lore, fields); err != nil {
 		return nil, err
 	}
 	return lore, s.fillLoreCollectionPublicID(project.ID, lore)

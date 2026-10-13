@@ -77,6 +77,7 @@ func webSuccess(lookup webAuditLookup) fiber.Handler {
 			}
 		}
 		actionName = resolvedWebStoryAction(actionName, before.storyBefore, data)
+		actionName = resolvedWebLoreAction(actionName, ctx.Method(), arguments)
 		// 授權頁按「拒絕」也走同一條路由，記成 oauth.deny 才不會在活動紀錄裡看起來像同意
 		if result, ok := data.(*storytellerModel.OAuthAuthorizeOutput); ok && actionName == "oauth.authorize" && !result.Approved {
 			actionName = "oauth.deny"
@@ -212,6 +213,18 @@ func resolvedWebStoryAction(action string, before *storytellerModel.Story, after
 	}
 	if action == "volume.update" && onlySortChanged(changes) {
 		return "volume.reorder"
+	}
+	return action
+}
+
+// resolvedWebLoreAction：設定的 PATCH 有帶 collection_id 就是搬移設定集（lore.move），
+// 只改狀態記成 lore.update；整篇存檔（PUT）帶 collection_id 仍是 lore.update。
+func resolvedWebLoreAction(action, method string, arguments map[string]any) string {
+	if action != "lore.update" || !strings.EqualFold(method, "PATCH") {
+		return action
+	}
+	if _, moved := arguments["collection_id"]; moved {
+		return "lore.move"
 	}
 	return action
 }

@@ -56,6 +56,14 @@ func TestResolvedWebStoryAction(t *testing.T) {
 	}))
 }
 
+func TestResolvedWebLoreAction(t *testing.T) {
+	// PATCH 帶 collection_id＝搬移設定集；只改狀態＝一般更新；整篇 PUT 不受影響
+	require.Equal(t, "lore.move", resolvedWebLoreAction("lore.update", "PATCH", map[string]any{"collection_id": ""}))
+	require.Equal(t, "lore.update", resolvedWebLoreAction("lore.update", "PATCH", map[string]any{"status": "completed"}))
+	require.Equal(t, "lore.update", resolvedWebLoreAction("lore.update", "PUT", map[string]any{"collection_id": "c1"}))
+	require.Equal(t, "story.update", resolvedWebLoreAction("story.update", "PATCH", map[string]any{"collection_id": "c1"}))
+}
+
 func TestRouteTemplateMatches(t *testing.T) {
 	require.True(t, routeTemplateMatches("/storyteller/projects/:project/stories/:story", "/storyteller/projects/p1/stories/s1"))
 	require.False(t, routeTemplateMatches("/storyteller/projects/:project/stories/:story", "/storyteller/projects/p1/stories"))

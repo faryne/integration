@@ -986,6 +986,15 @@ type StoryPatchRequest struct {
 	Status *StoryStatus `json:"status,omitempty"`
 	// ParentID 是目標冊的 public_id；空字串代表移出冊。冊本身不能帶（不支援冊中冊）。
 	ParentID *string `json:"parent_id,omitempty"`
+	// ProfileIDs 是署名（0＝本人）；空陣列視為只有本人。冊沒有署名，不能帶。
+	ProfileIDs *[]uint64 `json:"profile_ids,omitempty"`
+}
+
+// LorePatchRequest 是設定的屬性異動（跟 StoryPatchRequest 對稱）：只改狀態／設定集，不寫版本、不進編輯歷史。
+// CollectionID 是設定集 public_id，空字串代表移出設定集（未歸類）。
+type LorePatchRequest struct {
+	Status       *StoryStatus `json:"status,omitempty"`
+	CollectionID *string      `json:"collection_id,omitempty"`
 }
 
 // StoryVolumeRequest 是冊的建立／重新命名請求，刻意跟 StoryRequest 分開、
