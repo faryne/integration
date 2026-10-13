@@ -34,6 +34,32 @@
     "taskQueuedCount": "另有 {{count}} 項等待中",
     "stopTask": "停止這項工作",
     "tasks": "AI 任務",
+    "activity": {
+      "runningTitle": "Agent 執行紀錄",
+      "completedTitle": "Agent 已完成",
+      "failedTitle": "Agent 執行失敗",
+      "canceledTitle": "工作已停止",
+      "collapse": "收合執行紀錄",
+      "expand": "展開執行紀錄",
+      "queued": "工作已排入佇列",
+      "started": "Agent 已開始處理",
+      "toolStarted": "開始使用 {{tool}}",
+      "toolCompleted": "已完成 {{tool}}",
+      "completed": "Agent 已完成工作",
+      "failed": "Agent 執行失敗",
+      "canceled": "工作已停止",
+      "applyStarted": "Agent 已開始寫入核准內容",
+      "applyCompleted": "Agent 已完成寫入",
+      "applyFailed": "Agent 寫入失敗",
+      "applyConflict": "偵測到版本衝突，未覆寫內容",
+      "applyInterrupted": "寫入中斷，結果需要查證"
+    },
+    "login": {
+      "title": "需要重新登入 Agent",
+      "description": "請在 Terminal 自行執行下列指令，再回到 Writer 重試。Writer 不會讀取或保存登入憑證。",
+      "copy": "複製指令",
+      "copied": "已複製"
+    },
     "states": {
       "queued": "排隊中",
       "running": "執行中",

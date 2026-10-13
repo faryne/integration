@@ -10,7 +10,7 @@ import { useBackendData } from "@writer/lib/useBackendData.ts";
 import { ActiveTaskStatus } from "@writer/pages/workspace/ActiveTaskStatus.tsx";
 import { AgentPromptEditor } from "@writer/pages/workspace/AgentPromptEditor.tsx";
 import { AssistantSetup } from "@writer/pages/workspace/AssistantSetup.tsx";
-import { ProposalCard } from "@writer/pages/workspace/ProposalCard.tsx";
+import { ChatTranscript } from "@writer/pages/workspace/ChatTranscript.tsx";
 import { ProposalReviewDialog } from "@writer/pages/workspace/ProposalReviewDialog.tsx";
 import { TaskRail } from "@writer/pages/workspace/TaskRail.tsx";
 import { ThreadDeleteDialog } from "@writer/pages/workspace/ThreadDeleteDialog.tsx";
@@ -71,7 +71,7 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
   useEffect(() => EventsOn("agent:task", (event: AgentTaskEvent) => {
     if (event.task.project_id !== projectID) return;
     setTasks((current) => ({ ...current, [event.task.id]: event.task }));
-    if (event.type.startsWith("task.") || event.type.startsWith("apply.") || event.type === "proposal.ready") {
+    if (event.type.startsWith("task.") || event.type.startsWith("tool.") || event.type.startsWith("apply.") || event.type === "proposal.ready") {
       void loadThreads();
       if (event.task.agent_id === selected) {
         void chat.refreshVisibleThread(event.task.thread_id);
@@ -194,22 +194,15 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
             </Button>
           )}
           {chat.page === null && selected && <CircularProgress size={18} sx={{ alignSelf: "center", mt: 4 }} />}
-          {chat.page?.messages.map((message, index) => {
-            const system = message.role === "system";
-            const proposal = message.type === "proposal.ready" ? proposals?.find((item) => item.id === message.proposal_id) : undefined;
-            if (proposal) {
-              return <ProposalCard key={message.event_id ?? `${chat.page?.start ?? 0}:${index}`} proposal={proposal} onReview={(item) => setReview({ proposal, item })} />;
-            }
-            return (
-            <Box key={`${chat.page?.start ?? 0}:${index}`} sx={{ display: "flex", justifyContent: system ? "center" : message.role === "user" ? "flex-end" : "flex-start" }}>
-              <Paper
-                variant="outlined"
-                sx={{ px: 1.5, py: 1, maxWidth: system ? "100%" : "80%", borderRadius: 2, bgcolor: system ? "action.hover" : message.role === "user" ? "action.selected" : "transparent" }}
-              >
-                <Typography color={system ? "text.secondary" : "text.primary"} sx={{ fontSize: system ? 12.5 : 14, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{message.text}</Typography>
-              </Paper>
-            </Box>
-          )})}
+          {chat.page && (
+            <ChatTranscript
+              agentID={selected}
+              messages={chat.page.messages}
+              start={chat.page.start}
+              proposals={proposals}
+              onReview={(proposal, item) => setReview({ proposal, item })}
+            />
+          )}
           {activeTask && <ActiveTaskStatus task={activeTask} queued={Math.max(0, activeTasks.length - 1)} canceling={canceling === activeTask.id} onCancel={() => void cancelTask()} />}
         </Stack>
         </Box>

@@ -2,12 +2,74 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 )
+
+func TestTaskManagerPersistsToolActivity(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := make(chan TaskEvent, 20)
+	manager := NewTaskManager(context.Background(), func(_ context.Context, _ string, req Request) (Reply, error) {
+		req.emitStream(StreamEvent{Type: StreamToolStarted, ToolName: "storyteller_get_story"})
+		req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: "storyteller_get_story"})
+		return Reply{Text: "done"}, nil
+	}, func(event TaskEvent) { events <- event })
+	defer manager.Close()
+
+	task, err := manager.Start("claude", Request{ThreadID: page.CurrentID, ProjectID: "project", Prompt: "read"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitTaskEvent(t, events, task.ID, EventTaskCompleted)
+	chat, err := OpenChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var activity []ChatLine
+	for _, line := range chat.Messages {
+		if line.Type == EventTaskToolStarted || line.Type == EventTaskToolFinished {
+			activity = append(activity, line)
+		}
+	}
+	if len(activity) != 2 || activity[0].ToolName != "storyteller_get_story" || activity[1].ToolName != "storyteller_get_story" {
+		t.Fatalf("tool activity was not persisted: %#v", activity)
+	}
+}
+
+func TestTaskManagerPersistsLoginCommand(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := make(chan TaskEvent, 20)
+	manager := NewTaskManager(context.Background(), func(context.Context, string, Request) (Reply, error) {
+		return Reply{}, errors.New("Failed to authenticate: OAuth session expired and could not be refreshed")
+	}, func(event TaskEvent) { events <- event })
+	defer manager.Close()
+
+	task, err := manager.Start("claude", Request{ThreadID: page.CurrentID, ProjectID: "project", Prompt: "read"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitTaskEvent(t, events, task.ID, EventTaskFailed)
+	chat, err := OpenChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	failed := chat.Messages[len(chat.Messages)-1]
+	if failed.Action != "agent.login" || len(failed.Commands) != 1 || failed.Commands[0] != "claude auth login" {
+		t.Fatalf("login action was not persisted: %#v", failed)
+	}
+}
 
 func TestTaskManagerRunsDifferentThreadsConcurrently(t *testing.T) {
 	withTempConfig(t)

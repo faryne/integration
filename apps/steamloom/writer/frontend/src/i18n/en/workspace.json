@@ -34,6 +34,32 @@
     "taskQueuedCount": "{{count}} more queued",
     "stopTask": "Stop this task",
     "tasks": "AI tasks",
+    "activity": {
+      "runningTitle": "Agent activity",
+      "completedTitle": "Agent completed",
+      "failedTitle": "Agent failed",
+      "canceledTitle": "Task stopped",
+      "collapse": "Collapse activity",
+      "expand": "Expand activity",
+      "queued": "Task queued",
+      "started": "Agent started working",
+      "toolStarted": "Started using {{tool}}",
+      "toolCompleted": "Finished {{tool}}",
+      "completed": "Agent completed the task",
+      "failed": "Agent execution failed",
+      "canceled": "Task stopped",
+      "applyStarted": "Agent started applying approved content",
+      "applyCompleted": "Agent finished applying changes",
+      "applyFailed": "Agent failed to apply changes",
+      "applyConflict": "A version conflict was detected; content was not overwritten",
+      "applyInterrupted": "The write was interrupted and needs verification"
+    },
+    "login": {
+      "title": "Agent sign-in required",
+      "description": "Run the command below in Terminal, then retry in Writer. Writer does not read or store your credentials.",
+      "copy": "Copy command",
+      "copied": "Copied"
+    },
     "states": {
       "queued": "Queued",
       "running": "Running",

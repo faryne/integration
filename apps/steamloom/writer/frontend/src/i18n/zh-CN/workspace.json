@@ -34,6 +34,32 @@
     "taskQueuedCount": "另有 {{count}} 项等待中",
     "stopTask": "停止这项工作",
     "tasks": "AI 任务",
+    "activity": {
+      "runningTitle": "Agent 执行记录",
+      "completedTitle": "Agent 已完成",
+      "failedTitle": "Agent 执行失败",
+      "canceledTitle": "工作已停止",
+      "collapse": "收起执行记录",
+      "expand": "展开执行记录",
+      "queued": "工作已加入队列",
+      "started": "Agent 已开始处理",
+      "toolStarted": "开始使用 {{tool}}",
+      "toolCompleted": "已完成 {{tool}}",
+      "completed": "Agent 已完成工作",
+      "failed": "Agent 执行失败",
+      "canceled": "工作已停止",
+      "applyStarted": "Agent 已开始写入已核准内容",
+      "applyCompleted": "Agent 已完成写入",
+      "applyFailed": "Agent 写入失败",
+      "applyConflict": "检测到版本冲突，未覆盖内容",
+      "applyInterrupted": "写入中断，结果需要查证"
+    },
+    "login": {
+      "title": "需要重新登录 Agent",
+      "description": "请在终端自行执行以下命令，再回到 Writer 重试。Writer 不会读取或保存登录凭据。",
+      "copy": "复制命令",
+      "copied": "已复制"
+    },
     "states": {
       "queued": "排队中",
       "running": "执行中",

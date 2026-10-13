@@ -34,6 +34,32 @@
     "taskQueuedCount": "ほか {{count}} 件が待機中",
     "stopTask": "このタスクを停止",
     "tasks": "AI タスク",
+    "activity": {
+      "runningTitle": "Agent の実行記録",
+      "completedTitle": "Agent が完了しました",
+      "failedTitle": "Agent の実行に失敗しました",
+      "canceledTitle": "タスクを停止しました",
+      "collapse": "実行記録を閉じる",
+      "expand": "実行記録を開く",
+      "queued": "タスクをキューに追加しました",
+      "started": "Agent が処理を開始しました",
+      "toolStarted": "{{tool}} の使用を開始",
+      "toolCompleted": "{{tool}} が完了",
+      "completed": "Agent がタスクを完了しました",
+      "failed": "Agent の実行に失敗しました",
+      "canceled": "タスクを停止しました",
+      "applyStarted": "Agent が承認済み内容の書き込みを開始しました",
+      "applyCompleted": "Agent が書き込みを完了しました",
+      "applyFailed": "Agent の書き込みに失敗しました",
+      "applyConflict": "バージョン競合を検出し、上書きしませんでした",
+      "applyInterrupted": "書き込みが中断され、結果の確認が必要です"
+    },
+    "login": {
+      "title": "Agent への再ログインが必要です",
+      "description": "ターミナルで次のコマンドを実行してから、Writer で再試行してください。Writer は認証情報を読み取り、保存しません。",
+      "copy": "コマンドをコピー",
+      "copied": "コピーしました"
+    },
     "states": {
       "queued": "待機中",
       "running": "実行中",

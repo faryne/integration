@@ -9,6 +9,9 @@ export namespace agent {
 	    proposal_id?: string;
 	    content_hash?: string;
 	    event_id?: string;
+	    tool_name?: string;
+	    action?: string;
+	    commands?: string[];
 
 	    static createFrom(source: any = {}) {
 	        return new ChatLine(source);
@@ -24,6 +27,9 @@ export namespace agent {
 	        this.proposal_id = source["proposal_id"];
 	        this.content_hash = source["content_hash"];
 	        this.event_id = source["event_id"];
+	        this.tool_name = source["tool_name"];
+	        this.action = source["action"];
+	        this.commands = source["commands"];
 	    }
 	}
 	export class Thread {
