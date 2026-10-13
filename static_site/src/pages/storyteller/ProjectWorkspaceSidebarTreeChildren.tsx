@@ -39,6 +39,9 @@ type SidebarRowData = {
   stories?: StorytellerStory[];
 };
 
+// 側邊列每篇作品／設定 hover 時出現的 ⋮（跟列表同一份選單），由頁面提供
+export type RenderSidebarItemActions = (item: SelectedItem) => ReactNode;
+
 export function SidebarCollectionChildren({
   row,
   section,
@@ -47,6 +50,7 @@ export function SidebarCollectionChildren({
   onSelectItem,
   sorting,
   onReorderItem,
+  renderItemActions,
 }: {
   row: SidebarRowData;
   section: WorkspaceSection;
@@ -55,6 +59,7 @@ export function SidebarCollectionChildren({
   onSelectItem: SelectSidebarItem;
   sorting?: boolean;
   onReorderItem?: ReorderSidebarItem;
+  renderItemActions?: RenderSidebarItemActions;
 }) {
   if (section === "stories") {
     return (
@@ -64,6 +69,7 @@ export function SidebarCollectionChildren({
         selectedItem={selectedItem}
         onSelectItem={onSelectItem}
         onReorderItem={sorting ? onReorderItem : undefined}
+        renderItemActions={renderItemActions}
       />
     );
   }
@@ -74,25 +80,29 @@ export function SidebarCollectionChildren({
         collectionId={row.id}
         selectedItem={selectedItem}
         onSelectItem={onSelectItem}
+        renderItemActions={renderItemActions}
       />
     );
   }
   return null;
 }
 
-// onReorderItem 有值（排序模式）時每一篇右側出現上移／下移，跟 SteamLoom Writer 一樣只在同一冊內排序
+// onReorderItem 有值（排序模式）時每一篇右側出現上移／下移，跟 SteamLoom Writer 一樣只在同一冊內排序；
+// 平常則是 hover 才出現的 ⋮
 function SidebarStoryChildren({
   stories,
   collectionId,
   selectedItem,
   onSelectItem,
   onReorderItem,
+  renderItemActions,
 }: {
   stories: StorytellerStory[];
   collectionId: string;
   selectedItem?: SidebarSelectedItem;
   onSelectItem: SelectSidebarItem;
   onReorderItem?: ReorderSidebarItem;
+  renderItemActions?: RenderSidebarItemActions;
 }) {
   return (
     <List dense disablePadding sx={sidebarChildListSx}>
@@ -132,6 +142,7 @@ function SidebarStoryChildren({
               />
             )
           }
+          actions={renderItemActions?.({ type: "story", row: story })}
         />
       ))}
     </List>
@@ -143,11 +154,13 @@ function SidebarLoreChildren({
   collectionId,
   selectedItem,
   onSelectItem,
+  renderItemActions,
 }: {
   projectPublicId?: string;
   collectionId: string;
   selectedItem?: SidebarSelectedItem;
   onSelectItem: SelectSidebarItem;
+  renderItemActions?: RenderSidebarItemActions;
 }) {
   const loresQuery = useStorytellerLores(projectPublicId);
   const lores = (loresQuery.data ?? []).filter((lore) =>
@@ -169,6 +182,7 @@ function SidebarLoreChildren({
           onClick={() =>
             onSelectItem({ type: "lore", row: lore }, collectionId)
           }
+          actions={renderItemActions?.({ type: "lore", row: lore })}
         />
       ))}
     </SidebarAsyncChildren>
@@ -202,14 +216,18 @@ function SidebarTreeItem({
   selected,
   onClick,
   extra,
+  actions,
 }: {
   title: string;
   icon: ReactNode;
   selected: boolean;
   onClick: () => void;
-  // 列右側的操作（排序模式的上移／下移）
+  // 列右側一直顯示的操作（排序模式的上移／下移）；有 extra 時不顯示 actions
   extra?: ReactNode;
+  // 列右側 hover／鍵盤聚焦才出現的操作（⋮）；觸控裝置沒有 hover，一直顯示
+  actions?: ReactNode;
 }) {
+  const side = extra || actions;
   return (
     <ListItemButton
       selected={selected}
@@ -237,10 +255,22 @@ function SidebarTreeItem({
         }
         sx={{ minWidth: 0, overflow: "hidden" }}
       />
-      {extra && <Box sx={{ display: "flex", flexShrink: 0 }}>{extra}</Box>}
+      {side && (
+        // 擋掉冒泡：按右側按鈕不要順便打開這一篇（也不要觸發整列的 ripple）
+        <Box
+          className={extra ? undefined : sidebarItemActionsClass}
+          onClick={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+          sx={{ display: "flex", flexShrink: 0 }}
+        >
+          {side}
+        </Box>
+      )}
     </ListItemButton>
   );
 }
+
+const sidebarItemActionsClass = "sidebar-item-actions";
 
 const sidebarChildListSx: SxProps<Theme> = {
   py: 0.25,
@@ -255,6 +285,12 @@ const sidebarChildRowSx: SxProps<Theme> = {
   pr: 0.75,
   color: "text.secondary",
   "&:hover": { bgcolor: "action.hover" },
+  [`& .${sidebarItemActionsClass}`]: { opacity: 0 },
+  [`&:hover .${sidebarItemActionsClass}, &:focus-within .${sidebarItemActionsClass}`]:
+    { opacity: 1 },
+  "@media (hover: none)": {
+    [`& .${sidebarItemActionsClass}`]: { opacity: 1 },
+  },
   "&.Mui-selected": {
     bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
     color: "text.primary",

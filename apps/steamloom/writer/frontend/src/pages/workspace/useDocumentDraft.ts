@@ -32,6 +32,7 @@ export function useDocumentDraft({
   item,
   doc,
   groupId,
+  status,
   autoSaveMinutes,
   onSaved,
   onDirtyChange,
@@ -43,6 +44,8 @@ export function useDocumentDraft({
   doc: Document;
   // 打開時所在的冊／設定集（後端回的故事 parent_id 是內部 id，所以由工作台樹提供 public_id）
   groupId: string;
+  // 工作台樹上的公開狀態；側邊列／列表的 ⋮ 改了這篇的狀態時跟著換
+  status?: string;
   // null＝關閉自動存檔
   autoSaveMinutes: number | null;
   // 存檔成功後通知外層（標題可能改了，側邊列要重抓）
@@ -172,6 +175,17 @@ export function useDocumentDraft({
     setDraft({ groupId });
     markSaved({ ...savedRef.current, groupId });
   }, [groupId]);
+
+  // 側邊列／列表的 ⋮ 切換了正在編輯這篇的公開狀態：跟著換。狀態一改就直接 PATCH，草稿與已存檔不會分歧，直接蓋過即可；
+  // 只看「變動」不看初值——工作台樹可能比剛載入的文件舊，打開時不能拿它蓋掉文件本身的狀態
+  const statusPropRef = useRef(status);
+  useEffect(() => {
+    if (status === statusPropRef.current) return;
+    statusPropRef.current = status;
+    if (!status || savedRef.current.status === status) return;
+    setDraft({ status });
+    markSaved({ ...savedRef.current, status });
+  }, [status]);
 
   // 有未存檔內容時讓外層（換文件／離開專案）與 Go 端（關閉視窗）先問；離開這篇時清掉
   useEffect(() => {

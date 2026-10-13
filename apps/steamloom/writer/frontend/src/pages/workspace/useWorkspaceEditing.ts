@@ -5,7 +5,7 @@ import { backend, errorMessage, isNotLoggedIn, type Workspace } from "@writer/li
 import { SessionExpiredContext } from "@writer/lib/useBackendData.ts";
 import { moveInList } from "@writer/pages/workspace/workspaceTree.ts";
 
-// 側邊列的建立、移動、排序。排序先在畫面上換好順序（不用等 API），再送出；
+// 側邊列的建立、排序。排序先在畫面上換好順序（不用等 API），再送出；
 // 不管成功或失敗都重新抓一次工作台，以伺服器為準（例如中途某一筆失敗、順序一半新一半舊）。
 export function useWorkspaceEditing({
   project,
@@ -50,8 +50,6 @@ export function useWorkspaceEditing({
       const collections = moveInList(workspace.lore_collections ?? [], index, delta);
       reorder("lore-collections", collections.map((collection) => collection.public_id), { ...workspace, lore_collections: collections });
     },
-    moveStoryTo: (story: string, volume: string) => backend.MoveStory(project, story, volume).catch(fail).finally(reload),
-    moveLoreTo: (lore: string, collection: string) => backend.MoveLore(project, lore, collection).catch(fail).finally(reload),
     // 上傳資產：回傳 true 代表有上傳（對話框可關），使用者在選檔視窗取消則回 false；略過的檔案跳 snack 說明原因
     upload: async (collection: string) => {
       try {

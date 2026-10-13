@@ -264,11 +264,11 @@
   "actions": {
     "create": "Create",
     "moveDown": "Move down",
-    "moveLore": "Move to collection",
-    "moveStory": "Move to volume",
     "moveUp": "Move up",
     "sort": "Reorder",
-    "sortDone": "Done reordering"
+    "sortDone": "Done reordering",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar"
   },
   "all": {
     "assets": "All assets",

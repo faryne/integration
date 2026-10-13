@@ -18,6 +18,7 @@ import {
 } from "./ProjectWorkspacePreviewComponents.tsx";
 import { shortcutLabel } from "@/helpers/shortcut.ts";
 import { workspaceToolPages } from "@/pages/storyteller/workspaceToolPages.tsx";
+import { WorkspaceRailButton } from "./WorkspaceSidebarChrome.tsx";
 
 interface WorkspaceMobileNavigatorDrawerProps extends WorkspaceSidebarProps {
   open: boolean;
@@ -142,45 +143,23 @@ export function WorkspaceSidebarRail({
         </IconButton>
       </Tooltip>
       {items.map((item) => (
-        <Tooltip key={item.section} title={item.label} placement="right">
-          <IconButton
-            size="small"
-            aria-label={item.label}
-            color={
-              !activeToolPage && selected.section === item.section
-                ? "primary"
-                : "default"
-            }
-            onClick={() => onSelect(item.section, "")}
-            sx={{
-              borderRadius: 1,
-              bgcolor:
-                !activeToolPage && selected.section === item.section
-                  ? "action.selected"
-                  : undefined,
-            }}
-          >
-            {item.icon}
-          </IconButton>
-        </Tooltip>
+        <WorkspaceRailButton
+          key={item.section}
+          icon={item.icon}
+          label={item.label}
+          selected={!activeToolPage && selected.section === item.section}
+          onClick={() => onSelect(item.section, "")}
+        />
       ))}
       {onOpenToolPage &&
         workspaceToolPages.map((page) => (
-          <Tooltip key={page.key} title={page.label} placement="right">
-            <IconButton
-              size="small"
-              aria-label={page.label}
-              color={activeToolPage === page.key ? "primary" : "default"}
-              onClick={() => onOpenToolPage(page.key)}
-              sx={{
-                borderRadius: 1,
-                bgcolor:
-                  activeToolPage === page.key ? "action.selected" : undefined,
-              }}
-            >
-              {page.icon()}
-            </IconButton>
-          </Tooltip>
+          <WorkspaceRailButton
+            key={page.key}
+            icon={page.icon()}
+            label={page.label}
+            selected={activeToolPage === page.key}
+            onClick={() => onOpenToolPage(page.key)}
+          />
         ))}
     </Stack>
   );

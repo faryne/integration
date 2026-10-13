@@ -54,6 +54,7 @@ on:
       - 'static_site/src/pages/storyteller/WorkspaceAssetPanel.tsx'
       - 'static_site/src/pages/storyteller/WorkspaceDocumentRows.tsx'
       - 'static_site/src/pages/storyteller/WorkspaceSortArrows.tsx'
+      - 'static_site/src/pages/storyteller/WorkspaceSidebarChrome.tsx'
       - 'static_site/src/pages/storyteller/storytellerAssetMarkdown.ts'
       - 'static_site/src/pages/storyteller/storytellerContentWordCount.ts'
       - 'static_site/src/pages/storyteller/storytellerLoreLinkCheck.ts'

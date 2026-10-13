@@ -19,6 +19,8 @@ export type EditorPanelProps = {
   // 所在冊／設定集的 public_id（空字串＝未分冊／未歸類）與可選的冊／設定集（第一個是未分冊／未歸類）
   groupId: string;
   groupTargets: MoveTarget[];
+  // 工作台樹上的公開狀態（側邊列／列表的 ⋮ 可能改它）
+  status?: string;
   profile: Profile | null;
   // 有沒有未存檔內容，外層據此在換文件、離開專案前先問
   onDirtyChange: (dirty: boolean) => void;
@@ -37,9 +39,9 @@ export function EditorPanel(props: EditorPanelProps) {
 
 // 文字作品：直接用網站的編輯器（右鍵選單、slash 指令、浮動工具列、表格、腳注…全部一致），
 // 外框（標題、屬性列、摘要、底部狀態列與存檔按鈕）也用網站工作台內嵌編輯頁的同一組元件。
-function TextDocumentEditor({ project, item, doc, groupId, groupTargets, profile, onDirtyChange, onSaved, onShowHistory }: EditorPanelProps & { doc: Document }) {
+function TextDocumentEditor({ project, item, doc, groupId, status, groupTargets, profile, onDirtyChange, onSaved, onShowHistory }: EditorPanelProps & { doc: Document }) {
   const [autoSaveMinutes, setAutoSaveMinutes] = useState(() => initialAutoSaveMinutes(profile));
-  const state = useDocumentDraft({ project, item, doc, groupId, autoSaveMinutes, onSaved, onDirtyChange });
+  const state = useDocumentDraft({ project, item, doc, groupId, status, autoSaveMinutes, onSaved, onDirtyChange });
   const { draft, setContent, saving, updatedAt, save } = state;
   const wordCount = useMemo(() => contentWordCount(draft.content), [draft.content]);
 

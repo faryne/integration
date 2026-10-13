@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"log"
 	"os"
@@ -29,6 +30,8 @@ func main() {
 		return
 	}
 	app := NewApp()
+	// macOS：Edit 選單不要出現系統的「開始聽寫」「表情與符號」（其他平台不做事）
+	prepareNativeMenu()
 	err := wails.Run(&options.App{
 		Title:     "SteamLoom Writer",
 		Width:     1280,
@@ -44,9 +47,11 @@ func main() {
 		// 跟 nocturne 主題的底色一致，避免視窗開啟時閃白
 		BackgroundColour: &options.RGBA{R: 16, G: 11, B: 24, A: 1},
 		OnStartup:        app.startup,
-		OnShutdown:       app.shutdown,
-		OnBeforeClose:    app.beforeClose,
-		Bind:             []any{app},
+		// 主選單建好、畫面載入後再整理 macOS 的 Edit 選單（拿掉 Wails 附帶的 Speech）；重新整理時重跑也不會重複刪
+		OnDomReady:    func(context.Context) { trimNativeMenu() },
+		OnShutdown:    app.shutdown,
+		OnBeforeClose: app.beforeClose,
+		Bind:          []any{app},
 	})
 	if err != nil {
 		log.Fatal(err)
