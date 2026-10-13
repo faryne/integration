@@ -1,6 +1,5 @@
+import { WorkspaceSortArrows } from "@/pages/storyteller/WorkspaceSortArrows.tsx";
 import AddIcon from "@mui/icons-material/Add";
-import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import DoneIcon from "@mui/icons-material/Done";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import SwapVertIcon from "@mui/icons-material/SwapVert";
@@ -11,20 +10,10 @@ import type { MoveTarget } from "@writer/pages/workspace/workspaceTree.ts";
 
 const iconSx = { p: 0.375, "& .MuiSvgIcon-root": { fontSize: 16 } };
 
-// 排序模式下每一列右側的上移／下移；第一列沒有上移、最後一列沒有下移（保留位置讓整排箭頭對齊）
-export function SortArrows({ index, count, onMove }: { index: number; count: number; onMove: (delta: -1 | 1) => void }) {
+// 排序模式下每一列右側的上移／下移：用網站共用的 WorkspaceSortArrows，這裡只補上語系文字
+export function SortArrows(props: { index: number; count: number; onMove: (delta: -1 | 1) => void }) {
   const { t } = useTranslation();
-  const hidden = { visibility: "hidden" } as const;
-  return (
-    <>
-      <IconButton size="small" sx={{ ...iconSx, ...(index === 0 && hidden) }} aria-label={t("workspace.actions.moveUp")} onClick={() => onMove(-1)}>
-        <ArrowUpwardIcon />
-      </IconButton>
-      <IconButton size="small" sx={{ ...iconSx, ...(index === count - 1 && hidden) }} aria-label={t("workspace.actions.moveDown")} onClick={() => onMove(1)}>
-        <ArrowDownwardIcon />
-      </IconButton>
-    </>
-  );
+  return <WorkspaceSortArrows {...props} upLabel={t("workspace.actions.moveUp")} downLabel={t("workspace.actions.moveDown")} />;
 }
 
 // 區塊標題右側：排序模式開關（有可排序的對象才出現）＋「建立」選單（只有一種可建立時直接開對話框）

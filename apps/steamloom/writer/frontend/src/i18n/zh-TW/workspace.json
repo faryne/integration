@@ -78,9 +78,6 @@
     "skipped": "{{count}} 個檔案沒有上傳：只支援 JPEG／PNG／WebP／GIF，單檔 15 MB 以內，一次最多 60 張"
   },
   "list": {
-    "wordCount": "{{words}} 字",
-    "updatedAt": "更新於 {{date}}",
-    "image": "圖像作品",
     "empty": {
       "story": {
         "title": "沒有作品",
@@ -94,16 +91,49 @@
         "title": "沒有資產",
         "description": "這個專案目前沒有資產。"
       }
-    }
+    },
+    "actions": {
+      "story": "作品操作",
+      "lore": "設定操作"
+    },
+    "move": {
+      "story": "移動到冊…",
+      "lore": "移動至設定集…"
+    },
+    "moveToUngrouped": {
+      "story": "移到未分冊",
+      "lore": "移到未歸類"
+    },
+    "delete": {
+      "story": "刪除作品",
+      "lore": "刪除設定",
+      "image": "刪除話"
+    },
+    "deleteDescription": {
+      "story": "刪除後會移除作品與版本資料。請輸入作品名稱確認。",
+      "lore": "刪除後會移除這則設定與版本資料。請輸入設定名稱確認。"
+    },
+    "moved": {
+      "story": "作品已移動。",
+      "lore": "設定已移動。"
+    },
+    "deleted": {
+      "story": "作品已刪除。",
+      "lore": "設定已刪除。"
+    },
+    "published": "作品已公開。",
+    "unpublished": "作品已設為未公開。"
   },
   "editor": {
     "titlePlaceholder": {
       "story": "未命名故事",
-      "lore": "未命名設定"
+      "lore": "未命名設定",
+      "image": "未命名圖像作品"
     },
     "summaryPlaceholder": {
       "story": "新增摘要...",
-      "lore": "新增給讀者看的摘要..."
+      "lore": "新增給讀者看的摘要...",
+      "image": "新增描述..."
     },
     "status": "狀態",
     "group": {
@@ -133,11 +163,38 @@
       "cancel": "繼續編輯",
       "discard": "放棄修改"
     },
-    "image": {
-      "title": "圖像作品還不能在 Writer 編輯",
-      "description": "請先到網站編輯圖像作品。"
-    },
     "self": "本人（{{penName}}）",
-    "selfOnly": "本人"
+    "selfOnly": "本人",
+    "attributeFailed": "屬性更新失敗，請重試："
+  },
+  "assets": {
+    "search": "搜尋資產",
+    "refresh": "重新整理",
+    "upload": "上傳圖像",
+    "editCollection": "編輯資產集",
+    "deleteCollection": "刪除資產集",
+    "deleteCollectionDescription": "刪除後不會影響其他資產集。請輸入資產集名稱確認。",
+    "move": "移動資產",
+    "delete": "刪除資產",
+    "referenced": "資產仍被作品引用，請先移除引用",
+    "moveToUncategorized": "移到未分類",
+    "deleteTitle": "刪除資產",
+    "deleteDescription": "刪除後無法復原。請輸入資產名稱確認。",
+    "deleted": "資產已刪除。",
+    "moved": "資產已移動。",
+    "collection": "資產集",
+    "collectionSaved": "資產集已更新。",
+    "collectionDeleted": "資產集已刪除。"
+  },
+  "image": {
+    "save": "儲存",
+    "saving": "處理中...",
+    "noPages": "至少要有一頁才能存檔。",
+    "uploadIncomplete": "部分圖片沒有完成資產建立，請重試。",
+    "partial": "部分檔案未加入：{{reasons}}",
+    "rejected": "只接受 JPEG／PNG／WebP／GIF 圖片檔、單張檔案不能超過 15MB",
+    "tooMany": "一話最多 {{max}} 頁",
+    "pickHint": "點擊選擇圖片（可一次選多張）",
+    "pickerTitle": "從資產集加入頁面"
   }
 }

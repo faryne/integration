@@ -41,11 +41,13 @@
   "editor": {
     "titlePlaceholder": {
       "story": "제목 없는 이야기",
-      "lore": "제목 없는 설정"
+      "lore": "제목 없는 설정",
+      "image": "제목 없는 이미지 작품"
     },
     "summaryPlaceholder": {
       "story": "요약 추가...",
-      "lore": "독자용 요약 추가..."
+      "lore": "독자용 요약 추가...",
+      "image": "설명 추가..."
     },
     "status": "상태",
     "group": {
@@ -75,11 +77,71 @@
       "cancel": "계속 편집",
       "discard": "버리기"
     },
-    "image": {
-      "title": "이미지 작품은 아직 Writer에서 편집할 수 없습니다",
-      "description": "이미지 작품은 웹사이트에서 편집해 주세요."
-    },
     "self": "본인({{penName}})",
-    "selfOnly": "본인"
+    "selfOnly": "본인",
+    "attributeFailed": "속성을 업데이트하지 못했습니다. 다시 시도하세요: "
+  },
+  "assets": {
+    "search": "에셋 검색",
+    "refresh": "새로고침",
+    "upload": "이미지 업로드",
+    "editCollection": "에셋 모음 편집",
+    "deleteCollection": "에셋 모음 삭제",
+    "deleteCollectionDescription": "다른 에셋 모음에는 영향이 없습니다. 확인을 위해 에셋 모음 이름을 입력하세요.",
+    "move": "에셋 이동",
+    "delete": "에셋 삭제",
+    "referenced": "아직 작품에서 사용 중인 에셋입니다. 먼저 참조를 제거하세요.",
+    "moveToUncategorized": "미분류로 이동",
+    "deleteTitle": "에셋 삭제",
+    "deleteDescription": "삭제하면 되돌릴 수 없습니다. 확인을 위해 에셋 이름을 입력하세요.",
+    "deleted": "에셋을 삭제했습니다.",
+    "moved": "에셋을 이동했습니다.",
+    "collection": "에셋 모음",
+    "collectionSaved": "에셋 모음을 업데이트했습니다.",
+    "collectionDeleted": "에셋 모음을 삭제했습니다."
+  },
+  "image": {
+    "save": "저장",
+    "saving": "처리 중...",
+    "noPages": "저장하려면 페이지가 하나 이상 있어야 합니다.",
+    "uploadIncomplete": "일부 이미지가 에셋으로 만들어지지 않았습니다. 다시 시도하세요.",
+    "partial": "일부 파일은 추가되지 않았습니다: {{reasons}}",
+    "rejected": "JPEG／PNG／WebP／GIF만, 한 장당 15MB까지",
+    "tooMany": "한 화는 최대 {{max}}페이지",
+    "pickHint": "클릭해서 이미지 선택(여러 장 가능)",
+    "pickerTitle": "에셋에서 페이지 추가"
+  },
+  "list": {
+    "actions": {
+      "story": "작품 작업",
+      "lore": "설정 작업"
+    },
+    "move": {
+      "story": "권으로 이동…",
+      "lore": "설정집으로 이동…"
+    },
+    "moveToUngrouped": {
+      "story": "권에서 빼기",
+      "lore": "미분류로 이동"
+    },
+    "delete": {
+      "story": "작품 삭제",
+      "lore": "설정 삭제",
+      "image": "화 삭제"
+    },
+    "deleteDescription": {
+      "story": "작품과 버전 데이터가 삭제됩니다. 확인을 위해 작품 제목을 입력하세요.",
+      "lore": "이 설정과 버전 데이터가 삭제됩니다. 확인을 위해 설정 제목을 입력하세요."
+    },
+    "moved": {
+      "story": "작품을 이동했습니다.",
+      "lore": "설정을 이동했습니다."
+    },
+    "deleted": {
+      "story": "작품을 삭제했습니다.",
+      "lore": "설정을 삭제했습니다."
+    },
+    "published": "작품을 공개했습니다.",
+    "unpublished": "작품을 비공개로 바꿨습니다."
   }
 }

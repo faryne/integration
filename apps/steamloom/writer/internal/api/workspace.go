@@ -24,9 +24,11 @@ type DocumentItem struct {
 
 // Group 是側邊列上的一個分組（冊／設定集／資產集），Items 為空代表不展開。
 type Group struct {
-	PublicID string         `json:"public_id"`
-	Name     string         `json:"name"`
-	Items    []DocumentItem `json:"items"`
+	PublicID string `json:"public_id"`
+	Name     string `json:"name"`
+	// Description 是設定集／資產集的用途筆記（編輯對話框預填用），冊沒有
+	Description string         `json:"description"`
+	Items       []DocumentItem `json:"items"`
 }
 
 // Workspace 是專案工作台側邊列的完整樹狀資料，在 Go 端組好，前端只負責畫。
@@ -132,10 +134,10 @@ func buildWorkspace(stories, volumes []storyRow, lores []loreRow, loreCollection
 		}
 	}
 	for _, collection := range loreCollections {
-		ws.LoreCollections = append(ws.LoreCollections, Group{PublicID: collection.PublicID, Name: collection.Name, Items: loresByCollection[collection.PublicID]})
+		ws.LoreCollections = append(ws.LoreCollections, Group{PublicID: collection.PublicID, Name: collection.Name, Description: collection.Description, Items: loresByCollection[collection.PublicID]})
 	}
 	for _, collection := range assetGroups {
-		ws.AssetCollections = append(ws.AssetCollections, Group{PublicID: collection.PublicID, Name: collection.Name})
+		ws.AssetCollections = append(ws.AssetCollections, Group{PublicID: collection.PublicID, Name: collection.Name, Description: collection.Description})
 	}
 	return ws
 }

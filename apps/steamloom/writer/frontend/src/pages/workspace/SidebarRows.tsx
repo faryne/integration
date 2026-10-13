@@ -112,7 +112,7 @@ export function DocumentRow({
   );
 }
 
-// 可展開的分組（冊、設定集）；沒有 items 的分組（資產集）只顯示名稱。
+// 可展開的分組（冊、設定集）；空的分組只顯示名稱，不能展開。
 // extra 是分組本身的操作（排序箭頭），itemExtra 產生每一篇文件右側的操作（排序箭頭或移動選單）。
 export function GroupRow({
   name,

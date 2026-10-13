@@ -1,3 +1,4 @@
+import { usePrimaryShortcut } from "@/helpers/shortcut.ts";
 import { useContext, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSnack } from "@writer/components/SnackProvider.tsx";
@@ -23,6 +24,8 @@ const sameDraft = (a: Draft, b: Draft) =>
 // - 手動存檔每次都送（跟網站一樣會多一個版本）；自動存檔只在內容有變、標題不是空白時送。
 // - 都帶 base_version_id，後端照樣寫入，但回 version_conflict 時顯示提示，請作者去編輯歷史確認。
 // - 視窗重新取得焦點時，沒有未存檔內容就看伺服器上有沒有新版本（網站或 AI 助理改過），有就直接換上。
+// 圖像作品也用這一份：內容是頁面清單的 JSON，存檔前由 prepare 先上傳本機圖、換成後端要的格式，
+// 而且不在取得焦點時自動換內容（reloadOnFocus=false，頁面清單由圖像編輯頁自己載入）。
 // timer／focus 事件裡讀到的都要是最新值，所以草稿、版本另外放 ref。
 export function useDocumentDraft({
   project,
@@ -31,6 +34,9 @@ export function useDocumentDraft({
   groupId,
   autoSaveMinutes,
   onSaved,
+  onDirtyChange,
+  prepare,
+  reloadOnFocus = true,
 }: {
   project: string;
   item: DocumentItem;
@@ -41,6 +47,11 @@ export function useDocumentDraft({
   autoSaveMinutes: number | null;
   // 存檔成功後通知外層（標題可能改了，側邊列要重抓）
   onSaved: () => void;
+  // 有沒有未存檔內容，外層據此在換文件、離開專案前先問
+  onDirtyChange: (dirty: boolean) => void;
+  // 存檔前把草稿內容轉成要送出的 content，saved 是存完後的草稿內容（當作新的已存檔基準）；丟錯就中止並顯示訊息
+  prepare?: (draft: Draft) => Promise<{ content: string; saved: string }>;
+  reloadOnFocus?: boolean;
 }) {
   const { t } = useTranslation();
   const { showError, showSuccess } = useSnack();
@@ -84,21 +95,17 @@ export function useDocumentDraft({
     }
     savingRef.current = true;
     setSaving(true);
-    // 狀態、冊／設定集、署名只在這次有改時才送，沒改就沿用伺服器上的值（見 Go 端 SaveDocument）
-    const base = savedRef.current;
     try {
+      const prepared = prepare ? await prepare(current) : { content: current.content, saved: current.content };
       const result = await backend.SaveDocument(project, item.kind, item.public_id, {
         title: current.title,
         summary: current.summary,
-        content: current.content,
+        content: prepared.content,
         trigger,
         base_version_id: versionRef.current,
-        status: current.status !== base.status ? current.status : undefined,
-        group_id: current.groupId !== base.groupId ? current.groupId : undefined,
-        profile_ids: item.kind === "story" && !sameProfiles(current.profileIds, base.profileIds) ? current.profileIds : undefined,
       });
       versionRef.current = result.latest_version_id ?? versionRef.current;
-      markSaved(current);
+      markSaved({ ...current, content: prepared.saved });
       setUpdatedAt(result.updated_at);
       if (result.version_conflict) setConflict(true);
       showSuccess(t(trigger === "auto" ? "workspace.editor.autoSaved" : "workspace.editor.saved"));
@@ -112,6 +119,22 @@ export function useDocumentDraft({
       setSaving(false);
     }
   };
+  // 狀態、冊／設定集、署名一變更就 PATCH 即時存（不寫版本、不進編輯歷史，網站與 Writer 同一套規則）：
+  // 先換上新值，成功就併入已存檔基準並讓側邊列重抓；失敗就還原並提示。
+  const changeAttributes = async (patch: Partial<Pick<Draft, "status" | "groupId" | "profileIds">>) => {
+    const previous = draftRef.current;
+    setDraft(patch);
+    try {
+      await backend.PatchDocument(project, item.kind, item.public_id, { status: patch.status, group_id: patch.groupId, profile_ids: patch.profileIds });
+      markSaved({ ...savedRef.current, ...patch });
+      onSaved();
+    } catch (err) {
+      setDraft({ status: previous.status, groupId: previous.groupId, profileIds: previous.profileIds });
+      if (isNotLoggedIn(err)) onSessionExpired();
+      else showError(`${t("workspace.editor.attributeFailed")}${errorMessage(err)}`);
+    }
+  };
+
   // timer 與焦點事件只註冊一次，透過 ref 呼叫最新的 save
   const saveRef = useRef(save);
   saveRef.current = save;
@@ -123,6 +146,7 @@ export function useDocumentDraft({
   }, [autoSaveMinutes]);
 
   useEffect(() => {
+    if (!reloadOnFocus) return;
     const onFocus = async () => {
       if (savingRef.current || !sameDraft(draftRef.current, savedRef.current)) return;
       // 取不到就算了，不打擾寫作；下次取得焦點再看
@@ -140,7 +164,7 @@ export function useDocumentDraft({
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [project, item.kind, item.public_id]);
+  }, [project, item.kind, item.public_id, reloadOnFocus]);
 
   // 側邊列「移動到冊／設定集」搬了正在編輯的這篇：編輯頁沒改過分組就跟著換，改過就以作者的選擇為準
   useEffect(() => {
@@ -149,11 +173,22 @@ export function useDocumentDraft({
     markSaved({ ...savedRef.current, groupId });
   }, [groupId]);
 
-  // 有未存檔內容時讓 Go 端在關閉視窗前先問；離開這篇（換文件、離開專案）時清掉
+  // 有未存檔內容時讓外層（換文件／離開專案）與 Go 端（關閉視窗）先問；離開這篇時清掉
   useEffect(() => {
+    onDirtyChange(dirty);
     void backend.SetUnsaved(dirty);
   }, [dirty]);
-  useEffect(() => () => void backend.SetUnsaved(false), []);
+  useEffect(
+    () => () => {
+      onDirtyChange(false);
+      void backend.SetUnsaved(false);
+    },
+    [],
+  );
+  // ⌘S／Ctrl+S 手動存檔，跟網站一樣
+  usePrimaryShortcut("s", () => void saveRef.current("manual"));
 
-  return { draft, setDraft, setContent, dirty, saving, updatedAt, conflict, dismissConflict: () => setConflict(false), save: () => saveRef.current("manual") };
+  return { draft, setDraft, setContent, changeAttributes, dirty, saving, updatedAt, conflict, dismissConflict: () => setConflict(false), save: () => saveRef.current("manual") };
 }
+
+export type DocumentDraftState = ReturnType<typeof useDocumentDraft>;

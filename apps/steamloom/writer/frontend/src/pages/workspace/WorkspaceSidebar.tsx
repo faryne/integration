@@ -2,12 +2,13 @@ import AllInboxIcon from "@mui/icons-material/AllInbox";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import ChatIcon from "@mui/icons-material/Chat";
 import CollectionsIcon from "@mui/icons-material/Collections";
+import FolderIcon from "@mui/icons-material/Folder";
 import LightbulbIcon from "@mui/icons-material/Lightbulb";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { Box, Divider, Typography } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { DocumentItem, Workspace } from "@writer/lib/backend.ts";
+import { UNCATEGORIZED_ASSETS, type DocumentItem, type Workspace } from "@writer/lib/backend.ts";
 import { CreateDialog } from "@writer/pages/workspace/CreateDialog.tsx";
 import { MoveMenuButton, SectionActions, SortArrows } from "@writer/pages/workspace/SidebarActions.tsx";
 import type { ListSection } from "@writer/pages/workspace/ListPanels.tsx";
@@ -21,9 +22,10 @@ type Props = {
   selected: DocumentItem | null;
   onSelect: (item: DocumentItem) => void;
   onAssistant: () => void;
-  // 目前打開的「全部作品／全部設定／全部資產」頁，沒有則為 null
+  // 目前打開的「全部作品／全部設定／全部資產」頁，沒有則為 null；資產另外有篩選（資產集／未分類）
   listSection: ListSection | null;
-  onList: (section: ListSection) => void;
+  assetCollection: string;
+  onList: (section: ListSection, collection?: string) => void;
   editing: ReturnType<typeof useWorkspaceEditing>;
   // 建立的是故事類或設定時，外層據此打開新項目
   onCreated: (item: DocumentItem) => void;
@@ -36,7 +38,7 @@ const assetKinds = ["asset-collection", "asset-upload"];
 
 // 專案工作台側邊列：最上方是 AI 助理，下面是作品與冊、設定集、資產集、梭梭的記憶。
 // 「作品與冊」「設定集」可以切換排序模式（上移／下移）；平常滑過文件會出現 ⋮ 可移動到其他冊／設定集。
-export function WorkspaceSidebar({ workspace, selected, onSelect, onAssistant, listSection, onList, editing, onCreated }: Props) {
+export function WorkspaceSidebar({ workspace, selected, onSelect, onAssistant, listSection, assetCollection, onList, editing, onCreated }: Props) {
   const { t } = useTranslation();
   const [sortingStories, setSortingStories] = useState(false);
   const [sortingLores, setSortingLores] = useState(false);
@@ -138,9 +140,13 @@ export function WorkspaceSidebar({ workspace, selected, onSelect, onAssistant, l
         )}
       </SidebarSection>
       <SidebarSection icon={<CollectionsIcon />} title={t("workspace.sections.assets")} actions={<SectionActions createKinds={assetKinds} onCreate={onCreate} />}>
-        <NavRow icon={<AllInboxIcon />} label={t("workspace.all.assets")} selected={listSection === "assets"} onClick={() => onList("assets")} />
-        {(workspace.asset_collections ?? []).map((collection) => (
-          <GroupRow key={collection.public_id} name={collection.name} selected={selected} />
+        {/* 比照網站：全部資產、未分類、各資產集都可以點，打開對應的資產列表 */}
+        {[
+          { id: "", icon: <AllInboxIcon />, label: t("workspace.all.assets") },
+          { id: UNCATEGORIZED_ASSETS, icon: <FolderIcon />, label: t("workspace.upload.uncategorized") },
+          ...(workspace.asset_collections ?? []).map((collection) => ({ id: collection.public_id, icon: <FolderIcon />, label: collection.name })),
+        ].map((row) => (
+          <NavRow key={row.id || "all"} icon={row.icon} label={row.label} selected={listSection === "assets" && assetCollection === row.id} onClick={() => onList("assets", row.id)} />
         ))}
       </SidebarSection>
       <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 1.5, py: 1, color: "text.secondary" }}>

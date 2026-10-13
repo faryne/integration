@@ -31,14 +31,24 @@ func AssetFileFilter() string {
 	return strings.Join(exts, ";")
 }
 
-// Asset 是資產列表的一格；PreviewURL 是後端當下簽的網址，有時效，不要落地保存。
+// Asset 對應網站的 StorytellerAsset（資產卡片與資產詳細頁用到的欄位）；PreviewURL 是後端當下簽的網址，有時效，不要落地保存。
+// CollectionID 是資產集 public_id，空字串＝未分類；ReferenceCount>0 代表仍被作品引用，不能刪。
 type Asset struct {
-	PublicID   string `json:"public_id"`
-	Title      string `json:"title"`
-	MimeType   string `json:"mime_type"`
-	FileSize   uint64 `json:"file_size"`
-	PreviewURL string `json:"preview_url"`
-	CreatedAt  string `json:"created_at"`
+	PublicID         string         `json:"public_id"`
+	CollectionID     string         `json:"collection_id"`
+	AssetType        string         `json:"asset_type"`
+	MimeType         string         `json:"mime_type"`
+	FileExt          string         `json:"file_ext"`
+	FileSize         uint64         `json:"file_size"`
+	Metadata         map[string]any `json:"metadata"`
+	OriginalFilename string         `json:"original_filename"`
+	Title            string         `json:"title"`
+	AltText          string         `json:"alt_text"`
+	Description      string         `json:"description"`
+	PreviewURL       string         `json:"preview_url"`
+	ReferenceCount   int64          `json:"reference_count"`
+	CreatedAt        string         `json:"created_at"`
+	UpdatedAt        string         `json:"updated_at"`
 }
 
 type AssetPage struct {
@@ -48,16 +58,35 @@ type AssetPage struct {
 	PageSize   int     `json:"page_size"`
 }
 
-// Assets 分頁列出專案的資產（全部資產集），每頁筆數照網站的 24。
-func (c *Client) Assets(ctx context.Context, project string, page int) (*AssetPage, error) {
-	query := url.Values{"page": {fmt.Sprint(page)}, "page_size": {"24"}}
+// UncategorizedAssets 是「未分類」資產的篩選值（後端 assetCollectionUncategorized）。
+const UncategorizedAssets = "__uncategorized__"
+
+// Assets 分頁列出專案的圖片資產，查詢參數照網站（資產列表每頁 24、資產選擇對話框每頁 12）：
+// collection 空字串＝全部、UncategorizedAssets＝未分類、其他＝資產集 public_id；keyword 比對標題等文字。
+func (c *Client) Assets(ctx context.Context, project, collection, keyword string, page, pageSize int) (*AssetPage, error) {
+	query := url.Values{"page": {fmt.Sprint(page)}, "page_size": {fmt.Sprint(pageSize)}, "asset_type": {"image"}}
+	if collection != "" {
+		query.Set("collection_id", collection)
+	}
+	if keyword = strings.TrimSpace(keyword); keyword != "" {
+		query.Set("keyword", keyword)
+	}
 	return get[*AssetPage](ctx, c, "/projects/"+project+"/assets?"+query.Encode())
 }
 
 // UploadResult 回報這次上傳成功幾張、哪些檔案因為格式或大小被略過。
+// Created 是「本機路徑 → 新資產 public_id」，圖像作品存檔時用來把頁面換成資產（前端不需要，所以不輸出）。
 type UploadResult struct {
-	Uploaded int      `json:"uploaded"`
-	Skipped  []string `json:"skipped"`
+	Uploaded int               `json:"uploaded"`
+	Skipped  []string          `json:"skipped"`
+	Created  map[string]string `json:"-"`
+}
+
+// CheckAssetFile 檢查本機檔案是不是可以上傳的圖片（格式、15 MB 上限），回傳對應的 MIME type。
+func CheckAssetFile(path string) (string, bool) {
+	mime, ok := assetMimeTypes[strings.ToLower(filepath.Ext(path))]
+	info, err := os.Stat(path)
+	return mime, ok && err == nil && info.Size() <= maxAssetBytes
 }
 
 type assetFile struct {
@@ -68,13 +97,12 @@ type assetFile struct {
 // UploadAssets 跟網站一樣分兩段：先 presign 拿 S3 上傳網址、直傳 S3，完成後 confirm 建立資產。
 // collection 是資產集 public_id（空字串＝未分類）。不支援的格式、超過 15 MB 的檔案會略過並回報。
 func (c *Client) UploadAssets(ctx context.Context, project, collection string, paths []string) (*UploadResult, error) {
-	result := &UploadResult{Skipped: []string{}}
+	result := &UploadResult{Skipped: []string{}, Created: map[string]string{}}
 	var files []assetFile
 	for _, path := range paths {
 		name := filepath.Base(path)
-		mime, ok := assetMimeTypes[strings.ToLower(filepath.Ext(path))]
-		info, err := os.Stat(path)
-		if !ok || err != nil || info.Size() > maxAssetBytes || len(files) >= maxAssetCount {
+		mime, ok := CheckAssetFile(path)
+		if !ok || len(files) >= maxAssetCount {
 			result.Skipped = append(result.Skipped, name)
 			continue
 		}
@@ -109,7 +137,7 @@ func (c *Client) UploadAssets(ctx context.Context, project, collection string, p
 		if err := putToStorage(ctx, targets[i].UploadURL, targets[i].Tagging, file); err != nil {
 			return result, fmt.Errorf("上傳 %s 失敗：%w", file.name, err)
 		}
-		_, err := request[createdRow](ctx, c, http.MethodPost, base+"/confirm", map[string]any{
+		created, err := request[createdRow](ctx, c, http.MethodPost, base+"/confirm", map[string]any{
 			"key": targets[i].Key, "content_type": file.mime, "collection_id": collection,
 			"original_filename": file.name, "title": file.name, "alt_text": "", "description": "", "metadata": map[string]any{},
 		})
@@ -117,6 +145,7 @@ func (c *Client) UploadAssets(ctx context.Context, project, collection string, p
 			return result, fmt.Errorf("建立資產 %s 失敗：%w", file.name, err)
 		}
 		result.Uploaded++
+		result.Created[file.path] = created.PublicID
 	}
 	return result, nil
 }

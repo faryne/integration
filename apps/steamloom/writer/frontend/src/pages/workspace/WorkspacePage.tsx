@@ -5,13 +5,14 @@ import { Box, CircularProgress, Tab, Tabs } from "@mui/material";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AppBreadcrumbs, type Crumb } from "@writer/components/AppBreadcrumbs.tsx";
-import { backend, errorMessage, type DocumentItem, type Profile, type Project, type Workspace } from "@writer/lib/backend.ts";
-import { invalidateEditorLores, writerEditorData } from "@writer/lib/editorData.ts";
+import { backend, errorMessage, UNCATEGORIZED_ASSETS, type Asset, type DocumentItem, type Profile, type Project, type Workspace } from "@writer/lib/backend.ts";
+import { invalidateEditorAssets, invalidateEditorLores, writerEditorData } from "@writer/lib/editorData.ts";
 import { useBackendData } from "@writer/lib/useBackendData.ts";
 import { ChatPanel } from "@writer/pages/workspace/ChatPanel.tsx";
 import { EditorPanel } from "@writer/pages/workspace/EditorPanel.tsx";
 import { HistoryPanel } from "@writer/pages/workspace/HistoryPanel.tsx";
-import { AssetListPanel, DocumentListPanel, type ListSection } from "@writer/pages/workspace/ListPanels.tsx";
+import { AssetDetail, AssetListPanel } from "@writer/pages/workspace/AssetPanels.tsx";
+import { DocumentListPanel, type ListSection } from "@writer/pages/workspace/ListPanels.tsx";
 import { useSnack } from "@writer/components/SnackProvider.tsx";
 import { useWorkspaceEditing } from "@writer/pages/workspace/useWorkspaceEditing.ts";
 import { WorkspaceSidebar } from "@writer/pages/workspace/WorkspaceSidebar.tsx";
@@ -26,7 +27,8 @@ const tabs: { value: DocumentTab; icon: React.ReactElement }[] = [
   { value: "history", icon: <HistoryIcon fontSize="small" /> },
 ];
 
-// 進專案先看 AI 助理。點側邊列的故事或設定換成編輯／歷史，點「全部作品／全部設定／全部資產」看列表；再點「AI 助理」回來。
+// 進專案先看 AI 助理。點側邊列的故事或設定換成編輯／歷史，點「全部作品／全部設定／全部資產」或資產集看列表，
+// 資產列表點卡片看資產詳細；再點「AI 助理」回來。
 // 編輯中的文件有未存檔內容時，換文件、看列表、回 AI 助理、離開專案都要先確認。
 export function WorkspacePage({ project, profile, onBack }: { project: Project; profile: Profile | null; onBack: () => void }) {
   const { t } = useTranslation();
@@ -39,8 +41,9 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
   const [version, setVersion] = useState(0);
   const reload = useCallback(() => {
     setVersion((value) => value + 1);
-    // 設定可能新增、改名或搬移，編輯器的「連到設定」清單跟著重抓
+    // 設定、資產可能新增、改名、搬移或刪除，編輯器的「連到設定」清單與資產選擇對話框跟著重抓
     invalidateEditorLores(project.public_id);
+    invalidateEditorAssets(project.public_id);
     void backend
       .Workspace(project.public_id)
       .then(setRefreshed)
@@ -48,6 +51,9 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
   }, [project.public_id, showError]);
   const [selected, setSelectedState] = useState<DocumentItem | null>(null);
   const [listSection, setListSection] = useState<ListSection | null>(null);
+  // 資產列表的篩選（空字串＝全部、UNCATEGORIZED_ASSETS＝未分類、其他＝資產集）與打開的資產詳細
+  const [assetCollection, setAssetCollection] = useState("");
+  const [openedAsset, setOpenedAsset] = useState<Asset | null>(null);
   const [tab, setTab] = useState<DocumentTab>("editor");
   const [dirty, setDirty] = useState(false);
   // 等待確認「放棄未存檔內容」的動作
@@ -60,12 +66,15 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
     guard(() => {
       setSelectedState(item);
       setListSection(null);
+      setOpenedAsset(null);
     });
   };
-  const openList = (section: ListSection) =>
+  const openList = (section: ListSection, collection = "") =>
     guard(() => {
       setSelectedState(null);
       setListSection(section);
+      setAssetCollection(collection);
+      setOpenedAsset(null);
     });
   const editing = useWorkspaceEditing({
     project: project.public_id,
@@ -75,10 +84,22 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
   });
 
   const group = workspace && selected ? findGroup(workspace, selected) : null;
+  // 圖像作品只有編輯頁（網站也沒有圖像作品的編輯歷史）
+  const isImage = selected?.content_type === "image";
+  const currentTab: DocumentTab = isImage ? "editor" : tab;
+  const assetCollections = workspace?.asset_collections ?? [];
+  const assetCollectionName =
+    assetCollection === UNCATEGORIZED_ASSETS ? t("workspace.upload.uncategorized") : assetCollections.find((each) => each.public_id === assetCollection)?.name;
+  // 資產：全部資產 › 資產集 › 資產，前面幾層可以點回去
+  const assetCrumbs: Crumb[] = [
+    { label: t("workspace.all.assets"), onClick: assetCollection || openedAsset ? () => openList("assets") : undefined },
+    ...(assetCollectionName ? [{ label: assetCollectionName, onClick: openedAsset ? () => openList("assets", assetCollection) : undefined }] : []),
+    ...(openedAsset ? [{ label: openedAsset.title || openedAsset.original_filename }] : []),
+  ];
   const crumbs: Crumb[] = [
     { label: t("projects.title"), onClick: () => guard(onBack) },
     { label: project.name, onClick: selected || listSection ? () => setSelected(null) : undefined },
-    ...(listSection ? [{ label: t(`workspace.all.${listSection}`) }] : []),
+    ...(listSection === "assets" ? assetCrumbs : listSection ? [{ label: t(`workspace.all.${listSection}`) }] : []),
     ...(group ? [{ label: group.name }] : []),
     ...(selected ? [{ label: selected.title }] : []),
   ];
@@ -97,6 +118,7 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
               onSelect={setSelected}
               onAssistant={() => setSelected(null)}
               listSection={listSection}
+              assetCollection={assetCollection}
               onList={openList}
               editing={editing}
               onCreated={(item) =>
@@ -111,14 +133,17 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
               <StorytellerEditorDataContext.Provider value={writerEditorData}>
               {selected ? (
                 <>
+                  {/* 圖像作品跟網站一樣沒有編輯歷史，不顯示分頁列 */}
+                  {!isImage && (
                   <Tabs value={tab} onChange={(_, value: DocumentTab) => setTab(value)} sx={{ px: 2, borderBottom: 1, borderColor: "divider", minHeight: 46, flex: "none" }}>
                     {tabs.map(({ value, icon }) => (
                       <Tab key={value} value={value} icon={icon} iconPosition="start" label={t(`workspace.tabs.${value}`)} sx={{ minHeight: 46 }} />
                     ))}
                   </Tabs>
+                  )}
                   <Box key={`${selected.kind}:${selected.public_id}`} sx={{ flex: 1, minHeight: 0, display: "flex" }}>
                     {/* 切到編輯歷史時編輯器不卸載，未存檔的內容與游標位置都留著 */}
-                    <Box sx={{ flex: 1, minWidth: 0, display: tab === "editor" ? "flex" : "none" }}>
+                    <Box sx={{ flex: 1, minWidth: 0, display: currentTab === "editor" ? "flex" : "none" }}>
                       <EditorPanel
                         project={project.public_id}
                         item={selected}
@@ -130,13 +155,38 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
                         onShowHistory={() => setTab("history")}
                       />
                     </Box>
-                    {tab === "history" && <HistoryPanel project={project.public_id} item={selected} />}
+                    {currentTab === "history" && <HistoryPanel project={project.public_id} item={selected} />}
                   </Box>
                 </>
+              ) : listSection === "assets" && openedAsset ? (
+                <AssetDetail
+                  key={openedAsset.public_id}
+                  project={project.public_id}
+                  asset={openedAsset}
+                  collections={assetCollections}
+                  onChanged={reload}
+                  onDeleted={() => openList("assets", assetCollection)}
+                />
               ) : listSection === "assets" ? (
-                <AssetListPanel project={project.public_id} version={version} />
+                <AssetListPanel
+                  project={project.public_id}
+                  collection={assetCollection}
+                  collections={assetCollections}
+                  version={version}
+                  onOpen={setOpenedAsset}
+                  onSelectCollection={(collection) => openList("assets", collection)}
+                  onUpload={(collection) => void editing.upload(collection)}
+                  onChanged={reload}
+                />
               ) : listSection ? (
-                <DocumentListPanel project={project.public_id} kind={listSection === "stories" ? "story" : "lore"} version={version} onOpen={setSelected} />
+                <DocumentListPanel
+                  project={project.public_id}
+                  kind={listSection === "stories" ? "story" : "lore"}
+                  groups={(listSection === "stories" ? workspace.volumes : workspace.lore_collections) ?? []}
+                  version={version}
+                  onOpen={setSelected}
+                  onChanged={reload}
+                />
               ) : (
                 <ChatPanel projectID={project.public_id} projectName={project.name} />
               )}

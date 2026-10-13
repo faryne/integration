@@ -27,6 +27,8 @@ type App struct {
 	skill   *skillupdate.Service
 	// unsaved：編輯分頁有沒有未存檔的內容，由前端回報（見 unsaved.go）
 	unsaved atomic.Bool
+	// localImages：圖像作品選好但還沒上傳的本機圖檔（見 local_images.go）
+	localImages localImages
 }
 
 func NewApp() *App {
@@ -70,6 +72,16 @@ func (a *App) Workspace(project string) (*api.Workspace, error) {
 // Document 回傳單篇故事或設定，kind 是 "story" 或 "lore"（綁定參數用 string，Wails 不會產生 Go 自訂型別的 TS 定義）。
 func (a *App) Document(project, kind, id string) (*api.Document, error) {
 	return a.api.Document(a.ctx, project, api.DocumentKind(kind), id)
+}
+
+// DeleteDocument 刪除故事或設定（列表 ⋮ 選單，前端先輸入名稱確認）。
+func (a *App) DeleteDocument(project, kind, id string) error {
+	return a.api.DeleteDocument(a.ctx, project, api.DocumentKind(kind), id)
+}
+
+// PatchDocument 即時改狀態／冊（設定集）／署名，不寫版本、不進編輯歷史。
+func (a *App) PatchDocument(project, kind, id string, patch api.AttributePatch) error {
+	return a.api.PatchDocument(a.ctx, project, api.DocumentKind(kind), id, patch)
 }
 
 // SaveDocument 存檔故事或設定（每次一個新版本），回傳新的版本 id 與是否跟別處的修改衝突。
@@ -206,21 +218,4 @@ func (a *App) Reorder(project, kind string, ids []string) error {
 // ListDocuments 是「全部作品／全部設定」頁的資料；kind 是 "story" 或 "lore"。
 func (a *App) ListDocuments(project, kind string) ([]api.ListedDocument, error) {
 	return a.api.ListDocuments(a.ctx, project, api.DocumentKind(kind))
-}
-
-// Assets 是「全部資產」頁的資料，分頁從 1 開始。
-func (a *App) Assets(project string, page int) (*api.AssetPage, error) {
-	return a.api.Assets(a.ctx, project, page)
-}
-
-// UploadAssets 開原生選檔視窗（可多選），上傳到指定資產集（空字串＝未分類）；使用者取消選檔時回傳 nil。
-func (a *App) UploadAssets(project, collection string) (*api.UploadResult, error) {
-	paths, err := runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{
-		Title:   "選擇要上傳的圖片",
-		Filters: []runtime.FileFilter{{DisplayName: "圖片（JPEG／PNG／WebP／GIF）", Pattern: api.AssetFileFilter()}},
-	})
-	if err != nil || len(paths) == 0 {
-		return nil, err
-	}
-	return a.api.UploadAssets(a.ctx, project, collection, paths)
 }

@@ -41,11 +41,13 @@
   "editor": {
     "titlePlaceholder": {
       "story": "未命名故事",
-      "lore": "未命名设定"
+      "lore": "未命名设定",
+      "image": "未命名图像作品"
     },
     "summaryPlaceholder": {
       "story": "添加摘要...",
-      "lore": "添加给读者看的摘要..."
+      "lore": "添加给读者看的摘要...",
+      "image": "添加描述..."
     },
     "status": "状态",
     "group": {
@@ -75,11 +77,71 @@
       "cancel": "继续编辑",
       "discard": "放弃修改"
     },
-    "image": {
-      "title": "图像作品暂时无法在 Writer 编辑",
-      "description": "请先到网站编辑图像作品。"
-    },
     "self": "本人（{{penName}}）",
-    "selfOnly": "本人"
+    "selfOnly": "本人",
+    "attributeFailed": "属性更新失败，请重试："
+  },
+  "assets": {
+    "search": "搜索资产",
+    "refresh": "刷新",
+    "upload": "上传图像",
+    "editCollection": "编辑资产集",
+    "deleteCollection": "删除资产集",
+    "deleteCollectionDescription": "删除后不会影响其他资产集。请输入资产集名称确认。",
+    "move": "移动资产",
+    "delete": "删除资产",
+    "referenced": "资产仍被作品引用，请先移除引用",
+    "moveToUncategorized": "移到未分类",
+    "deleteTitle": "删除资产",
+    "deleteDescription": "删除后无法恢复。请输入资产名称确认。",
+    "deleted": "资产已删除。",
+    "moved": "资产已移动。",
+    "collection": "资产集",
+    "collectionSaved": "资产集已更新。",
+    "collectionDeleted": "资产集已删除。"
+  },
+  "image": {
+    "save": "保存",
+    "saving": "处理中...",
+    "noPages": "至少要有一页才能保存。",
+    "uploadIncomplete": "部分图片没有完成资产创建，请重试。",
+    "partial": "部分文件未加入：{{reasons}}",
+    "rejected": "只接受 JPEG／PNG／WebP／GIF 图片文件、单张文件不能超过 15MB",
+    "tooMany": "一话最多 {{max}} 页",
+    "pickHint": "点击选择图片（可一次选多张）",
+    "pickerTitle": "从资产集加入页面"
+  },
+  "list": {
+    "actions": {
+      "story": "作品操作",
+      "lore": "设定操作"
+    },
+    "move": {
+      "story": "移动到册…",
+      "lore": "移动至设定集…"
+    },
+    "moveToUngrouped": {
+      "story": "移到未分册",
+      "lore": "移到未归类"
+    },
+    "delete": {
+      "story": "删除作品",
+      "lore": "删除设定",
+      "image": "删除话"
+    },
+    "deleteDescription": {
+      "story": "删除后会移除作品与版本数据。请输入作品名称确认。",
+      "lore": "删除后会移除这则设定与版本数据。请输入设定名称确认。"
+    },
+    "moved": {
+      "story": "作品已移动。",
+      "lore": "设定已移动。"
+    },
+    "deleted": {
+      "story": "作品已删除。",
+      "lore": "设定已删除。"
+    },
+    "published": "作品已公开。",
+    "unpublished": "作品已设为未公开。"
   }
 }
