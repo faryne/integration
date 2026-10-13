@@ -1,12 +1,10 @@
 import { WorkspaceSortArrows } from "@/pages/storyteller/WorkspaceSortArrows.tsx";
 import AddIcon from "@mui/icons-material/Add";
 import DoneIcon from "@mui/icons-material/Done";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
 import SwapVertIcon from "@mui/icons-material/SwapVert";
-import { IconButton, ListSubheader, Menu, MenuItem, Tooltip } from "@mui/material";
+import { IconButton, Menu, MenuItem, Tooltip } from "@mui/material";
 import { useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
-import type { MoveTarget } from "@writer/pages/workspace/workspaceTree.ts";
 
 const iconSx = { p: 0.375, "& .MuiSvgIcon-root": { fontSize: 16 } };
 
@@ -57,45 +55,6 @@ export function SectionActions({
             }}
           >
             {t(`workspace.create.kinds.${kind}`)}
-          </MenuItem>
-        ))}
-      </Menu>
-    </>
-  );
-}
-
-
-// 文件右側的 ⋮：「移動到冊／設定集」，列出未分冊（未歸類）與各分組，目前所在的那一組不能選
-export function MoveMenuButton({
-  title,
-  targets,
-  current,
-  onMove,
-}: {
-  title: string;
-  targets: MoveTarget[];
-  current: string;
-  onMove: (publicId: string) => void;
-}) {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  return (
-    <>
-      <IconButton size="small" sx={iconSx} aria-label={title} onClick={(event) => setAnchor(event.currentTarget)}>
-        <MoreVertIcon />
-      </IconButton>
-      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
-        <ListSubheader sx={{ lineHeight: "32px" }}>{title}</ListSubheader>
-        {targets.map((target) => (
-          <MenuItem
-            key={target.publicId || "ungrouped"}
-            dense
-            disabled={target.publicId === current}
-            onClick={() => {
-              setAnchor(null);
-              onMove(target.publicId);
-            }}
-          >
-            {target.name}
           </MenuItem>
         ))}
       </Menu>

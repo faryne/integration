@@ -1,4 +1,5 @@
 import { StorytellerEditorDataContext } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
+import { WorkspaceSidebarToggle } from "@/pages/storyteller/WorkspaceSidebarChrome.tsx";
 import EditIcon from "@mui/icons-material/Edit";
 import HistoryIcon from "@mui/icons-material/History";
 import { Box, CircularProgress, Tab, Tabs } from "@mui/material";
@@ -15,9 +16,10 @@ import { AssetDetail, AssetListPanel } from "@writer/pages/workspace/AssetPanels
 import { DocumentListPanel, type ListSection } from "@writer/pages/workspace/ListPanels.tsx";
 import { useSnack } from "@writer/components/SnackProvider.tsx";
 import { useWorkspaceEditing } from "@writer/pages/workspace/useWorkspaceEditing.ts";
-import { WorkspaceSidebar } from "@writer/pages/workspace/WorkspaceSidebar.tsx";
+import type { RowActionTarget } from "@writer/pages/workspace/useDocumentRowActions.tsx";
+import { WorkspaceSidebar, WorkspaceSidebarRail } from "@writer/pages/workspace/WorkspaceSidebar.tsx";
 import { UnsavedChangesDialog } from "@writer/pages/workspace/UnsavedChangesDialog.tsx";
-import { findGroup, groupTargets, isSameDocument, type DocumentTab } from "@writer/pages/workspace/workspaceTree.ts";
+import { findGroup, groupTargets, isSameDocument, workspaceDocuments, type DocumentTab } from "@writer/pages/workspace/workspaceTree.ts";
 
 // 還沒載入前給 hook 用的空工作台（hook 必須無條件呼叫）
 const emptyWorkspace: Workspace = { volumes: [], ungrouped_stories: [], lore_collections: [], uncategorized_lores: [], asset_collections: [] };
@@ -55,6 +57,7 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
   const [assetCollection, setAssetCollection] = useState("");
   const [openedAsset, setOpenedAsset] = useState<Asset | null>(null);
   const [tab, setTab] = useState<DocumentTab>("editor");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dirty, setDirty] = useState(false);
   // 等待確認「放棄未存檔內容」的動作
   const [pending, setPending] = useState<(() => void) | null>(null);
@@ -83,7 +86,16 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
     reload,
   });
 
+  // 側邊列／列表的 ⋮ 刪掉正在編輯的那篇：直接到該類的「全部…」列表（比照網站回列表；東西已經不在，不用問未存檔）
+  const onDocumentDeleted = (target: RowActionTarget) => {
+    if (!selected || !isSameDocument(target, selected)) return;
+    setSelectedState(null);
+    setListSection(target.kind === "story" ? "stories" : "lores");
+  };
+
   const group = workspace && selected ? findGroup(workspace, selected) : null;
+  // 工作台樹上的這篇（帶公開狀態，⋮ 改了狀態後重抓會更新）
+  const selectedNode = workspace && selected ? workspaceDocuments(workspace, selected.kind).find((each) => isSameDocument(each, selected)) : undefined;
   // 圖像作品只有編輯頁（網站也沒有圖像作品的編輯歷史）
   const isImage = selected?.content_type === "image";
   const currentTab: DocumentTab = isImage ? "editor" : tab;
@@ -112,23 +124,39 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
       ) : (
         workspace && (
           <Box sx={{ flex: 1, minHeight: 0, display: "flex" }}>
-            <WorkspaceSidebar
-              workspace={workspace}
-              selected={selected}
-              onSelect={setSelected}
-              onAssistant={() => setSelected(null)}
-              listSection={listSection}
-              assetCollection={assetCollection}
-              onList={openList}
-              editing={editing}
-              onCreated={(item) =>
-                guard(() => {
-                  setSelectedState(item);
-                  setListSection(null);
-                  setTab("editor");
-                })
-              }
-            />
+            {/* 收合按鈕浮貼在側邊列與內容的交界，外層不能 overflow: hidden（捲軸在側邊列自己那層） */}
+            <Box sx={{ position: "relative", flex: "none", display: "flex" }}>
+              {sidebarCollapsed ? (
+                <WorkspaceSidebarRail selected={selected} listSection={listSection} onAssistant={() => setSelected(null)} onList={openList} />
+              ) : (
+                <WorkspaceSidebar
+                  project={project.public_id}
+                  workspace={workspace}
+                  selected={selected}
+                  onSelect={setSelected}
+                  onAssistant={() => setSelected(null)}
+                  listSection={listSection}
+                  assetCollection={assetCollection}
+                  onList={openList}
+                  editing={editing}
+                  onCreated={(item) =>
+                    guard(() => {
+                      setSelectedState(item);
+                      setListSection(null);
+                      setTab("editor");
+                    })
+                  }
+                  onChanged={reload}
+                  onDeleted={onDocumentDeleted}
+                />
+              )}
+              <WorkspaceSidebarToggle
+                collapsed={sidebarCollapsed}
+                onToggle={() => setSidebarCollapsed((value) => !value)}
+                collapseLabel={t("workspace.actions.collapseSidebar")}
+                expandLabel={t("workspace.actions.expandSidebar")}
+              />
+            </Box>
             <Box component="main" sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
               <StorytellerEditorDataContext.Provider value={writerEditorData}>
               {selected ? (
@@ -148,6 +176,7 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
                         project={project.public_id}
                         item={selected}
                         groupId={group?.public_id ?? ""}
+                        status={selectedNode?.status}
                         groupTargets={groupTargets(workspace, selected.kind, t(selected.kind === "story" ? "workspace.ungroupedStories" : "workspace.uncategorizedLores"))}
                         profile={profile}
                         onDirtyChange={setDirty}

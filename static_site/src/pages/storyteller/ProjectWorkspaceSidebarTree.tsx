@@ -30,6 +30,7 @@ import {
 } from "./ProjectWorkspacePreviewTypes.ts";
 import {
   SidebarCollectionChildren,
+  type RenderSidebarItemActions,
   type ReorderSidebarItem,
 } from "./ProjectWorkspaceSidebarTreeChildren.tsx";
 import { WorkspaceSortArrows } from "./WorkspaceSortArrows.tsx";
@@ -56,6 +57,7 @@ export function SidebarGroup({
   createLabel,
   onReorder,
   onReorderItem,
+  renderItemActions,
 }: {
   title: string;
   section: WorkspaceSection;
@@ -75,6 +77,7 @@ export function SidebarGroup({
   // 頭尾不顯示；不再用拖曳。onReorder 排分組，onReorderItem 排冊內作品。
   onReorder?: (draggedId: string, beforeId: string | null) => void;
   onReorderItem?: ReorderSidebarItem;
+  renderItemActions?: RenderSidebarItemActions;
 }) {
   const [expanded, setExpanded] = useState(true);
   const [sorting, setSorting] = useState(false);
@@ -154,6 +157,7 @@ export function SidebarGroup({
                 onSelect={onSelect}
                 onSelectItem={onSelectItem}
                 onReorderItem={onReorderItem}
+                renderItemActions={renderItemActions}
                 sortArrows={
                   sorting && onReorder && reorderIndex >= 0 ? (
                     <WorkspaceSortArrows
@@ -191,6 +195,7 @@ export function SidebarCollectionRow({
   onSelect,
   onSelectItem,
   onReorderItem,
+  renderItemActions,
   sortArrows,
 }: {
   row: SidebarRowData;
@@ -202,6 +207,7 @@ export function SidebarCollectionRow({
   onSelect: (section: WorkspaceSection, collectionId: string) => void;
   onSelectItem: (item: SelectedItem, collectionId: string) => void;
   onReorderItem?: ReorderSidebarItem;
+  renderItemActions?: RenderSidebarItemActions;
   // 排序模式下這一列的上移／下移（「全部」「未分冊／未分類」這類虛擬節點沒有）
   sortArrows?: ReactNode;
 }) {
@@ -302,6 +308,7 @@ export function SidebarCollectionRow({
               onSelectItem={onSelectItem}
               sorting={sorting}
               onReorderItem={onReorderItem}
+              renderItemActions={renderItemActions}
             />
           )}
         </Collapse>

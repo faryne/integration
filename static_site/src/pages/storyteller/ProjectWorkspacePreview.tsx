@@ -1,15 +1,6 @@
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
-import {
-  Box,
-  Button,
-  CircularProgress,
-  IconButton,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Box, Button, CircularProgress, Typography } from "@mui/material";
 import axios from "axios";
 import { useMemo, useState } from "react";
 import {
@@ -47,6 +38,7 @@ import {
 } from "./ProjectWorkspaceNavigatorDrawer.tsx";
 import { useWorkspaceListActions } from "./ProjectWorkspacePreviewActions.tsx";
 import { WorkspaceAssetPanel } from "./ProjectWorkspacePreviewRows.tsx";
+import { WorkspaceSidebarToggle } from "./WorkspaceSidebarChrome.tsx";
 import { storytellerAssetTitle } from "./storytellerAssetMarkdown.ts";
 import StorytellerImageEpisodeEditor from "./ImageEpisodeEditor.tsx";
 import StorytellerLoreEditor from "./LoreEditor.tsx";
@@ -504,6 +496,14 @@ export default function StorytellerProjectWorkspacePreview() {
     },
     onSelect: selectNode,
     onRefreshAssets: () => void assetsQuery.refetch(),
+    // 從側邊列刪掉正在編輯的那篇：直接回列表（不走 guardedNavigate，東西已經不存在，沒有未儲存可保護）
+    onItemDeleted: (type, publicId) => {
+      if ((type === "story" ? storyId : loreId) === publicId) {
+        navigate(
+          steamloomPath(browsingPath(selected.section, selected.collectionId)),
+        );
+      }
+    },
   });
   const sidebarSelectedItem =
     isExistingStoryRoute || isExistingImageRoute
@@ -530,6 +530,12 @@ export default function StorytellerProjectWorkspacePreview() {
     onReorderLoreCollection: listActions.reorderLoreCollection,
     onReorderStoryInVolume: (collectionId, draggedId, beforeId) =>
       listActions.reorderStory(draggedId, beforeId, collectionId),
+    renderItemActions: (item) =>
+      item.type === "story"
+        ? listActions.renderStoryActions(item.row, true)
+        : item.type === "lore"
+          ? listActions.renderLoreActions(item.row, true)
+          : null,
     onSearch: workspaceSearch.openSearch,
     activeToolPage: toolPage?.key,
     onOpenToolPage: (page) =>
@@ -662,32 +668,10 @@ export default function StorytellerProjectWorkspacePreview() {
               <WorkspaceSidebar {...sidebarProps} />
             )}
           </Box>
-          <Tooltip title={sidebarCollapsed ? "展開側邊欄" : "收合側邊欄"}>
-            <IconButton
-              size="small"
-              onClick={() => setSidebarCollapsed((value) => !value)}
-              sx={{
-                position: "absolute",
-                top: 12,
-                right: -13,
-                zIndex: 2,
-                width: 26,
-                height: 26,
-                bgcolor: "background.paper",
-                border: 1,
-                borderColor: "divider",
-                "&:hover": {
-                  bgcolor: "action.hover",
-                },
-              }}
-            >
-              {sidebarCollapsed ? (
-                <ChevronRightIcon fontSize="small" />
-              ) : (
-                <ChevronLeftIcon fontSize="small" />
-              )}
-            </IconButton>
-          </Tooltip>
+          <WorkspaceSidebarToggle
+            collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed((value) => !value)}
+          />
         </Box>
         <Box sx={{ minWidth: 0, overflow: "auto" }}>
           {toolPage?.key === "memories" ? (

@@ -233,11 +233,11 @@
   "actions": {
     "create": "创建",
     "moveDown": "下移",
-    "moveLore": "移动到设定集",
-    "moveStory": "移动到册",
     "moveUp": "上移",
     "sort": "调整顺序",
-    "sortDone": "完成排序"
+    "sortDone": "完成排序",
+    "collapseSidebar": "收起侧边栏",
+    "expandSidebar": "展开侧边栏"
   },
   "all": {
     "assets": "全部资产",

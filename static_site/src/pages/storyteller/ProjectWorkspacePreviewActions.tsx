@@ -72,6 +72,8 @@ interface WorkspaceListActionOptions {
   onAssetKeywordChange: (keyword: string) => void;
   onSelect: (section: WorkspaceSection, collectionId: string) => void;
   onRefreshAssets: () => void;
+  // 作品／設定刪除成功後通知頁面（側邊列可以刪掉正在編輯的那篇，頁面要負責離開編輯頁）
+  onItemDeleted?: (type: "story" | "lore", publicId: string) => void;
 }
 
 function errorMessage(error: unknown, fallback: string) {
@@ -95,6 +97,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     onAssetKeywordChange,
     onSelect,
     onRefreshAssets,
+    onItemDeleted,
   } = options;
   const [snack, setSnackState] = useState<{
     message: string;
@@ -641,18 +644,21 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   // 斷點加大 padding／間距，其餘尺寸不變。
   const touchTargetSx = { p: { xs: 1.25, sm: 0.625 } };
 
-  const renderStoryActions = (story: StorytellerStory) => (
+  // dense：側邊列用的小尺寸；列表與側邊列打開的是同一份選單
+  const renderStoryActions = (story: StorytellerStory, dense?: boolean) => (
     <WorkspaceRowActionButton
       label="作品操作"
+      dense={dense}
       onOpen={(event) =>
         setStoryActionMenu({ anchorEl: event.currentTarget, story })
       }
     />
   );
 
-  const renderLoreActions = (lore: StorytellerLore) => (
+  const renderLoreActions = (lore: StorytellerLore, dense?: boolean) => (
     <WorkspaceRowActionButton
       label="設定操作"
+      dense={dense}
       onOpen={(event) =>
         setLoreActionMenu({ anchorEl: event.currentTarget, lore })
       }
@@ -903,6 +909,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           onConfirm={() =>
             deleteStory.mutate(deleteStoryTarget.public_id, {
               onSuccess: () => {
+                onItemDeleted?.("story", deleteStoryTarget.public_id);
                 setDeleteStoryTarget(null);
                 setSnack("作品已刪除。");
               },
@@ -948,6 +955,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           onConfirm={() =>
             deleteLore.mutate(deleteLoreTarget.public_id, {
               onSuccess: () => {
+                onItemDeleted?.("lore", deleteLoreTarget.public_id);
                 setDeleteLoreTarget(null);
                 setSnack("設定已刪除。");
               },

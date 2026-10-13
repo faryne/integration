@@ -44,6 +44,7 @@ import {
 import { LoreRow, StoryRow } from "./WorkspaceDocumentRows.tsx";
 import { AssetCard } from "./WorkspaceAssetPanel.tsx";
 import { SidebarGroup } from "./ProjectWorkspaceSidebarTree.tsx";
+import type { RenderSidebarItemActions } from "./ProjectWorkspaceSidebarTreeChildren.tsx";
 import {
   workspaceToolPages,
   type WorkspaceToolPage,
@@ -90,6 +91,8 @@ export interface WorkspaceSidebarProps {
     draggedId: string,
     beforeId: string | null,
   ) => void;
+  // 側邊列每篇作品／設定 hover 時的 ⋮，跟列表打開同一份選單
+  renderItemActions?: RenderSidebarItemActions;
   onNavigate?: () => void;
   // 目前開啟的專案層工具頁（梭梭的記憶、稽核紀錄）；見 workspaceToolPages。
   activeToolPage?: WorkspaceToolPage;
@@ -114,6 +117,7 @@ export function WorkspaceSidebar({
   onReorderVolume,
   onReorderLoreCollection,
   onReorderStoryInVolume,
+  renderItemActions,
   onNavigate,
   activeToolPage,
   onOpenToolPage,
@@ -183,6 +187,7 @@ export function WorkspaceSidebar({
           createLabel="新增冊"
           onReorder={onReorderVolume}
           onReorderItem={onReorderStoryInVolume}
+          renderItemActions={renderItemActions}
         />
         <SidebarGroup
           title="設定集"
@@ -208,6 +213,7 @@ export function WorkspaceSidebar({
           selectedItem={selectedItem}
           onCreate={onCreateLoreCollection}
           onReorder={onReorderLoreCollection}
+          renderItemActions={renderItemActions}
         />
         <SidebarGroup
           title="資產集"

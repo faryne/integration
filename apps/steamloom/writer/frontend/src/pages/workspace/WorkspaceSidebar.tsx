@@ -1,3 +1,5 @@
+import { WorkspaceRowActionButton } from "@/pages/storyteller/ProjectWorkspaceRowActions.tsx";
+import { WorkspaceRailButton } from "@/pages/storyteller/WorkspaceSidebarChrome.tsx";
 import AllInboxIcon from "@mui/icons-material/AllInbox";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import ChatIcon from "@mui/icons-material/Chat";
@@ -5,19 +7,21 @@ import CollectionsIcon from "@mui/icons-material/Collections";
 import FolderIcon from "@mui/icons-material/Folder";
 import LightbulbIcon from "@mui/icons-material/Lightbulb";
 import SettingsIcon from "@mui/icons-material/Settings";
-import { Box, Divider, Typography } from "@mui/material";
+import { Box, Divider, Stack, Typography } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { UNCATEGORIZED_ASSETS, type DocumentItem, type Workspace } from "@writer/lib/backend.ts";
 import { CreateDialog } from "@writer/pages/workspace/CreateDialog.tsx";
-import { MoveMenuButton, SectionActions, SortArrows } from "@writer/pages/workspace/SidebarActions.tsx";
+import { SectionActions, SortArrows } from "@writer/pages/workspace/SidebarActions.tsx";
 import type { ListSection } from "@writer/pages/workspace/ListPanels.tsx";
 import { GroupRow, NavRow, SidebarSection } from "@writer/pages/workspace/SidebarRows.tsx";
 import { UploadDialog } from "@writer/pages/workspace/UploadDialog.tsx";
+import { useDocumentRowActions, type RowActionTarget } from "@writer/pages/workspace/useDocumentRowActions.tsx";
 import type { useWorkspaceEditing } from "@writer/pages/workspace/useWorkspaceEditing.ts";
 import { groupIdOf, groupTargets } from "@writer/pages/workspace/workspaceTree.ts";
 
 type Props = {
+  project: string;
   workspace: Workspace;
   selected: DocumentItem | null;
   onSelect: (item: DocumentItem) => void;
@@ -29,6 +33,9 @@ type Props = {
   editing: ReturnType<typeof useWorkspaceEditing>;
   // 建立的是故事類或設定時，外層據此打開新項目
   onCreated: (item: DocumentItem) => void;
+  // ⋮ 選單改了狀態／移動／刪除後重抓；刪掉的若是正在編輯的那篇，外層要離開編輯頁
+  onChanged: () => void;
+  onDeleted: (target: RowActionTarget) => void;
 };
 
 // 各區塊「建立」選單的項目，比照網站
@@ -37,8 +44,8 @@ const loreKinds = ["lore", "lore-collection"];
 const assetKinds = ["asset-collection", "asset-upload"];
 
 // 專案工作台側邊列：最上方是 AI 助理，下面是作品與冊、設定集、資產集、梭梭的記憶。
-// 「作品與冊」「設定集」可以切換排序模式（上移／下移）；平常滑過文件會出現 ⋮ 可移動到其他冊／設定集。
-export function WorkspaceSidebar({ workspace, selected, onSelect, onAssistant, listSection, assetCollection, onList, editing, onCreated }: Props) {
+// 「作品與冊」「設定集」可以切換排序模式（上移／下移）；平常滑過文件會出現 ⋮，跟「全部作品／全部設定」列表同一份選單。
+export function WorkspaceSidebar({ project, workspace, selected, onSelect, onAssistant, listSection, assetCollection, onList, editing, onCreated, onChanged, onDeleted }: Props) {
   const { t } = useTranslation();
   const [sortingStories, setSortingStories] = useState(false);
   const [sortingLores, setSortingLores] = useState(false);
@@ -53,17 +60,19 @@ export function WorkspaceSidebar({ workspace, selected, onSelect, onAssistant, l
   const volumeTargets = groupTargets(workspace, "story", t("workspace.ungroupedStories"));
   const collectionTargets = groupTargets(workspace, "lore", t("workspace.uncategorizedLores"));
 
-  // 文件右側：排序模式顯示上移／下移，平常顯示「移動到…」選單
+  const rowActions = useDocumentRowActions({
+    project,
+    groupsOf: (kind) => (kind === "story" ? volumes : loreCollections),
+    onChanged,
+    onDeleted,
+  });
+  // 文件右側：排序模式顯示上移／下移，平常顯示 ⋮
+  const actionButton = (item: DocumentItem, groupId: string) => (
+    <WorkspaceRowActionButton dense label={t(`workspace.list.actions.${item.kind}`)} onOpen={(event) => rowActions.open(event.currentTarget, { ...item, group_id: groupId })} />
+  );
   const storyExtra = (groupId: string, count: number) => (item: DocumentItem, index: number) =>
-    sortingStories ? (
-      <SortArrows index={index} count={count} onMove={(delta) => editing.moveStory(groupId, index, delta)} />
-    ) : (
-      <MoveMenuButton title={t("workspace.actions.moveStory")} targets={volumeTargets} current={groupId} onMove={(volume) => editing.moveStoryTo(item.public_id, volume)} />
-    );
-  const loreExtra = (groupId: string) => (item: DocumentItem) =>
-    sortingLores ? undefined : (
-      <MoveMenuButton title={t("workspace.actions.moveLore")} targets={collectionTargets} current={groupId} onMove={(collection) => editing.moveLoreTo(item.public_id, collection)} />
-    );
+    sortingStories ? <SortArrows index={index} count={count} onMove={(delta) => editing.moveStory(groupId, index, delta)} /> : actionButton(item, groupId);
+  const loreExtra = (groupId: string) => (item: DocumentItem) => (sortingLores ? undefined : actionButton(item, groupId));
 
   // 建立對話框：故事／圖像作品可選冊、設定可選設定集，預設放在目前選取文件的同一組
   const isStoryKind = creating === "story" || creating === "image";
@@ -170,6 +179,7 @@ export function WorkspaceSidebar({ workspace, selected, onSelect, onAssistant, l
           }}
         />
       )}
+      {rowActions.dialogs}
       {creating && (
         <CreateDialog
           kind={creating}
@@ -181,5 +191,30 @@ export function WorkspaceSidebar({ workspace, selected, onSelect, onAssistant, l
         />
       )}
     </Box>
+  );
+}
+
+// 側邊列收合後的 52px 窄欄（比照網站）：AI 助理與三個「全部…」列表的入口，滑過顯示名稱
+export function WorkspaceSidebarRail({
+  selected,
+  listSection,
+  onAssistant,
+  onList,
+}: Pick<Props, "selected" | "listSection" | "onAssistant" | "onList">) {
+  const { t } = useTranslation();
+  // 編輯中的文件也算在它那一區
+  const current = listSection ?? (selected?.kind === "story" ? "stories" : selected?.kind === "lore" ? "lores" : null);
+  const sections = [
+    { section: "stories" as const, icon: <AutoStoriesIcon /> },
+    { section: "lores" as const, icon: <SettingsIcon /> },
+    { section: "assets" as const, icon: <CollectionsIcon /> },
+  ];
+  return (
+    <Stack component="nav" alignItems="center" spacing={0.5} sx={{ width: 52, flex: "none", borderRight: 1, borderColor: "divider", pt: 5.5 }}>
+      <WorkspaceRailButton icon={<ChatIcon />} label={t("workspace.assistant")} selected={current === null} onClick={onAssistant} />
+      {sections.map(({ section, icon }) => (
+        <WorkspaceRailButton key={section} icon={icon} label={t(`workspace.all.${section}`)} selected={current === section} onClick={() => onList(section)} />
+      ))}
+    </Stack>
   );
 }

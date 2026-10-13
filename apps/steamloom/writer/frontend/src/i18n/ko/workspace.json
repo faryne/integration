@@ -233,11 +233,11 @@
   "actions": {
     "create": "만들기",
     "moveDown": "아래로 이동",
-    "moveLore": "설정집으로 이동",
-    "moveStory": "권으로 이동",
     "moveUp": "위로 이동",
     "sort": "순서 조정",
-    "sortDone": "순서 조정 완료"
+    "sortDone": "순서 조정 완료",
+    "collapseSidebar": "사이드바 접기",
+    "expandSidebar": "사이드바 펼치기"
   },
   "all": {
     "assets": "모든 에셋",

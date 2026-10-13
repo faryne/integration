@@ -18,9 +18,12 @@ import type { MouseEvent } from "react";
  * 網站工作台與 SteamLoom Writer 的作品／設定列表共用（Writer 透過 alias 直接 import，改這支也會影響 Writer）。 */
 export function WorkspaceRowActionButton({
   label,
+  dense,
   onOpen,
 }: {
   label: string;
+  // 側邊列的列高只有 28px，用縮小的 padding
+  dense?: boolean;
   onOpen: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
   return (
@@ -28,7 +31,7 @@ export function WorkspaceRowActionButton({
       <IconButton
         aria-label={label}
         onClick={onOpen}
-        sx={{ p: { xs: 1.25, sm: 0.75 } }}
+        sx={{ p: dense ? 0.25 : { xs: 1.25, sm: 0.75 } }}
       >
         <MoreVertIcon fontSize="small" />
       </IconButton>

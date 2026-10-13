@@ -112,8 +112,8 @@
     "moveUp": "上移",
     "moveDown": "下移",
     "create": "建立",
-    "moveStory": "移動到冊",
-    "moveLore": "移動到設定集"
+    "collapseSidebar": "收合側邊欄",
+    "expandSidebar": "展開側邊欄"
   },
   "create": {
     "kinds": {

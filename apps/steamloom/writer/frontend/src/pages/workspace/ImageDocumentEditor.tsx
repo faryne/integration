@@ -38,7 +38,7 @@ const serialize = (pages: Page[]) =>
 // 圖像作品編輯頁，比照網站 ImageEpisodeEditor 的 embedded 版面：上方標題（右側存檔）、屬性、描述，
 // 下方頁面清單（共用 ImageEpisodePageList）。跟網站一樣沒有自動存檔；
 // 頁面清單沒載入成功時不給存（不然會把原本的頁面蓋成空的）。
-export function ImageDocumentEditor({ project, item, doc, groupId, groupTargets, profile, onDirtyChange, onSaved, onShowHistory }: EditorPanelProps & { doc: Document }) {
+export function ImageDocumentEditor({ project, item, doc, groupId, status, groupTargets, profile, onDirtyChange, onSaved, onShowHistory }: EditorPanelProps & { doc: Document }) {
   const { t } = useTranslation();
   const { showError } = useSnack();
   const loaded = useBackendData(() => backend.ImagePages(project, item.public_id), [project, item.public_id]);
@@ -63,7 +63,7 @@ export function ImageDocumentEditor({ project, item, doc, groupId, groupTargets,
     const content = serialize(pagesRef.current);
     return { content, saved: content };
   };
-  const state = useDocumentDraft({ project, item, doc, groupId, autoSaveMinutes: null, onSaved, onDirtyChange, prepare, reloadOnFocus: false });
+  const state = useDocumentDraft({ project, item, doc, groupId, status, autoSaveMinutes: null, onSaved, onDirtyChange, prepare, reloadOnFocus: false });
   const { draft, setContent, saving, save } = state;
 
   useEffect(() => {

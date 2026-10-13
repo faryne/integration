@@ -20,6 +20,8 @@ type DocumentItem struct {
 	PublicID    string       `json:"public_id"`
 	Title       string       `json:"title"`
 	ContentType string       `json:"content_type"`
+	// Status 是公開狀態（draft／completed），側邊列 ⋮ 選單的「設為公開／草稿」要用；建立當下的新項目可能為空
+	Status string `json:"status,omitempty"`
 }
 
 // Group 是側邊列上的一個分組（冊／設定集／資產集），Items 為空代表不展開。
@@ -48,6 +50,7 @@ type storyRow struct {
 	IsVolume    bool    `json:"is_volume"`
 	ContentType string  `json:"content_type"`
 	Title       string  `json:"title"`
+	Status      string  `json:"status"`
 	Sort        int     `json:"sort"`
 }
 
@@ -55,6 +58,7 @@ type loreRow struct {
 	PublicID     string `json:"public_id"`
 	CollectionID string `json:"collection_id"`
 	Title        string `json:"title"`
+	Status       string `json:"status"`
 }
 
 type collectionRow struct {
@@ -113,7 +117,7 @@ func buildWorkspace(stories, volumes []storyRow, lores []loreRow, loreCollection
 		if row.IsVolume {
 			continue
 		}
-		item := DocumentItem{Kind: KindStory, PublicID: row.PublicID, Title: row.Title, ContentType: row.ContentType}
+		item := DocumentItem{Kind: KindStory, PublicID: row.PublicID, Title: row.Title, ContentType: row.ContentType, Status: row.Status}
 		if row.ParentID == nil {
 			ws.UngroupedStories = append(ws.UngroupedStories, item)
 		} else {
@@ -126,7 +130,7 @@ func buildWorkspace(stories, volumes []storyRow, lores []loreRow, loreCollection
 	// 設定依設定集分組
 	loresByCollection := map[string][]DocumentItem{}
 	for _, row := range lores {
-		item := DocumentItem{Kind: KindLore, PublicID: row.PublicID, Title: row.Title}
+		item := DocumentItem{Kind: KindLore, PublicID: row.PublicID, Title: row.Title, Status: row.Status}
 		if row.CollectionID == "" {
 			ws.UncategorizedLores = append(ws.UncategorizedLores, item)
 		} else {

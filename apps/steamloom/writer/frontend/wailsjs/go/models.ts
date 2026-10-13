@@ -587,6 +587,7 @@ export namespace api {
 	    public_id: string;
 	    title: string;
 	    content_type: string;
+	    status?: string;
 
 	    static createFrom(source: any = {}) {
 	        return new DocumentItem(source);
@@ -598,6 +599,7 @@ export namespace api {
 	        this.public_id = source["public_id"];
 	        this.title = source["title"];
 	        this.content_type = source["content_type"];
+	        this.status = source["status"];
 	    }
 	}
 	export class EditorAsset {
