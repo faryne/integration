@@ -18,6 +18,11 @@
 - **前端共用 static_site 的原始碼**：Vite alias `@steamloom-web` → `static_site/src`，`resolve.dedupe` 強制 React／MUI／emotion 只用 Writer 那份；tsconfig 的 `paths` 也把 `@mui/*`、`@emotion/*` 指向 Writer 的 node_modules。被 Writer import 的 static_site 檔案**只能用相對路徑**，不能用 `@/` alias。
   - 已抽出 `static_site/src/data/storytellerMuiTheme.ts`（`createStorytellerTheme`、`storytellerGlobalStyles`），網站的 StorytellerLayout 也改用它。
 - **token 只在 Go 端**：前端透過 Wails 綁定呼叫 Go，Go 帶 Bearer 打 API；token 不進 JS、不需要開 CORS。
+- **網站 API hook 走 Go 轉發（2026-10-14）**：Go 綁定 `ApiProxy(method, path, body)` 帶 Bearer 原樣轉發 `/storyteller/*`，回傳 status＋未解包的 body；前端 `src/lib/webApi.tsx` 把全域 axios 的 `adapter` 換成呼叫它，並用 `WebApiProvider` 提供 react-query、假 session（`AuthContext`）、`MemoryRouter`。網站 `apis/storyteller/*` 的 hook 與用到它們的頁面因此能整頁搬進 Writer，不用逐一改成 props／context 注入（第一個用例：梭梭的記憶）。
+  - 只轉發 `${VITE_API_BASE}/storyteller/...`（Writer 的 vite `define` 固定成 `/api`，只當辨識前綴）；body 只支援 JSON，FormData／S3 presign 直傳不支援。
+  - 掛 `sessionOnly` 的端點 Bearer 打不到（403），帳號安全、Provider 金鑰、PAT、站內 AI 相關頁面不要搬。
+  - 授權失效（not_logged_in）由 adapter 通知外層回登入頁，react-query 不重試。
+  - 搬過來的頁面目前沿用網站的寫死中文，還沒接 Writer 的 i18n。
 
 ## 登入流程（OAuth Authorization Code＋PKCE）
 
@@ -42,7 +47,7 @@
 ## 專案主頁（2026-10-11 骨架）
 
 - Go 端 `Workspace()` 平行抓 5 份清單，在 Go 端依 `parent_id`／`collection_id` 組成樹，前端只負責畫；`Document()`／`Versions()` 以 kind（story／lore）共用同一套路徑，版本列表在 Go 端丟掉內文不傳給前端。
-- 側邊列：作品與冊（冊＋未分冊）、設定集（設定集＋未歸類）、資產集（只列名稱）、梭梭的記憶（只列入口）。進入專案自動打開第一篇，所在分組自動展開。
+- 側邊列：作品與冊（冊＋未分冊）、設定集（設定集＋未歸類）、資產集（只列名稱）、梭梭的記憶（點了打開網站同一個記憶管理頁，見上方「網站 API hook 走 Go 轉發」）。進入專案自動打開第一篇，所在分組自動展開。
 - 三個 tab 都綁「目前選取的那一篇」，故事與設定共用：
   - AI 對話：只有外型（空對話串＋輸入框＋CLI 選單），送出還沒接。
   - 編輯：唯讀，內文用網站 `wysiwygCore/parser.ts` 的 `stripMarkerForDiffLine` 去掉段落／行內 marker 後逐行顯示。
@@ -67,9 +72,9 @@
 
 ## 待辦
 
-- 專案主頁：編輯器換成網站 WYSIWYG、編輯歷史還原、資產與記憶頁。
+- 專案主頁：編輯器換成網站 WYSIWYG、編輯歷史還原。
 - 本機 CLI adapter 已完成第一版（Claude Code／Codex／Grok Build 的 headless 純問答與 session resume）；agentic 化、streaming、MCP tool trace／approval 的研究與分期見 [SteamLoom_Writer_AI助理_2026-10-12.md](SteamLoom_Writer_AI助理_2026-10-12.md)。
-- static_site 的 API client 改成可注入（Bearer＋base URL），編輯器等元件才能在 Writer 裡沿用。
+- 已有 `ApiProxy`＋axios adapter 這條路（見上方），之後網站頁面要搬進 Writer 優先走它，不再為 Writer 另寫 Go 端專用 API 與 UI。
 - 外觀目前固定 nocturne，之後接 appearance 切換。
 
 ## 部署

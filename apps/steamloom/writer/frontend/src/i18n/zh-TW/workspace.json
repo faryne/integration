@@ -210,7 +210,8 @@
   "all": {
     "stories": "全部作品",
     "lores": "全部設定",
-    "assets": "全部資產"
+    "assets": "全部資產",
+    "memories": "梭梭的記憶"
   },
   "upload": {
     "title": "上傳資產",

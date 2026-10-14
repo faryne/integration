@@ -317,7 +317,8 @@
   "all": {
     "assets": "全部资产",
     "lores": "全部设定",
-    "stories": "全部作品"
+    "stories": "全部作品",
+    "memories": "梭梭的记忆"
   },
   "create": {
     "cancel": "取消",
