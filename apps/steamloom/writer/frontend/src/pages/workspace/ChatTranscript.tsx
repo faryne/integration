@@ -16,10 +16,11 @@ interface ChatTranscriptProps {
   proposals: AgentProposal[] | null;
   workspace: Workspace;
   onReview: (proposal: AgentProposal, item: AgentProposalItem, selectedItemIDs: string[]) => void;
+  onQuote: (message: ChatLine, messageID: string) => void;
 }
 
 // 同一 task 的 queued/tool/complete event 收進一張可收合 timeline，避免狀態只閃一下就消失。
-export function ChatTranscript({ agentID, messages, start, proposals, workspace, onReview }: ChatTranscriptProps) {
+export function ChatTranscript({ agentID, messages, start, proposals, workspace, onReview, onQuote }: ChatTranscriptProps) {
   const activity = new Map<string, { first: number; events: ChatLine[] }>();
   messages.forEach((message, index) => {
     if (!message.task_id || !activityTypes.has(message.type ?? "")) return;
@@ -36,6 +37,7 @@ export function ChatTranscript({ agentID, messages, start, proposals, workspace,
     }
     const proposal = message.type === "proposal.ready" ? proposals?.find((item) => item.id === message.proposal_id) : undefined;
     if (proposal) return <ProposalCard key={key} proposal={proposal} onReview={(item, selectedItemIDs) => onReview(proposal, item, selectedItemIDs)} />;
-    return <ChatMessage key={key} message={message} />;
+    const quotable = (message.role === "user" || message.role === "assistant") && message.text.trim() !== "";
+    return <ChatMessage key={key} message={message} onQuote={quotable ? () => onQuote(message, message.event_id ?? `legacy:${start + index}`) : undefined} />;
   });
 }

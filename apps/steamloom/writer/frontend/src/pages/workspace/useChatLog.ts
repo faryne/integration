@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSnack } from "@writer/components/SnackProvider.tsx";
 import { backend, errorMessage } from "@writer/lib/backend.ts";
+import type { PromptReference } from "@writer/pages/workspace/promptReferences.ts";
 
 // 不用 wails 產生的 class：那些 class 帶了 convertValues，物件字面值塞不回去。
 type ChatThread = { id: string; title: string; session_id: string; updated_at: string; last_task_state?: string; active_task_id?: string };
@@ -16,6 +17,7 @@ export type ChatLine = {
   tool_target?: string;
   action?: string;
   commands?: string[];
+  references?: PromptReference[];
 };
 type ChatPage = {
   threads: ChatThread[];
@@ -93,18 +95,6 @@ export function useChatLog(projectID: string, agentID: string) {
     }
   }, [agentID, projectID, replace, showError]);
 
-  const startNew = async () => {
-    if (!agentID) return null;
-    try {
-      const next = await backend.ChatNew(agentID, projectID);
-      replace(next);
-      return next;
-    } catch (err) {
-      showError(errorMessage(err));
-      return null;
-    }
-  };
-
   const renameCurrent = async (title: string) => {
     if (!agentID || !page?.current_id) return false;
     try {
@@ -151,5 +141,5 @@ export function useChatLog(projectID: string, agentID: string) {
     }
   };
 
-  return { page, box, loadingOlder, openThread, refreshVisibleThread, startNew, renameCurrent, deleteThread, loadOlder };
+  return { page, box, loadingOlder, openThread, refreshVisibleThread, renameCurrent, deleteThread, loadOlder };
 }

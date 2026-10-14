@@ -53,7 +53,7 @@ export function TaskRail({ threads, tasks, selectedAgent, selectedThread, canCre
       <Stack direction="row" alignItems="center" sx={{ minHeight: 52, px: 1.5, borderBottom: 1, borderColor: "divider" }}>
         <Typography fontWeight={700} sx={{ fontSize: 14 }}>{t("workspace.chat.tasks")}</Typography>
         <Box sx={{ flex: 1 }} />
-        <Button size="small" startIcon={<AddIcon />} disabled={!canCreate} onClick={onNew}>{t("workspace.chat.newThread")}</Button>
+        <Button size="small" startIcon={<AddIcon />} disabled={!canCreate} onClick={onNew}>{t("workspace.chat.createTask")}</Button>
       </Stack>
       <Box sx={{ px: 1, pt: 1 }}>
         <TextField

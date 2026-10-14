@@ -78,6 +78,8 @@ const threadMeta = {
 const selectThread = (key) => {
   threadHTML[activeThread] = $(".thread").innerHTML;
   activeThread = key;
+  $(".chat").classList.remove("empty", "new-task");
+  $(".engine-btn").disabled = true;
   $(".thread").innerHTML = threadHTML[key];
   document.querySelectorAll(".task-card").forEach((card) => card.classList.toggle("selected", card.dataset.task === key));
   $(".task-detail-head .engine-tag").innerHTML = `<span class="status-dot"></span>${threadMeta[key].provider}`;
@@ -225,7 +227,15 @@ const actions = {
   },
   "keep-mine": () => { body.classList.remove("conflict"); syncMock(); },
   "reload-latest": () => { body.classList.remove("conflict"); syncMock(); },
-  "new-chat": () => {},
+  "new-chat": () => {
+    $(".chat").classList.remove("empty");
+    $(".chat").classList.add("new-task");
+    document.querySelectorAll(".task-card").forEach((card) => card.classList.remove("selected"));
+    $(".engine-btn").disabled = false;
+    prompt.value = "";
+    renderPromptReferences();
+    prompt.focus();
+  },
   snack: () => notify("Codex 執行失敗：尚未登入，請先在終端機執行 codex login"),
   "snack-close": () => $("#snack").classList.remove("show"),
 };

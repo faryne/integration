@@ -50,6 +50,17 @@
 .running-state { background: var(--accent-soft); color: var(--accent); }
 .review-state { background: rgba(240, 192, 96, 0.15); color: var(--warn); }
 .chat { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
+.chat-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.chat-empty-state, .new-task-intro {
+  flex: 1; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 32px; text-align: center;
+}
+.chat-empty-state > .i, .new-task-intro > .i { width: 42px; height: 42px; margin-bottom: 4px; color: var(--faint); }
+.chat-empty-state h2, .new-task-intro h2 { font: 700 20px var(--serif); }
+.chat-empty-state p, .new-task-intro p { max-width: 440px; color: var(--muted); }
+.chat-empty-state .btn { margin-top: 8px; }
+.chat.empty .chat-content { display: none; }
+.chat:not(.empty) .chat-empty-state, .chat:not(.new-task) .new-task-intro { display: none; }
+.chat.new-task .task-detail-head, .chat.new-task .chat-scroll { display: none; }
 .task-detail-head {
   min-height: 52px; flex: none; display: flex; align-items: center; gap: 12px; padding: 8px 18px;
   border-bottom: 1px solid var(--border-soft);

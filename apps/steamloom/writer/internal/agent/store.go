@@ -204,7 +204,7 @@ func SessionOf(agentID, projectID, threadID string) (string, error) {
 }
 
 // SaveTurn 在 CLI 回答成功後，把這一來一回接到串的後面。threadID 空的就開新串。
-func SaveTurn(agentID, projectID, threadID, prompt, answer, sessionID string) (Thread, error) {
+func SaveTurn(agentID, projectID, threadID, prompt string, references []PromptReference, answer, sessionID string) (Thread, error) {
 	chatMu.Lock()
 	defer chatMu.Unlock()
 	dir, idx, err := loadChat(agentID, projectID)
@@ -225,8 +225,10 @@ func SaveTurn(agentID, projectID, threadID, prompt, answer, sessionID string) (T
 		}
 		thread = found
 	}
+	message := messageEvent("user", prompt)
+	message.References = references
 	if err := appendLines(filepath.Join(dir, thread.ID+".jsonl"), []ChatLine{
-		messageEvent("user", prompt),
+		message,
 		messageEvent("assistant", answer),
 	}); err != nil {
 		return Thread{}, err

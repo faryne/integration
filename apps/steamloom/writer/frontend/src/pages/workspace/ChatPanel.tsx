@@ -3,6 +3,7 @@ import { Box, Button, CircularProgress, IconButton, MenuItem, Paper, Select, Sta
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EventsOn } from "../../../wailsjs/runtime/runtime";
+import { agent } from "../../../wailsjs/go/models";
 import { useSnack } from "@writer/components/SnackProvider.tsx";
 import { backend, errorMessage, type AgentProposal, type AgentProposalItem, type AgentTask, type AgentTaskEvent, type AgentThread, type Workspace } from "@writer/lib/backend.ts";
 import { useBackendData } from "@writer/lib/useBackendData.ts";
@@ -11,18 +12,28 @@ import { AgentPromptEditor } from "@writer/pages/workspace/AgentPromptEditor.tsx
 import { AssistantSetup } from "@writer/pages/workspace/AssistantSetup.tsx";
 import { ChatTranscript } from "@writer/pages/workspace/ChatTranscript.tsx";
 import { ChatThreadHeader } from "@writer/pages/workspace/ChatThreadHeader.tsx";
+import { ChatTaskLanding } from "@writer/pages/workspace/ChatTaskLanding.tsx";
 import { ProposalReviewDialog } from "@writer/pages/workspace/ProposalReviewDialog.tsx";
 import { TaskRail } from "@writer/pages/workspace/TaskRail.tsx";
 import { ThreadDeleteDialog } from "@writer/pages/workspace/ThreadDeleteDialog.tsx";
-import { useChatLog } from "@writer/pages/workspace/useChatLog.ts";
+import { useChatLog, type ChatLine } from "@writer/pages/workspace/useChatLog.ts";
+import type { PromptReference } from "@writer/pages/workspace/promptReferences.ts";
 
 // 專案層的 AI 助理。每條 thread 各自綁定 provider session，同一 provider 也能同時執行多條。
-export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange }: { projectID: string; projectName: string; workspace: Workspace; onWorkspaceChange: () => void }) {
+export function ChatPanel({ projectID, projectName, workspace, initialReference, onInitialReferenceConsumed, onWorkspaceChange }: {
+  projectID: string;
+  projectName: string;
+  workspace: Workspace;
+  initialReference: PromptReference | null;
+  onInitialReferenceConsumed: () => void;
+  onWorkspaceChange: () => void;
+}) {
   const { t } = useTranslation();
   const { showError } = useSnack();
   const agents = useBackendData(() => backend.Agents(), []);
   const [agentID, setAgentID] = useState("");
   const [draft, setDraft] = useState("");
+  const [references, setReferences] = useState<PromptReference[]>([]);
   const [starting, setStarting] = useState(false);
   const [canceling, setCanceling] = useState("");
   const [tasks, setTasks] = useState<Record<string, AgentTask>>({});
@@ -34,15 +45,31 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
   const [proposalRevision, setProposalRevision] = useState(0);
   const [review, setReview] = useState<{ proposal: AgentProposal; item: AgentProposalItem; selectedItemIDs: string[] } | null>(null);
   const [deciding, setDeciding] = useState(false);
+  const [viewMode, setViewMode] = useState<"empty" | "new" | "thread">("empty");
   const selected = agents?.some((agent) => agent.id === agentID) ? agentID : (agents?.[0]?.id ?? "");
   const chat = useChatLog(projectID, selected);
+  const currentThreadID = viewMode === "thread" ? (chat.page?.current_id ?? "") : "";
   const activeTasks = useMemo(
-    () => Object.values(tasks).filter((task) => task.agent_id === selected && task.thread_id === chat.page?.current_id && (task.state === "queued" || task.state === "running" || task.state === "applying")),
-    [chat.page?.current_id, selected, tasks],
+    () => Object.values(tasks).filter((task) => task.agent_id === selected && task.thread_id === currentThreadID && (task.state === "queued" || task.state === "running" || task.state === "applying")),
+    [currentThreadID, selected, tasks],
   );
   const activeTask = activeTasks.find((task) => task.state === "applying" || task.state === "running") ?? activeTasks[0];
-  const currentTitle = chat.page?.threads.find((thread) => thread.id === chat.page?.current_id)?.title || t("workspace.chat.newThread");
-  const agentLocked = starting || Boolean(pendingThread) || activeTasks.length > 0 || Boolean(chat.page?.messages.length);
+  const currentTitle = chat.page?.threads.find((thread) => thread.id === currentThreadID)?.title || t("workspace.chat.newThread");
+  const agentLocked = viewMode === "thread" || starting || Boolean(pendingThread);
+
+  useEffect(() => {
+    setViewMode("empty");
+    setPendingThread(null);
+    setDraft("");
+    setReferences([]);
+  }, [projectID]);
+
+  useEffect(() => {
+    if (!initialReference) return;
+    setReferences([initialReference]);
+    setViewMode("new");
+    onInitialReferenceConsumed();
+  }, [initialReference, onInitialReferenceConsumed]);
 
   const loadThreads = useCallback(async () => {
     try {
@@ -59,32 +86,32 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
   useEffect(() => {
     let canceled = false;
     setReview(null);
-    if (!selected || !chat.page?.current_id) {
+    if (!selected || !currentThreadID) {
       setProposals(null);
       return;
     }
     setProposals(null);
-    backend.ChatProposals(selected, projectID, chat.page.current_id)
+    backend.ChatProposals(selected, projectID, currentThreadID)
       .then((next) => { if (!canceled) setProposals(next); })
       .catch((err) => { if (!canceled) showError(errorMessage(err)); });
     return () => { canceled = true; };
-  }, [chat.page?.current_id, projectID, proposalRevision, selected, showError]);
+  }, [currentThreadID, projectID, proposalRevision, selected, showError]);
 
   useEffect(() => EventsOn("agent:task", (event: AgentTaskEvent) => {
     if (event.task.project_id !== projectID) return;
     setTasks((current) => ({ ...current, [event.task.id]: event.task }));
     if (event.type.startsWith("task.") || event.type.startsWith("tool.") || event.type.startsWith("apply.") || event.type === "proposal.ready") {
       void loadThreads();
-      if (event.task.agent_id === selected) {
+      if (event.task.agent_id === selected && viewMode === "thread") {
         void chat.refreshVisibleThread(event.task.thread_id);
-        if ((event.type === "proposal.ready" || event.type.startsWith("apply.")) && event.task.thread_id === chat.page?.current_id) setProposalRevision((value) => value + 1);
+        if ((event.type === "proposal.ready" || event.type.startsWith("apply.")) && event.task.thread_id === currentThreadID) setProposalRevision((value) => value + 1);
       }
     }
     if (event.type === "apply.completed") onWorkspaceChange();
-    if ((event.type === "task.failed" || event.type === "apply.failed") && (event.task.agent_id !== selected || event.task.thread_id !== chat.page?.current_id)) {
+    if ((event.type === "task.failed" || event.type === "apply.failed") && (event.task.agent_id !== selected || event.task.thread_id !== currentThreadID)) {
       showError(`${event.task.agent_id}: ${event.task.error}`);
     }
-  }), [chat.page?.current_id, chat.refreshVisibleThread, loadThreads, onWorkspaceChange, projectID, selected, showError]);
+  }), [chat.refreshVisibleThread, currentThreadID, loadThreads, onWorkspaceChange, projectID, selected, showError, viewMode]);
 
   // 切換 provider 後要等 useChatLog 開好該 provider 的 index，才能選指定 thread。
   useEffect(() => {
@@ -92,14 +119,18 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
     const thread = pendingThread;
     setPendingThread(null);
     void chat.openThread(thread.id).then((result) => {
+      if (result === "opened") setViewMode("thread");
       if (result === "missing") setThreads((current) => current?.filter((item) => item.agent_id !== thread.agent_id || item.id !== thread.id) ?? null);
     });
   }, [chat.openThread, chat.page, pendingThread, selected]);
 
   const selectProjectThread = (thread: AgentThread) => {
     setDeleteTarget(null);
+    setViewMode("empty");
+    setReferences([]);
     if (thread.agent_id === selected) {
       void chat.openThread(thread.id).then((result) => {
+        if (result === "opened") setViewMode("thread");
         if (result === "missing") setThreads((current) => current?.filter((item) => item.agent_id !== thread.agent_id || item.id !== thread.id) ?? null);
       });
       return;
@@ -108,9 +139,12 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
     setAgentID(thread.agent_id);
   };
 
-  const startNew = async () => {
+  const startNew = () => {
     setPendingThread(null);
-    if (await chat.startNew()) await loadThreads();
+    setReview(null);
+    setDraft("");
+    setReferences([]);
+    setViewMode("new");
   };
 
   const renameThread = async (title: string) => {
@@ -121,27 +155,54 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
 
   const send = async () => {
     const prompt = draft.trim();
-    if (!prompt || !selected || starting || chat.page === null) return;
+    if (!prompt || !selected || starting || (viewMode === "thread" && !currentThreadID)) return;
     setStarting(true);
     try {
-      const task = await backend.StartTask(selected, {
-        thread_id: chat.page.current_id,
+      const task = await backend.StartTask(selected, new agent.Request({
+        thread_id: currentThreadID,
         session_id: "",
         project_id: projectID,
         kind: "",
         document_id: "",
         title: projectName,
         prompt,
-      });
+        references,
+      }));
       setDraft("");
+      setReferences([]);
       setTasks((current) => ({ ...current, [task.id]: task }));
-      await chat.openThread(task.thread_id);
+      if (await chat.openThread(task.thread_id) === "opened") setViewMode("thread");
       await loadThreads();
     } catch (err) {
       showError(errorMessage(err));
     } finally {
       setStarting(false);
     }
+  };
+
+  const quoteMessage = (message: ChatLine, messageID: string) => {
+    const reference: PromptReference = {
+      type: "chat_message",
+      id: `chat:${currentThreadID}:${messageID}`,
+      title: message.role === "user" ? t("workspace.chat.referenceUser") : t("workspace.chat.referenceAgent"),
+      text: message.text,
+      role: message.role === "user" ? "user" : "assistant",
+      thread_id: currentThreadID,
+      message_id: messageID,
+    };
+    setReferences((current) => {
+      if (current.some((item) => item.id === reference.id)) return current;
+      if (current.length >= 5) {
+        showError(t("workspace.chat.referenceLimit"));
+        return current;
+      }
+      const total = current.reduce((sum, item) => sum + Array.from(item.text).length, 0) + Array.from(reference.text).length;
+      if (total > 20000) {
+        showError(t("workspace.chat.referenceTooLong"));
+        return current;
+      }
+      return [...current, reference];
+    });
   };
 
   const cancelTask = async () => {
@@ -171,6 +232,7 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
       }
     }
     if (deleted) {
+      if (deleteTarget.agent_id === selected && deleteTarget.id === currentThreadID) setViewMode("empty");
       setPendingThread((current) => current?.id === deleteTarget.id && current.agent_id === deleteTarget.agent_id ? null : current);
       setDeleteTarget(null);
       await loadThreads();
@@ -179,8 +241,8 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
   };
 
   const decideProposal = async (decision: "approve" | "reject") => {
-    if (!review || !selected || !chat.page?.current_id || deciding) return;
-    const threadID = chat.page.current_id;
+    if (!review || !selected || !currentThreadID || deciding) return;
+    const threadID = currentThreadID;
     setDeciding(true);
     try {
       await backend.DecideProposal(selected, projectID, threadID, review.proposal.id, decision, review.selectedItemIDs);
@@ -200,29 +262,33 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
         threads={threads}
         tasks={tasks}
         selectedAgent={selected}
-        selectedThread={chat.page?.current_id ?? ""}
-        canCreate={Boolean(selected && chat.page !== null)}
+        selectedThread={currentThreadID}
+        canCreate={Boolean(selected)}
         onSelect={selectProjectThread}
         onDelete={setDeleteTarget}
-        onNew={() => void startNew()}
+        onNew={startNew}
       />
       <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
-        <ChatThreadHeader threadID={chat.page?.current_id ?? ""} title={currentTitle} onSave={renameThread} />
+        {viewMode === "empty" && <ChatTaskLanding canCreate={Boolean(selected)} onCreate={startNew} />}
+        {viewMode === "thread" && <ChatThreadHeader threadID={currentThreadID} title={currentTitle} onSave={renameThread} />}
+        {viewMode !== "empty" && (
+        <>
         <Box ref={chat.box} sx={{ flex: 1, overflow: "auto" }}>
         <Stack spacing={1.25} sx={{ maxWidth: 780, mx: "auto", px: 2.5, py: 2.5 }}>
+          {viewMode === "new" && <ChatTaskLanding creating />}
           {selected && <AssistantSetup agentID={selected} />}
           {agents?.length === 0 && (
             <Typography color="text.secondary" sx={{ fontSize: 13.5, textAlign: "center", pt: 6 }}>
               {t("workspace.chat.noAgent")}
             </Typography>
           )}
-          {chat.page && chat.page.start > 0 && (
+          {viewMode === "thread" && chat.page && chat.page.start > 0 && (
             <Button size="small" disabled={chat.loadingOlder} onClick={() => void chat.loadOlder()} sx={{ alignSelf: "center" }}>
               {chat.loadingOlder ? <CircularProgress size={14} /> : t("workspace.chat.older")}
             </Button>
           )}
-          {chat.page === null && selected && <CircularProgress size={18} sx={{ alignSelf: "center", mt: 4 }} />}
-          {chat.page && (
+          {viewMode === "thread" && chat.page === null && selected && <CircularProgress size={18} sx={{ alignSelf: "center", mt: 4 }} />}
+          {viewMode === "thread" && chat.page && (
             <ChatTranscript
               agentID={selected}
               messages={chat.page.messages}
@@ -230,6 +296,7 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
               proposals={proposals}
               workspace={workspace}
               onReview={(proposal, item, selectedItemIDs) => setReview({ proposal, item, selectedItemIDs })}
+              onQuote={quoteMessage}
             />
           )}
           {activeTask && <ActiveTaskStatus task={activeTask} workspace={workspace} queued={Math.max(0, activeTasks.length - 1)} canceling={canceling === activeTask.id} onCancel={() => void cancelTask()} />}
@@ -241,7 +308,9 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
             workspace={workspace}
             value={draft}
             disabled={!selected}
+            references={references}
             onChange={setDraft}
+            onRemoveReference={(id) => setReferences((current) => current.filter((item) => item.id !== id))}
             onSubmit={() => void send()}
           />
           <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1 }}>
@@ -268,18 +337,20 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
               ))}
             </Select>
             <Box sx={{ flex: 1 }} />
-            <IconButton color="primary" disabled={!selected || starting || chat.page === null || !draft.trim()} aria-label={t("workspace.chat.send")} onClick={() => void send()}>
+            <IconButton color="primary" disabled={!selected || starting || (viewMode === "thread" && !currentThreadID) || !draft.trim()} aria-label={t("workspace.chat.send")} onClick={() => void send()}>
               {starting ? <CircularProgress size={16} /> : <SendIcon fontSize="small" />}
             </IconButton>
           </Stack>
         </Paper>
         </Box>
+        </>
+        )}
       </Box>
       <ThreadDeleteDialog open={deleteTarget !== null} deleting={deleting} onClose={() => setDeleteTarget(null)} onDelete={() => void deleteThread()} />
       <ProposalReviewDialog
         agentID={selected}
         projectID={projectID}
-        threadID={chat.page?.current_id ?? ""}
+        threadID={currentThreadID}
         proposal={review?.proposal ?? null}
         item={review?.item ?? null}
         selectedCount={review?.selectedItemIDs.length ?? 0}
