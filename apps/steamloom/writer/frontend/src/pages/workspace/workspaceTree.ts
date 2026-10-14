@@ -1,7 +1,5 @@
 import type { DocumentItem, Workspace, WorkspaceGroup } from "@writer/lib/backend.ts";
 
-export type DocumentTab = "editor" | "history";
-
 // 同一篇文件的判斷：故事與設定的 public_id 可能撞號，要連 kind 一起比
 export const isSameDocument = (a: DocumentItem | null, b: DocumentItem) =>
   a?.kind === b.kind && a.public_id === b.public_id;

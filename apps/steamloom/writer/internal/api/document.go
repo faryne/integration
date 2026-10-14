@@ -19,6 +19,16 @@ type Document struct {
 	UpdatedAt       string       `json:"updated_at"`
 	// ProfileIDs 是故事的署名（0＝本人），設定沒有這個欄位
 	ProfileIDs []uint64 `json:"profile_ids"`
+	// Sort 是故事在冊裡的排序（存檔時要帶回去）；IsSpoiler／DependsOn 只有設定有（劇透與「需先讀過」）
+	Sort      int                  `json:"sort"`
+	IsSpoiler bool                 `json:"is_spoiler"`
+	DependsOn []DocumentDependency `json:"depends_on"`
+}
+
+// DocumentDependency 是設定的「需先讀過」對象：故事或其他設定
+type DocumentDependency struct {
+	TargetType     string `json:"target_type"`
+	TargetPublicID string `json:"target_public_id"`
 }
 
 // Version 是編輯歷史的一列；後端回傳的版本含完整內文，這裡丟掉不傳給前端。

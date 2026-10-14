@@ -1,5 +1,5 @@
 export namespace agent {
-
+	
 	export class PromptReference {
 	    type: string;
 	    id: string;
@@ -11,11 +11,11 @@ export namespace agent {
 	    document_kind?: string;
 	    document_id?: string;
 	    base_version_id?: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new PromptReference(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.type = source["type"];
@@ -65,7 +65,7 @@ export namespace agent {
 	        this.commands = source["commands"];
 	        this.references = this.convertValues(source["references"], PromptReference);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -232,7 +232,7 @@ export namespace agent {
 	        this.active_task_id = source["active_task_id"];
 	    }
 	}
-
+	
 	export class ProposalSnapshot {
 	    title?: string;
 	    summary?: string;
@@ -429,7 +429,7 @@ export namespace agent {
 	        this.prompt = source["prompt"];
 	        this.references = this.convertValues(source["references"], PromptReference);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -629,6 +629,20 @@ export namespace api {
 	        this.public_id = source["public_id"];
 	    }
 	}
+	export class DocumentDependency {
+	    target_type: string;
+	    target_public_id: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DocumentDependency(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.target_type = source["target_type"];
+	        this.target_public_id = source["target_public_id"];
+	    }
+	}
 	export class Document {
 	    kind: string;
 	    public_id: string;
@@ -641,6 +655,9 @@ export namespace api {
 	    word_count: number;
 	    updated_at: string;
 	    profile_ids: number[];
+	    sort: number;
+	    is_spoiler: boolean;
+	    depends_on: DocumentDependency[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Document(source);
@@ -659,8 +676,30 @@ export namespace api {
 	        this.word_count = source["word_count"];
 	        this.updated_at = source["updated_at"];
 	        this.profile_ids = source["profile_ids"];
+	        this.sort = source["sort"];
+	        this.is_spoiler = source["is_spoiler"];
+	        this.depends_on = this.convertValues(source["depends_on"], DocumentDependency);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
+	
 	export class DocumentItem {
 	    kind: string;
 	    public_id: string;
@@ -1126,3 +1165,4 @@ export namespace updater {
 	}
 
 }
+

@@ -320,7 +320,32 @@
     },
     "self": "本人（{{penName}}）",
     "selfOnly": "本人",
-    "attributeFailed": "屬性更新失敗，請重試："
+    "attributeFailed": "屬性更新失敗，請重試：",
+    "spoiler": {
+      "label": "劇透",
+      "no": "無劇透",
+      "yes": "含劇透"
+    },
+    "dependsOn": "需先讀過",
+    "dependency": {
+      "story": "故事",
+      "lore": "設定"
+    },
+    "saveFailedBanner": "存檔失敗，請確認登入狀態與欄位內容。",
+    "insertAsset": "插入資產",
+    "insertAssetTitle": {
+      "story": "插入故事資產",
+      "lore": "插入設定資產"
+    },
+    "assetInserted": "已插入資產。",
+    "assetInsertFailed": "無法插入資產，請重新整理後再試。",
+    "historyEmpty": {
+      "story": "新故事第一次存檔後才會產生編輯歷史。",
+      "lore": "新設定第一次存檔後才會產生編輯歷史。"
+    },
+    "reverted": "已回復到這個版本。",
+    "revertFailed": "回復版本失敗，請重試：",
+    "agentApplied": "已套用 AI 提案並存檔。"
   },
   "assets": {
     "search": "搜尋資產",
