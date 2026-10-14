@@ -1,6 +1,7 @@
+import CloseIcon from "@mui/icons-material/Close";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
-import { Box, CircularProgress, IconButton, TextField, Tooltip, Typography } from "@mui/material";
+import { Box, Button, CircularProgress, IconButton, TextField, Tooltip, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -25,6 +26,10 @@ export function ChatThreadHeader({ threadID, title, onSave }: { threadID: string
     setDraft(normalized);
     setEditing(false);
   };
+  const cancel = () => {
+    setDraft(title);
+    setEditing(false);
+  };
 
   return (
     <Box sx={{ minHeight: 52, px: 2.5, borderBottom: 1, borderColor: "divider", display: "flex", alignItems: "center", gap: 1, flex: "none" }}>
@@ -43,14 +48,18 @@ export function ChatThreadHeader({ threadID, title, onSave }: { threadID: string
               event.preventDefault();
               void save();
             } else if (event.key === "Escape") {
-              setDraft(title);
-              setEditing(false);
+              cancel();
             }
           }}
           sx={{ maxWidth: 780, mx: "auto", "& input": { fontSize: 15, fontWeight: 700 } }}
         />
       ) : (
         <Typography noWrap fontWeight={700} sx={{ maxWidth: 780, mx: "auto", flex: 1, fontSize: 15 }}>{title}</Typography>
+      )}
+      {editing && (
+        <Button size="small" color="inherit" startIcon={<CloseIcon />} disabled={saving} onClick={cancel}>
+          {t("workspace.chat.cancelThreadTitle")}
+        </Button>
       )}
       <Tooltip title={t(editing ? "workspace.chat.saveThreadTitle" : "workspace.chat.editThreadTitle")}>
         <span>

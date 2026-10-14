@@ -29,6 +29,8 @@ export function StorytellerPromptHighlightOverlay({
   textareaRef,
   slashCommandHighlightLength = 0,
   includeCurrentReferences = true,
+  caretOffset,
+  showCaret = false,
 }: {
   text: string;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
@@ -40,6 +42,9 @@ export function StorytellerPromptHighlightOverlay({
   slashCommandHighlightLength?: number;
   /** 專案層級的 Writer 不提供 @thisStory／@thisLore。 */
   includeCurrentReferences?: boolean;
+  /** 透明 textarea 需要自行畫出 caret，避免桌面 WebView 內游標位置不明顯。 */
+  caretOffset?: number;
+  showCaret?: boolean;
 }) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -103,6 +108,25 @@ export function StorytellerPromptHighlightOverlay({
       : segmentStorytellerAgentPromptForHighlight(text, {
           includeCurrentReferences,
         });
+  const caret = showCaret ? Math.max(0, Math.min(caretOffset ?? text.length, text.length)) : -1;
+  let segmentStart = 0;
+
+  const caretNode = (key: string) => (
+    <Box
+      key={key}
+      component="span"
+      sx={{
+        display: "inline-block",
+        width: 0,
+        height: "1.25em",
+        borderLeft: "2px solid",
+        borderColor: "primary.main",
+        verticalAlign: "text-bottom",
+        animation: "steamloom-caret-blink 1s steps(1, end) infinite",
+        "@keyframes steamloom-caret-blink": { "0%, 49%": { opacity: 1 }, "50%, 100%": { opacity: 0 } },
+      }}
+    />
+  );
 
   return (
     <Box
@@ -121,8 +145,13 @@ export function StorytellerPromptHighlightOverlay({
         borderColor: "transparent",
       }}
     >
-      {segments.map((segment, index) =>
-        segment.kind ? (
+      {segments.map((segment, index) => {
+        const localCaret = caret >= segmentStart && caret < segmentStart + segment.text.length ? caret - segmentStart : -1;
+        segmentStart += segment.text.length;
+        const content = localCaret < 0
+          ? segment.text
+          : <>{segment.text.slice(0, localCaret)}{caretNode(`caret-${index}`)}{segment.text.slice(localCaret)}</>;
+        return segment.kind ? (
           <Box
             key={index}
             component="span"
@@ -134,12 +163,13 @@ export function StorytellerPromptHighlightOverlay({
               fontWeight: segment.kind === "slash-command" ? 800 : 700,
             }}
           >
-            {segment.text}
+            {content}
           </Box>
         ) : (
-          <span key={index}>{segment.text}</span>
-        ),
-      )}
+          <span key={index}>{content}</span>
+        );
+      })}
+      {caret === text.length && caretNode("caret-end")}
     </Box>
   );
 }

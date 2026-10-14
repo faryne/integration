@@ -24,6 +24,7 @@
       "lore": "Lore"
     },
     "send": "Send",
+    "submitHint": "Enter to send · Shift + Enter for a new line",
     "detecting": "Looking for AI agents on this computer…",
     "noAgent": "Claude Code, Codex, or Grok Build is not installed on this computer",
     "sending": "Waiting for a reply…",
@@ -39,6 +40,7 @@
     "threadTitle": "Task title",
     "editThreadTitle": "Edit task title",
     "saveThreadTitle": "Save task title",
+    "cancelThreadTitle": "Cancel",
     "dateGroups": {
       "today": "Today",
       "yesterday": "Yesterday",

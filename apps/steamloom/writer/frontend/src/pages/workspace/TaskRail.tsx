@@ -1,7 +1,8 @@
 import AddIcon from "@mui/icons-material/Add";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import SearchIcon from "@mui/icons-material/Search";
-import { Box, Button, Chip, CircularProgress, Collapse, InputAdornment, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, Chip, CircularProgress, Collapse, IconButton, InputAdornment, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -23,13 +24,14 @@ function taskState(thread: AgentThread, tasks: Record<string, AgentTask>) {
 }
 
 // 專案層級 thread rail：同一 provider 的多條 thread 都是獨立項目，不以 agent_id 合併。
-export function TaskRail({ threads, tasks, selectedAgent, selectedThread, canCreate, onSelect, onNew }: {
+export function TaskRail({ threads, tasks, selectedAgent, selectedThread, canCreate, onSelect, onDelete, onNew }: {
   threads: AgentThread[] | null;
   tasks: Record<string, AgentTask>;
   selectedAgent: string;
   selectedThread: string;
   canCreate: boolean;
   onSelect: (thread: AgentThread) => void;
+  onDelete: (thread: AgentThread) => void;
   onNew: () => void;
 }) {
   const { t } = useTranslation();
@@ -88,20 +90,32 @@ export function TaskRail({ threads, tasks, selectedAgent, selectedThread, canCre
                   {items.map((thread) => {
                     const state = taskState(thread, tasks);
                     const selected = thread.agent_id === selectedAgent && thread.id === selectedThread;
+                    const deletingDisabled = state === "queued" || state === "running" || state === "applying";
                     return (
                       <Box
-                        component="button"
                         key={`${thread.agent_id}:${thread.id}`}
-                        onClick={() => onSelect(thread)}
-                        sx={{ width: "100%", p: 1.25, textAlign: "left", color: "text.primary", bgcolor: selected ? "action.selected" : "background.paper", border: 1, borderColor: selected ? "primary.main" : "divider", borderRadius: 2, cursor: "pointer" }}
+                        sx={{ position: "relative", width: "100%", color: "text.primary", bgcolor: selected ? "action.selected" : "background.paper", border: 1, borderColor: selected ? "primary.main" : "divider", borderRadius: 2, "&:hover": { bgcolor: selected ? "action.selected" : "action.hover" } }}
                       >
-                        <Stack direction="row" alignItems="center" spacing={0.75}>
-                          {(state === "running" || state === "applying") && <CircularProgress size={10} />}
-                          <Typography color="text.secondary" sx={{ fontSize: 11.5 }}>{providerNames[thread.agent_id] ?? thread.agent_id}</Typography>
-                          <Box sx={{ flex: 1 }} />
-                          {state && <Chip size="small" color={state === "failed" || state === "apply_failed" ? "error" : state === "conflict" || state === "verification_required" ? "warning" : state === "running" || state === "applying" ? "primary" : "default"} label={t(`workspace.chat.states.${state}`)} sx={{ height: 20, fontSize: 10.5 }} />}
-                        </Stack>
-                        <Typography noWrap fontWeight={500} sx={{ mt: 0.5, fontSize: 13 }}>{thread.title || t("workspace.chat.newThread")}</Typography>
+                        <Box
+                          component="button"
+                          onClick={() => onSelect(thread)}
+                          sx={{ width: "100%", p: 1.25, pr: 4.5, textAlign: "left", color: "inherit", bgcolor: "transparent", border: 0, borderRadius: "inherit", cursor: "pointer", "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: 1 } }}
+                        >
+                          <Stack direction="row" alignItems="center" spacing={0.75}>
+                            {(state === "running" || state === "applying") && <CircularProgress size={10} />}
+                            <Typography color="text.secondary" sx={{ fontSize: 11.5 }}>{providerNames[thread.agent_id] ?? thread.agent_id}</Typography>
+                            <Box sx={{ flex: 1 }} />
+                            {state && <Chip size="small" color={state === "failed" || state === "apply_failed" ? "error" : state === "conflict" || state === "verification_required" ? "warning" : state === "running" || state === "applying" ? "primary" : "default"} label={t(`workspace.chat.states.${state}`)} sx={{ height: 20, fontSize: 10.5 }} />}
+                          </Stack>
+                          <Typography noWrap fontWeight={500} sx={{ mt: 0.5, fontSize: 13 }}>{thread.title || t("workspace.chat.newThread")}</Typography>
+                        </Box>
+                        <Tooltip title={t("workspace.chat.deleteThread")}>
+                          <span style={{ position: "absolute", top: 7, right: 7 }}>
+                            <IconButton size="small" color="error" disabled={deletingDisabled} aria-label={t("workspace.chat.deleteThread")} onClick={() => onDelete(thread)} sx={{ p: 0.25 }}>
+                              <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
                       </Box>
                     );
                   })}

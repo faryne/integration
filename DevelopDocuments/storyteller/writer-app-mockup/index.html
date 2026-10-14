@@ -152,6 +152,7 @@
                 <div class="task-group-items">
                   <button class="task-card" data-task="claude" data-action="review-text">
                     <span class="task-provider"><span class="status-dot warn"></span>Claude Code</span>
+                    <span class="task-delete" role="button" title="刪除 task" data-action="delete-task"><svg class="i"><use href="#i-delete"/></svg></span>
                     <b>撰寫第一話</b>
                     <small>草稿完成・尚未寫入</small>
                     <span class="task-state review-state">待確認</span>
@@ -170,6 +171,7 @@
                   </button>
                   <button class="task-card selected" data-task="grok" data-action="select-artifact-thread">
                     <span class="task-provider"><span class="status-dot warn"></span>Grok Build</span>
+                    <span class="task-delete" role="button" title="刪除 task" data-action="delete-task"><svg class="i"><use href="#i-delete"/></svg></span>
                     <b>產生角色 A 圖片資產</b>
                     <small>3 張圖片尚未上傳</small>
                     <span class="task-state review-state">待確認</span>
@@ -177,15 +179,15 @@
                 </div>
                 <button class="task-group-head" data-action="task-group-toggle"><svg class="i"><use href="#i-right"/></svg><b>2026-10-09</b><span>2</span></button>
                 <div class="task-group-items collapsed">
-                  <button class="task-card"><span class="task-provider">Claude Code</span><b>整理第二話大綱</b><small>已完成</small></button>
-                  <button class="task-card"><span class="task-provider">Codex</span><b>檢查角色設定衝突</b><small>已完成</small></button>
+                  <button class="task-card"><span class="task-provider">Claude Code</span><span class="task-delete" role="button" title="刪除 task" data-action="delete-task"><svg class="i"><use href="#i-delete"/></svg></span><b>整理第二話大綱</b><small>已完成</small></button>
+                  <button class="task-card"><span class="task-provider">Codex</span><span class="task-delete" role="button" title="刪除 task" data-action="delete-task"><svg class="i"><use href="#i-delete"/></svg></span><b>檢查角色設定衝突</b><small>已完成</small></button>
                 </div>
               </div>
             </aside>
 
             <div class="chat">
               <div class="task-detail-head">
-                <div><span class="engine-tag"><span class="status-dot warn"></span>Grok Build</span><div class="task-title-edit"><h3>產生角色 A 圖片資產</h3><input class="task-title-input" value="產生角色 A 圖片資產" maxlength="100" aria-label="任務標題"><button class="icon-btn title-edit-btn" title="編輯標題" data-action="edit-task-title"><svg class="i"><use href="#i-edit"/></svg></button><button class="icon-btn title-save-btn" title="儲存標題" data-action="save-task-title"><svg class="i"><use href="#i-save"/></svg></button></div></div>
+                <div><span class="engine-tag"><span class="status-dot warn"></span>Grok Build</span><div class="task-title-edit"><h3>產生角色 A 圖片資產</h3><input class="task-title-input" value="產生角色 A 圖片資產" maxlength="100" aria-label="任務標題"><button class="icon-btn title-edit-btn" title="編輯標題" data-action="edit-task-title"><svg class="i"><use href="#i-edit"/></svg></button><button class="btn sm ghost title-cancel-btn" data-action="cancel-task-title"><svg class="i"><use href="#i-close"/></svg>取消</button><button class="icon-btn title-save-btn" title="儲存標題" data-action="save-task-title"><svg class="i"><use href="#i-save"/></svg></button></div></div>
                 <span class="task-state review-state">已完成・尚未上傳</span>
                 <button class="icon-btn" title="刪除 thread" data-action="delete-thread"><svg class="i"><use href="#i-delete"/></svg></button>
               </div>
@@ -213,6 +215,7 @@
                     <div class="composer-highlight" aria-hidden="true"></div>
                     <textarea id="assistant-prompt" placeholder="對目前任務追加指示；輸入 @story: 或 @lore: 引用專案內容……">請檢查 @story:[第三章　沒寄出的信] 是否符合 @lore:[角色 A] 的設定。</textarea>
                   </div>
+                  <div class="composer-submit-hint">Enter 送出・Shift + Enter 換行</div>
                   <div class="mention-options" id="mention-options" hidden></div>
                   <div class="reference-chips" id="reference-chips"></div>
                   <div class="composer-bar">

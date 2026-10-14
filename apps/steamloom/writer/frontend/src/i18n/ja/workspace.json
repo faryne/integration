@@ -24,6 +24,7 @@
       "lore": "設定"
     },
     "send": "送信",
+    "submitHint": "Enter で送信・Shift + Enter で改行",
     "detecting": "このコンピュータの AI Agent を確認しています……",
     "noAgent": "このコンピュータには Claude Code、Codex、Grok Build がインストールされていません",
     "sending": "返答を待っています……",
@@ -39,6 +40,7 @@
     "threadTitle": "タスク名",
     "editThreadTitle": "タスク名を編集",
     "saveThreadTitle": "タスク名を保存",
+    "cancelThreadTitle": "キャンセル",
     "dateGroups": {
       "today": "今日",
       "yesterday": "昨日",

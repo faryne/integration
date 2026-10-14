@@ -37,6 +37,12 @@
 .task-card.selected { border-color: var(--accent); background: var(--accent-soft); }
 .task-card b { padding-right: 66px; font-weight: 500; }
 .task-card small { color: var(--faint); font-size: 11.5px; }
+.task-delete {
+  position: absolute; top: 7px; right: 7px; width: 24px; height: 24px; display: grid; place-items: center;
+  color: var(--faint); border-radius: 5px;
+}
+.task-delete:hover { color: var(--danger); background: rgba(255, 91, 91, .1); }
+.task-delete .i { width: 15px; height: 15px; }
 .task-provider { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11.5px; }
 .task-provider .spinner { width: 11px; height: 11px; }
 .task-state { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 11px; font-size: 11.5px; white-space: nowrap; }
@@ -56,7 +62,7 @@
   min-width: 280px; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 5px;
   padding: 3px 6px; outline: 0; font: 500 14px var(--sans);
 }
-.task-title-edit:not(.editing) .task-title-input, .task-title-edit:not(.editing) .title-save-btn { display: none; }
+.task-title-edit:not(.editing) .task-title-input, .task-title-edit:not(.editing) .title-save-btn, .task-title-edit:not(.editing) .title-cancel-btn { display: none; }
 .task-title-edit.editing h3, .task-title-edit.editing .title-edit-btn { display: none; }
 .task-title-input:hover { border-color: var(--border-soft); }
 .task-title-input:focus { border-color: var(--accent); background: var(--paper); }
@@ -118,10 +124,11 @@ body.running .idle-only { display: none !important; }
   width: 100%; min-height: 50px; resize: none; background: transparent; border: 0; outline: 0;
   font: 14px/1.6 var(--sans); white-space: pre-wrap; overflow-wrap: anywhere;
 }
-.composer textarea { position: relative; z-index: 1; color: transparent; caret-color: var(--text); }
+.composer textarea { position: relative; z-index: 1; color: transparent; caret-color: var(--accent); }
 .composer-highlight { position: absolute; inset: 0; color: var(--text); pointer-events: none; }
 .composer-highlight mark { color: var(--accent); background: transparent; font-weight: 700; }
 .composer textarea::placeholder { color: var(--faint); }
+.composer-submit-hint { margin-top: 2px; color: var(--faint); font-size: 11.5px; }
 .mention-options {
   display: flex; gap: 6px; flex-wrap: wrap; padding: 7px; margin: 2px 0 8px;
   border: 1px solid var(--border-soft); border-radius: 7px; background: var(--paper-2);
