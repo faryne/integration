@@ -169,7 +169,7 @@
                     <small>另一條 thread・正在讀取前文……</small>
                     <span class="task-state running-state">執行中</span>
                   </button>
-                  <button class="task-card selected" data-task="grok" data-action="select-artifact-thread">
+                  <button class="task-card" data-task="grok" data-action="select-artifact-thread">
                     <span class="task-provider"><span class="status-dot warn"></span>Grok Build</span>
                     <span class="task-delete" role="button" title="刪除 task" data-action="delete-task"><svg class="i"><use href="#i-delete"/></svg></span>
                     <b>產生角色 A 圖片資產</b>
@@ -185,11 +185,24 @@
               </div>
             </aside>
 
-            <div class="chat">
+            <div class="chat empty">
+              <div class="chat-empty-state">
+                <svg class="i"><use href="#i-chat"/></svg>
+                <h2>還沒有開啟任何任務</h2>
+                <p>從左側選擇既有任務，或建立一個新任務交給 Agent。</p>
+                <button class="btn" data-action="new-chat"><svg class="i"><use href="#i-add"/></svg>建立新任務</button>
+              </div>
+
+              <div class="chat-content">
               <div class="task-detail-head">
                 <div><span class="engine-tag"><span class="status-dot warn"></span>Grok Build</span><div class="task-title-edit"><h3>產生角色 A 圖片資產</h3><input class="task-title-input" value="產生角色 A 圖片資產" maxlength="100" aria-label="任務標題"><button class="icon-btn title-edit-btn" title="編輯標題" data-action="edit-task-title"><svg class="i"><use href="#i-edit"/></svg></button><button class="btn sm ghost title-cancel-btn" data-action="cancel-task-title"><svg class="i"><use href="#i-close"/></svg>取消</button><button class="icon-btn title-save-btn" title="儲存標題" data-action="save-task-title"><svg class="i"><use href="#i-save"/></svg></button></div></div>
                 <span class="task-state review-state">已完成・尚未上傳</span>
                 <button class="icon-btn" title="刪除 thread" data-action="delete-thread"><svg class="i"><use href="#i-delete"/></svg></button>
+              </div>
+              <div class="new-task-intro">
+                <svg class="i"><use href="#i-chat"/></svg>
+                <h2>建立新任務</h2>
+                <p>先選擇 Agent，再輸入要交辦的工作；送出後才會建立 task 與對話紀錄。</p>
               </div>
               <div class="chat-scroll">
                 <div class="thread">
@@ -233,6 +246,7 @@
                     <button class="stop-btn" title="停止目前任務" data-action="stop"><svg class="i"><use href="#i-stop"/></svg></button>
                   </div>
                 </div>
+              </div>
               </div>
             </div>
           </div>
