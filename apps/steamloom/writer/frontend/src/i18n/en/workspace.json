@@ -313,7 +313,8 @@
   "all": {
     "assets": "All assets",
     "lores": "All lore",
-    "stories": "All works"
+    "stories": "All works",
+    "memories": "Suosuo's memories"
   },
   "create": {
     "cancel": "Cancel",

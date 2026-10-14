@@ -1,12 +1,8 @@
-import { WorkspaceSortArrows } from "@/pages/storyteller/WorkspaceSortArrows.tsx";
+import { WorkspaceSortArrows, WorkspaceSortToggle, workspaceSidebarIconButtonSx } from "@/pages/storyteller/WorkspaceSortArrows.tsx";
 import AddIcon from "@mui/icons-material/Add";
-import DoneIcon from "@mui/icons-material/Done";
-import SwapVertIcon from "@mui/icons-material/SwapVert";
 import { IconButton, Menu, MenuItem, Tooltip } from "@mui/material";
 import { useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
-
-const iconSx = { p: 0.375, "& .MuiSvgIcon-root": { fontSize: 16 } };
 
 // 排序模式下每一列右側的上移／下移：用網站共用的 WorkspaceSortArrows，這裡只補上語系文字
 export function SortArrows(props: { index: number; count: number; onMove: (delta: -1 | 1) => void }) {
@@ -33,14 +29,10 @@ export function SectionActions({
   return (
     <>
       {onToggleSort && (
-        <Tooltip title={t(sorting ? "workspace.actions.sortDone" : "workspace.actions.sort")}>
-          <IconButton size="small" sx={iconSx} color={sorting ? "primary" : "default"} onClick={onToggleSort}>
-            {sorting ? <DoneIcon /> : <SwapVertIcon />}
-          </IconButton>
-        </Tooltip>
+        <WorkspaceSortToggle sorting={Boolean(sorting)} onToggle={onToggleSort} label={t("workspace.actions.sort")} doneLabel={t("workspace.actions.sortDone")} />
       )}
       <Tooltip title={t("workspace.actions.create")}>
-        <IconButton size="small" sx={iconSx} onClick={openCreate}>
+        <IconButton size="small" sx={workspaceSidebarIconButtonSx} onClick={openCreate}>
           <AddIcon />
         </IconButton>
       </Tooltip>

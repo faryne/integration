@@ -5,9 +5,9 @@ import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import ChatIcon from "@mui/icons-material/Chat";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import FolderIcon from "@mui/icons-material/Folder";
-import LightbulbIcon from "@mui/icons-material/Lightbulb";
+import PsychologyAltOutlinedIcon from "@mui/icons-material/PsychologyAltOutlined";
 import SettingsIcon from "@mui/icons-material/Settings";
-import { Box, Divider, Stack, Typography } from "@mui/material";
+import { Box, Divider, Stack } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { UNCATEGORIZED_ASSETS, type DocumentItem, type Workspace } from "@writer/lib/backend.ts";
@@ -43,7 +43,7 @@ const storyKinds = ["story", "image", "volume"];
 const loreKinds = ["lore", "lore-collection"];
 const assetKinds = ["asset-collection", "asset-upload"];
 
-// 專案工作台側邊列：最上方是 AI 助理，下面是作品與冊、設定集、資產集、梭梭的記憶。
+// 專案工作台側邊列：最上方是 AI 助理，下面是作品與冊、設定集、資產集，最後是梭梭的記憶（記憶管理頁）。
 // 「作品與冊」「設定集」可以切換排序模式（上移／下移）；平常滑過文件會出現 ⋮，跟「全部作品／全部設定」列表同一份選單。
 export function WorkspaceSidebar({ project, workspace, selected, onSelect, onAssistant, listSection, assetCollection, onList, editing, onCreated, onChanged, onDeleted }: Props) {
   const { t } = useTranslation();
@@ -158,12 +158,8 @@ export function WorkspaceSidebar({ project, workspace, selected, onSelect, onAss
           <NavRow key={row.id || "all"} icon={row.icon} label={row.label} selected={listSection === "assets" && assetCollection === row.id} onClick={() => onList("assets", row.id)} />
         ))}
       </SidebarSection>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 1.5, py: 1, color: "text.secondary" }}>
-        <LightbulbIcon sx={{ fontSize: 15 }} />
-        <Typography variant="caption" fontWeight={500}>
-          {t("workspace.sections.memories")}
-        </Typography>
-      </Box>
+      {/* 比照網站：記憶管理是專案層的頁面，不屬於任何分組；圖示跟網站 workspaceToolPages 同一個 */}
+      <NavRow icon={<PsychologyAltOutlinedIcon />} label={t("workspace.sections.memories")} selected={listSection === "memories"} onClick={() => onList("memories")} />
       {uploading && (
         <UploadDialog
           collections={[
@@ -194,7 +190,7 @@ export function WorkspaceSidebar({ project, workspace, selected, onSelect, onAss
   );
 }
 
-// 側邊列收合後的 52px 窄欄（比照網站）：AI 助理與三個「全部…」列表的入口，滑過顯示名稱
+// 側邊列收合後的 52px 窄欄（比照網站）：AI 助理、三個「全部…」列表與梭梭的記憶的入口，滑過顯示名稱
 export function WorkspaceSidebarRail({
   selected,
   listSection,
@@ -208,6 +204,7 @@ export function WorkspaceSidebarRail({
     { section: "stories" as const, icon: <AutoStoriesIcon /> },
     { section: "lores" as const, icon: <SettingsIcon /> },
     { section: "assets" as const, icon: <CollectionsIcon /> },
+    { section: "memories" as const, icon: <PsychologyAltOutlinedIcon /> },
   ];
   return (
     <Stack component="nav" alignItems="center" spacing={0.5} sx={{ width: 52, flex: "none", borderRight: 1, borderColor: "divider", pt: 5.5 }}>

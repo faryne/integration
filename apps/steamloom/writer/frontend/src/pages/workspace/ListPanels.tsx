@@ -9,7 +9,7 @@ import { backend, type DocumentItem, type WorkspaceGroup } from "@writer/lib/bac
 import { useBackendData } from "@writer/lib/useBackendData.ts";
 import { useDocumentRowActions } from "@writer/pages/workspace/useDocumentRowActions.tsx";
 
-export type ListSection = "stories" | "lores" | "assets";
+export type ListSection = "stories" | "lores" | "assets" | "memories";
 
 // 「全部作品／全部設定」：版面與操作比照網站工作台列表——列用網站的 StoryRow／LoreRow，
 // 右側 ⋮ 是網站同一個選單（見 useDocumentRowActions，側邊列也用同一份），

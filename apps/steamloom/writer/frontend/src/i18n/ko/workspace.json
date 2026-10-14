@@ -317,7 +317,8 @@
   "all": {
     "assets": "모든 에셋",
     "lores": "모든 설정",
-    "stories": "모든 작품"
+    "stories": "모든 작품",
+    "memories": "梭梭의 기억"
   },
   "create": {
     "cancel": "취소",

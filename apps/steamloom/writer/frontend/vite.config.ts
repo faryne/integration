@@ -31,6 +31,8 @@ function resolveSharedDepsFromWriter(): Plugin {
 
 export default defineConfig({
   plugins: [resolveSharedDepsFromWriter(), react()],
+  // 網站 API hook 的網址前綴（`${apiBase}/storyteller/...`）；Writer 不直接連線，只用來辨識要交給 Go 轉發的請求（見 src/lib/webApi.tsx）
+  define: { "import.meta.env.VITE_API_BASE": JSON.stringify("/api") },
   resolve: {
     alias: {
       "@writer": writerSrc,

@@ -13,6 +13,7 @@
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.11",
     "@mui/material": "^7.3.11",
+    "@tanstack/react-query": "5.101.2",
     "@tiptap/core": "3.27.3",
     "@tiptap/extension-bold": "3.27.3",
     "@tiptap/extension-code": "3.27.3",
@@ -31,6 +32,7 @@
     "@tiptap/pm": "3.27.3",
     "@tiptap/react": "3.27.3",
     "@tiptap/suggestion": "3.27.3",
+    "axios": "1.18.1",
     "dayjs": "1.11.21",
     "highlight.js": "11.11.1",
     "i18next": "^26.4.2",
@@ -39,6 +41,7 @@
     "react-dom": "^19.2.7",
     "react-i18next": "^17.0.16",
     "react-markdown": "^10.1.0",
+    "react-router-dom": "7.18.1",
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {

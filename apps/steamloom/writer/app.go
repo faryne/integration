@@ -412,3 +412,9 @@ func (a *App) Reorder(project, kind string, ids []string) error {
 func (a *App) ListDocuments(project, kind string) ([]api.ListedDocument, error) {
 	return a.api.ListDocuments(a.ctx, project, api.DocumentKind(kind))
 }
+
+// ApiProxy 讓前端直接沿用網站的 API 呼叫（axios adapter 轉過來，見 frontend/src/lib/webApi.tsx）：
+// path 是 /storyteller 之後的路徑（含 query string），token 仍只在 Go 端。
+func (a *App) ApiProxy(method, path, body string) (*api.ProxyResponse, error) {
+	return a.api.Proxy(a.ctx, method, path, body)
+}

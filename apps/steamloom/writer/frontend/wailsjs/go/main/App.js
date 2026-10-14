@@ -6,6 +6,10 @@ export function Agents() {
   return window['go']['main']['App']['Agents']();
 }
 
+export function ApiProxy(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ApiProxy'](arg1, arg2, arg3);
+}
+
 export function AppVersion() {
   return window['go']['main']['App']['AppVersion']();
 }

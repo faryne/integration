@@ -808,6 +808,22 @@ export namespace api {
 	        this.updated_at = source["updated_at"];
 	    }
 	}
+	export class ProxyResponse {
+	    status: number;
+	    content_type: string;
+	    body: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProxyResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.content_type = source["content_type"];
+	        this.body = source["body"];
+	    }
+	}
 	export class SaveInput {
 	    title: string;
 	    summary: string;
