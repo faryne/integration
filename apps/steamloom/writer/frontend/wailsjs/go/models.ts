@@ -814,6 +814,7 @@ export namespace api {
 	    content: string;
 	    trigger: string;
 	    base_version_id?: number;
+	    abort_on_conflict?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new SaveInput(source);
@@ -826,6 +827,7 @@ export namespace api {
 	        this.content = source["content"];
 	        this.trigger = source["trigger"];
 	        this.base_version_id = source["base_version_id"];
+	        this.abort_on_conflict = source["abort_on_conflict"];
 	    }
 	}
 	export class SaveResult {
@@ -1037,3 +1039,4 @@ export namespace updater {
 	}
 
 }
+
