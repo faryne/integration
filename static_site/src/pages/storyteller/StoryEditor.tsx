@@ -1688,6 +1688,9 @@ export default function StorytellerStoryEditor({
             exportBaseName={storyTitle}
             projectPublicId={apiProject?.public_id}
             hasSavedTarget={Boolean(apiStory?.public_id)}
+            caretMemoryKey={
+              apiStory?.public_id ? `story:${apiStory.public_id}` : undefined
+            }
             // AI 助理停用時不傳 trigger：編輯器的「問 AI」入口（/、右鍵、浮動選單）會一併消失
             onSelectionAgentTrigger={
               STORYTELLER_AI_ASSISTANT_ENABLED
