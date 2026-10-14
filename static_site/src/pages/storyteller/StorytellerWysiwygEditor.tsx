@@ -80,6 +80,11 @@ import {
   currentParagraphText,
 } from "./wysiwygCore/currentParagraph";
 import { StorytellerWysiwygLinkDialog } from "@/pages/storyteller/StorytellerWysiwygLinkDialog.tsx";
+import {
+  CARET_BLOCK_SX,
+  StorytellerEditorCaretFocus,
+} from "@/pages/storyteller/StorytellerEditorCaretFocus.tsx";
+import { CaretFocus } from "@/pages/storyteller/wysiwygCore/caretFocus.ts";
 import { useLoreLinkStatusSx } from "@/pages/storyteller/storytellerLoreLinkCheck.ts";
 
 interface HoveredComment {
@@ -458,6 +463,8 @@ export interface StorytellerWysiwygEditorProps {
   onSaveBookmarkNote?: (markerId: string, note: string) => void;
   onRemoveBookmark?: (markerId: string) => void;
   onEditorReady?: (editor: Editor | null) => void;
+  /** 每篇文件唯一的 key（例如 `story:<public_id>`），給了才記住游標位置、下次打開捲回去。 */
+  caretMemoryKey?: string;
 }
 
 export interface StorytellerWysiwygEditorHandle {
@@ -507,6 +514,7 @@ export const StorytellerWysiwygEditor = forwardRef<
     onSaveBookmarkNote,
     onRemoveBookmark,
     onEditorReady,
+    caretMemoryKey,
   },
   ref,
 ) {
@@ -514,6 +522,8 @@ export const StorytellerWysiwygEditor = forwardRef<
     enabledFeatures === undefined || enabledFeatures.includes(feature);
   const assetEnabled = isFeatureEnabled("asset");
   const lastEmittedRef = useRef(value);
+  // 正文捲動容器：捲軸游標標記、回到輸入位置要用
+  const scrollRef = useRef<HTMLDivElement>(null);
   // 工具列「文字設定」的偏好（本機 localStorage），只套在下方正文容器
   const { preferences: typography } = useStorytellerEditorPreferences();
 
@@ -590,11 +600,14 @@ export const StorytellerWysiwygEditor = forwardRef<
   }, [value]);
 
   const editor = useEditor({
-    extensions: createWysiwygCoreExtensions({
-      slashCommand: {
-        getCommandContext: slashCommandContextStore.get,
-      },
-    }),
+    extensions: [
+      ...createWysiwygCoreExtensions({
+        slashCommand: {
+          getCommandContext: slashCommandContextStore.get,
+        },
+      }),
+      CaretFocus,
+    ],
     content: markdownToDoc(value, projectPublicId, assetEnabled),
     immediatelyRender: false,
     editorProps: {
@@ -1167,10 +1180,12 @@ export const StorytellerWysiwygEditor = forwardRef<
     >
       {toolbarPlacement === "top" && toolbar}
 
+      {/* 外框承接高度，讓捲軸游標標記與「回到輸入位置」能疊在捲動容器上（見 StorytellerEditorCaretFocus） */}
       <Box
         sx={{
-          px: { xs: 0, md: 1 },
-          py: { xs: 1, md: 1.5 },
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
           // 底部工具列模式下，整個 editor frame 才吃高度；這層只負責正文捲動，
           // 避免 command bar 被長內容推到 viewport 外。
           height: bottomToolbar
@@ -1178,69 +1193,87 @@ export const StorytellerWysiwygEditor = forwardRef<
             : { xs: 420, md: "calc(100vh - 300px)" },
           minHeight: bottomToolbar ? 0 : { md: 480 },
           flex: bottomToolbar ? 1 : undefined,
-          overflow: "auto",
-          scrollbarWidth: "thin",
         }}
       >
         <Box
-          sx={[
-            HEADING_TYPOGRAPHY_SX,
-            COMMENT_HIGHLIGHT_SX,
-            INLINE_COLOR_SX,
-            loreLinkStatusSx,
-            FOOTNOTE_HIGHLIGHT_SX,
-            PLACEHOLDER_SX,
-            BLOCK_KIND_SX,
-            STORYTELLER_CODE_BLOCK_SX,
-            CLEAR_FLOATING_ASSET_SX,
-            bookmarkHighlightSx,
-            {
-              // 文字設定只套正文（.ProseMirror），同層的 bubble menu／表格選單不受影響。
-              // 標題是 em，會跟著字級等比縮放；行距要蓋掉 HEADING_TYPOGRAPHY_SX 裡段落寫死的
-              // 1.5（標題維持 1.5）。code block 用自己的 rem 字級與等寬字體，不受影響。
-              // 要排在 AI 錨點規則前面：兩邊 specificity 相同，後面的才會蓋過前面
-              "& .ProseMirror": {
-                minHeight: { xs: 360, md: 520 },
-                outline: "none",
-                pb: 10,
-                fontFamily: TYPOGRAPHY_FONT_FAMILIES[typography.fontFamily],
-                fontSize: `${typography.fontSize}px`,
-                "& p, & li, & blockquote, & td, & th": {
-                  lineHeight: typography.lineHeight,
+          ref={scrollRef}
+          sx={{
+            px: { xs: 0, md: 1 },
+            py: { xs: 1, md: 1.5 },
+            flex: 1,
+            minHeight: 0,
+            overflow: "auto",
+            scrollbarWidth: "thin",
+          }}
+        >
+          <Box
+            sx={[
+              HEADING_TYPOGRAPHY_SX,
+              COMMENT_HIGHLIGHT_SX,
+              INLINE_COLOR_SX,
+              loreLinkStatusSx,
+              FOOTNOTE_HIGHLIGHT_SX,
+              PLACEHOLDER_SX,
+              BLOCK_KIND_SX,
+              STORYTELLER_CODE_BLOCK_SX,
+              CLEAR_FLOATING_ASSET_SX,
+              bookmarkHighlightSx,
+              CARET_BLOCK_SX,
+              {
+                // 文字設定只套正文（.ProseMirror），同層的 bubble menu／表格選單不受影響。
+                // 標題是 em，會跟著字級等比縮放；行距要蓋掉 HEADING_TYPOGRAPHY_SX 裡段落寫死的
+                // 1.5（標題維持 1.5）。code block 用自己的 rem 字級與等寬字體，不受影響。
+                // 要排在 AI 錨點規則前面：兩邊 specificity 相同，後面的才會蓋過前面
+                "& .ProseMirror": {
+                  minHeight: { xs: 360, md: 520 },
+                  outline: "none",
+                  pb: 10,
+                  fontFamily: TYPOGRAPHY_FONT_FAMILIES[typography.fontFamily],
+                  fontSize: `${typography.fontSize}px`,
+                  "& p, & li, & blockquote, & td, & th": {
+                    lineHeight: typography.lineHeight,
+                  },
+                },
+                '& [data-storyteller-ai-inline-anchor="true"]': {
+                  // AI 面板 portal 進正文裡，還原成整站字體與原本的段落行距，不吃文字設定
+                  typography: "body1",
+                  "& p, & li, & blockquote, & td, & th": { lineHeight: 1.5 },
+                  display: "block",
+                  width: "100%",
+                  height: { xs: 500, md: 600 },
+                  minHeight: { xs: 420, md: 480 },
+                  my: 2,
                 },
               },
-              '& [data-storyteller-ai-inline-anchor="true"]': {
-                // AI 面板 portal 進正文裡，還原成整站字體與原本的段落行距，不吃文字設定
-                typography: "body1",
-                "& p, & li, & blockquote, & td, & th": { lineHeight: 1.5 },
-                display: "block",
-                width: "100%",
-                height: { xs: 500, md: 600 },
-                minHeight: { xs: 420, md: 480 },
-                my: 2,
-              },
-            },
-          ]}
-          onMouseOver={handleEditorMouseOver}
-          onMouseOut={handleEditorMouseOut}
-          onContextMenu={handleEditorContextMenu}
-        >
-          <EditorContent editor={editor} />
-          <StorytellerWysiwygBubbleMenu
-            editor={editor}
-            commandContext={commandContext}
-            hasSavedTarget={hasSavedTarget}
-            onRequestAI={onSelectionAgentTrigger ? handleRequestAI : undefined}
-          />
-          <StorytellerWysiwygTableMenu editor={editor} />
-          {inlineAssistantHost && inlineAssistant
-            ? createPortal(
-                inlineAssistant,
-                inlineAssistantHost,
-                "storyteller-ai-inline-workspace",
-              )
-            : null}
+            ]}
+            onMouseOver={handleEditorMouseOver}
+            onMouseOut={handleEditorMouseOut}
+            onContextMenu={handleEditorContextMenu}
+          >
+            <EditorContent editor={editor} />
+            <StorytellerWysiwygBubbleMenu
+              editor={editor}
+              commandContext={commandContext}
+              hasSavedTarget={hasSavedTarget}
+              onRequestAI={
+                onSelectionAgentTrigger ? handleRequestAI : undefined
+              }
+            />
+            <StorytellerWysiwygTableMenu editor={editor} />
+            {inlineAssistantHost && inlineAssistant
+              ? createPortal(
+                  inlineAssistant,
+                  inlineAssistantHost,
+                  "storyteller-ai-inline-workspace",
+                )
+              : null}
+          </Box>
         </Box>
+        <StorytellerEditorCaretFocus
+          editor={editor}
+          scrollRef={scrollRef}
+          memoryKey={caretMemoryKey}
+        />
       </Box>
 
       {toolbarPlacement === "bottom" && (

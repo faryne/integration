@@ -73,6 +73,7 @@ function TextDocumentEditor({ project, item, doc, groupId, status, groupTargets,
               bottomActionContent={<WorkspaceEditorSaveButton pending={saving} disabled={saving} onClick={() => void save()} />}
               exportBaseName={draft.title}
               projectPublicId={project}
+              caretMemoryKey={`${item.kind}:${item.public_id}`}
               hasSavedTarget
               onSelectionAgentTrigger={(trigger) => onAskAI({
                 type: "document_selection",
