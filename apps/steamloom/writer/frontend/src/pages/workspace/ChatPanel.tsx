@@ -17,7 +17,7 @@ import { ThreadDeleteDialog } from "@writer/pages/workspace/ThreadDeleteDialog.t
 import { useChatLog } from "@writer/pages/workspace/useChatLog.ts";
 
 // 專案層的 AI 助理。每條 thread 各自綁定 provider session，同一 provider 也能同時執行多條。
-export function ChatPanel({ projectID, projectName, workspace }: { projectID: string; projectName: string; workspace: Workspace }) {
+export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange }: { projectID: string; projectName: string; workspace: Workspace; onWorkspaceChange: () => void }) {
   const { t } = useTranslation();
   const { showError } = useSnack();
   const agents = useBackendData(() => backend.Agents(), []);
@@ -32,7 +32,7 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
   const [deleting, setDeleting] = useState(false);
   const [proposals, setProposals] = useState<AgentProposal[] | null>(null);
   const [proposalRevision, setProposalRevision] = useState(0);
-  const [review, setReview] = useState<{ proposal: AgentProposal; item: AgentProposalItem } | null>(null);
+  const [review, setReview] = useState<{ proposal: AgentProposal; item: AgentProposalItem; selectedItemIDs: string[] } | null>(null);
   const [deciding, setDeciding] = useState(false);
   const selected = agents?.some((agent) => agent.id === agentID) ? agentID : (agents?.[0]?.id ?? "");
   const chat = useChatLog(projectID, selected);
@@ -80,10 +80,11 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
         if ((event.type === "proposal.ready" || event.type.startsWith("apply.")) && event.task.thread_id === chat.page?.current_id) setProposalRevision((value) => value + 1);
       }
     }
+    if (event.type === "apply.completed") onWorkspaceChange();
     if ((event.type === "task.failed" || event.type === "apply.failed") && (event.task.agent_id !== selected || event.task.thread_id !== chat.page?.current_id)) {
       showError(`${event.task.agent_id}: ${event.task.error}`);
     }
-  }), [chat.page?.current_id, chat.refreshVisibleThread, loadThreads, projectID, selected, showError]);
+  }), [chat.page?.current_id, chat.refreshVisibleThread, loadThreads, onWorkspaceChange, projectID, selected, showError]);
 
   // 切換 provider 後要等 useChatLog 開好該 provider 的 index，才能選指定 thread。
   useEffect(() => {
@@ -182,7 +183,7 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
     const threadID = chat.page.current_id;
     setDeciding(true);
     try {
-      await backend.DecideProposal(selected, projectID, threadID, review.proposal.id, decision);
+      await backend.DecideProposal(selected, projectID, threadID, review.proposal.id, decision, review.selectedItemIDs);
       setReview(null);
       setProposalRevision((value) => value + 1);
       await Promise.all([chat.refreshVisibleThread(threadID), loadThreads()]);
@@ -228,7 +229,7 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
               start={chat.page.start}
               proposals={proposals}
               workspace={workspace}
-              onReview={(proposal, item) => setReview({ proposal, item })}
+              onReview={(proposal, item, selectedItemIDs) => setReview({ proposal, item, selectedItemIDs })}
             />
           )}
           {activeTask && <ActiveTaskStatus task={activeTask} workspace={workspace} queued={Math.max(0, activeTasks.length - 1)} canceling={canceling === activeTask.id} onCancel={() => void cancelTask()} />}
@@ -281,6 +282,7 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
         threadID={chat.page?.current_id ?? ""}
         proposal={review?.proposal ?? null}
         item={review?.item ?? null}
+        selectedCount={review?.selectedItemIDs.length ?? 0}
         deciding={deciding}
         onClose={() => setReview(null)}
         onDecision={(decision) => void decideProposal(decision)}

@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 )
@@ -357,12 +355,16 @@ func TestTaskManagerAppliesApprovedProposalOnSameThread(t *testing.T) {
 		t.Fatal(err)
 	}
 	events := make(chan TaskEvent, 20)
-	seen := make(chan Request, 1)
+	agentCalled := make(chan struct{}, 1)
+	applied := make(chan Proposal, 1)
 	manager := NewTaskManager(context.Background(), func(_ context.Context, _ string, req Request) (Reply, error) {
-		seen <- req
-		req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: "SteamLoom.storyteller_upsert_lore"})
-		return Reply{SessionID: req.SessionID, Text: "角色設定已寫入。", applyResult: &ApplyResult{ProposalID: proposal.ID, ContentHash: proposal.ContentHash, Status: "completed"}}, nil
+		agentCalled <- struct{}{}
+		return Reply{}, nil
 	}, func(event TaskEvent) { events <- event })
+	manager.SetProposalApplyRunner(func(_ context.Context, value Proposal) (string, error) {
+		applied <- value
+		return "Writer 已套用角色設定。", nil
+	})
 	defer manager.Close()
 	applyTask, err := manager.Apply(proposal)
 	if err != nil {
@@ -372,9 +374,13 @@ func TestTaskManagerAppliesApprovedProposalOnSameThread(t *testing.T) {
 	if event.Task.State != TaskApplied || event.Proposal == nil || event.Proposal.Status != ProposalApplied {
 		t.Fatalf("unexpected apply completion: %#v", event)
 	}
-	req := <-seen
-	if req.ThreadID != page.CurrentID || req.SessionID != "same-session" || req.grant == nil || len(req.grant.Tools) != 1 {
-		t.Fatalf("apply did not resume scoped thread: %#v", req)
+	if got := <-applied; got.ID != proposal.ID || got.ThreadID != page.CurrentID {
+		t.Fatalf("Writer apply runner received wrong proposal: %#v", got)
+	}
+	select {
+	case <-agentCalled:
+		t.Fatal("approved proposal must not resume the Agent")
+	default:
 	}
 	stored, err := Proposals("claude", "project", page.CurrentID)
 	if err != nil || len(stored) != 1 || stored[0].Status != ProposalApplied {
@@ -410,11 +416,10 @@ func TestTaskManagerPersistsApplyConflictWithoutRetry(t *testing.T) {
 		t.Fatal(err)
 	}
 	events := make(chan TaskEvent, 20)
-	manager := NewTaskManager(context.Background(), func(_ context.Context, _ string, req Request) (Reply, error) {
-		return Reply{Text: "內容已有新版本，未覆寫。", applyResult: &ApplyResult{
-			ProposalID: proposal.ID, ContentHash: proposal.ContentHash, Status: "conflict", Error: "latest version is 42",
-		}}, nil
-	}, func(event TaskEvent) { events <- event })
+	manager := NewTaskManager(context.Background(), nil, func(event TaskEvent) { events <- event })
+	manager.SetProposalApplyRunner(func(context.Context, Proposal) (string, error) {
+		return "", fmt.Errorf("%w：latest version is 42", ErrApplyConflict)
+	})
 	defer manager.Close()
 	applyTask, err := manager.Apply(proposal)
 	if err != nil {
@@ -434,92 +439,6 @@ func TestTaskManagerPersistsApplyConflictWithoutRetry(t *testing.T) {
 	}
 	if got := chat.Messages[len(chat.Messages)-1].Type; got != EventApplyConflict {
 		t.Fatalf("conflict event missing from conversation: %s", got)
-	}
-}
-
-func TestTaskManagerCompletesSuccessfulMutationWithoutFinalResult(t *testing.T) {
-	withTempConfig(t)
-	page, err := NewChat("claude", "project")
-	if err != nil {
-		t.Fatal(err)
-	}
-	taskID, _ := newThreadID()
-	proposal, err := SaveProposal("claude", "project", page.CurrentID, taskID, "", []ProposalItem{{
-		Kind: ProposalKindLore, Title: "許芷瑄", Content: "新設定",
-		Operations: []ProposalOperation{{Tool: "storyteller_upsert_lore", Arguments: map[string]any{"project_public_id": "project", "title": "許芷瑄", "content": "新設定"}}},
-	}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	proposal, err = DecideProposal("claude", "project", page.CurrentID, proposal.ID, ProposalDecisionApprove)
-	if err != nil {
-		t.Fatal(err)
-	}
-	events := make(chan TaskEvent, 20)
-	manager := NewTaskManager(context.Background(), func(_ context.Context, _ string, req Request) (Reply, error) {
-		req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: "mcp__storyteller__storyteller_upsert_lore"})
-		return Reply{}, errors.New("Agent 沒有回傳寫入結果")
-	}, func(event TaskEvent) { events <- event })
-	defer manager.Close()
-	applyTask, err := manager.Apply(proposal)
-	if err != nil {
-		t.Fatal(err)
-	}
-	event := waitTaskEvent(t, events, applyTask.ID, EventApplyCompleted)
-	if event.Task.State != TaskApplied || event.Proposal == nil || event.Proposal.Status != ProposalApplied {
-		t.Fatalf("successful mutation remained failed: %#v", event)
-	}
-	stored, err := Proposals("claude", "project", page.CurrentID)
-	if err != nil || len(stored) != 1 || stored[0].Status != ProposalApplied || stored[0].GrantID != "" {
-		t.Fatalf("successful mutation was not persisted: %#v, %v", stored, err)
-	}
-	threads, err := ProjectThreads("project")
-	if err != nil || len(threads) != 1 || threads[0].LastTaskState != TaskApplied {
-		t.Fatalf("thread does not show the completed write: %#v, %v", threads, err)
-	}
-}
-
-func TestTaskManagerRequiresScopedAssetUploadBetweenPresignAndConfirm(t *testing.T) {
-	withTempConfig(t)
-	page, err := NewChat("grok", "project")
-	if err != nil {
-		t.Fatal(err)
-	}
-	assetRoot := t.TempDir()
-	path := filepath.Join(assetRoot, "image.png")
-	if err := os.WriteFile(path, []byte("image"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	originalTaskID, _ := newThreadID()
-	proposal, err := SaveProposal("grok", "project", page.CurrentID, originalTaskID, assetRoot, []ProposalItem{{
-		Kind: ProposalKindAsset, LocalPath: path, MIMEType: "image/png",
-		Operations: []ProposalOperation{
-			{Tool: "storyteller_presign_asset_upload", Arguments: map[string]any{"project_public_id": "project"}},
-			{Tool: "storyteller_confirm_asset_upload", Arguments: map[string]any{"project_public_id": "project"}},
-		},
-	}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	proposal, err = DecideProposal("grok", "project", page.CurrentID, proposal.ID, ProposalDecisionApprove)
-	if err != nil {
-		t.Fatal(err)
-	}
-	events := make(chan TaskEvent, 20)
-	manager := NewTaskManager(context.Background(), func(_ context.Context, _ string, req Request) (Reply, error) {
-		for _, tool := range []string{"SteamLoom.storyteller_presign_asset_upload", assetMCPServerName + "." + assetMCPToolName, "SteamLoom.storyteller_confirm_asset_upload"} {
-			req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: tool})
-		}
-		return Reply{Text: "圖片已上傳。", applyResult: &ApplyResult{ProposalID: proposal.ID, ContentHash: proposal.ContentHash, Status: "completed"}}, nil
-	}, func(event TaskEvent) { events <- event })
-	defer manager.Close()
-	applyTask, err := manager.Apply(proposal)
-	if err != nil {
-		t.Fatal(err)
-	}
-	event := waitTaskEvent(t, events, applyTask.ID, EventApplyCompleted)
-	if event.Proposal == nil || event.Proposal.Status != ProposalApplied {
-		t.Fatalf("asset apply did not complete: %#v", event)
 	}
 }
 

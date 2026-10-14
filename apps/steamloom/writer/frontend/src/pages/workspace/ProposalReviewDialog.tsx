@@ -26,6 +26,7 @@ export function ProposalReviewDialog({
   threadID,
   proposal,
   item,
+  selectedCount,
   deciding,
   onClose,
   onDecision,
@@ -35,6 +36,7 @@ export function ProposalReviewDialog({
   threadID: string;
   proposal: AgentProposal | null;
   item: AgentProposalItem | null;
+  selectedCount: number;
   deciding: boolean;
   onClose: () => void;
   onDecision: (decision: "approve" | "reject") => void;
@@ -85,7 +87,7 @@ export function ProposalReviewDialog({
         leftVersion={versions.left}
         rightVersion={versions.right}
         notice={stale ? <Alert severity="warning">{t("workspace.chat.proposal.stale", { base: item.base_version_id, current: currentVersion })}</Alert> : <Alert severity="info">{t("workspace.chat.proposal.notWritten")}</Alert>}
-        actions={<ProposalActions proposal={proposal} deciding={deciding} stale={stale} onClose={onClose} onDecision={onDecision} />}
+        actions={<ProposalActions proposal={proposal} selectedCount={selectedCount} deciding={deciding} stale={stale} onClose={onClose} onDecision={onDecision} />}
       />
     );
   }
@@ -121,19 +123,21 @@ export function ProposalReviewDialog({
           </Stack>
         )}
       </DialogContent>
-      <DialogActions><ProposalActions proposal={proposal} deciding={deciding} onClose={onClose} onDecision={onDecision} /></DialogActions>
+      <DialogActions><ProposalActions proposal={proposal} selectedCount={selectedCount} deciding={deciding} onClose={onClose} onDecision={onDecision} /></DialogActions>
     </Dialog>
   );
 }
 
 function ProposalActions({
   proposal,
+  selectedCount,
   deciding,
   stale = false,
   onClose,
   onDecision,
 }: {
   proposal: AgentProposal | null;
+  selectedCount: number;
   deciding: boolean;
   stale?: boolean;
   onClose: () => void;
@@ -145,8 +149,8 @@ function ProposalActions({
     <>
       <Button disabled={deciding} onClick={onClose}>{t("workspace.chat.proposal.later")}</Button>
       <Button color="error" disabled={deciding} onClick={() => onDecision("reject")}>{t("workspace.chat.proposal.reject")}</Button>
-      <Button variant="contained" disabled={deciding || stale} onClick={() => onDecision("approve")}>
-        {deciding ? <CircularProgress size={16} color="inherit" /> : t("workspace.chat.proposal.approve", { count: proposal.items.length })}
+      <Button variant="contained" disabled={deciding || stale || selectedCount === 0} onClick={() => onDecision("approve")}>
+        {deciding ? <CircularProgress size={16} color="inherit" /> : t("workspace.chat.proposal.approve", { count: selectedCount })}
       </Button>
     </>
   );

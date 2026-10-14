@@ -23,10 +23,6 @@ func RecoverInterruptedApplies(projectID string) error {
 		for threadIndex := range idx.Threads {
 			thread := &idx.Threads[threadIndex]
 			logPath := filepath.Join(dir, thread.ID+".jsonl")
-			events, err := readLines(logPath)
-			if err != nil {
-				return err
-			}
 			entries, err := os.ReadDir(filepath.Join(dir, "proposals", thread.ID))
 			if errors.Is(err, os.ErrNotExist) {
 				continue
@@ -47,22 +43,14 @@ func RecoverInterruptedApplies(projectID string) error {
 				if !exists || lifecycle.status != ProposalApplying {
 					continue
 				}
-				completed := persistedApplyCompleted(proposal, lifecycle.taskID, events)
-				event := taskEvent(EventApplyInterrupted, lifecycle.taskID, "Writer 在 Agent 回報寫入結果前中斷；不會自動重送，請先確認內容")
-				if completed {
-					event = taskEvent(EventApplyCompleted, lifecycle.taskID, "Agent 已完成核准的寫入")
-				}
+				// REST request 可能已抵達伺服器；Writer 重啟後不猜測結果也不自動重送。
+				event := taskEvent(EventApplyInterrupted, lifecycle.taskID, "Writer 在取得套用結果前中斷；不會自動重送，請先確認內容")
 				event.ProposalID, event.ContentHash = proposal.ID, proposal.ContentHash
 				if err := appendLines(logPath, []ChatLine{event}); err != nil {
 					return err
 				}
 				proposal.Status, proposal.InterruptedAt = ProposalVerificationRequired, event.CreatedAt
 				thread.LastTaskState = TaskVerificationRequired
-				if completed {
-					proposal.Status, proposal.AppliedAt, proposal.InterruptedAt = ProposalApplied, event.CreatedAt, ""
-					thread.LastTaskState = TaskApplied
-				}
-				proposal.GrantID, proposal.GrantExpiresAt = "", ""
 				if err := writeProposal(path, proposal); err != nil {
 					return err
 				}
@@ -77,29 +65,4 @@ func RecoverInterruptedApplies(projectID string) error {
 		}
 	}
 	return nil
-}
-
-func persistedApplyCompleted(proposal Proposal, taskID string, events []ChatLine) bool {
-	completed := []string{}
-	started, failed := false, false
-	for _, event := range events {
-		if event.TaskID != taskID {
-			continue
-		}
-		switch event.Type {
-		case EventApplyStarted:
-			started, failed, completed = true, false, nil
-		case EventTaskToolFinished:
-			if started {
-				completed = append(completed, event.ToolName)
-			}
-		case EventTaskToolFailed:
-			failed = true
-		}
-	}
-	grant := ApprovalGrant{Items: proposal.Items}
-	if proposalHasAsset(proposal.Items) {
-		grant.AssetTool = assetMCPToolName
-	}
-	return started && !failed && verifyCompletedTools(grant, completed) == nil
 }

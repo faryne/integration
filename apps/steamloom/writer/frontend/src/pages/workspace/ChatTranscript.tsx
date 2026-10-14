@@ -15,7 +15,7 @@ interface ChatTranscriptProps {
   start: number;
   proposals: AgentProposal[] | null;
   workspace: Workspace;
-  onReview: (proposal: AgentProposal, item: AgentProposalItem) => void;
+  onReview: (proposal: AgentProposal, item: AgentProposalItem, selectedItemIDs: string[]) => void;
 }
 
 // 同一 task 的 queued/tool/complete event 收進一張可收合 timeline，避免狀態只閃一下就消失。
@@ -35,7 +35,7 @@ export function ChatTranscript({ agentID, messages, start, proposals, workspace,
       return group?.first === index ? <TaskActivityCard key={`activity:${message.task_id}`} agentID={agentID} events={group.events} workspace={workspace} /> : null;
     }
     const proposal = message.type === "proposal.ready" ? proposals?.find((item) => item.id === message.proposal_id) : undefined;
-    if (proposal) return <ProposalCard key={key} proposal={proposal} onReview={(item) => onReview(proposal, item)} />;
+    if (proposal) return <ProposalCard key={key} proposal={proposal} onReview={(item, selectedItemIDs) => onReview(proposal, item, selectedItemIDs)} />;
     return <ChatMessage key={key} message={message} />;
   });
 }

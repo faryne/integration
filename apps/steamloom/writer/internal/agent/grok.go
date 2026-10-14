@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -27,10 +25,6 @@ type grokClient struct{ bin string }
 func newGrok(bin string) Client { return grokClient{bin: bin} }
 
 func grokArgs(sessionID, dir, promptFile, mcpServer string) []string {
-	return grokArgsWithTools(sessionID, dir, promptFile, mcpServer, writerReadOnlyTools)
-}
-
-func grokArgsWithTools(sessionID, dir, promptFile, mcpServer string, allowed []string) []string {
 	// --tools "" 不掛內建工具；strict 再把檔案範圍收在這個工作目錄。
 	args := []string{
 		// Writer 自己負責版本相容性；headless 問答期間不要讓 CLI 在背景更新，避免同一條對話前後行為漂移。
@@ -48,7 +42,7 @@ func grokArgsWithTools(sessionID, dir, promptFile, mcpServer string, allowed []s
 		"--max-turns", "12",
 	}
 	// Grok Build 自行載入使用者既有的 MCP 設定；dontAsk 只核准精確列出的 SteamLoom 唯讀工具。
-	for _, tool := range allowed {
+	for _, tool := range writerReadOnlyTools {
 		if mcpServer != "" {
 			args = append(args, "--allow", "MCPTool("+mcpServer+"__"+tool+")")
 		}
@@ -60,20 +54,7 @@ func grokArgsWithTools(sessionID, dir, promptFile, mcpServer string, allowed []s
 }
 
 func grokRequestArgs(req Request, dir, promptFile string) ([]string, error) {
-	args := grokArgsWithTools(req.SessionID, dir, promptFile, req.mcpServer, req.mcpTools())
-	if req.grant == nil || req.grant.assetMCP == nil {
-		return args, nil
-	}
-	configDir := filepath.Join(dir, ".grok")
-	if err := os.MkdirAll(configDir, 0o700); err != nil {
-		return nil, err
-	}
-	serverArgs, _ := json.Marshal(req.grant.assetMCP.Args)
-	config := fmt.Sprintf("[mcp_servers.%s]\ncommand = %s\nargs = %s\nenabled = true\n", strconv.Quote(assetMCPServerName), strconv.Quote(req.grant.assetMCP.Command), serverArgs)
-	if err := os.WriteFile(filepath.Join(configDir, "config.toml"), []byte(config), 0o600); err != nil {
-		return nil, err
-	}
-	return append(args, "--allow", "MCPTool("+assetMCPServerName+"__"+assetMCPToolName+")"), nil
+	return grokArgs(req.SessionID, dir, promptFile, req.mcpServer), nil
 }
 
 func (c grokClient) Ask(ctx context.Context, req Request) (Reply, error) {

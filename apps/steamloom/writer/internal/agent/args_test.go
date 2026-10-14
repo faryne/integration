@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -56,41 +55,6 @@ func TestProviderArgsExposeOnlySteamLoomReadTools(t *testing.T) {
 	grok := strings.Join(grokArgs("", "/tmp/writer", "/tmp/writer/prompt.txt", "SteamLoom"), " ")
 	if !strings.Contains(grok, "MCPTool(SteamLoom__storyteller_get_story)") || strings.Contains(grok, "upsert") {
 		t.Fatalf("Grok must receive only the Writer read allowlist: %s", grok)
-	}
-}
-
-func TestProviderArgsExposeOnlyApprovedMutationTools(t *testing.T) {
-	tools := []string{"storyteller_upsert_lore"}
-	claude := strings.Join(claudeArgsWithGrant("session", "SteamLoom", tools), " ")
-	codex := strings.Join(codexArgsWithTools("session", "/tmp/writer", "SteamLoom", tools), " ")
-	grok := strings.Join(grokArgsWithTools("session", "/tmp/writer", "/tmp/writer/prompt.txt", "SteamLoom", tools), " ")
-	for name, args := range map[string]string{"claude": claude, "codex": codex, "grok": grok} {
-		if !strings.Contains(args, "storyteller_upsert_lore") || strings.Contains(args, "storyteller_get_story") || strings.Contains(args, "storyteller_delete") {
-			t.Fatalf("%s apply tools escaped the approval grant: %s", name, args)
-		}
-	}
-}
-
-func TestProviderArgsAddAssetMCPWithoutShell(t *testing.T) {
-	invocation := &assetMCPInvocation{Command: "/Applications/SteamLoom Writer", Args: []string{"--asset-mcp", "grok", "project", "thread", "proposal", "grant"}}
-	grant := &ApprovalGrant{Tools: []string{"storyteller_presign_asset_upload", "storyteller_confirm_asset_upload"}, assetMCP: invocation}
-	req := Request{SessionID: "session", mcpServer: "SteamLoom", grant: grant}
-	claude := strings.Join(claudeRequestArgs(req), " ")
-	codexArgs, err := codexRequestArgs(req, "/tmp/writer")
-	if err != nil {
-		t.Fatal(err)
-	}
-	codex := strings.Join(codexArgs, " ")
-	dir := t.TempDir()
-	grokArgs, err := grokRequestArgs(req, dir, filepath.Join(dir, "prompt.txt"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	grok := strings.Join(grokArgs, " ")
-	for name, args := range map[string]string{"claude": claude, "codex": codex, "grok": grok} {
-		if !strings.Contains(args, assetMCPToolName) || strings.Contains(args, "Bash(") || strings.Contains(args, "network_access=true") {
-			t.Fatalf("%s asset grant is not narrowly scoped: %s", name, args)
-		}
 	}
 }
 

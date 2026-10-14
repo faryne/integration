@@ -2,7 +2,6 @@ package agent
 
 import (
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -286,7 +285,7 @@ func proposalApplyLifecycle(path, proposalID string) (proposalDecision, bool) {
 }
 
 // DecideProposal 以 append-only event 作為決策事實來源；重複送出相同決策不會新增第二筆事件。
-func DecideProposal(agentID, projectID, threadID, proposalID, decision string) (Proposal, error) {
+func DecideProposal(agentID, projectID, threadID, proposalID, decision string, selectedItemIDs ...[]string) (Proposal, error) {
 	status, eventType := ProposalApproved, EventProposalApproved
 	if decision == ProposalDecisionReject {
 		status, eventType = ProposalRejected, EventProposalRejected
@@ -317,14 +316,6 @@ func DecideProposal(agentID, projectID, threadID, proposalID, decision string) (
 	if err := verifyProposalHashes(proposal); err != nil {
 		return Proposal{}, err
 	}
-	proposalDir := filepath.Dir(path)
-	for _, item := range proposal.Items {
-		if item.Kind == ProposalKindAsset {
-			if _, err := readVerifiedProposalAsset(item, proposalDir); err != nil {
-				return Proposal{}, err
-			}
-		}
-	}
 	logPath := filepath.Join(dir, threadID+".jsonl")
 	decisions, err := proposalDecisions(logPath)
 	if err != nil {
@@ -342,6 +333,43 @@ func DecideProposal(agentID, projectID, threadID, proposalID, decision string) (
 	}
 	if proposal.Status != ProposalAwaitingConfirmation {
 		return Proposal{}, errors.New("這批提案已經不在等待確認狀態")
+	}
+	if decision == ProposalDecisionApprove {
+		proposal.SelectedItemIDs = nil
+		selected := map[string]bool{}
+		if len(selectedItemIDs) == 0 {
+			for _, item := range proposal.Items {
+				selected[item.ID] = true
+			}
+		} else {
+			for _, id := range selectedItemIDs[0] {
+				selected[id] = true
+			}
+		}
+		for _, item := range proposal.Items {
+			if selected[item.ID] {
+				proposal.SelectedItemIDs = append(proposal.SelectedItemIDs, item.ID)
+				delete(selected, item.ID)
+			}
+		}
+		if len(proposal.SelectedItemIDs) == 0 {
+			return Proposal{}, errors.New("至少要選擇一項成果才能套用")
+		}
+		if len(selected) > 0 {
+			return Proposal{}, errors.New("核准清單包含不屬於這批提案的項目")
+		}
+		proposalDir := filepath.Dir(path)
+		for _, item := range proposal.ApplyItems() {
+			if item.Kind == ProposalKindAsset {
+				if _, err := readVerifiedProposalAsset(item, proposalDir); err != nil {
+					return Proposal{}, err
+				}
+			}
+		}
+		// 先保存 selection，再追加決策 event；即使 event 寫入失敗，重試也不會退回整批套用。
+		if err := writeProposal(path, proposal); err != nil {
+			return Proposal{}, err
+		}
 	}
 	text := proposalDecisionText(proposal, decision)
 	event := taskEvent(eventType, proposal.TaskID, text)
@@ -362,8 +390,12 @@ func DecideProposal(agentID, projectID, threadID, proposalID, decision string) (
 }
 
 func proposalDecisionText(proposal Proposal, decision string) string {
-	items := make([]string, 0, len(proposal.Items))
-	for _, item := range proposal.Items {
+	proposalItems := proposal.Items
+	if decision == ProposalDecisionApprove {
+		proposalItems = proposal.ApplyItems()
+	}
+	items := make([]string, 0, len(proposalItems))
+	for _, item := range proposalItems {
 		kind := map[string]string{ProposalKindStory: "故事", ProposalKindLore: "設定", ProposalKindAsset: "圖片"}[item.Kind]
 		title := strings.TrimSpace(item.Title)
 		if title == "" {
@@ -408,57 +440,4 @@ func readProposal(path string) (Proposal, error) {
 		return Proposal{}, err
 	}
 	return proposal, nil
-}
-
-// ProposalAssetPreview 驗證檔案仍與提案 hash 相同後，才回傳給 webview 預覽。
-func ProposalAssetPreview(agentID, projectID, threadID, proposalID, itemID string) (string, error) {
-	chatMu.Lock()
-	defer chatMu.Unlock()
-	if !validThread(threadID) || !validThread(proposalID) || !validThread(itemID) {
-		return "", errors.New("找不到這份圖片提案")
-	}
-	dir, idx, err := loadChat(agentID, projectID)
-	if err != nil {
-		return "", err
-	}
-	if !hasThread(idx, threadID) {
-		return "", errors.New("找不到這段對話")
-	}
-	proposalDir := filepath.Join(dir, "proposals", threadID, proposalID)
-	proposal, err := readProposal(filepath.Join(proposalDir, "proposal.json"))
-	if err != nil {
-		return "", err
-	}
-	for _, item := range proposal.Items {
-		if item.ID != itemID || item.Kind != ProposalKindAsset {
-			continue
-		}
-		raw, err := readVerifiedProposalAsset(item, proposalDir)
-		if err != nil {
-			return "", err
-		}
-		return "data:" + item.MIMEType + ";base64," + base64.StdEncoding.EncodeToString(raw), nil
-	}
-	return "", errors.New("找不到這份圖片提案")
-}
-
-func readVerifiedProposalAsset(item ProposalItem, proposalDir string) ([]byte, error) {
-	if !pathInside(item.LocalPath, proposalDir) {
-		return nil, errors.New("圖片提案的本機路徑不正確")
-	}
-	raw, err := os.ReadFile(item.LocalPath)
-	if err != nil {
-		return nil, err
-	}
-	if int64(len(raw)) != item.FileSize {
-		return nil, errors.New("圖片提案已在確認前被修改")
-	}
-	sum := sha256.Sum256(raw)
-	if hex.EncodeToString(sum[:]) != item.FileSHA256 {
-		return nil, errors.New("圖片提案已在確認前被修改")
-	}
-	if _, ok := proposalAssetExtensions[item.MIMEType]; !ok {
-		return nil, errors.New("圖片提案的 MIME type 不正確")
-	}
-	return raw, nil
 }

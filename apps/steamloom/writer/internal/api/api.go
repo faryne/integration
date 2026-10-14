@@ -90,9 +90,25 @@ func decodeResponse[T any](resp *http.Response, path string) (T, error) {
 		return out.Data, fmt.Errorf("SteamLoom API %s 回應格式錯誤（HTTP %d，Content-Type %s）", path, resp.StatusCode, contentType)
 	}
 	if resp.StatusCode >= http.StatusBadRequest {
-		return out.Data, fmt.Errorf("SteamLoom API %s 回應錯誤（HTTP %d）：%s", path, resp.StatusCode, out.Message)
+		return out.Data, &ResponseError{Path: path, StatusCode: resp.StatusCode, Message: out.Message}
 	}
 	return out.Data, nil
+}
+
+// ResponseError 保留 HTTP status，讓 Writer 能把 409 明確呈現為版本衝突而不是一般失敗。
+type ResponseError struct {
+	Path       string
+	StatusCode int
+	Message    string
+}
+
+func (e *ResponseError) Error() string {
+	return fmt.Sprintf("SteamLoom API %s 回應錯誤（HTTP %d）：%s", e.Path, e.StatusCode, e.Message)
+}
+
+func IsHTTPStatus(err error, status int) bool {
+	var responseErr *ResponseError
+	return errors.As(err, &responseErr) && responseErr.StatusCode == status
 }
 
 func (c *Client) Me(ctx context.Context) (*Profile, error) {

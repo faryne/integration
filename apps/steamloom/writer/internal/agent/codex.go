@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"strconv"
 	"strings"
 )
 
@@ -26,11 +25,7 @@ type codexClient struct{ bin string }
 func newCodex(bin string) Client { return codexClient{bin: bin} }
 
 func codexArgs(sessionID, dir, mcpServer string) []string {
-	return codexArgsWithTools(sessionID, dir, mcpServer, writerReadOnlyTools)
-}
-
-func codexArgsWithTools(sessionID, dir, mcpServer string, allowed []string) []string {
-	config := codexMCPConfig(mcpServer, allowed)
+	config := codexMCPConfig(mcpServer, writerReadOnlyTools)
 	// resume 子命令沒有 --color，色碼靠 --json 就不會進 stdout
 	if sessionID != "" {
 		args := []string{
@@ -70,25 +65,7 @@ func codexRequestArgs(req Request, dir string) ([]string, error) {
 	if req.mcpServer != "" && !codexBareKey(req.mcpServer) {
 		return nil, errors.New("Codex 的 SteamLoom MCP 名稱只能使用英數字、- 或 _，請重新命名後再試")
 	}
-	args := codexArgsWithTools(req.SessionID, dir, req.mcpServer, req.mcpTools())
-	if req.grant == nil || req.grant.assetMCP == nil {
-		return args, nil
-	}
-	key := "mcp_servers." + assetMCPServerName
-	serverArgs, _ := json.Marshal(req.grant.assetMCP.Args)
-	toolNames, _ := json.Marshal([]string{assetMCPToolName})
-	config := []string{
-		"-c", key + ".command=" + strconv.Quote(req.grant.assetMCP.Command),
-		"-c", key + ".args=" + string(serverArgs),
-		"-c", key + ".enabled_tools=" + string(toolNames),
-		"-c", key + `.default_tools_approval_mode="approve"`,
-	}
-	tail := 1
-	if req.SessionID != "" {
-		tail = 2
-	}
-	position := len(args) - tail
-	return append(append(append([]string{}, args[:position]...), config...), args[position:]...), nil
+	return codexArgs(req.SessionID, dir, req.mcpServer), nil
 }
 
 func codexBareKey(value string) bool {

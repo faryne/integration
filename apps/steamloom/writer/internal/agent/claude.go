@@ -20,10 +20,6 @@ type claudeClient struct{ bin string }
 func newClaude(bin string) Client { return claudeClient{bin: bin} }
 
 func claudeArgs(sessionID, mcpServer string) []string {
-	return claudeArgsWithGrant(sessionID, mcpServer, writerReadOnlyTools)
-}
-
-func claudeArgsWithGrant(sessionID, mcpServer string, mcpTools []string) []string {
 	args := []string{
 		"-p",
 		"--output-format", "stream-json",
@@ -35,7 +31,7 @@ func claudeArgsWithGrant(sessionID, mcpServer string, mcpTools []string) []strin
 		args = append(args, "--strict-mcp-config")
 	} else {
 		// Claude Code 自行載入使用者既有的 MCP 設定與 Skill；dontAsk 只執行 Writer 明確放行的唯讀工具。
-		tools := claudeMCPTools(mcpServer, mcpTools)
+		tools := claudeMCPTools(mcpServer, writerReadOnlyTools)
 		args = append(args, "--allowedTools", tools, "--permission-mode", "dontAsk")
 	}
 	if sessionID != "" {
@@ -53,19 +49,7 @@ func claudeMCPTools(server string, allowed []string) string {
 }
 
 func claudeRequestArgs(req Request) []string {
-	args := claudeArgsWithGrant(req.SessionID, req.mcpServer, req.mcpTools())
-	if req.grant == nil || req.grant.assetMCP == nil {
-		return args
-	}
-	config, _ := json.Marshal(map[string]any{"mcpServers": map[string]any{assetMCPServerName: map[string]any{"command": req.grant.assetMCP.Command, "args": req.grant.assetMCP.Args}}})
-	args = append(args, "--mcp-config", string(config))
-	for index := 0; index+1 < len(args); index++ {
-		if args[index] == "--allowedTools" {
-			args[index+1] += ",mcp__" + assetMCPServerName + "__" + assetMCPToolName
-			break
-		}
-	}
-	return args
+	return claudeArgs(req.SessionID, req.mcpServer)
 }
 
 func (c claudeClient) Ask(ctx context.Context, req Request) (Reply, error) {

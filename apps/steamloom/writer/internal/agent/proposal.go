@@ -28,20 +28,37 @@ const (
 
 // Proposal 是單一 task 交付的一批成果；使用者之後預設整批審查，但授權仍逐 item 綁定 hash。
 type Proposal struct {
-	ID             string         `json:"id"`
-	TaskID         string         `json:"task_id"`
-	ThreadID       string         `json:"thread_id"`
-	AgentID        string         `json:"agent_id"`
-	ProjectID      string         `json:"project_id"`
-	Status         string         `json:"status"`
-	ContentHash    string         `json:"content_hash"`
-	CreatedAt      string         `json:"created_at"`
-	DecidedAt      string         `json:"decided_at,omitempty"`
-	GrantID        string         `json:"grant_id,omitempty"`
-	GrantExpiresAt string         `json:"grant_expires_at,omitempty"`
-	AppliedAt      string         `json:"applied_at,omitempty"`
-	InterruptedAt  string         `json:"interrupted_at,omitempty"`
-	Items          []ProposalItem `json:"items"`
+	ID              string         `json:"id"`
+	TaskID          string         `json:"task_id"`
+	ThreadID        string         `json:"thread_id"`
+	AgentID         string         `json:"agent_id"`
+	ProjectID       string         `json:"project_id"`
+	Status          string         `json:"status"`
+	ContentHash     string         `json:"content_hash"`
+	CreatedAt       string         `json:"created_at"`
+	DecidedAt       string         `json:"decided_at,omitempty"`
+	AppliedAt       string         `json:"applied_at,omitempty"`
+	InterruptedAt   string         `json:"interrupted_at,omitempty"`
+	SelectedItemIDs []string       `json:"selected_item_ids,omitempty"`
+	Items           []ProposalItem `json:"items"`
+}
+
+// ApplyItems 回傳作者核准的項目；舊版 proposal 沒有 selection 時維持整批套用相容性。
+func (p Proposal) ApplyItems() []ProposalItem {
+	if len(p.SelectedItemIDs) == 0 {
+		return p.Items
+	}
+	selected := make(map[string]bool, len(p.SelectedItemIDs))
+	for _, id := range p.SelectedItemIDs {
+		selected[id] = true
+	}
+	items := make([]ProposalItem, 0, len(selected))
+	for _, item := range p.Items {
+		if selected[item.ID] {
+			items = append(items, item)
+		}
+	}
+	return items
 }
 
 // ProposalSnapshot 保存 Agent 產生提案時讀到的版本，供 review 時判斷 DB 是否已前進。
@@ -52,13 +69,13 @@ type ProposalSnapshot struct {
 	Content     string `json:"content,omitempty"`
 }
 
-// ProposalOperation 保存確認後 Agent 可能呼叫的 tool 與參數；圖片上傳可有 presign／confirm 多步。
+// ProposalOperation 保存 Agent 建議的操作意圖供稽核；Writer 不會直接執行這些 tool arguments。
 type ProposalOperation struct {
 	Tool      string         `json:"tool"`
 	Arguments map[string]any `json:"arguments"`
 }
 
-// ProposalItem 同時涵蓋故事、設定與圖片資產；Operations 是後續 grant 必須逐項約束的操作。
+// ProposalItem 同時涵蓋故事、設定與圖片資產；真正套用只採用經 review 的正規化欄位。
 type ProposalItem struct {
 	ID            string              `json:"id"`
 	Kind          string              `json:"kind"`
@@ -130,11 +147,13 @@ func normalizeProposalItem(item *ProposalItem, projectID string) error {
 		return errors.New("缺少建議執行的 SteamLoom tool")
 	}
 	targetMatched := item.TargetID == ""
-	expectedUpsert := map[string]string{ProposalKindStory: "storyteller_upsert_story", ProposalKindLore: "storyteller_upsert_lore"}[item.Kind]
 	for index := range item.Operations {
 		operation := &item.Operations[index]
 		if !strings.HasPrefix(operation.Tool, "storyteller_") || writerReadOnlyTool(operation.Tool) {
 			return fmt.Errorf("tool %q 不是可審查的寫入操作", operation.Tool)
+		}
+		if (item.Kind == ProposalKindStory && strings.Contains(operation.Tool, "_lore")) || (item.Kind == ProposalKindLore && strings.Contains(operation.Tool, "_story")) {
+			return fmt.Errorf("tool %q 與提案類型 %q 不一致", operation.Tool, item.Kind)
 		}
 		if operation.Arguments == nil {
 			return fmt.Errorf("tool %q 缺少寫入參數", operation.Tool)
@@ -142,24 +161,17 @@ func normalizeProposalItem(item *ProposalItem, projectID string) error {
 		if target, ok := operation.Arguments["project_public_id"].(string); !ok || target != projectID {
 			return fmt.Errorf("tool %q 的 project_public_id 與目前專案不一致", operation.Tool)
 		}
-		// Writer 核准的既有內容一律改成 fail-before-write；這個旗標會納入 proposal hash，
-		// Agent 只能照作者看過的固定 arguments 呼叫，不能退回 last-write-wins。
-		if item.TargetID != "" && writerConditionalTool(operation.Tool) {
-			operation.Arguments["abort_on_conflict"] = true
-		}
-		if writerConditionalTool(operation.Tool) {
-			if operation.Tool != expectedUpsert {
-				return fmt.Errorf("tool %q 與提案類型 %q 不一致", operation.Tool, item.Kind)
-			}
-			// review 欄位是作者實際核准的內容，也是唯一事實來源；不要信任 Agent 在 arguments 裡重複的一份。
-			operation.Arguments["title"], operation.Arguments["summary"] = item.Title, item.Summary
-			operation.Arguments["content_type"], operation.Arguments["content"] = item.ContentType, item.Content
-		}
+		// operations 只供 review 與稽核；Writer 套用時不信任、也不執行這份 arguments。
 		arguments, err := canonicalArguments(operation.Arguments)
 		if err != nil {
 			return fmt.Errorf("tool %q 的參數無法序列化：%w", operation.Tool, err)
 		}
 		operation.Arguments = arguments
+		if item.TargetID != "" {
+			if base, exists := arguments["base_version_id"]; exists && fmt.Sprint(base) != item.BaseVersionID {
+				return fmt.Errorf("tool %q 的 base_version_id 與提案基準不一致", operation.Tool)
+			}
+		}
 		if targetKey != "" {
 			if target, exists := arguments[targetKey]; exists {
 				if target != item.TargetID {
@@ -168,21 +180,11 @@ func normalizeProposalItem(item *ProposalItem, projectID string) error {
 				targetMatched = true
 			}
 		}
-		if item.TargetID != "" && writerConditionalTool(operation.Tool) {
-			base, exists := arguments["base_version_id"]
-			if !exists || fmt.Sprint(base) != item.BaseVersionID {
-				return fmt.Errorf("tool %q 的 base_version_id 與提案基準不一致", operation.Tool)
-			}
-		}
 	}
 	if !targetMatched {
 		return fmt.Errorf("operations 沒有指向提案目標 %q", item.TargetID)
 	}
 	return nil
-}
-
-func writerConditionalTool(name string) bool {
-	return name == "storyteller_upsert_story" || name == "storyteller_upsert_lore"
 }
 
 func writerReadOnlyTool(name string) bool {

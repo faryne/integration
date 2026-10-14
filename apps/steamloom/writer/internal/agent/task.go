@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"strings"
 	"sync"
 )
 
@@ -53,6 +51,9 @@ type TaskEvent struct {
 
 type TaskRunner func(context.Context, string, Request) (Reply, error)
 type TaskEmitter func(TaskEvent)
+type ProposalApplyRunner func(context.Context, Proposal) (string, error)
+
+var ErrApplyConflict = errors.New("proposal apply conflict")
 
 type managedTask struct {
 	task           Task
@@ -60,7 +61,6 @@ type managedTask struct {
 	cancel         context.CancelFunc
 	proposal       *Proposal
 	applyProposal  *Proposal
-	completedTools []string
 	proposalFilter proposalDeltaFilter
 }
 
@@ -73,12 +73,16 @@ type TaskManager struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	run    TaskRunner
+	apply  ProposalApplyRunner
 	emit   TaskEmitter
 
 	mu     sync.Mutex
 	tasks  map[string]*managedTask
 	queues map[string]*taskQueue
 }
+
+// SetProposalApplyRunner 注入 Writer 的 REST API 寫入器；Agent package 只負責佇列與對話生命週期。
+func (m *TaskManager) SetProposalApplyRunner(apply ProposalApplyRunner) { m.apply = apply }
 
 func NewTaskManager(parent context.Context, run TaskRunner, emit TaskEmitter) *TaskManager {
 	ctx, cancel := context.WithCancel(parent)
@@ -126,7 +130,7 @@ func (m *TaskManager) Start(agentID string, req Request) (Task, error) {
 	return task, nil
 }
 
-// Apply 將已核准 proposal 排回原 thread；實際執行時才核發一次性 grant 並恢復 provider session。
+// Apply 將已核准 proposal 排回原 thread；實際寫入由 Writer 注入的 apply runner 執行，不再恢復 Agent session。
 func (m *TaskManager) Apply(proposal Proposal) (Task, error) {
 	if proposal.Status != ProposalApproved {
 		return Task{}, errors.New("這批提案尚未取得作者允許")
@@ -286,38 +290,20 @@ func (m *TaskManager) runApply(ctx context.Context, managed *managedTask) {
 	if err == nil {
 		managed.applyProposal = &proposal
 		m.emit(TaskEvent{Type: EventApplyStarted, Task: task, Proposal: &proposal})
-		var grant ApprovalGrant
-		grant, err = newApprovalGrant(proposal)
-		if err == nil {
-			req := managed.req
-			req.SessionID, err = SessionOf(task.AgentID, task.ProjectID, task.ThreadID)
-			if err == nil {
-				req.workDir, err = req.applyDir()
-				if err == nil {
-					defer os.RemoveAll(req.workDir)
-					req.grant = &grant
-					req.emit = func(stream StreamEvent) { m.stream(managed, stream) }
-					var reply Reply
-					reply, err = m.run(ctx, task.AgentID, req)
-					m.flushProposalStream(managed)
-					if ctx.Err() != nil {
-						err = ctx.Err()
-					} else if err != nil && verifyCompletedTools(grant, managed.completedTools) == nil {
-						// Agent 回傳的每個 mutation 都已明確成功；即使缺少最終 envelope，也不能把已寫入的工作說成失敗。
-						reply.Text, err = visibleApplyText(managed.task.Partial), nil
-					}
-					if err == nil {
-						err = verifyApplyReply(grant, reply, managed.completedTools)
-					}
-					if err == nil {
-						proposal, err = recordApplyCompleted(task.AgentID, task.ProjectID, task.ThreadID, proposal.ID, task.ID, reply.Text)
-					}
-				}
+		if m.apply == nil {
+			err = errors.New("Writer 尚未設定提案寫入器")
+		} else {
+			var summary string
+			summary, err = m.apply(ctx, proposal)
+			if ctx.Err() != nil {
+				err = ctx.Err()
+			} else if err == nil {
+				proposal, err = recordApplyCompleted(task.AgentID, task.ProjectID, task.ThreadID, proposal.ID, task.ID, summary)
 			}
 		}
 	}
 	contextErr := ctx.Err()
-	conflicted := errors.Is(err, errApplyConflict)
+	conflicted := errors.Is(err, ErrApplyConflict)
 	if err != nil {
 		detail := err.Error()
 		if contextErr != nil {
@@ -358,52 +344,6 @@ func (m *TaskManager) runApply(ctx context.Context, managed *managedTask) {
 		eventType = EventApplyConflict
 	}
 	m.emit(TaskEvent{Type: eventType, Task: task, Proposal: &proposal})
-}
-
-func verifyApplyReply(grant ApprovalGrant, reply Reply, completedTools []string) error {
-	if reply.applyResult != nil && reply.applyResult.Status == "failed" {
-		return errors.New(reply.applyResult.Error)
-	}
-	if reply.applyResult != nil && reply.applyResult.Status == "conflict" {
-		return fmt.Errorf("%w：%s", errApplyConflict, reply.applyResult.Error)
-	}
-	if err := verifyCompletedTools(grant, completedTools); err != nil {
-		return err
-	}
-	return nil
-}
-
-func visibleApplyText(text string) string {
-	if position := strings.Index(text, applyEnvelopeStart); position >= 0 {
-		text = text[:position]
-	}
-	return strings.TrimSpace(text)
-}
-
-func verifyCompletedTools(grant ApprovalGrant, completedTools []string) error {
-	position := 0
-	for _, item := range grant.Items {
-		for index, operation := range item.Operations {
-			if !consumeCompletedTool(operation.Tool, completedTools, &position) {
-				return fmt.Errorf("Agent 沒有完成核准操作 %s", operation.Tool)
-			}
-			if item.Kind == ProposalKindAsset && index == 0 && !consumeCompletedTool(grant.AssetTool, completedTools, &position) {
-				return fmt.Errorf("Agent 沒有完成核准圖片上傳 %s", grant.AssetTool)
-			}
-		}
-	}
-	return nil
-}
-
-func consumeCompletedTool(want string, completed []string, position *int) bool {
-	for *position < len(completed) {
-		name := completed[*position]
-		*position++
-		if name == want || strings.HasSuffix(name, "."+want) || strings.HasSuffix(name, "__"+want) {
-			return true
-		}
-	}
-	return false
 }
 
 func (m *TaskManager) finish(managed *managedTask, runErr, contextErr error) {
@@ -458,7 +398,6 @@ func (m *TaskManager) stream(managed *managedTask, stream StreamEvent) {
 			managed.task.ActivityTarget = ""
 		}
 		if stream.Type == StreamToolCompleted {
-			managed.completedTools = append(managed.completedTools, stream.ToolName)
 			activityType = EventTaskToolFinished
 		} else {
 			activityType = EventTaskToolFailed
