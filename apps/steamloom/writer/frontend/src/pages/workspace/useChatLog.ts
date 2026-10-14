@@ -93,18 +93,6 @@ export function useChatLog(projectID: string, agentID: string) {
     }
   }, [agentID, projectID, replace, showError]);
 
-  const startNew = async () => {
-    if (!agentID) return null;
-    try {
-      const next = await backend.ChatNew(agentID, projectID);
-      replace(next);
-      return next;
-    } catch (err) {
-      showError(errorMessage(err));
-      return null;
-    }
-  };
-
   const renameCurrent = async (title: string) => {
     if (!agentID || !page?.current_id) return false;
     try {
@@ -151,5 +139,5 @@ export function useChatLog(projectID: string, agentID: string) {
     }
   };
 
-  return { page, box, loadingOlder, openThread, refreshVisibleThread, startNew, renameCurrent, deleteThread, loadOlder };
+  return { page, box, loadingOlder, openThread, refreshVisibleThread, renameCurrent, deleteThread, loadOlder };
 }
