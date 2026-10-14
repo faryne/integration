@@ -1,10 +1,8 @@
 import AddIcon from "@mui/icons-material/Add";
 import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
-import DoneIcon from "@mui/icons-material/Done";
 import FolderIcon from "@mui/icons-material/Folder";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import RemoveIcon from "@mui/icons-material/Remove";
-import SortIcon from "@mui/icons-material/Sort";
 import {
   Box,
   Collapse,
@@ -33,7 +31,11 @@ import {
   type RenderSidebarItemActions,
   type ReorderSidebarItem,
 } from "./ProjectWorkspaceSidebarTreeChildren.tsx";
-import { WorkspaceSortArrows } from "./WorkspaceSortArrows.tsx";
+import {
+  WorkspaceSortArrows,
+  WorkspaceSortToggle,
+  workspaceSidebarIconButtonSx,
+} from "./WorkspaceSortArrows.tsx";
 import type { StorytellerStory } from "@/types/storyteller.ts";
 
 export type SidebarRowData = {
@@ -86,23 +88,21 @@ export function SidebarGroup({
   );
   return (
     <Box>
+      {/* useFlexGap：spacing 改用 gap，否則 Stack 會把子元素 margin 歸零，右側按鈕的 ml: auto 失效、黏在標題旁邊 */}
       <Stack
         direction="row"
         alignItems="center"
         spacing={1}
+        useFlexGap
         sx={{ px: 1, py: 0.75 }}
       >
         <Tooltip title={expanded ? "收合" : "展開"}>
           <IconButton
             size="small"
             onClick={() => setExpanded((value) => !value)}
-            sx={{ p: 0.375 }}
+            sx={workspaceSidebarIconButtonSx}
           >
-            {expanded ? (
-              <RemoveIcon fontSize="inherit" />
-            ) : (
-              <AddIcon fontSize="inherit" />
-            )}
+            {expanded ? <RemoveIcon /> : <AddIcon />}
           </IconButton>
         </Tooltip>
         <Box sx={{ lineHeight: 0, opacity: 0.82 }}>{icon}</Box>
@@ -115,25 +115,20 @@ export function SidebarGroup({
         </Typography>
         <Stack direction="row" sx={{ ml: "auto" }}>
           {onReorder && (
-            <Tooltip title={sorting ? "完成排序" : `調整${title}順序`}>
-              <IconButton
-                size="small"
-                aria-pressed={sorting}
-                onClick={() => setSorting((value) => !value)}
-                sx={{ p: 0.375 }}
-              >
-                {sorting ? (
-                  <DoneIcon fontSize="inherit" />
-                ) : (
-                  <SortIcon fontSize="inherit" />
-                )}
-              </IconButton>
-            </Tooltip>
+            <WorkspaceSortToggle
+              sorting={sorting}
+              onToggle={() => setSorting((value) => !value)}
+              label={`調整${title}順序`}
+            />
           )}
           {onCreate && (
             <Tooltip title={createLabel ?? `新增${title}`}>
-              <IconButton size="small" onClick={onCreate} sx={{ p: 0.375 }}>
-                <CreateNewFolderIcon fontSize="inherit" />
+              <IconButton
+                size="small"
+                onClick={onCreate}
+                sx={workspaceSidebarIconButtonSx}
+              >
+                <CreateNewFolderIcon />
               </IconButton>
             </Tooltip>
           )}
