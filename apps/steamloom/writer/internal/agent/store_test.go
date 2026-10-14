@@ -12,7 +12,7 @@ func TestRenameChatPersistsTitleWithoutChangingActivityTime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := SaveTurn("claude", "project", page.CurrentID, "原始標題", "answer", "session"); err != nil {
+	if _, err := SaveTurn("claude", "project", page.CurrentID, "原始標題", nil, "answer", "session"); err != nil {
 		t.Fatal(err)
 	}
 	before, err := OpenChat("claude", "project")
@@ -63,20 +63,39 @@ func TestLegacyChatLineBecomesTypedEvent(t *testing.T) {
 	}
 }
 
+func TestSaveTurnPersistsMessageIDsAndReferences(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	references := []PromptReference{{Type: "chat_message", ID: "quote-1", Title: "Agent 回覆", Text: "原始回答", Role: "assistant"}}
+	if _, err := SaveTurn("claude", "project", page.CurrentID, "接著說", references, "新的回答", "session"); err != nil {
+		t.Fatal(err)
+	}
+	page, err = OpenChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Messages) != 2 || page.Messages[0].EventID == "" || page.Messages[1].EventID == "" || len(page.Messages[0].References) != 1 || page.Messages[0].References[0].Text != "原始回答" {
+		t.Fatalf("unexpected saved references: %#v", page.Messages)
+	}
+}
+
 func TestDeleteChatRemovesFileAndSelectsNextThread(t *testing.T) {
 	root := withTempConfig(t)
 	first, err := NewChat("codex", "project")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := SaveTurn("codex", "project", first.CurrentID, "第一題", "第一答", "session-one"); err != nil {
+	if _, err := SaveTurn("codex", "project", first.CurrentID, "第一題", nil, "第一答", "session-one"); err != nil {
 		t.Fatal(err)
 	}
 	second, err := NewChat("codex", "project")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := SaveTurn("codex", "project", second.CurrentID, "第二題", "第二答", "session-two"); err != nil {
+	if _, err := SaveTurn("codex", "project", second.CurrentID, "第二題", nil, "第二答", "session-two"); err != nil {
 		t.Fatal(err)
 	}
 

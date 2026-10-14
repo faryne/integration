@@ -1,4 +1,6 @@
-import { Box, Button, Chip, Stack, TextField, Typography } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import FormatQuoteIcon from "@mui/icons-material/FormatQuote";
+import { Box, Button, Chip, IconButton, Paper, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -14,6 +16,7 @@ import {
 import { StorytellerPromptHighlightOverlay } from "@steamloom-web/pages/storyteller/StorytellerPromptHighlightOverlay.tsx";
 import type { DocumentItem, Workspace } from "@writer/lib/backend.ts";
 import { workspaceDocuments } from "@writer/pages/workspace/workspaceTree.ts";
+import { promptReferencePreview, type PromptReference } from "@writer/pages/workspace/promptReferences.ts";
 
 interface PromptSelection {
   start: number;
@@ -30,17 +33,25 @@ export function AgentPromptEditor({
   workspace,
   value,
   disabled,
+  references,
   onChange,
+  onRemoveReference,
   onSubmit,
 }: {
   workspace: Workspace;
   value: string;
   disabled: boolean;
+  references: PromptReference[];
   onChange: (value: string) => void;
+  onRemoveReference: (id: string) => void;
   onSubmit: () => void;
 }) {
   const { t } = useTranslation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // composition state 必須同步寫進 ref：React state 更新晚於原生 keydown，單靠 state
+  // 會讓注音／日文輸入法用 Enter 選字時，偶發被當成送出。
+  const compositionRef = useRef(false);
+  const compositionEndedAtRef = useRef(Number.NEGATIVE_INFINITY);
   const [selection, setSelection] = useState<PromptSelection>({ start: 0, end: 0 });
   const [composing, setComposing] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -55,7 +66,7 @@ export function AgentPromptEditor({
     ].slice(0, 6),
     [loreQuery, lores, stories, storyQuery],
   );
-  const references = useMemo(() => resolveReferences(value, stories, lores), [lores, stories, value]);
+  const namedReferences = useMemo(() => resolveReferences(value, stories, lores), [lores, stories, value]);
 
   const syncSelection = (target: HTMLInputElement | HTMLTextAreaElement | null = textareaRef.current) => {
     if (!target) return;
@@ -79,6 +90,26 @@ export function AgentPromptEditor({
 
   return (
     <>
+      {references.length > 0 && (
+        <Stack spacing={0.75} sx={{ mb: 1 }}>
+          {references.map((reference) => (
+            <Paper key={reference.id} variant="outlined" sx={{ display: "flex", alignItems: "flex-start", gap: 1, px: 1, py: 0.75, bgcolor: "action.hover" }}>
+              <FormatQuoteIcon color="action" sx={{ mt: 0.15, fontSize: 17 }} />
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography sx={{ fontSize: 11.5, fontWeight: 700 }}>{reference.title}</Typography>
+                <Typography color="text.secondary" sx={{ fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {promptReferencePreview(reference.text)}
+                </Typography>
+              </Box>
+              <Tooltip title={t("workspace.chat.referenceRemove")}>
+                <IconButton size="small" aria-label={t("workspace.chat.referenceRemove")} onClick={() => onRemoveReference(reference.id)} sx={{ mt: -0.5, mr: -0.5 }}>
+                  <CloseIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            </Paper>
+          ))}
+        </Stack>
+      )}
       <Box sx={{ position: "relative" }}>
         <TextField
           inputRef={textareaRef}
@@ -102,16 +133,26 @@ export function AgentPromptEditor({
           onSelect={(event) => syncSelection(event.target as HTMLTextAreaElement)}
           onKeyUp={(event) => syncSelection(event.target as HTMLTextAreaElement)}
           onMouseUp={(event) => syncSelection(event.target as HTMLTextAreaElement)}
-          onCompositionStart={() => setComposing(true)}
+          onCompositionStart={() => {
+            compositionRef.current = true;
+            setComposing(true);
+          }}
           onCompositionEnd={(event) => {
+            compositionRef.current = false;
+            compositionEndedAtRef.current = performance.now();
             setComposing(false);
             syncSelection(event.target as HTMLTextAreaElement);
           }}
           onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey && !composing && !event.nativeEvent.isComposing) {
-              event.preventDefault();
-              onSubmit();
-            }
+            if (event.key !== "Enter" || event.shiftKey) return;
+            const native = event.nativeEvent;
+            // WebKit 可能在 compositionend 後才送出同一顆 Enter 的 keydown，這時
+            // isComposing 已經變成 false；用 100ms 保守窗擋住該次選字 Enter。
+            const recentlyEndedComposition = performance.now() - compositionEndedAtRef.current < 100;
+            const specialState = compositionRef.current || composing || native.isComposing || native.keyCode === 229 || native.key === "Process" || event.altKey || event.ctrlKey || event.metaKey || recentlyEndedComposition;
+            if (specialState) return;
+            event.preventDefault();
+            onSubmit();
           }}
           slotProps={{
             input: {
@@ -156,9 +197,9 @@ export function AgentPromptEditor({
           ))}
         </Stack>
       )}
-      {references.length > 0 && (
+      {namedReferences.length > 0 && (
         <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
-          {references.map((reference) => (
+          {namedReferences.map((reference) => (
             <Chip
               key={reference.token}
               size="small"

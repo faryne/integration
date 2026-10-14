@@ -20,6 +20,7 @@ import type { RowActionTarget } from "@writer/pages/workspace/useDocumentRowActi
 import { WorkspaceSidebar, WorkspaceSidebarRail } from "@writer/pages/workspace/WorkspaceSidebar.tsx";
 import { UnsavedChangesDialog } from "@writer/pages/workspace/UnsavedChangesDialog.tsx";
 import { findGroup, groupTargets, isSameDocument, workspaceDocuments, type DocumentTab } from "@writer/pages/workspace/workspaceTree.ts";
+import type { PromptReference } from "@writer/pages/workspace/promptReferences.ts";
 
 // 還沒載入前給 hook 用的空工作台（hook 必須無條件呼叫）
 const emptyWorkspace: Workspace = { volumes: [], ungrouped_stories: [], lore_collections: [], uncategorized_lores: [], asset_collections: [] };
@@ -59,6 +60,7 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
   const [tab, setTab] = useState<DocumentTab>("editor");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [assistantReference, setAssistantReference] = useState<PromptReference | null>(null);
   // 等待確認「放棄未存檔內容」的動作
   const [pending, setPending] = useState<(() => void) | null>(null);
   const guard = (action: () => void) => (dirty ? setPending(() => action) : action());
@@ -84,6 +86,14 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
     workspace: workspace ?? emptyWorkspace,
     setWorkspace: setRefreshed,
     reload,
+  });
+
+  // 編輯器選取內容後切到 AI 助理；若目前有未存檔變更，沿用既有離開確認。
+  const askAI = (reference: PromptReference) => guard(() => {
+    setAssistantReference(reference);
+    setSelectedState(null);
+    setListSection(null);
+    setOpenedAsset(null);
   });
 
   // 側邊列／列表的 ⋮ 刪掉正在編輯的那篇：直接到該類的「全部…」列表（比照網站回列表；東西已經不在，不用問未存檔）
@@ -182,6 +192,7 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
                         onDirtyChange={setDirty}
                         onSaved={reload}
                         onShowHistory={() => setTab("history")}
+                        onAskAI={askAI}
                       />
                     </Box>
                     {currentTab === "history" && <HistoryPanel project={project.public_id} item={selected} />}
@@ -217,7 +228,14 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
                   onChanged={reload}
                 />
               ) : (
-                <ChatPanel projectID={project.public_id} projectName={project.name} workspace={workspace} onWorkspaceChange={reload} />
+                <ChatPanel
+                  projectID={project.public_id}
+                  projectName={project.name}
+                  workspace={workspace}
+                  initialReference={assistantReference}
+                  onInitialReferenceConsumed={() => setAssistantReference(null)}
+                  onWorkspaceChange={reload}
+                />
               )}
               </StorytellerEditorDataContext.Provider>
             </Box>

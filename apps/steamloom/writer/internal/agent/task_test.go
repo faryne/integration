@@ -75,7 +75,7 @@ func TestTaskManagerRunsDifferentThreadsConcurrently(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := SaveTurn("codex", "project", first.CurrentID, "seed", "seed", "session-one"); err != nil {
+	if _, err := SaveTurn("codex", "project", first.CurrentID, "seed", nil, "seed", "session-one"); err != nil {
 		t.Fatal(err)
 	}
 	second, err := NewChat("codex", "project")
@@ -339,7 +339,7 @@ func TestTaskManagerAppliesApprovedProposalOnSameThread(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := SaveTurn("claude", "project", page.CurrentID, "seed", "seed", "same-session"); err != nil {
+	if _, err := SaveTurn("claude", "project", page.CurrentID, "seed", nil, "seed", "same-session"); err != nil {
 		t.Fatal(err)
 	}
 	taskID, _ := newThreadID()

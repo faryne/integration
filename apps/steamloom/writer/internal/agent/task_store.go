@@ -30,8 +30,10 @@ func prepareTask(agentID string, req Request, taskID string) (Thread, error) {
 		}
 		thread = found
 	}
+	message := messageEvent("user", req.Prompt)
+	message.TaskID, message.References = taskID, req.References
 	if err := appendLines(filepath.Join(dir, thread.ID+".jsonl"), []ChatLine{
-		messageEvent("user", req.Prompt),
+		message,
 		taskEvent(EventTaskQueued, taskID, "工作已排入佇列"),
 	}); err != nil {
 		return Thread{}, err
@@ -64,8 +66,10 @@ func recordTaskCompleted(agentID, projectID, threadID, taskID string, reply Repl
 	if !ok {
 		return errors.New("找不到這段對話")
 	}
+	message := messageEvent("assistant", reply.Text)
+	message.TaskID = taskID
 	if err := appendLines(filepath.Join(dir, thread.ID+".jsonl"), []ChatLine{
-		messageEvent("assistant", reply.Text),
+		message,
 		taskEvent(EventTaskCompleted, taskID, "Agent 已完成工作"),
 	}); err != nil {
 		return err

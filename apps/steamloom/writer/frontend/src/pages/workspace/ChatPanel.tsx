@@ -3,6 +3,7 @@ import { Box, Button, CircularProgress, IconButton, MenuItem, Paper, Select, Sta
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EventsOn } from "../../../wailsjs/runtime/runtime";
+import { agent } from "../../../wailsjs/go/models";
 import { useSnack } from "@writer/components/SnackProvider.tsx";
 import { backend, errorMessage, type AgentProposal, type AgentProposalItem, type AgentTask, type AgentTaskEvent, type AgentThread, type Workspace } from "@writer/lib/backend.ts";
 import { useBackendData } from "@writer/lib/useBackendData.ts";
@@ -15,15 +16,24 @@ import { ChatTaskLanding } from "@writer/pages/workspace/ChatTaskLanding.tsx";
 import { ProposalReviewDialog } from "@writer/pages/workspace/ProposalReviewDialog.tsx";
 import { TaskRail } from "@writer/pages/workspace/TaskRail.tsx";
 import { ThreadDeleteDialog } from "@writer/pages/workspace/ThreadDeleteDialog.tsx";
-import { useChatLog } from "@writer/pages/workspace/useChatLog.ts";
+import { useChatLog, type ChatLine } from "@writer/pages/workspace/useChatLog.ts";
+import type { PromptReference } from "@writer/pages/workspace/promptReferences.ts";
 
 // 專案層的 AI 助理。每條 thread 各自綁定 provider session，同一 provider 也能同時執行多條。
-export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange }: { projectID: string; projectName: string; workspace: Workspace; onWorkspaceChange: () => void }) {
+export function ChatPanel({ projectID, projectName, workspace, initialReference, onInitialReferenceConsumed, onWorkspaceChange }: {
+  projectID: string;
+  projectName: string;
+  workspace: Workspace;
+  initialReference: PromptReference | null;
+  onInitialReferenceConsumed: () => void;
+  onWorkspaceChange: () => void;
+}) {
   const { t } = useTranslation();
   const { showError } = useSnack();
   const agents = useBackendData(() => backend.Agents(), []);
   const [agentID, setAgentID] = useState("");
   const [draft, setDraft] = useState("");
+  const [references, setReferences] = useState<PromptReference[]>([]);
   const [starting, setStarting] = useState(false);
   const [canceling, setCanceling] = useState("");
   const [tasks, setTasks] = useState<Record<string, AgentTask>>({});
@@ -51,7 +61,15 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
     setViewMode("empty");
     setPendingThread(null);
     setDraft("");
+    setReferences([]);
   }, [projectID]);
+
+  useEffect(() => {
+    if (!initialReference) return;
+    setReferences([initialReference]);
+    setViewMode("new");
+    onInitialReferenceConsumed();
+  }, [initialReference, onInitialReferenceConsumed]);
 
   const loadThreads = useCallback(async () => {
     try {
@@ -109,6 +127,7 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
   const selectProjectThread = (thread: AgentThread) => {
     setDeleteTarget(null);
     setViewMode("empty");
+    setReferences([]);
     if (thread.agent_id === selected) {
       void chat.openThread(thread.id).then((result) => {
         if (result === "opened") setViewMode("thread");
@@ -124,6 +143,7 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
     setPendingThread(null);
     setReview(null);
     setDraft("");
+    setReferences([]);
     setViewMode("new");
   };
 
@@ -138,7 +158,7 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
     if (!prompt || !selected || starting || (viewMode === "thread" && !currentThreadID)) return;
     setStarting(true);
     try {
-      const task = await backend.StartTask(selected, {
+      const task = await backend.StartTask(selected, new agent.Request({
         thread_id: currentThreadID,
         session_id: "",
         project_id: projectID,
@@ -146,8 +166,10 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
         document_id: "",
         title: projectName,
         prompt,
-      });
+        references,
+      }));
       setDraft("");
+      setReferences([]);
       setTasks((current) => ({ ...current, [task.id]: task }));
       if (await chat.openThread(task.thread_id) === "opened") setViewMode("thread");
       await loadThreads();
@@ -156,6 +178,31 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
     } finally {
       setStarting(false);
     }
+  };
+
+  const quoteMessage = (message: ChatLine, messageID: string) => {
+    const reference: PromptReference = {
+      type: "chat_message",
+      id: `chat:${currentThreadID}:${messageID}`,
+      title: message.role === "user" ? t("workspace.chat.referenceUser") : t("workspace.chat.referenceAgent"),
+      text: message.text,
+      role: message.role === "user" ? "user" : "assistant",
+      thread_id: currentThreadID,
+      message_id: messageID,
+    };
+    setReferences((current) => {
+      if (current.some((item) => item.id === reference.id)) return current;
+      if (current.length >= 5) {
+        showError(t("workspace.chat.referenceLimit"));
+        return current;
+      }
+      const total = current.reduce((sum, item) => sum + Array.from(item.text).length, 0) + Array.from(reference.text).length;
+      if (total > 20000) {
+        showError(t("workspace.chat.referenceTooLong"));
+        return current;
+      }
+      return [...current, reference];
+    });
   };
 
   const cancelTask = async () => {
@@ -249,6 +296,7 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
               proposals={proposals}
               workspace={workspace}
               onReview={(proposal, item, selectedItemIDs) => setReview({ proposal, item, selectedItemIDs })}
+              onQuote={quoteMessage}
             />
           )}
           {activeTask && <ActiveTaskStatus task={activeTask} workspace={workspace} queued={Math.max(0, activeTasks.length - 1)} canceling={canceling === activeTask.id} onCancel={() => void cancelTask()} />}
@@ -260,7 +308,9 @@ export function ChatPanel({ projectID, projectName, workspace, onWorkspaceChange
             workspace={workspace}
             value={draft}
             disabled={!selected}
+            references={references}
             onChange={setDraft}
+            onRemoveReference={(id) => setReferences((current) => current.filter((item) => item.id !== id))}
             onSubmit={() => void send()}
           />
           <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1 }}>

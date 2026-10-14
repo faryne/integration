@@ -10,6 +10,7 @@ import { useBackendData } from "@writer/lib/useBackendData.ts";
 import { DocumentHeader } from "@writer/pages/workspace/DocumentHeader.tsx";
 import { EditorAutoSaveButton, initialAutoSaveMinutes } from "@writer/pages/workspace/EditorAutoSaveButton.tsx";
 import { ImageDocumentEditor } from "@writer/pages/workspace/ImageDocumentEditor.tsx";
+import type { PromptReference } from "@writer/pages/workspace/promptReferences.ts";
 import { useDocumentDraft } from "@writer/pages/workspace/useDocumentDraft.ts";
 import type { MoveTarget } from "@writer/pages/workspace/workspaceTree.ts";
 
@@ -26,6 +27,7 @@ export type EditorPanelProps = {
   onDirtyChange: (dirty: boolean) => void;
   onSaved: () => void;
   onShowHistory: () => void;
+  onAskAI: (reference: PromptReference) => void;
 };
 
 // 編輯分頁：先載入文件，文字作品（故事、設定）用網站的所見即所得編輯器，圖像作品用 ImageDocumentEditor。
@@ -39,7 +41,7 @@ export function EditorPanel(props: EditorPanelProps) {
 
 // 文字作品：直接用網站的編輯器（右鍵選單、slash 指令、浮動工具列、表格、腳注…全部一致），
 // 外框（標題、屬性列、摘要、底部狀態列與存檔按鈕）也用網站工作台內嵌編輯頁的同一組元件。
-function TextDocumentEditor({ project, item, doc, groupId, status, groupTargets, profile, onDirtyChange, onSaved, onShowHistory }: EditorPanelProps & { doc: Document }) {
+function TextDocumentEditor({ project, item, doc, groupId, status, groupTargets, profile, onDirtyChange, onSaved, onShowHistory, onAskAI }: EditorPanelProps & { doc: Document }) {
   const [autoSaveMinutes, setAutoSaveMinutes] = useState(() => initialAutoSaveMinutes(profile));
   const state = useDocumentDraft({ project, item, doc, groupId, status, autoSaveMinutes, onSaved, onDirtyChange });
   const { draft, setContent, saving, updatedAt, save } = state;
@@ -71,6 +73,16 @@ function TextDocumentEditor({ project, item, doc, groupId, status, groupTargets,
               bottomActionContent={<WorkspaceEditorSaveButton pending={saving} disabled={saving} onClick={() => void save()} />}
               exportBaseName={draft.title}
               projectPublicId={project}
+              hasSavedTarget
+              onSelectionAgentTrigger={(trigger) => onAskAI({
+                type: "document_selection",
+                id: `document:${item.kind}:${item.public_id}:${crypto.randomUUID()}`,
+                title: draft.title,
+                text: trigger.selectedText,
+                document_kind: item.kind,
+                document_id: item.public_id,
+                base_version_id: doc.latest_version_id == null ? undefined : String(doc.latest_version_id),
+              })}
             />
           }
         />

@@ -339,7 +339,7 @@ func (a *App) Ask(id string, req agent.Request) (*agent.Reply, error) {
 	if err != nil {
 		return nil, err
 	}
-	saved, err := agent.SaveTurn(id, req.ProjectID, req.ThreadID, req.Prompt, reply.Text, reply.SessionID)
+	saved, err := agent.SaveTurn(id, req.ProjectID, req.ThreadID, req.Prompt, req.References, reply.Text, reply.SessionID)
 	if err != nil {
 		return nil, err
 	}
