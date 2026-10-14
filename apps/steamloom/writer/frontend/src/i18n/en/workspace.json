@@ -233,7 +233,32 @@
     },
     "self": "Me ({{penName}})",
     "selfOnly": "Me",
-    "attributeFailed": "Couldn't update this setting, please try again: "
+    "attributeFailed": "Couldn't update this setting, please try again: ",
+    "spoiler": {
+      "label": "Spoiler",
+      "no": "No spoilers",
+      "yes": "Contains spoilers"
+    },
+    "dependsOn": "Read first",
+    "dependency": {
+      "story": "Story",
+      "lore": "Lore"
+    },
+    "saveFailedBanner": "Save failed. Check that you are signed in and the fields are valid.",
+    "insertAsset": "Insert asset",
+    "insertAssetTitle": {
+      "story": "Insert story asset",
+      "lore": "Insert lore asset"
+    },
+    "assetInserted": "Asset inserted.",
+    "assetInsertFailed": "Couldn't insert the asset. Reload and try again.",
+    "historyEmpty": {
+      "story": "Edit history starts after the first save.",
+      "lore": "Edit history starts after the first save."
+    },
+    "reverted": "Reverted to this version.",
+    "revertFailed": "Couldn't revert. Please try again: ",
+    "agentApplied": "AI proposal applied and saved."
   },
   "assets": {
     "search": "Search assets",

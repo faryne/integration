@@ -237,7 +237,32 @@
     },
     "self": "본인({{penName}})",
     "selfOnly": "본인",
-    "attributeFailed": "속성을 업데이트하지 못했습니다. 다시 시도하세요: "
+    "attributeFailed": "속성을 업데이트하지 못했습니다. 다시 시도하세요: ",
+    "spoiler": {
+      "label": "스포일러",
+      "no": "스포일러 없음",
+      "yes": "스포일러 포함"
+    },
+    "dependsOn": "먼저 읽을 것",
+    "dependency": {
+      "story": "작품",
+      "lore": "설정"
+    },
+    "saveFailedBanner": "저장하지 못했습니다. 로그인 상태와 입력 내용을 확인해 주세요.",
+    "insertAsset": "에셋 삽입",
+    "insertAssetTitle": {
+      "story": "작품 에셋 삽입",
+      "lore": "설정 에셋 삽입"
+    },
+    "assetInserted": "에셋을 삽입했습니다.",
+    "assetInsertFailed": "에셋을 삽입하지 못했습니다. 새로고침한 뒤 다시 시도해 주세요.",
+    "historyEmpty": {
+      "story": "처음 저장하면 편집 기록이 생깁니다.",
+      "lore": "처음 저장하면 편집 기록이 생깁니다."
+    },
+    "reverted": "이 버전으로 되돌렸습니다.",
+    "revertFailed": "버전을 되돌리지 못했습니다. 다시 시도해 주세요: ",
+    "agentApplied": "AI 제안을 적용하고 저장했습니다."
   },
   "assets": {
     "search": "에셋 검색",

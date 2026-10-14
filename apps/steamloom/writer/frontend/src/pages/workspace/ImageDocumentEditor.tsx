@@ -1,18 +1,19 @@
 import { ShortcutHint } from "@/components/common/ShortcutHint.tsx";
+import { DocumentEditorHeader } from "@/pages/storyteller/documentEditor/DocumentEditorHeader.tsx";
+import { useDocumentEditing, type DocumentKind } from "@/pages/storyteller/documentEditor/useDocumentEditing.ts";
 import { ImageEpisodePageList } from "@/pages/storyteller/ImageEpisodePageList.tsx";
 import { StorytellerAssetDropzone } from "@/pages/storyteller/StorytellerAssetDropzone.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
 import type { EditorPickerAsset } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import { Alert, Box, Button, CircularProgress, LinearProgress, Stack } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSnack } from "@writer/components/SnackProvider.tsx";
 import { backend, errorMessage, type Document } from "@writer/lib/backend.ts";
+import { goDocumentAdapter, toEditingDocument, useWriterDocumentLabels, useWriterEditingMessages, useWriterNotify } from "@writer/lib/documentEditing.ts";
 import { useBackendData } from "@writer/lib/useBackendData.ts";
-import { DocumentHeader } from "@writer/pages/workspace/DocumentHeader.tsx";
 import type { EditorPanelProps } from "@writer/pages/workspace/EditorPanel.tsx";
-import { useDocumentDraft } from "@writer/pages/workspace/useDocumentDraft.ts";
 
 // 圖像作品的一頁：已存在的頁面有 key／assetPublicId；剛選的本機圖只有 localToken（按存檔才上傳，跟網站一樣）
 type Page = { id: string; key?: string; assetPublicId?: string; localToken?: string; previewUrl: string; description: string };
@@ -22,7 +23,7 @@ const MAX_PAGES = 60;
 const newPageId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 // 草稿內容＝後端存的 JSON 格式（StoryImageContent）多一個 local（還沒上傳的本機圖），
-// 頁面增刪、排序、描述、加入本機圖都會反映在字串上，未存檔判斷直接沿用 useDocumentDraft。
+// 頁面增刪、排序、描述、加入本機圖都會反映在字串上，未存檔判斷直接沿用 useDocumentEditing。
 const serialize = (pages: Page[]) =>
   JSON.stringify({
     pages: pages.map((page, index) => ({
@@ -38,7 +39,7 @@ const serialize = (pages: Page[]) =>
 // 圖像作品編輯頁，比照網站 ImageEpisodeEditor 的 embedded 版面：上方標題（右側存檔）、屬性、描述，
 // 下方頁面清單（共用 ImageEpisodePageList）。跟網站一樣沒有自動存檔；
 // 頁面清單沒載入成功時不給存（不然會把原本的頁面蓋成空的）。
-export function ImageDocumentEditor({ project, item, doc, groupId, status, groupTargets, profile, onDirtyChange, onSaved, onShowHistory }: EditorPanelProps & { doc: Document }) {
+export function ImageDocumentEditor({ project, item, doc, groupId, groupTargets, profile, onDirtyChange, onSaved }: EditorPanelProps & { doc: Document }) {
   const { t } = useTranslation();
   const { showError } = useSnack();
   const loaded = useBackendData(() => backend.ImagePages(project, item.public_id), [project, item.public_id]);
@@ -63,8 +64,30 @@ export function ImageDocumentEditor({ project, item, doc, groupId, status, group
     const content = serialize(pagesRef.current);
     return { content, saved: content };
   };
-  const state = useDocumentDraft({ project, item, doc, groupId, status, autoSaveMinutes: null, onSaved, onDirtyChange, prepare, reloadOnFocus: false });
-  const { draft, setContent, saving, save } = state;
+  // 存檔走 Go（prepare 先上傳本機圖）；跟網站一樣沒有自動存檔、沒有編輯歷史
+  const { notify, notifyError } = useWriterNotify();
+  const editingDoc = useMemo(() => toEditingDocument(doc, groupId), [doc, groupId]);
+  const prepareRef = useRef(prepare);
+  useEffect(() => {
+    prepareRef.current = prepare;
+  });
+  const adapter = useMemo(() => goDocumentAdapter(project, item.kind as DocumentKind, () => prepareRef.current()), [project, item.kind]);
+  const editing = useDocumentEditing({ doc: editingDoc, adapter, autoSaveMinutes: null, messages: useWriterEditingMessages(), notify, notifyError, onSaved: () => onSaved() });
+  const labels = useWriterDocumentLabels("story", "image");
+  const { draft, setContent, saving } = editing;
+  const save = () => editing.save("manual");
+  // 有未存檔內容時讓外層（換文件／離開專案）與 Go 端（關閉視窗）先問；離開這篇時清掉
+  useEffect(() => {
+    onDirtyChange(editing.dirty);
+    void backend.SetUnsaved(editing.dirty);
+  }, [editing.dirty]);
+  useEffect(
+    () => () => {
+      onDirtyChange(false);
+      void backend.SetUnsaved(false);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (loaded) setPages(loaded.map((page) => ({ id: page.id, key: page.key || undefined, assetPublicId: page.asset_public_id || undefined, previewUrl: page.image_url, description: page.description })));
@@ -97,21 +120,23 @@ export function ImageDocumentEditor({ project, item, doc, groupId, status, group
 
   return (
     <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", px: 2.5, pt: 1.5 }}>
-      <DocumentHeader
-        project={project}
-        item={item}
-        variant="image"
-        state={state}
-        profile={profile}
-        groupTargets={groupTargets}
+      <DocumentEditorHeader
+        kind="story"
+        projectPublicId={project}
+        editing={editing}
+        labels={labels}
+        groups={groupTargets.filter((target) => target.publicId !== "").map((target) => ({ publicId: target.publicId, name: target.name }))}
+        penName={profile?.pen_name}
+        profiles={profile?.profiles ?? []}
+        dependencyOptions={[]}
         warningSource={(pages ?? []).map((page) => page.description).join("\n")}
+        notify={notify}
         actions={
           <Button size="small" variant="contained" startIcon={<CollectionsIcon />} disabled={!draft.title.trim() || !pages?.length || saving} onClick={() => void save()}>
             {t(saving ? "workspace.image.saving" : "workspace.image.save")}
             <ShortcutHint shortcutKey="S" />
           </Button>
         }
-        onShowHistory={onShowHistory}
       />
       <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", pb: 3 }}>
         <Stack spacing={2} sx={{ width: 1, maxWidth: 920, mx: "auto" }}>

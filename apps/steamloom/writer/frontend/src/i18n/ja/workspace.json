@@ -237,7 +237,32 @@
     },
     "self": "本人（{{penName}}）",
     "selfOnly": "本人",
-    "attributeFailed": "属性を更新できませんでした。もう一度お試しください："
+    "attributeFailed": "属性を更新できませんでした。もう一度お試しください：",
+    "spoiler": {
+      "label": "ネタバレ",
+      "no": "ネタバレなし",
+      "yes": "ネタバレあり"
+    },
+    "dependsOn": "先に読むもの",
+    "dependency": {
+      "story": "作品",
+      "lore": "設定"
+    },
+    "saveFailedBanner": "保存に失敗しました。ログイン状態と入力内容を確認してください。",
+    "insertAsset": "アセットを挿入",
+    "insertAssetTitle": {
+      "story": "作品のアセットを挿入",
+      "lore": "設定のアセットを挿入"
+    },
+    "assetInserted": "アセットを挿入しました。",
+    "assetInsertFailed": "アセットを挿入できませんでした。再読み込みしてからお試しください。",
+    "historyEmpty": {
+      "story": "最初に保存すると編集履歴が作られます。",
+      "lore": "最初に保存すると編集履歴が作られます。"
+    },
+    "reverted": "このバージョンに戻しました。",
+    "revertFailed": "バージョンを戻せませんでした。もう一度お試しください：",
+    "agentApplied": "AI の提案を適用して保存しました。"
   },
   "assets": {
     "search": "アセットを検索",

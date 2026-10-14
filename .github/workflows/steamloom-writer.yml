@@ -82,6 +82,12 @@ on:
       - 'static_site/src/pages/storyteller/storytellerMemoryUI.ts'
       - 'static_site/src/pages/storyteller/StorytellerMarkdown.tsx'
       - 'static_site/src/pages/storyteller/storytellerMarkdownRules.ts'
+      # 故事／設定共用編輯頁（SteamLoomDocumentEditor 與底下的頁首、歷史、草稿存檔）
+      - 'static_site/src/pages/storyteller/documentEditor/**'
+      - 'static_site/src/pages/storyteller/StorytellerEditorCaretFocus.tsx'
+      - 'static_site/src/pages/storyteller/StorytellerEditorOutlinePanel.tsx'
+      - 'static_site/src/pages/storyteller/StorytellerEditorOutlineToggle.tsx'
+      - 'static_site/src/pages/storyteller/useStorytellerEditorOutline.ts'
       - '.github/workflows/steamloom-writer.yml'
   pull_request:
     paths: *writer-paths

@@ -72,7 +72,7 @@
 
 ## 待辦
 
-- 專案主頁：編輯器換成網站 WYSIWYG、編輯歷史還原。
+- ~~專案主頁：編輯器換成網站 WYSIWYG、編輯歷史還原。~~ 已完成：文字編輯頁改用跟網站共用的 `SteamLoomDocumentEditor`（含回復版本、大綱與書籤、插入資產），見 [共用編輯頁_2026-10-14.md](共用編輯頁_2026-10-14.md)。
 - 本機 CLI adapter 已完成第一版（Claude Code／Codex／Grok Build 的 headless 純問答與 session resume）；agentic 化、streaming、MCP tool trace／approval 的研究與分期見 [SteamLoom_Writer_AI助理_2026-10-12.md](SteamLoom_Writer_AI助理_2026-10-12.md)。
 - 已有 `ApiProxy`＋axios adapter 這條路（見上方），之後網站頁面要搬進 Writer 優先走它，不再為 Writer 另寫 Go 端專用 API 與 UI。
 - 外觀目前固定 nocturne，之後接 appearance 切換。

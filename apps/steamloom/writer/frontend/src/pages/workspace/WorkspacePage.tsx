@@ -1,9 +1,7 @@
 import { StorytellerEditorDataContext } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 import { StorytellerMemoryManagerPage } from "@/pages/storyteller/StorytellerMemoryManagerPage.tsx";
 import { WorkspaceSidebarToggle } from "@/pages/storyteller/WorkspaceSidebarChrome.tsx";
-import EditIcon from "@mui/icons-material/Edit";
-import HistoryIcon from "@mui/icons-material/History";
-import { Box, CircularProgress, Tab, Tabs } from "@mui/material";
+import { Box, CircularProgress } from "@mui/material";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AppBreadcrumbs, type Crumb } from "@writer/components/AppBreadcrumbs.tsx";
@@ -12,7 +10,6 @@ import { invalidateEditorAssets, invalidateEditorLores, writerEditorData } from 
 import { useBackendData } from "@writer/lib/useBackendData.ts";
 import { ChatPanel } from "@writer/pages/workspace/ChatPanel.tsx";
 import { EditorPanel } from "@writer/pages/workspace/EditorPanel.tsx";
-import { HistoryPanel } from "@writer/pages/workspace/HistoryPanel.tsx";
 import { AssetDetail, AssetListPanel } from "@writer/pages/workspace/AssetPanels.tsx";
 import { DocumentListPanel, type ListSection } from "@writer/pages/workspace/ListPanels.tsx";
 import { useSnack } from "@writer/components/SnackProvider.tsx";
@@ -20,16 +17,11 @@ import { useWorkspaceEditing } from "@writer/pages/workspace/useWorkspaceEditing
 import type { RowActionTarget } from "@writer/pages/workspace/useDocumentRowActions.tsx";
 import { WorkspaceSidebar, WorkspaceSidebarRail } from "@writer/pages/workspace/WorkspaceSidebar.tsx";
 import { UnsavedChangesDialog } from "@writer/pages/workspace/UnsavedChangesDialog.tsx";
-import { findGroup, groupTargets, isSameDocument, workspaceDocuments, type DocumentTab } from "@writer/pages/workspace/workspaceTree.ts";
+import { findGroup, groupTargets, isSameDocument, workspaceDocuments } from "@writer/pages/workspace/workspaceTree.ts";
 import type { PromptReference } from "@writer/pages/workspace/promptReferences.ts";
 
 // 還沒載入前給 hook 用的空工作台（hook 必須無條件呼叫）
 const emptyWorkspace: Workspace = { volumes: [], ungrouped_stories: [], lore_collections: [], uncategorized_lores: [], asset_collections: [] };
-
-const tabs: { value: DocumentTab; icon: React.ReactElement }[] = [
-  { value: "editor", icon: <EditIcon fontSize="small" /> },
-  { value: "history", icon: <HistoryIcon fontSize="small" /> },
-];
 
 // 進專案先看 AI 助理。點側邊列的故事或設定換成編輯／歷史，點「全部作品／全部設定／全部資產」或資產集看列表，
 // 資產列表點卡片看資產詳細；點「梭梭的記憶」看記憶管理；再點「AI 助理」回來。
@@ -58,7 +50,6 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
   // 資產列表的篩選（空字串＝全部、UNCATEGORIZED_ASSETS＝未分類、其他＝資產集）與打開的資產詳細
   const [assetCollection, setAssetCollection] = useState("");
   const [openedAsset, setOpenedAsset] = useState<Asset | null>(null);
-  const [tab, setTab] = useState<DocumentTab>("editor");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [assistantReference, setAssistantReference] = useState<PromptReference | null>(null);
@@ -107,9 +98,16 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
   const group = workspace && selected ? findGroup(workspace, selected) : null;
   // 工作台樹上的這篇（帶公開狀態，⋮ 改了狀態後重抓會更新）
   const selectedNode = workspace && selected ? workspaceDocuments(workspace, selected.kind).find((each) => isSameDocument(each, selected)) : undefined;
-  // 圖像作品只有編輯頁（網站也沒有圖像作品的編輯歷史）
-  const isImage = selected?.content_type === "image";
-  const currentTab: DocumentTab = isImage ? "editor" : tab;
+  // 設定的「需先讀過」可選：同專案的故事與其他設定
+  const dependencyOptions =
+    workspace && selected?.kind === "lore"
+      ? [
+          ...workspaceDocuments(workspace, "story").map((each) => ({ kind: "story" as const, publicId: each.public_id, title: each.title, image: each.content_type === "image" })),
+          ...workspaceDocuments(workspace, "lore")
+            .filter((each) => each.public_id !== selected.public_id)
+            .map((each) => ({ kind: "lore" as const, publicId: each.public_id, title: each.title })),
+        ]
+      : [];
   const assetCollections = workspace?.asset_collections ?? [];
   const assetCollectionName =
     assetCollection === UNCATEGORIZED_ASSETS ? t("workspace.upload.uncategorized") : assetCollections.find((each) => each.public_id === assetCollection)?.name;
@@ -154,7 +152,6 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
                     guard(() => {
                       setSelectedState(item);
                       setListSection(null);
-                      setTab("editor");
                     })
                   }
                   onChanged={reload}
@@ -171,34 +168,21 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
             <Box component="main" sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
               <StorytellerEditorDataContext.Provider value={writerEditorData}>
               {selected ? (
-                <>
-                  {/* 圖像作品跟網站一樣沒有編輯歷史，不顯示分頁列 */}
-                  {!isImage && (
-                  <Tabs value={tab} onChange={(_, value: DocumentTab) => setTab(value)} sx={{ px: 2, borderBottom: 1, borderColor: "divider", minHeight: 46, flex: "none" }}>
-                    {tabs.map(({ value, icon }) => (
-                      <Tab key={value} value={value} icon={icon} iconPosition="start" label={t(`workspace.tabs.${value}`)} sx={{ minHeight: 46 }} />
-                    ))}
-                  </Tabs>
-                  )}
-                  <Box key={`${selected.kind}:${selected.public_id}`} sx={{ flex: 1, minHeight: 0, display: "flex" }}>
-                    {/* 切到編輯歷史時編輯器不卸載，未存檔的內容與游標位置都留著 */}
-                    <Box sx={{ flex: 1, minWidth: 0, display: currentTab === "editor" ? "flex" : "none" }}>
-                      <EditorPanel
-                        project={project.public_id}
-                        item={selected}
-                        groupId={group?.public_id ?? ""}
-                        status={selectedNode?.status}
-                        groupTargets={groupTargets(workspace, selected.kind, t(selected.kind === "story" ? "workspace.ungroupedStories" : "workspace.uncategorizedLores"))}
-                        profile={profile}
-                        onDirtyChange={setDirty}
-                        onSaved={reload}
-                        onShowHistory={() => setTab("history")}
-                        onAskAI={askAI}
-                      />
-                    </Box>
-                    {currentTab === "history" && <HistoryPanel project={project.public_id} item={selected} />}
-                  </Box>
-                </>
+                // 「編輯／編輯歷史」分頁在共用編輯頁裡（圖像作品跟網站一樣沒有編輯歷史）
+                <Box key={`${selected.kind}:${selected.public_id}`} sx={{ flex: 1, minHeight: 0, display: "flex" }}>
+                  <EditorPanel
+                    project={project.public_id}
+                    item={selected}
+                    groupId={group?.public_id ?? ""}
+                    status={selectedNode?.status}
+                    groupTargets={groupTargets(workspace, selected.kind, t(selected.kind === "story" ? "workspace.ungroupedStories" : "workspace.uncategorizedLores"))}
+                    profile={profile}
+                    dependencyOptions={dependencyOptions}
+                    onDirtyChange={setDirty}
+                    onSaved={reload}
+                    onAskAI={askAI}
+                  />
+                </Box>
               ) : listSection === "assets" && openedAsset ? (
                 <AssetDetail
                   key={openedAsset.public_id}

@@ -237,7 +237,32 @@
     },
     "self": "本人（{{penName}}）",
     "selfOnly": "本人",
-    "attributeFailed": "属性更新失败，请重试："
+    "attributeFailed": "属性更新失败，请重试：",
+    "spoiler": {
+      "label": "剧透",
+      "no": "无剧透",
+      "yes": "含剧透"
+    },
+    "dependsOn": "需先读过",
+    "dependency": {
+      "story": "故事",
+      "lore": "设定"
+    },
+    "saveFailedBanner": "保存失败，请确认登录状态与字段内容。",
+    "insertAsset": "插入资产",
+    "insertAssetTitle": {
+      "story": "插入故事资产",
+      "lore": "插入设定资产"
+    },
+    "assetInserted": "已插入资产。",
+    "assetInsertFailed": "无法插入资产，请刷新后再试。",
+    "historyEmpty": {
+      "story": "新故事第一次保存后才会产生编辑历史。",
+      "lore": "新设定第一次保存后才会产生编辑历史。"
+    },
+    "reverted": "已恢复到这个版本。",
+    "revertFailed": "恢复版本失败，请重试：",
+    "agentApplied": "已应用 AI 提案并保存。"
   },
   "assets": {
     "search": "搜索资产",

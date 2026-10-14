@@ -1,6 +1,7 @@
 # SteamLoom Writer 編輯區（比照網站）規格
 
 - 狀態：第一階段已實作（2026-10-12，分支 feat/steamloom-writer-editor），尚未併入 main
+- 2026-10-14 更新：編輯頁（含 `useDocumentDraft`、`DocumentHeader`、`HistoryPanel`）已改成跟網站共用的 `SteamLoomDocumentEditor`，本文件描述的 Writer 專屬實作只剩歷史參考，現況見 [共用編輯頁_2026-10-14.md](共用編輯頁_2026-10-14.md)。
 - 目標：Writer 的「編輯」分頁從唯讀改成跟網站同一套所見即所得編輯器，右鍵選單、slash 指令、浮動工具列、表格、腳注、註解、程式碼區塊等全部一致。
 
 ## 做法：直接沿用網站的 `StorytellerWysiwygEditor`，不重寫

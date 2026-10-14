@@ -61,6 +61,7 @@ export function DocumentEditorHeader({
   extraControls,
   actions,
   saveFailed,
+  warningSource,
   notify,
   onShowHistory,
 }: {
@@ -80,6 +81,8 @@ export function DocumentEditorHeader({
   actions?: ReactNode;
   // 上一次存檔失敗（沒有衝突提示時才顯示）
   saveFailed?: boolean;
+  // 切成公開時檢查設定連結的文字，預設是內文（圖像作品傳各頁描述）
+  warningSource?: string;
   notify: DocumentNotify;
   // 沒給就不顯示「查看編輯歷史」（例如還沒有歷史的新文件）
   onShowHistory?: () => void;
@@ -139,7 +142,7 @@ export function DocumentEditorHeader({
     const warning =
       next === "completed"
         ? publishLoreLinkWarning(
-            draft.content,
+            warningSource ?? draft.content,
             (lores ?? []) as StorytellerLore[],
           )
         : undefined;
