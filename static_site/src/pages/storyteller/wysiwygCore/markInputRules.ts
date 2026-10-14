@@ -1,4 +1,8 @@
 import { markInputRule, markPasteRule } from "@tiptap/core";
+import Bold, {
+  underscoreInputRegex,
+  underscorePasteRegex,
+} from "@tiptap/extension-bold";
 import Code from "@tiptap/extension-code";
 import Italic from "@tiptap/extension-italic";
 import Strike from "@tiptap/extension-strike";
@@ -29,6 +33,29 @@ function delimiterPasteRegex(delimiter: string): RegExp {
     "g",
   );
 }
+
+// 粗體 `**`：官方規則要求開頭的 `**` 前面是行首或空白（英文習慣），中文句子裡「這是**粗體**」
+// 前面緊貼著字，打字跟貼上都不會轉換。改用 lookbehind：只要前一個字不是 `*`（避免從 `***` 中間
+// 誤判）或 `\`（跳脫）就成立。不能用一般的前綴群組：markInputRule／markPasteRule 會把比對到的
+// 前綴當成空白一起刪掉，前一個字會被吃掉。`__` 維持官方規則（要求空白），避免 snake_case 被誤判；
+// 單字元的 `*`、`~`、`^` 也維持需要空白，放寬後像「1~2 和 3~4」這種文字會被誤判成格式。
+const starBoldInputRegex = /(?<![*\\])(\*\*(?!\s+\*\*)([^*]+)\*\*(?!\s+\*\*))$/;
+const starBoldPasteRegex = /(?<![*\\])(\*\*(?!\s+\*\*)([^*]+)\*\*(?!\s+\*\*))/g;
+
+export const CustomBold = Bold.extend({
+  addInputRules() {
+    return [
+      markInputRule({ find: starBoldInputRegex, type: this.type }),
+      markInputRule({ find: underscoreInputRegex, type: this.type }),
+    ];
+  },
+  addPasteRules() {
+    return [
+      markPasteRule({ find: starBoldPasteRegex, type: this.type }),
+      markPasteRule({ find: underscorePasteRegex, type: this.type }),
+    ];
+  },
+});
 
 // 官方 Italic 預設同時吃 `*文字*` 跟 `_文字_`，但白名單只認 `*`（見 whitelist.ts）——
 // 保留 `_文字_` 會誤把使用者打的字面底線觸發成斜體，這裡只保留星號版的 input/paste rule。
@@ -79,10 +106,14 @@ export const CustomSuperscript = Superscript.extend({
 // 兩者不能共用同一個字元）。
 export const CustomStrike = Strike.extend({
   addInputRules() {
-    return [markInputRule({ find: delimiterInputRegex("--"), type: this.type })];
+    return [
+      markInputRule({ find: delimiterInputRegex("--"), type: this.type }),
+    ];
   },
   addPasteRules() {
-    return [markPasteRule({ find: delimiterPasteRegex("--"), type: this.type })];
+    return [
+      markPasteRule({ find: delimiterPasteRegex("--"), type: this.type }),
+    ];
   },
 });
 

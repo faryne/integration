@@ -617,9 +617,13 @@ export const StorytellerWysiwygEditor = forwardRef<
           view.dispatch(view.state.tr.insertText(text));
           return true;
         }
+        // 標成 paste 事件，TipTap 的 paste rule（`**粗體**` 等行內格式）才會套用在這次插入的文字上
         text.split(/\r\n|\r|\n/).forEach((line, index) => {
           if (index > 0) editor?.commands.splitParagraphFresh();
-          if (line !== "") view.dispatch(view.state.tr.insertText(line));
+          if (line !== "")
+            view.dispatch(
+              view.state.tr.insertText(line).setMeta("uiEvent", "paste"),
+            );
         });
         return true;
       },
