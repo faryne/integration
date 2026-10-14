@@ -173,12 +173,12 @@ const actions = {
     $("#artifact-confirm").classList.remove("show");
     resolveReview();
     finalizeProposalReview("grok");
-    updateTaskState("grok", "上傳中", "已恢復原 Grok Build thread");
-    appendDecisionEvent("grok", "你已允許 Grok Build 上傳", "授權 3 張圖片寫入「資產集／角色立繪」。");
-    appendApplyProgress("grok", "Grok Build", "正在取得上傳位置並寫入 SteamLoom…");
+    updateTaskState("grok", "上傳中", "Writer 正在處理勾選項目");
+    appendDecisionEvent("grok", "你已同意 Writer 上傳", "將勾選的 3 張圖片寫入「資產集／角色立繪」。");
+    appendApplyProgress("grok", "Writer", "正在取得上傳位置並寫入 SteamLoom…");
     actions.artifactApplyTimer = setTimeout(() => {
       updateTaskState("grok", "已上傳", "3 張圖片已加入資產集");
-      appendApplyResult("grok", "Grok Build", ["上傳 3 張 PNG", "建立資產紀錄並驗證結果"], "已完成上傳。3 張圖片都在「資產集／角色立繪」，asset ID 與結果已保存到這條 thread。");
+      appendApplyResult("grok", "Writer", ["上傳 3 張 PNG", "建立資產紀錄並驗證結果"], "已完成上傳。3 張圖片都在「資產集／角色立繪」，asset ID 與結果已保存到這條 thread。");
     }, 1100);
   },
   "review-text": () => { selectThread("claude"); $("#text-confirm").classList.add("show"); },
@@ -194,12 +194,12 @@ const actions = {
     $("#text-confirm").classList.remove("show");
     resolveReview();
     finalizeProposalReview("claude");
-    updateTaskState("claude", "寫入中", "已恢復原 Claude thread");
-    appendDecisionEvent("claude", "你已允許 Claude 寫入", "授權將已確認的 proposal 寫入〈第一話　霧裡的郵差〉。");
-    appendApplyProgress("claude", "Claude Code", "正在呼叫 SteamLoom MCP 寫入並驗證新版本…");
+    updateTaskState("claude", "寫入中", "Writer 正在套用提案");
+    appendDecisionEvent("claude", "你已同意 Writer 套用", "將已確認的 proposal 寫入〈第一話　霧裡的郵差〉。");
+    appendApplyProgress("claude", "Writer", "正在呼叫 SteamLoom REST API 寫入並驗證新版本…");
     actions.textApplyTimer = setTimeout(() => {
       updateTaskState("claude", "已寫入", "新版本 #31");
-      appendApplyResult("claude", "Claude Code", ["寫入第一話", "讀回並驗證版本 #31"], "第一話已寫入完成，建立版本 #31。你可以在編輯歷史比對或還原這個版本。");
+      appendApplyResult("claude", "Writer", ["寫入第一話", "讀回並驗證版本 #31"], "第一話已寫入完成，建立版本 #31。你可以在編輯歷史比對或還原這個版本。");
     }, 1100);
   },
   "delete-task": (el) => {

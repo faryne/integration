@@ -70,8 +70,8 @@ export function Create(arg1, arg2) {
   return window['go']['main']['App']['Create'](arg1, arg2);
 }
 
-export function DecideProposal(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['DecideProposal'](arg1, arg2, arg3, arg4, arg5);
+export function DecideProposal(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['DecideProposal'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function DeleteAsset(arg1, arg2) {

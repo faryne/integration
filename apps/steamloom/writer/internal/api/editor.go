@@ -10,11 +10,12 @@ import (
 // BaseVersionID 是打開（或上次存檔）時的最新版本，後端據此判斷中途是否被別處改過。
 // 狀態、冊／設定集、署名不在這裡：屬性一變更就走 PatchDocument，不寫版本（網站與 Writer 同一套規則）。
 type SaveInput struct {
-	Title         string  `json:"title"`
-	Summary       string  `json:"summary"`
-	Content       string  `json:"content"`
-	Trigger       string  `json:"trigger"`
-	BaseVersionID *uint64 `json:"base_version_id"`
+	Title           string  `json:"title"`
+	Summary         string  `json:"summary"`
+	Content         string  `json:"content"`
+	Trigger         string  `json:"trigger"`
+	BaseVersionID   *uint64 `json:"base_version_id"`
+	AbortOnConflict bool    `json:"abort_on_conflict,omitempty"`
 }
 
 // AttributePatch 是編輯頁屬性列的即時異動；nil＝不變。GroupID 是冊（故事）或設定集（設定）的 public_id，
@@ -56,7 +57,7 @@ func (c *Client) SaveDocument(ctx context.Context, project string, kind Document
 	if err != nil {
 		return nil, err
 	}
-	body := map[string]any{"title": input.Title, "summary": input.Summary, "content": input.Content, "save_trigger": input.Trigger, "base_version_id": input.BaseVersionID}
+	body := map[string]any{"title": input.Title, "summary": input.Summary, "content": input.Content, "save_trigger": input.Trigger, "base_version_id": input.BaseVersionID, "abort_on_conflict": input.AbortOnConflict}
 	if kind == KindStory {
 		current, err := get[struct {
 			Status string `json:"status"`

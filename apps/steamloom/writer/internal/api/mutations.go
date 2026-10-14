@@ -31,6 +31,40 @@ type Created struct {
 	PublicID string       `json:"public_id"`
 }
 
+// ProposedDocumentInput 是 Writer 套用 AI 提案時的完整內容；Agent 不會接觸這個 API。
+type ProposedDocumentInput struct {
+	Title, Summary, Content, ContentType, GroupPublicID string
+}
+
+// CreateProposedDocument 以單一 REST request 建立提案內容，避免先建立空白稿再存檔留下半成品。
+func (c *Client) CreateProposedDocument(ctx context.Context, project string, kind DocumentKind, input ProposedDocumentInput) (*Created, error) {
+	base := "/projects/" + project
+	if kind == KindStory {
+		sort, err := c.storyCount(ctx, project, input.GroupPublicID)
+		if err != nil {
+			return nil, err
+		}
+		contentType := input.ContentType
+		if contentType == "" {
+			contentType = "text"
+		}
+		row, err := request[createdRow](ctx, c, http.MethodPost, base+"/stories", map[string]any{
+			"title": input.Title, "summary": input.Summary, "status": "draft", "sort": sort,
+			"content": input.Content, "content_type": contentType, "parent_id": input.GroupPublicID,
+		})
+		return &Created{Kind: KindStory, PublicID: row.PublicID}, err
+	}
+	if kind == KindLore {
+		body := map[string]any{"title": input.Title, "summary": input.Summary, "status": "draft", "content": input.Content}
+		if input.GroupPublicID != "" {
+			body["collection_id"] = input.GroupPublicID
+		}
+		row, err := request[createdRow](ctx, c, http.MethodPost, base+"/lores", body)
+		return &Created{Kind: KindLore, PublicID: row.PublicID}, err
+	}
+	return nil, fmt.Errorf("unknown proposed document kind: %s", kind)
+}
+
 type createdRow struct {
 	PublicID string `json:"public_id"`
 }

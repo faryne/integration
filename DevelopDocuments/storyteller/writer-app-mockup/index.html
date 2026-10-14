@@ -343,21 +343,21 @@
 <div class="dlg" id="artifact-confirm">
   <div class="dlg-box artifact-dialog">
     <div class="artifact-title">
-      <div><span class="engine-tag"><span class="status-dot"></span>Grok Build</span><h3>允許 Grok Build 上傳 3 張圖片資產？</h3></div>
+      <div><span class="engine-tag"><span class="status-dot"></span>Grok Build</span><h3>選擇要由 Writer 上傳的圖片資產</h3></div>
       <button class="icon-btn" data-action="artifact-close"><svg class="i"><use href="#i-close"/></svg></button>
     </div>
-    <p class="artifact-note"><svg class="i"><use href="#i-warn"/></svg>目前只暫存在這台電腦；確認後 Writer 才會允許 Grok Build 自行上傳。</p>
+    <p class="artifact-note"><svg class="i"><use href="#i-warn"/></svg>目前只暫存在這台電腦；Grok Build 不具寫入權限，確認後由 Writer 上傳勾選的圖片。</p>
     <div class="artifact-destination"><span>上傳位置</span><b>資產集／角色立繪</b></div>
     <div class="artifact-grid">
-      <div class="artifact-item"><div class="fake-image calm"><span>平靜</span></div><b>角色A_平靜.png</b><small>1536 × 2048・2.8 MB</small></div>
-      <div class="artifact-item"><div class="fake-image smile"><span>微笑</span></div><b>角色A_微笑.png</b><small>1536 × 2048・2.7 MB</small></div>
-      <div class="artifact-item"><div class="fake-image angry"><span>生氣</span></div><b>角色A_生氣.png</b><small>1536 × 2048・2.9 MB</small></div>
+      <div class="artifact-item"><label><input type="checkbox" checked> 上傳</label><div class="fake-image calm"><span>平靜</span></div><b>角色A_平靜.png</b><small>1536 × 2048・2.8 MB</small></div>
+      <div class="artifact-item"><label><input type="checkbox" checked> 上傳</label><div class="fake-image smile"><span>微笑</span></div><b>角色A_微笑.png</b><small>1536 × 2048・2.7 MB</small></div>
+      <div class="artifact-item"><label><input type="checkbox" checked> 上傳</label><div class="fake-image angry"><span>生氣</span></div><b>角色A_生氣.png</b><small>1536 × 2048・2.9 MB</small></div>
     </div>
     <div class="dlg-acts">
       <button class="btn ghost" data-action="artifact-reject">放棄成果</button>
       <span class="spacer"></span>
       <button class="btn ghost" data-action="artifact-close">稍後確認</button>
-      <button class="btn" data-action="artifact-apply">允許 Grok Build 上傳</button>
+      <button class="btn" data-action="artifact-apply">由 Writer 上傳勾選項目</button>
     </div>
   </div>
 </div>
@@ -366,10 +366,10 @@
 <div class="dlg" id="text-confirm">
   <div class="dlg-box proposal-review-dialog">
     <div class="artifact-title">
-      <div><span class="engine-tag"><span class="status-dot"></span>Claude Code</span><h3>允許 Claude 寫入第一話？</h3></div>
+      <div><span class="engine-tag"><span class="status-dot"></span>Claude Code</span><h3>由 Writer 套用第一話提案？</h3></div>
       <button class="icon-btn" data-action="text-close"><svg class="i"><use href="#i-close"/></svg></button>
     </div>
-    <p class="artifact-note"><svg class="i"><use href="#i-warn"/></svg>比對基準是目前已寫入 DB 的 #30；確認後才恢復同一條 Claude thread 執行寫入。</p>
+    <p class="artifact-note"><svg class="i"><use href="#i-warn"/></svg>比對基準是目前已寫入 DB 的 #30；Claude 只提供提案，確認後由 Writer 直接套用。</p>
     <div class="artifact-destination"><span>目標</span><b>故事／第一話　霧裡的郵差</b><span class="spacer"></span><span>預計 +1,842 字</span></div>
     <!-- 正式版直接沿用 StorytellerVersionCompareDialog／CustomDiffSection，不跳編輯歷史。 -->
     <div class="proposal-diff">
@@ -403,7 +403,7 @@
       <button class="btn ghost" data-action="text-reject">放棄成果</button>
       <span class="spacer"></span>
       <button class="btn ghost" data-action="text-close">稍後確認</button>
-      <button class="btn" data-action="text-apply">允許 Claude 寫入</button>
+      <button class="btn" data-action="text-apply">由 Writer 套用</button>
     </div>
   </div>
 </div>

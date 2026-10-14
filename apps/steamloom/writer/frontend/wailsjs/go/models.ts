@@ -288,10 +288,9 @@ export namespace agent {
 	    content_hash: string;
 	    created_at: string;
 	    decided_at?: string;
-	    grant_id?: string;
-	    grant_expires_at?: string;
 	    applied_at?: string;
 	    interrupted_at?: string;
+	    selected_item_ids?: string[];
 	    items: ProposalItem[];
 	
 	    static createFrom(source: any = {}) {
@@ -309,10 +308,9 @@ export namespace agent {
 	        this.content_hash = source["content_hash"];
 	        this.created_at = source["created_at"];
 	        this.decided_at = source["decided_at"];
-	        this.grant_id = source["grant_id"];
-	        this.grant_expires_at = source["grant_expires_at"];
 	        this.applied_at = source["applied_at"];
 	        this.interrupted_at = source["interrupted_at"];
+	        this.selected_item_ids = source["selected_item_ids"];
 	        this.items = this.convertValues(source["items"], ProposalItem);
 	    }
 	
@@ -1039,4 +1037,3 @@ export namespace updater {
 	}
 
 }
-

@@ -217,7 +217,7 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
                   onChanged={reload}
                 />
               ) : (
-                <ChatPanel projectID={project.public_id} projectName={project.name} workspace={workspace} />
+                <ChatPanel projectID={project.public_id} projectName={project.name} workspace={workspace} onWorkspaceChange={reload} />
               )}
               </StorytellerEditorDataContext.Provider>
             </Box>

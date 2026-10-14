@@ -130,7 +130,7 @@ func (f *proposalDeltaFilter) Push(text string) string {
 		f.tail, f.suppressed = "", true
 		return combined[:index]
 	}
-	keep := max(len(proposalEnvelopeStart), len(applyEnvelopeStart)) - 1
+	keep := len(proposalEnvelopeStart) - 1
 	if len(combined) <= keep {
 		f.tail = combined
 		return ""
@@ -141,14 +141,7 @@ func (f *proposalDeltaFilter) Push(text string) string {
 }
 
 func firstEnvelopeIndex(text string) int {
-	proposalIndex, applyIndex := strings.Index(text, proposalEnvelopeStart), strings.Index(text, applyEnvelopeStart)
-	if proposalIndex < 0 {
-		return applyIndex
-	}
-	if applyIndex < 0 || proposalIndex < applyIndex {
-		return proposalIndex
-	}
-	return applyIndex
+	return strings.Index(text, proposalEnvelopeStart)
 }
 
 func (f *proposalDeltaFilter) Flush() string {

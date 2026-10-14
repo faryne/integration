@@ -4,9 +4,6 @@ import (
 	"context"
 	"embed"
 	"log"
-	"os"
-
-	"faryne.dev/apps/steamloom/writer/internal/agent"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -20,15 +17,6 @@ var assets embed.FS
 var version = "dev"
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "--asset-mcp" {
-		if len(os.Args) != 7 {
-			log.Fatal("圖片 MCP grant 參數不正確")
-		}
-		if err := agent.ServeAssetMCP(os.Stdin, os.Stdout, os.Args[2], os.Args[3], os.Args[4], os.Args[5], os.Args[6]); err != nil {
-			log.Fatal(err)
-		}
-		return
-	}
 	app := NewApp()
 	// macOS：Edit 選單不要出現系統的「開始聽寫」「表情與符號」（其他平台不做事）
 	prepareNativeMenu()

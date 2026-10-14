@@ -30,9 +30,6 @@ func TestSaveProposalPersistsBatchHashesAndReadyEvent(t *testing.T) {
 	if proposal.Status != ProposalAwaitingConfirmation || len(proposal.ContentHash) != 64 || len(proposal.Items) != 2 {
 		t.Fatalf("unexpected proposal: %#v", proposal)
 	}
-	if proposal.Items[0].Operations[0].Arguments["abort_on_conflict"] != true {
-		t.Fatalf("existing content proposal is not fail-before-write: %#v", proposal.Items[0].Operations[0].Arguments)
-	}
 	for _, item := range proposal.Items {
 		if len(item.ContentHash) != 64 || item.ID == "" {
 			t.Fatalf("proposal item was not sealed: %#v", item)
@@ -94,6 +91,34 @@ func TestSaveProposalPersistsBatchHashesAndReadyEvent(t *testing.T) {
 	threads, err = ProjectThreads("project")
 	if err != nil || len(threads) != 1 || threads[0].LastTaskState != TaskRejected {
 		t.Fatalf("thread restored stale proposal state: %#v, %v", threads, err)
+	}
+}
+
+func TestApproveProposalPersistsSelectedItems(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskID, _ := newThreadID()
+	proposal, err := SaveProposal("claude", "project", page.CurrentID, taskID, "", []ProposalItem{
+		{Kind: ProposalKindLore, Title: "角色 A", Content: "A", Operations: []ProposalOperation{{Tool: "storyteller_upsert_lore", Arguments: map[string]any{"project_public_id": "project"}}}},
+		{Kind: ProposalKindLore, Title: "角色 B", Content: "B", Operations: []ProposalOperation{{Tool: "storyteller_upsert_lore", Arguments: map[string]any{"project_public_id": "project"}}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected := proposal.Items[1].ID
+	approved, err := DecideProposal("claude", "project", page.CurrentID, proposal.ID, ProposalDecisionApprove, []string{selected})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(approved.SelectedItemIDs) != 1 || approved.SelectedItemIDs[0] != selected || len(approved.ApplyItems()) != 1 || approved.ApplyItems()[0].Title != "角色 B" {
+		t.Fatalf("selected items were not sealed into the decision: %#v", approved)
+	}
+	stored, err := ProposalByID("claude", "project", page.CurrentID, proposal.ID)
+	if err != nil || len(stored.SelectedItemIDs) != 1 || stored.SelectedItemIDs[0] != selected {
+		t.Fatalf("selected items did not survive reload: %#v, %v", stored, err)
 	}
 }
 
@@ -204,7 +229,7 @@ func TestSaveProposalRejectsUnsafeScopeAndIncompleteBase(t *testing.T) {
 	}
 }
 
-func TestSaveProposalUsesReviewedFieldsAsOperationSource(t *testing.T) {
+func TestSaveProposalKeepsReviewedFieldsSeparateFromOperationAudit(t *testing.T) {
 	withTempConfig(t)
 	page, err := NewChat("claude", "project")
 	if err != nil {
@@ -221,9 +246,12 @@ func TestSaveProposalUsesReviewedFieldsAsOperationSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	arguments := proposal.Items[0].Operations[0].Arguments
-	for key, want := range map[string]string{"title": "作者看到的標題", "summary": "作者看到的摘要", "content_type": "text", "content": "作者看到的正文"} {
+	for key, want := range map[string]string{"title": "隱藏標題", "summary": "隱藏摘要", "content_type": "markdown", "content": "隱藏正文"} {
 		if got := arguments[key]; got != want {
-			t.Fatalf("operation %s did not use reviewed value: got %#v, want %q", key, got, want)
+			t.Fatalf("operation audit %s changed unexpectedly: got %#v, want %q", key, got, want)
 		}
+	}
+	if proposal.Items[0].Title != "作者看到的標題" || proposal.Items[0].Content != "作者看到的正文" {
+		t.Fatalf("reviewed fields were not preserved independently: %#v", proposal.Items[0])
 	}
 }

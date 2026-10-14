@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"time"
 )
 
 func recordApplyStarted(agentID, projectID, threadID, proposalID, taskID string) (Proposal, error) {
@@ -24,17 +23,12 @@ func recordApplyStarted(agentID, projectID, threadID, proposalID, taskID string)
 	if proposal.Status != ProposalApproved {
 		return Proposal{}, errors.New("這批提案已經開始或完成執行")
 	}
-	grantID, err := newThreadID()
-	if err != nil {
-		return Proposal{}, err
-	}
-	event := taskEvent(EventApplyStarted, taskID, "Agent 已開始執行核准的寫入")
+	event := taskEvent(EventApplyStarted, taskID, "Writer 已開始套用核准的提案")
 	event.ProposalID, event.ContentHash = proposal.ID, proposal.ContentHash
 	if err := appendLines(filepath.Join(dir, threadID+".jsonl"), []ChatLine{event}); err != nil {
 		return Proposal{}, err
 	}
-	proposal.Status, proposal.GrantID = ProposalApplying, grantID
-	proposal.GrantExpiresAt = time.Now().Add(15 * time.Minute).Format(time.RFC3339)
+	proposal.Status = ProposalApplying
 	if err := writeProposal(path, proposal); err != nil {
 		return Proposal{}, err
 	}
@@ -47,11 +41,11 @@ func recordApplyStarted(agentID, projectID, threadID, proposalID, taskID string)
 }
 
 func recordApplyCompleted(agentID, projectID, threadID, proposalID, taskID, reply string) (Proposal, error) {
-	return recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, ProposalApplied, TaskApplied, EventApplyCompleted, "Agent 已完成核准的寫入", reply)
+	return recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, ProposalApplied, TaskApplied, EventApplyCompleted, "Writer 已完成提案套用", reply)
 }
 
 func recordApplyFailed(agentID, projectID, threadID, proposalID, taskID, detail, partial string) (Proposal, error) {
-	text := "Agent 寫入失敗"
+	text := "Writer 套用提案失敗"
 	if detail != "" {
 		text += "：" + detail
 	}
@@ -59,7 +53,7 @@ func recordApplyFailed(agentID, projectID, threadID, proposalID, taskID, detail,
 }
 
 func recordApplyConflict(agentID, projectID, threadID, proposalID, taskID, detail, partial string) (Proposal, error) {
-	text := "資料已在確認後變更，Agent 未覆寫新版本"
+	text := "資料已在確認後變更，Writer 未覆寫新版本"
 	if detail != "" {
 		text += "：" + detail
 	}
@@ -76,19 +70,15 @@ func recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, propos
 	if proposal.Status != ProposalApplying && !(proposalState == ProposalApplyFailed && proposal.Status == ProposalApproved) {
 		return Proposal{}, fmt.Errorf("提案目前是 %s，不能完成這次 apply", proposal.Status)
 	}
-	events := []ChatLine{}
-	if reply != "" {
-		line := messageEvent("assistant", reply)
-		line.TaskID = taskID
-		events = append(events, line)
+	if eventType == EventApplyCompleted && reply != "" {
+		eventText = reply
 	}
 	event := taskEvent(eventType, taskID, eventText)
 	event.ProposalID, event.ContentHash = proposal.ID, proposal.ContentHash
-	events = append(events, event)
-	if err := appendLines(filepath.Join(dir, threadID+".jsonl"), events); err != nil {
+	if err := appendLines(filepath.Join(dir, threadID+".jsonl"), []ChatLine{event}); err != nil {
 		return Proposal{}, err
 	}
-	proposal.Status, proposal.GrantID, proposal.GrantExpiresAt = proposalState, "", ""
+	proposal.Status = proposalState
 	if proposalState == ProposalVerificationRequired {
 		proposal.InterruptedAt = event.CreatedAt
 	} else {

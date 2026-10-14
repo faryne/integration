@@ -28,6 +28,7 @@ function eventLabel(event: ChatLine, workspace: Workspace, t: (key: string, valu
   if (event.type === "task.tool.started") return t("workspace.chat.activity.toolStarted", { tool });
   if (event.type === "task.tool.completed") return t("workspace.chat.activity.toolCompleted", { tool });
   if (event.type === "task.tool.failed") return t("workspace.chat.activity.toolFailed", { tool });
+  if (event.type === "apply.completed" && event.text) return event.text;
   const key = {
     "task.queued": "queued",
     "task.started": "started",
@@ -69,6 +70,7 @@ export function TaskActivityCard({ agentID, events, workspace }: { agentID: stri
   const failed = events.some((event) => failedTypes.has(event.type ?? ""));
   const attention = events.some((event) => attentionTypes.has(event.type ?? ""));
   const completed = events.some((event) => completedTypes.has(event.type ?? ""));
+  const writerApply = events.some((event) => event.type?.startsWith("apply."));
   const canceled = last?.type === "task.canceled";
   const commands = [...events].reverse().find((event) => event.action === "agent.login" && event.commands?.length)?.commands ?? fallbackLoginCommands(agentID, events);
   const timeline = compactToolEvents(events);
@@ -78,7 +80,9 @@ export function TaskActivityCard({ agentID, events, workspace }: { agentID: stri
       <Stack direction="row" alignItems="center" spacing={1}>
         {failed ? <ErrorOutlineIcon color="error" sx={{ fontSize: 18 }} /> : attention ? <WarningAmberOutlinedIcon color="warning" sx={{ fontSize: 18 }} /> : completed ? <CheckCircleOutlineIcon color="success" sx={{ fontSize: 18 }} /> : canceled ? <CancelOutlinedIcon color="disabled" sx={{ fontSize: 18 }} /> : <RadioButtonCheckedIcon color="primary" sx={{ fontSize: 18 }} />}
         <Typography fontWeight={700} sx={{ flex: 1, fontSize: 13 }}>
-          {failed ? t("workspace.chat.activity.failedTitle") : attention ? t("workspace.chat.activity.attentionTitle") : completed ? t("workspace.chat.activity.completedTitle") : canceled ? t("workspace.chat.activity.canceledTitle") : t("workspace.chat.activity.runningTitle")}
+          {writerApply
+            ? t(`workspace.chat.activity.${failed ? "writerFailedTitle" : attention ? "writerAttentionTitle" : completed ? "writerCompletedTitle" : "writerRunningTitle"}`)
+            : failed ? t("workspace.chat.activity.failedTitle") : attention ? t("workspace.chat.activity.attentionTitle") : completed ? t("workspace.chat.activity.completedTitle") : canceled ? t("workspace.chat.activity.canceledTitle") : t("workspace.chat.activity.runningTitle")}
         </Typography>
         <IconButton size="small" aria-label={t(expanded ? "workspace.chat.activity.collapse" : "workspace.chat.activity.expand")} onClick={() => setExpanded((value) => !value)}>
           <ExpandMoreIcon sx={{ fontSize: 19, transform: expanded ? "rotate(180deg)" : "none", transition: "transform 120ms" }} />
