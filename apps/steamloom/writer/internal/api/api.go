@@ -37,15 +37,9 @@ func get[T any](ctx context.Context, c *Client, path string) (T, error) {
 	return request[T](ctx, c, http.MethodGet, path, nil)
 }
 
-// request 帶上 access token 呼叫 API，body 非 nil 時以 JSON 送出（寫入用）。只有 401 且 WWW-Authenticate 帶
-// error="invalid_token"（RFC 6750）才代表 token 本身失效（過期或在網站上被撤銷），這時才清掉憑證要求重新登入；
-// 其他 401（後端版本不對、代理設定錯誤）只回報錯誤、保留憑證，避免一次部署時間差就把使用者登出。
+// request 帶上 access token 呼叫 API，body 非 nil 時以 JSON 送出（寫入用）。
 func request[T any](ctx context.Context, c *Client, method, path string, body any) (T, error) {
 	var out envelope[T]
-	token, err := c.session.AccessToken(ctx)
-	if err != nil {
-		return out.Data, err
-	}
 	var reader io.Reader
 	if body != nil {
 		payload, err := json.Marshal(body)
@@ -54,9 +48,25 @@ func request[T any](ctx context.Context, c *Client, method, path string, body an
 		}
 		reader = bytes.NewReader(payload)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, c.base+path, reader)
+	resp, err := c.do(ctx, method, path, reader)
 	if err != nil {
 		return out.Data, err
+	}
+	defer resp.Body.Close()
+	return decodeResponse[T](resp, path)
+}
+
+// do 是 request 與 Proxy 共用的底層：帶 Bearer 送出、處理授權失效。body 非 nil 時一律當 JSON。
+// 只有 401 且 WWW-Authenticate 帶 error="invalid_token"（RFC 6750）才代表 token 本身失效（過期或在網站上被撤銷），
+// 這時才清掉憑證要求重新登入；其他 401（後端版本不對、代理設定錯誤）只回報錯誤、保留憑證，避免一次部署時間差就把使用者登出。
+func (c *Client) do(ctx context.Context, method, path string, body io.Reader) (*http.Response, error) {
+	token, err := c.session.AccessToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.base+path, body)
+	if err != nil {
+		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	if body != nil {
@@ -64,14 +74,14 @@ func request[T any](ctx context.Context, c *Client, method, path string, body an
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return out.Data, fmt.Errorf("無法連線到 SteamLoom：%w", err)
+		return nil, fmt.Errorf("無法連線到 SteamLoom：%w", err)
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized && strings.Contains(resp.Header.Get("WWW-Authenticate"), `error="invalid_token"`) {
+		resp.Body.Close()
 		c.session.Invalidate()
-		return out.Data, auth.ErrNotLoggedIn
+		return nil, auth.ErrNotLoggedIn
 	}
-	return decodeResponse[T](resp, path)
+	return resp, nil
 }
 
 func decodeResponse[T any](resp *http.Response, path string) (T, error) {

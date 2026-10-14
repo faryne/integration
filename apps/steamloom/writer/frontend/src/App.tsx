@@ -9,6 +9,7 @@ import { SnackProvider, useSnack } from "@writer/components/SnackProvider.tsx";
 import { UpdateDialog } from "@writer/components/UpdateDialog.tsx";
 import { backend, errorMessage, isNotLoggedIn, type Profile, type Project, type UpdateInfo } from "@writer/lib/backend.ts";
 import { SessionExpiredContext } from "@writer/lib/useBackendData.ts";
+import { WebApiProvider } from "@writer/lib/webApi.tsx";
 import { LoadErrorPage } from "@writer/pages/LoadErrorPage.tsx";
 import { LoginPage } from "@writer/pages/LoginPage.tsx";
 import { ProjectsPage } from "@writer/pages/ProjectsPage.tsx";
@@ -111,10 +112,14 @@ function Shell() {
           <LoginPage onLoggedIn={loadProfile} />
         ) : profile === "error" ? (
           <LoadErrorPage onRetry={loadProfile} onLogout={logout} />
-        ) : openProject ? (
-          <WorkspacePage key={openProject.public_id} project={openProject} profile={typeof profile === "object" ? profile : null} onBack={() => setOpenProject(null)} />
         ) : (
-          <ProjectsPage onOpen={setOpenProject} />
+          <WebApiProvider onExpired={handleSessionExpired}>
+            {openProject ? (
+              <WorkspacePage key={openProject.public_id} project={openProject} profile={profile} onBack={() => setOpenProject(null)} />
+            ) : (
+              <ProjectsPage onOpen={setOpenProject} />
+            )}
+          </WebApiProvider>
         )}
         <UpdateDialog info={update} onLater={() => setUpdate(null)} onInstall={installUpdate} />
         <AboutDialog open={aboutOpen} version={appVersion} onClose={() => setAboutOpen(false)} onCheckForUpdate={checkForUpdate} />

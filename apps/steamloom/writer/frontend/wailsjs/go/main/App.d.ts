@@ -8,6 +8,8 @@ import {main} from '../models';
 
 export function Agents():Promise<Array<agent.Installed>>;
 
+export function ApiProxy(arg1:string,arg2:string,arg3:string):Promise<api.ProxyResponse>;
+
 export function AppVersion():Promise<string>;
 
 export function Ask(arg1:string,arg2:agent.Request):Promise<agent.Reply>;
