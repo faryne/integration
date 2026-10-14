@@ -110,7 +110,14 @@ func buildWorkspace(stories, volumes []storyRow, lores []loreRow, loreCollection
 	slices.SortStableFunc(loreCollections, func(a, b collectionRow) int { return a.Sort - b.Sort })
 	slices.SortStableFunc(assetGroups, func(a, b collectionRow) int { return a.Sort - b.Sort })
 
-	ws := &Workspace{}
+	// Wails 不會把 nil slice 轉成空陣列；統一在 API 邊界初始化，避免空專案讓前端拿到 null。
+	ws := &Workspace{
+		Volumes:            []Group{},
+		UngroupedStories:   []DocumentItem{},
+		LoreCollections:    []Group{},
+		UncategorizedLores: []DocumentItem{},
+		AssetCollections:   []Group{},
+	}
 	// 故事依所屬的冊分組；冊本身（is_volume）不當成文件
 	storiesByVolume := map[uint64][]DocumentItem{}
 	for _, row := range stories {
@@ -125,7 +132,7 @@ func buildWorkspace(stories, volumes []storyRow, lores []loreRow, loreCollection
 		}
 	}
 	for _, volume := range volumes {
-		ws.Volumes = append(ws.Volumes, Group{PublicID: volume.PublicID, Name: volume.Title, Items: storiesByVolume[volume.ID]})
+		ws.Volumes = append(ws.Volumes, Group{PublicID: volume.PublicID, Name: volume.Title, Items: nonNilItems(storiesByVolume[volume.ID])})
 	}
 	// 設定依設定集分組
 	loresByCollection := map[string][]DocumentItem{}
@@ -138,10 +145,17 @@ func buildWorkspace(stories, volumes []storyRow, lores []loreRow, loreCollection
 		}
 	}
 	for _, collection := range loreCollections {
-		ws.LoreCollections = append(ws.LoreCollections, Group{PublicID: collection.PublicID, Name: collection.Name, Description: collection.Description, Items: loresByCollection[collection.PublicID]})
+		ws.LoreCollections = append(ws.LoreCollections, Group{PublicID: collection.PublicID, Name: collection.Name, Description: collection.Description, Items: nonNilItems(loresByCollection[collection.PublicID])})
 	}
 	for _, collection := range assetGroups {
-		ws.AssetCollections = append(ws.AssetCollections, Group{PublicID: collection.PublicID, Name: collection.Name, Description: collection.Description})
+		ws.AssetCollections = append(ws.AssetCollections, Group{PublicID: collection.PublicID, Name: collection.Name, Description: collection.Description, Items: []DocumentItem{}})
 	}
 	return ws
+}
+
+func nonNilItems(items []DocumentItem) []DocumentItem {
+	if items == nil {
+		return []DocumentItem{}
+	}
+	return items
 }
