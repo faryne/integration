@@ -1,4 +1,3 @@
-import Bold from "@tiptap/extension-bold";
 import Document from "@tiptap/extension-document";
 import Dropcursor from "@tiptap/extension-dropcursor";
 import Gapcursor from "@tiptap/extension-gapcursor";
@@ -13,6 +12,7 @@ import { InlineFootnote } from "./inlineFootnoteMark";
 import { InlineAssistantAnchor } from "./inlineAssistantAnchor";
 import { InlineLink } from "./inlineLinkMark";
 import {
+  CustomBold,
   CustomCode,
   CustomItalic,
   CustomStrike,
@@ -58,7 +58,7 @@ export function createWysiwygCoreExtensions(
     MarkerParagraph,
     Text,
     AssetImage,
-    Bold,
+    CustomBold,
     CustomItalic,
     CustomUnderline,
     CustomSubscript,

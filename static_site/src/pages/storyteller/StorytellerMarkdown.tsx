@@ -1,6 +1,7 @@
 import { Box } from "@mui/material";
 import type { ReactNode } from "react";
 import Markdown from "react-markdown";
+import remarkCjkFriendly from "remark-cjk-friendly";
 import remarkGfm from "remark-gfm";
 import { storytellerMarkdownSegments } from "@/pages/storyteller/storytellerMarkdownRules.ts";
 
@@ -63,7 +64,12 @@ function markdownComponents() {
 
 function MarkdownContent({ children }: StorytellerMarkdownProps) {
   return (
-    <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents()}>
+    // remarkCjkFriendly：CommonMark 遇到 `**` 跟中文標點相鄰（「**不要！**然後」「與**「引號」**」）
+    // 不會當成粗體，AI 回覆很常寫出這種格式；這個 plugin 依 CJK 修正提案放寬判斷。
+    <Markdown
+      remarkPlugins={[remarkGfm, remarkCjkFriendly]}
+      components={markdownComponents()}
+    >
       {children}
     </Markdown>
   );
