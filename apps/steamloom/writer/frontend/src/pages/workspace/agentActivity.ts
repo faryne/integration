@@ -19,13 +19,15 @@ function canonicalTool(raw: string) {
 
 function targetTitle(target: string | undefined, workspace: Workspace) {
   if (!target) return "";
+  const volumes = workspace.volumes ?? [];
+  const loreCollections = workspace.lore_collections ?? [];
   const items = [
-    ...workspace.ungrouped_stories,
-    ...workspace.volumes.flatMap((group) => group.items),
-    ...workspace.uncategorized_lores,
-    ...workspace.lore_collections.flatMap((group) => group.items),
+    ...(workspace.ungrouped_stories ?? []),
+    ...volumes.flatMap((group) => group.items ?? []),
+    ...(workspace.uncategorized_lores ?? []),
+    ...loreCollections.flatMap((group) => group.items ?? []),
   ];
-  const groups = [...workspace.volumes, ...workspace.lore_collections, ...workspace.asset_collections];
+  const groups = [...volumes, ...loreCollections, ...(workspace.asset_collections ?? [])];
   return items.find((item) => item.public_id === target)?.title ?? groups.find((group) => group.public_id === target)?.name ?? target;
 }
 

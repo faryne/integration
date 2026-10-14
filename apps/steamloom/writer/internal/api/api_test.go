@@ -1,12 +1,23 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
 )
+
+func TestBuildWorkspaceSerializesEmptyCollectionsAsArrays(t *testing.T) {
+	data, err := json.Marshal(buildWorkspace(nil, nil, nil, nil, nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "null") {
+		t.Fatalf("workspace contains null collection: %s", data)
+	}
+}
 
 type brokenBody struct{}
 
