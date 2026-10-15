@@ -264,8 +264,8 @@
     "revertFailed": "恢复版本失败，请重试：",
     "agentApplied": "已应用 AI 提案并保存。",
     "scope": {
-      "label": "编辑范围",
-      "full": "全文"
+      "only": "只编辑",
+      "backToFull": "回到全文"
     }
   },
   "assets": {

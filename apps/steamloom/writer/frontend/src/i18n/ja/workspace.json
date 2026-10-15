@@ -264,8 +264,8 @@
     "revertFailed": "バージョンを戻せませんでした。もう一度お試しください：",
     "agentApplied": "AI の提案を適用して保存しました。",
     "scope": {
-      "label": "編集範囲",
-      "full": "全文"
+      "only": "編集範囲",
+      "backToFull": "全文に戻る"
     }
   },
   "assets": {

@@ -40,7 +40,7 @@ import {
   type DocumentGroupOption,
 } from "@/pages/storyteller/documentEditor/DocumentEditorHeader.tsx";
 import { DocumentHistoryPanel } from "@/pages/storyteller/documentEditor/DocumentHistoryPanel.tsx";
-import { DocumentScopeSelect } from "@/pages/storyteller/documentEditor/DocumentScopeSelect.tsx";
+import { DocumentScopeChip } from "@/pages/storyteller/documentEditor/DocumentScopeChip.tsx";
 import { useDocumentScope } from "@/pages/storyteller/documentEditor/useDocumentScope.ts";
 import { EditorAutoSaveButton } from "@/pages/storyteller/documentEditor/EditorAutoSaveButton.tsx";
 import type { DocumentEditorLabels } from "@/pages/storyteller/documentEditor/documentEditorLabels.ts";
@@ -58,7 +58,7 @@ type WysiwygProps = ComponentProps<typeof StorytellerWysiwygEditor>;
 // 上方「編輯／編輯歷史」分頁；編輯分頁是頁首（標題、屬性、摘要）＋所見即所得編輯器（工具列有插入資產、大綱與書籤，
 // 底部狀態列與存檔），編輯歷史分頁是版本表格（比對、回復）。切到編輯歷史時編輯器不卸載，未存檔內容與游標都留著。
 // 草稿與存檔由呼叫端用 useDocumentEditing 建好傳進來（呼叫端還要拿它做離開前確認、AI 套用等）。
-// 分頁列右側的「編輯範圍」可以只編輯某一章（useDocumentScope），存檔一樣存整篇。
+// 大綱面板的「只編輯這段」可以只編輯某一章（useDocumentScope），存檔一樣存整篇；範圍模式時分頁列右側有狀態標籤。
 export function SteamLoomDocumentEditor({
   kind,
   projectPublicId,
@@ -219,10 +219,11 @@ export function SteamLoomDocumentEditor({
           ))}
         </Tabs>
         {tab === "editor" && (
-          <DocumentScopeSelect
-            scope={scope}
-            label={labels.scope.label}
-            fullLabel={labels.scope.full}
+          <DocumentScopeChip
+            scope={scope.scope}
+            label={labels.scope.only}
+            backLabel={labels.scope.backToFull}
+            onBack={() => scope.select(null)}
           />
         )}
       </Stack>
@@ -344,13 +345,15 @@ export function SteamLoomDocumentEditor({
                     >
                       <StorytellerEditorOutlinePanel
                         editor={outline.editor}
+                        content={scope.content}
+                        scope={scope.scope}
                         bookmarks={outline.bookmarks}
                         loading={outline.bookmarksLoading}
                         onDeleteBookmark={outline.removeBookmark}
                         onUpdateBookmarkNote={outline.saveBookmarkNote}
                         onEditSection={scope.select}
-                        isOutside={scope.isOutside}
-                        onOutsideBookmark={scope.jumpOutside}
+                        onBackToFull={() => scope.select(null)}
+                        onJumpOutside={scope.jumpOutside}
                       />
                     </StorytellerEditorOutlineToggle>
                   </Stack>

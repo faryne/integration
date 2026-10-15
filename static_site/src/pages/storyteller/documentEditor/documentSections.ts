@@ -14,26 +14,43 @@ export interface DocumentSection {
   count: number;
 }
 
-export function listDocumentSections(content: string): DocumentSection[] {
+// 大綱用：全文的章節（標題）＋每個段落在第幾行、文字是什麼（書籤要靠它排順序、顯示預覽）。解析一次全文就都有
+export function documentOutline(content: string): {
+  sections: DocumentSection[];
+  paragraphs: Map<string, { line: number; text: string }>;
+} {
   const lineCount = content.split("\n").length;
-  const headings = parseMarkdownToParagraphs(content, { enableAssets: false })
-    .filter((paragraph) => paragraph.headingLevel > 0 && paragraph.markerId)
-    .map((paragraph) => ({
-      markerId: paragraph.markerId!,
-      level: paragraph.headingLevel,
-      title: paragraph.runs
-        .map((run) => run.text)
-        .join("")
-        .trim(),
-      start: paragraph.sourceLineIndex ?? 0,
-    }));
-  return headings.map((heading, index) => {
+  const paragraphs = new Map<string, { line: number; text: string }>();
+  const headings: Omit<DocumentSection, "count">[] = [];
+  for (const paragraph of parseMarkdownToParagraphs(content, {
+    enableAssets: false,
+  })) {
+    if (!paragraph.markerId) continue;
+    const text = paragraph.runs
+      .map((run) => run.text)
+      .join("")
+      .trim();
+    const line = paragraph.sourceLineIndex ?? 0;
+    paragraphs.set(paragraph.markerId, { line, text });
+    if (paragraph.headingLevel > 0)
+      headings.push({
+        markerId: paragraph.markerId,
+        level: paragraph.headingLevel,
+        title: text,
+        start: line,
+      });
+  }
+  const sections = headings.map((heading, index) => {
     const next = headings
       .slice(index + 1)
       .find((each) => each.level <= heading.level);
     return { ...heading, count: (next?.start ?? lineCount) - heading.start };
   });
+  return { sections, paragraphs };
 }
+
+export const listDocumentSections = (content: string) =>
+  documentOutline(content).sections;
 
 // 從全文切出 [start, start + count) 這幾行
 export const sliceLines = (content: string, start: number, count: number) =>

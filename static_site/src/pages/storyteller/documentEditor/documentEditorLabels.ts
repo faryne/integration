@@ -4,8 +4,8 @@ import type { DocumentKind } from "@/pages/storyteller/documentEditor/useDocumen
 // 網站直接用這裡的預設值；SteamLoom Writer 有多語系，由 Writer 用 i18n 組一份蓋過去。
 export interface DocumentEditorLabels {
   tabs: { editor: string; history: string };
-  // 編輯範圍選單：全文或某一章
-  scope: { label: string; full: string };
+  // 只編輯某一章時的狀態標籤（「只編輯：第二章」）與回到全文
+  scope: { only: string; backToFull: string };
   titlePlaceholder: string;
   summaryPlaceholder: string;
   status: string;
@@ -46,7 +46,7 @@ export const defaultDocumentEditorLabels = (
   const name = kind === "story" ? "故事" : "設定";
   return {
     tabs: { editor: "編輯", history: "編輯歷史" },
-    scope: { label: "編輯範圍", full: "全文" },
+    scope: { only: "只編輯", backToFull: "回到全文" },
     titlePlaceholder: kind === "story" ? "未命名故事" : "未命名設定",
     summaryPlaceholder: "新增摘要...",
     status: "狀態",
