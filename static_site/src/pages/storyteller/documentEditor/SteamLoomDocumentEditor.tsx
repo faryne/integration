@@ -40,6 +40,8 @@ import {
   type DocumentGroupOption,
 } from "@/pages/storyteller/documentEditor/DocumentEditorHeader.tsx";
 import { DocumentHistoryPanel } from "@/pages/storyteller/documentEditor/DocumentHistoryPanel.tsx";
+import { DocumentScopeSelect } from "@/pages/storyteller/documentEditor/DocumentScopeSelect.tsx";
+import { useDocumentScope } from "@/pages/storyteller/documentEditor/useDocumentScope.ts";
 import { EditorAutoSaveButton } from "@/pages/storyteller/documentEditor/EditorAutoSaveButton.tsx";
 import type { DocumentEditorLabels } from "@/pages/storyteller/documentEditor/documentEditorLabels.ts";
 import type {
@@ -56,6 +58,7 @@ type WysiwygProps = ComponentProps<typeof StorytellerWysiwygEditor>;
 // 上方「編輯／編輯歷史」分頁；編輯分頁是頁首（標題、屬性、摘要）＋所見即所得編輯器（工具列有插入資產、大綱與書籤，
 // 底部狀態列與存檔），編輯歷史分頁是版本表格（比對、回復）。切到編輯歷史時編輯器不卸載，未存檔內容與游標都留著。
 // 草稿與存檔由呼叫端用 useDocumentEditing 建好傳進來（呼叫端還要拿它做離開前確認、AI 套用等）。
+// 分頁列右側的「編輯範圍」可以只編輯某一章（useDocumentScope），存檔一樣存整篇。
 export function SteamLoomDocumentEditor({
   kind,
   projectPublicId,
@@ -121,6 +124,11 @@ export function SteamLoomDocumentEditor({
     lorePublicId: kind === "lore" ? publicId : undefined,
     onSnack: notify,
   });
+  const scope = useDocumentScope({
+    editing,
+    memoryKey: publicId ? `${kind}:${publicId}` : undefined,
+    editor: outline.editor,
+  });
 
   // 書籤存的是段落 markerId，只有真的存進後端的內容下次載入才找得到：段落還沒存檔、
   // 或這篇是剛補過 marker 的舊資料，加書籤前先存一次（兩個請求誰先到不重要，存檔成功 marker 就落地）
@@ -182,32 +190,42 @@ export function SteamLoomDocumentEditor({
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}
     >
-      <Tabs
-        value={tab}
-        onChange={(_, value: DocumentEditorTab) => setTab(value)}
-        sx={{
-          flex: "none",
-          minHeight: 42,
-          borderBottom: 1,
-          borderColor: "divider",
-        }}
+      <Stack
+        direction="row"
+        alignItems="flex-end"
+        justifyContent="space-between"
+        spacing={2}
+        sx={{ flex: "none", borderBottom: 1, borderColor: "divider" }}
       >
-        {(
-          [
-            ["editor", <EditIcon key="icon" fontSize="small" />],
-            ["history", <HistoryIcon key="icon" fontSize="small" />],
-          ] as const
-        ).map(([value, icon]) => (
-          <Tab
-            key={value}
-            value={value}
-            icon={icon}
-            iconPosition="start"
-            label={labels.tabs[value]}
-            sx={{ minHeight: 42 }}
+        <Tabs
+          value={tab}
+          onChange={(_, value: DocumentEditorTab) => setTab(value)}
+          sx={{ minHeight: 42 }}
+        >
+          {(
+            [
+              ["editor", <EditIcon key="icon" fontSize="small" />],
+              ["history", <HistoryIcon key="icon" fontSize="small" />],
+            ] as const
+          ).map(([value, icon]) => (
+            <Tab
+              key={value}
+              value={value}
+              icon={icon}
+              iconPosition="start"
+              label={labels.tabs[value]}
+              sx={{ minHeight: 42 }}
+            />
+          ))}
+        </Tabs>
+        {tab === "editor" && (
+          <DocumentScopeSelect
+            scope={scope}
+            label={labels.scope.label}
+            fullLabel={labels.scope.full}
           />
-        ))}
-      </Tabs>
+        )}
+      </Stack>
       <Box
         sx={{
           flex: fillHeight ? 1 : undefined,
@@ -246,8 +264,8 @@ export function SteamLoomDocumentEditor({
             editor={
               <StorytellerWysiwygEditor
                 ref={editorRef}
-                value={draft.content}
-                onChange={editing.setContent}
+                value={scope.value}
+                onChange={scope.onChange}
                 toolbarPlacement="bottom"
                 fitParentHeight={fillHeight}
                 bottomStatusContent={
@@ -330,6 +348,9 @@ export function SteamLoomDocumentEditor({
                         loading={outline.bookmarksLoading}
                         onDeleteBookmark={outline.removeBookmark}
                         onUpdateBookmarkNote={outline.saveBookmarkNote}
+                        onEditSection={scope.select}
+                        isOutside={scope.isOutside}
+                        onOutsideBookmark={scope.jumpOutside}
                       />
                     </StorytellerEditorOutlineToggle>
                   </Stack>

@@ -258,7 +258,11 @@
     },
     "reverted": "Reverted to this version.",
     "revertFailed": "Couldn't revert. Please try again: ",
-    "agentApplied": "AI proposal applied and saved."
+    "agentApplied": "AI proposal applied and saved.",
+    "scope": {
+      "label": "Editing",
+      "full": "Whole document"
+    }
   },
   "assets": {
     "search": "Search assets",

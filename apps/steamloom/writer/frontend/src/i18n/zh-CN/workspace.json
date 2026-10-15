@@ -262,7 +262,11 @@
     },
     "reverted": "已恢复到这个版本。",
     "revertFailed": "恢复版本失败，请重试：",
-    "agentApplied": "已应用 AI 提案并保存。"
+    "agentApplied": "已应用 AI 提案并保存。",
+    "scope": {
+      "label": "编辑范围",
+      "full": "全文"
+    }
   },
   "assets": {
     "search": "搜索资产",

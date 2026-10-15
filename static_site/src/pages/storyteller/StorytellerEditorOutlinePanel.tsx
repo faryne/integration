@@ -1,6 +1,7 @@
 import BookmarkIcon from "@mui/icons-material/Bookmark";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import CropFreeIcon from "@mui/icons-material/CropFree";
 import ViewHeadlineIcon from "@mui/icons-material/ViewHeadline";
 import {
   Button,
@@ -96,6 +97,11 @@ interface StorytellerEditorOutlinePanelProps {
   loading?: boolean;
   onDeleteBookmark: (markerId: string) => void;
   onUpdateBookmarkNote: (markerId: string, note: string) => void;
+  // 標題右側的「只編輯這段」（共用編輯頁的編輯範圍）；沒給就不顯示
+  onEditSection?: (markerId: string) => void;
+  // 只編輯某一段時，書籤在全文裡但不在這一段：顯示「在目前範圍外」，點了交給 onOutsideBookmark（回到全文再跳過去）
+  isOutside?: (markerId: string) => boolean;
+  onOutsideBookmark?: (markerId: string) => void;
 }
 
 // 大綱面板內容：標題 + 書籤依文件 pos 合併成同一份清單。外層容器（Popper）
@@ -106,6 +112,9 @@ export function StorytellerEditorOutlinePanel({
   loading,
   onDeleteBookmark,
   onUpdateBookmarkNote,
+  onEditSection,
+  isOutside,
+  onOutsideBookmark,
 }: StorytellerEditorOutlinePanelProps) {
   const markers = useEditorState({
     editor,
@@ -127,7 +136,10 @@ export function StorytellerEditorOutlinePanel({
   const [noteDraft, setNoteDraft] = useState("");
   const [deleting, setDeleting] = useState<OutlineListItem | null>(null);
 
+  const outside = (item: OutlineListItem) =>
+    Boolean(item.missing && isOutside?.(item.markerId));
   const jump = (item: OutlineListItem) => {
+    if (outside(item)) return onOutsideBookmark?.(item.markerId);
     if (!editor || item.missing || item.pos === null) return;
     jumpToMarker(editor, item.markerId, item.pos);
   };
@@ -185,6 +197,20 @@ export function StorytellerEditorOutlinePanel({
                     noWrap: true,
                   }}
                 />
+                {onEditSection && (
+                  <Tooltip title="只編輯這段">
+                    <IconButton
+                      size="small"
+                      aria-label="只編輯這段"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onEditSection(item.markerId);
+                      }}
+                    >
+                      <CropFreeIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
               </ListItemButton>
             ) : (
               <ListItemButton
@@ -214,7 +240,13 @@ export function StorytellerEditorOutlinePanel({
                 </ListItemIcon>
                 <ListItemText
                   primary={
-                    item.missing ? "找不到這個位置了，可能已被刪除" : item.text
+                    outside(item)
+                      ? item.note?.trim()
+                        ? `在目前範圍外：${item.note.trim()}`
+                        : "在目前範圍外"
+                      : item.missing
+                        ? "找不到這個位置了，可能已被刪除"
+                        : item.text
                   }
                   primaryTypographyProps={{
                     variant: "body2",

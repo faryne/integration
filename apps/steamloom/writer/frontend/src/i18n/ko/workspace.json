@@ -262,7 +262,11 @@
     },
     "reverted": "이 버전으로 되돌렸습니다.",
     "revertFailed": "버전을 되돌리지 못했습니다. 다시 시도해 주세요: ",
-    "agentApplied": "AI 제안을 적용하고 저장했습니다."
+    "agentApplied": "AI 제안을 적용하고 저장했습니다.",
+    "scope": {
+      "label": "편집 범위",
+      "full": "전체"
+    }
   },
   "assets": {
     "search": "에셋 검색",

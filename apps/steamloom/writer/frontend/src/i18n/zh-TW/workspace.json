@@ -345,7 +345,11 @@
     },
     "reverted": "已回復到這個版本。",
     "revertFailed": "回復版本失敗，請重試：",
-    "agentApplied": "已套用 AI 提案並存檔。"
+    "agentApplied": "已套用 AI 提案並存檔。",
+    "scope": {
+      "label": "編輯範圍",
+      "full": "全文"
+    }
   },
   "assets": {
     "search": "搜尋資產",
