@@ -89,65 +89,16 @@ func (c codexClient) Ask(ctx context.Context, req Request) (Reply, error) {
 	if err != nil {
 		return Reply{}, err
 	}
-	stream := &codexStreamState{tools: map[string]streamedTool{}}
 	return invoke(ctx, invocation{
-		name:   "Codex",
-		bin:    c.bin,
-		dir:    dir,
-		args:   args,
-		stdin:  req.body(),
-		parse:  parseCodex,
-		stream: func(line string) { emitCodexStream(req, line, stream) },
-		resume: req.SessionID,
+		name:    "Codex",
+		bin:     c.bin,
+		dir:     dir,
+		args:    args,
+		stdin:   req.body(),
+		decoder: &codexProtocol{tools: map[string]streamedTool{}},
+		emit:    req.emit,
+		resume:  req.SessionID,
 	})
-}
-
-func parseCodex(stdout string) (Reply, error) {
-	var sessionID, text, failed string
-	for _, line := range strings.Split(stdout, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || line[0] != '{' {
-			continue
-		}
-		var event struct {
-			Type     string          `json:"type"`
-			ThreadID string          `json:"thread_id"`
-			Message  string          `json:"message"`
-			Error    json.RawMessage `json:"error"`
-			Item     struct {
-				Type string `json:"type"`
-				Text string `json:"text"`
-			} `json:"item"`
-		}
-		if json.Unmarshal([]byte(line), &event) != nil {
-			continue
-		}
-		switch event.Type {
-		case "thread.started":
-			if event.ThreadID != "" {
-				sessionID = event.ThreadID
-			}
-		case "item.completed":
-			if event.Item.Type == "agent_message" && strings.TrimSpace(event.Item.Text) != "" {
-				text = event.Item.Text
-			}
-		case "turn.failed":
-			failed = codexMessage(event.Error, "Codex 沒有回答")
-		case "error":
-			if msg := strings.TrimSpace(event.Message); msg != "" {
-				failed = msg
-			} else if failed == "" {
-				failed = codexMessage(event.Error, "Codex 沒有回答")
-			}
-		}
-	}
-	if failed != "" {
-		return Reply{}, outputError{msg: failed}
-	}
-	if strings.TrimSpace(text) == "" {
-		return Reply{}, errNoResult
-	}
-	return Reply{SessionID: sessionID, Text: text}, nil
 }
 
 func codexMessage(raw json.RawMessage, fallback string) string {
@@ -167,32 +118,15 @@ func codexMessage(raw json.RawMessage, fallback string) string {
 	return fallback
 }
 
-type codexStreamState struct {
-	tools   map[string]streamedTool
-	pending string
-}
+type codexProtocol struct{ tools map[string]streamedTool }
 
-func (s *codexStreamState) message(req Request, text string) {
-	if s.pending != "" {
-		req.emitStream(StreamEvent{Type: StreamAgentProgress, Text: s.pending})
-	}
-	s.pending = text
-	req.emitStream(StreamEvent{Type: StreamAgentPreview, Text: text})
-}
-
-func (s *codexStreamState) finish(req Request, completed bool) {
-	// turn.completed 前的最後一則是正式回答；失敗時則只是最後一筆執行進度。
-	if !completed && s.pending != "" {
-		req.emitStream(StreamEvent{Type: StreamAgentProgress, Text: s.pending})
-	}
-	s.pending = ""
-	req.emitStream(StreamEvent{Type: StreamAgentPreview})
-}
-
-func emitCodexStream(req Request, line string, state *codexStreamState) {
+func (p *codexProtocol) Decode(line string) []protocolEvent {
 	var event struct {
-		Type string `json:"type"`
-		Item struct {
+		Type     string          `json:"type"`
+		ThreadID string          `json:"thread_id"`
+		Message  string          `json:"message"`
+		Error    json.RawMessage `json:"error"`
+		Item     struct {
 			ID        string          `json:"id"`
 			Type      string          `json:"type"`
 			Text      string          `json:"text"`
@@ -203,37 +137,45 @@ func emitCodexStream(req Request, line string, state *codexStreamState) {
 		} `json:"item"`
 	}
 	if json.Unmarshal([]byte(line), &event) != nil {
-		return
+		return nil
+	}
+	if event.Type == "thread.started" {
+		return []protocolEvent{{Type: protocolSession, SessionID: event.ThreadID}}
 	}
 	if event.Type == "item.completed" && event.Item.Type == "agent_message" && event.Item.Text != "" {
-		state.message(req, event.Item.Text)
-		return
+		return []protocolEvent{{Type: protocolTextCandidate, Text: event.Item.Text}}
 	}
 	if event.Type == "turn.completed" {
-		state.finish(req, true)
-		return
+		return []protocolEvent{{Type: protocolCompleted}}
 	}
-	if event.Type == "turn.failed" || event.Type == "error" {
-		state.finish(req, false)
-		return
+	if event.Type == "turn.failed" {
+		return []protocolEvent{{Type: protocolFailed, Text: codexMessage(event.Error, "Codex 沒有回答")}}
+	}
+	if event.Type == "error" {
+		message := strings.TrimSpace(event.Message)
+		if message == "" {
+			message = codexMessage(event.Error, "Codex 沒有回答")
+		}
+		return []protocolEvent{{Type: protocolFailed, Text: message}}
 	}
 	if event.Item.Type != "mcp_tool_call" {
-		return
+		return nil
 	}
 	name := strings.Trim(strings.Join([]string{event.Item.Server, event.Item.Tool}, "."), ".")
 	if event.Type == "item.started" {
 		tool := streamedTool{Name: name, Target: toolTarget(event.Item.Arguments)}
-		state.tools[event.Item.ID] = tool
-		req.emitStream(StreamEvent{Type: StreamToolStarted, ToolName: tool.Name, ToolTarget: tool.Target})
+		p.tools[event.Item.ID] = tool
+		return []protocolEvent{{Type: protocolToolStarted, ToolName: tool.Name, ToolTarget: tool.Target}}
 	} else if event.Type == "item.completed" {
-		tool := state.tools[event.Item.ID]
+		tool := p.tools[event.Item.ID]
 		if name == "" {
 			name = tool.Name
 		}
-		typeName := StreamToolCompleted
+		typeName := protocolToolCompleted
 		if event.Item.Status == "failed" {
-			typeName = StreamToolFailed
+			typeName = protocolToolFailed
 		}
-		req.emitStream(StreamEvent{Type: typeName, ToolName: name, ToolTarget: tool.Target})
+		return []protocolEvent{{Type: typeName, ToolName: name, ToolTarget: tool.Target}}
 	}
+	return nil
 }

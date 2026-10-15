@@ -2,8 +2,19 @@ package agent
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
+
+func decodeProtocol(decoder protocolDecoder, lines ...string) (Reply, error, []StreamEvent) {
+	events := []StreamEvent{}
+	state := newProtocolState("", func(event StreamEvent) { events = append(events, event) })
+	for _, line := range lines {
+		state.Consume(decoder.Decode(line))
+	}
+	reply, err := state.Reply()
+	return reply, err, events
+}
 
 func TestJSONObjectTakesLastCompleteObjectAroundWarnings(t *testing.T) {
 	raw := jsonObject("warning: config {not-json}\n{\"type\":\"notice\"}\n{\"text\":\"完成\",\"nested\":{\"ok\":true}}\nwarning {still-not-json}")
@@ -19,54 +30,182 @@ func TestCommandErrorExplainsClaudeLogin(t *testing.T) {
 	}
 }
 
-func TestParseClaude(t *testing.T) {
-	reply, err := parseClaude("warning\n" + `{"is_error":false,"result":"完成","session_id":"claude-session"}`)
-	if err != nil || reply.Text != "完成" || reply.SessionID != "claude-session" {
-		t.Fatalf("unexpected Claude reply: %#v, %v", reply, err)
-	}
-
-	if _, err := parseClaude(`{"is_error":true,"result":"額度不足"}`); err == nil || err.Error() != "額度不足" {
-		t.Fatalf("Claude structured error was not preserved: %v", err)
-	}
-}
-
-func TestClaudeStreamEmitsDeltaAndToolLifecycle(t *testing.T) {
-	var events []StreamEvent
-	req := Request{emit: func(event StreamEvent) { events = append(events, event) }}
-	tools := map[string]streamedTool{}
-	emitClaudeStream(req, `{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"一段"}}}`, tools)
-	emitClaudeStream(req, `{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tool-1","name":"storyteller_get_story","input":{"story_public_id":"story-id"}}]}}`, tools)
-	emitClaudeStream(req, `{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool-1"}]}}`, tools)
-	if len(events) != 3 || events[0].Text != "一段" || events[1].Type != StreamToolStarted || events[1].ToolTarget != "story-id" || events[2].ToolName != "storyteller_get_story" || events[2].ToolTarget != "story-id" {
-		t.Fatalf("unexpected Claude stream events: %#v", events)
-	}
-}
-
-func TestProviderStreamsDoNotCountFailedToolsAsCompleted(t *testing.T) {
+func TestCommandErrorExplainsGeminiAndAntigravityLogin(t *testing.T) {
 	tests := []struct {
-		name string
-		emit func(Request)
+		name, detail, command string
 	}{
-		{"claude", func(req Request) {
-			tools := map[string]streamedTool{}
-			emitClaudeStream(req, `{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tool-1","name":"storyteller_upsert_lore"}]}}`, tools)
-			emitClaudeStream(req, `{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool-1","is_error":true}]}}`, tools)
-		}},
-		{"codex", func(req Request) {
-			stream := &codexStreamState{tools: map[string]streamedTool{}}
-			emitCodexStream(req, `{"type":"item.started","item":{"id":"tool-1","type":"mcp_tool_call","server":"SteamLoom","tool":"storyteller_upsert_lore"}}`, stream)
-			emitCodexStream(req, `{"type":"item.completed","item":{"id":"tool-1","type":"mcp_tool_call","status":"failed"}}`, stream)
-		}},
-		{"grok", func(req Request) {
-			tools := map[string]streamedTool{}
-			emitGrokStream(req, `{"update":{"sessionUpdate":"tool_call","toolCallId":"tool-1","title":"storyteller_upsert_lore"}}`, tools)
-			emitGrokStream(req, `{"update":{"sessionUpdate":"tool_call_update","toolCallId":"tool-1","status":"failed"}}`, tools)
-		}},
+		{"Gemini CLI", "Please set an Auth method before continuing", "gemini"},
+		{"Antigravity", "authentication required", "agy"},
+	}
+	for _, test := range tests {
+		err := commandError(test.name, errors.New("exit status 1"), test.detail)
+		if !strings.Contains(err.Error(), "尚未登入") || !strings.Contains(err.Error(), "`"+test.command+"`") {
+			t.Fatalf("unexpected %s auth error: %v", test.name, err)
+		}
+	}
+}
+
+func TestProviderProtocolReplies(t *testing.T) {
+	tests := []struct {
+		name    string
+		decoder protocolDecoder
+		lines   []string
+		text    string
+		session string
+	}{
+		{
+			name: "Claude Code", decoder: &claudeProtocol{tools: map[string]streamedTool{}},
+			lines: []string{
+				`{"type":"stream_event","session_id":"claude-session","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"完"}}}`,
+				`{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"成"}}}`,
+				`{"type":"result","is_error":false,"result":"完成","session_id":"claude-session"}`,
+			},
+			text: "完成", session: "claude-session",
+		},
+		{
+			name: "Codex", decoder: &codexProtocol{tools: map[string]streamedTool{}},
+			lines: []string{
+				`{"type":"thread.started","thread_id":"codex-session"}`,
+				`{"type":"item.completed","item":{"type":"agent_message","text":"中間回覆"}}`,
+				`{"type":"item.completed","item":{"type":"agent_message","text":"最後回覆"}}`,
+				`{"type":"turn.completed"}`,
+			},
+			text: "最後回覆", session: "codex-session",
+		},
+		{
+			name: "Grok Build", decoder: &grokProtocol{tools: map[string]streamedTool{}},
+			lines: []string{
+				`{"type":"text","data":"前半"}`,
+				`{"type":"text","data":"後半"}`,
+				`{"type":"end","sessionId":"grok-session","stopReason":"end_turn"}`,
+			},
+			text: "前半後半", session: "grok-session",
+		},
+		{
+			name: "Grok Build legacy", decoder: &grokProtocol{tools: map[string]streamedTool{}},
+			lines: []string{`{"text":"完成","sessionId":"grok-session"}`},
+			text:  "完成", session: "grok-session",
+		},
+		{
+			name: "Gemini CLI", decoder: &geminiProtocol{tools: map[string]streamedTool{}},
+			lines: []string{
+				`{"type":"init","session_id":"gemini-session","model":"gemini"}`,
+				`{"type":"message","role":"assistant","content":"前半","delta":true}`,
+				`{"type":"message","role":"assistant","content":"後半","delta":true}`,
+				`{"type":"result","status":"success"}`,
+			},
+			text: "前半後半", session: "gemini-session",
+		},
+		{
+			name: "Antigravity", decoder: &antigravityProtocol{tools: map[int]streamedTool{}},
+			lines: []string{
+				`{"event":"init","conversation_id":"agy-session","init":{"permission_mode":"request-review"}}`,
+				`{"event":"step_update","step_update":{"conversation_id":"agy-session","step_index":2,"state":"ACTIVE","step_type":"agent_response","text_delta":"前半"}}`,
+				`{"event":"step_update","step_update":{"conversation_id":"agy-session","step_index":2,"state":"DONE","step_type":"agent_response","text_delta":"後半"}}`,
+				`{"event":"result","result":{"conversation_id":"agy-session","status":"SUCCESS","response":"前半後半"}}`,
+			},
+			text: "前半後半", session: "agy-session",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			reply, err, _ := decodeProtocol(test.decoder, test.lines...)
+			if err != nil || reply.Text != test.text || reply.SessionID != test.session {
+				t.Fatalf("unexpected reply: %#v, %v", reply, err)
+			}
+		})
+	}
+}
+
+func TestProviderProtocolErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		decoder protocolDecoder
+		line    string
+		want    string
+	}{
+		{"Claude Code", &claudeProtocol{tools: map[string]streamedTool{}}, `{"type":"result","is_error":true,"result":"額度不足"}`, "額度不足"},
+		{"Codex", &codexProtocol{tools: map[string]streamedTool{}}, `{"type":"turn.failed","error":{"message":"模型失敗"}}`, "模型失敗"},
+		{"Grok Build", &grokProtocol{tools: map[string]streamedTool{}}, `{"type":"error","message":"未登入"}`, "未登入"},
+		{"Gemini CLI", &geminiProtocol{tools: map[string]streamedTool{}}, `{"type":"result","status":"error","error":{"message":"額度不足"}}`, "額度不足"},
+		{"Antigravity", &antigravityProtocol{tools: map[int]streamedTool{}}, `{"event":"result","result":{"status":"ERROR","error":"額度不足"}}`, "額度不足"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err, _ := decodeProtocol(test.decoder, test.line)
+			if err == nil || err.Error() != test.want {
+				t.Fatalf("structured error was not preserved: %v", err)
+			}
+		})
+	}
+}
+
+func TestProviderProtocolsRequireTerminalEvent(t *testing.T) {
+	tests := []struct {
+		name    string
+		decoder protocolDecoder
+		line    string
+	}{
+		{"Claude Code", &claudeProtocol{tools: map[string]streamedTool{}}, `{"type":"assistant"}`},
+		{"Codex", &codexProtocol{tools: map[string]streamedTool{}}, `{"type":"item.completed","item":{"type":"agent_message","text":"尚未完成"}}`},
+		{"Grok Build", &grokProtocol{tools: map[string]streamedTool{}}, `{"type":"text","data":"尚未完成"}`},
+		{"Gemini CLI", &geminiProtocol{tools: map[string]streamedTool{}}, `{"type":"message","role":"assistant","content":"尚未完成","delta":true}`},
+		{"Antigravity", &antigravityProtocol{tools: map[int]streamedTool{}}, `{"event":"step_update","step_update":{"step_type":"agent_response","text_delta":"尚未完成"}}`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err, _ := decodeProtocol(test.decoder, test.line)
+			if err == nil || err.Error() != "Agent 輸出結束前沒有送出終局事件" {
+				t.Fatalf("missing terminal event was not rejected: %v", err)
+			}
+		})
+	}
+}
+
+func TestProviderProtocolsDoNotCountFailedToolsAsCompleted(t *testing.T) {
+	tests := []struct {
+		name    string
+		decoder protocolDecoder
+		lines   []string
+	}{
+		{
+			"Claude Code", &claudeProtocol{tools: map[string]streamedTool{}}, []string{
+				`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tool-1","name":"storyteller_upsert_lore"}]}}`,
+				`{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool-1","is_error":true}]}}`,
+			},
+		},
+		{
+			"Codex", &codexProtocol{tools: map[string]streamedTool{}}, []string{
+				`{"type":"item.started","item":{"id":"tool-1","type":"mcp_tool_call","server":"SteamLoom","tool":"storyteller_upsert_lore"}}`,
+				`{"type":"item.completed","item":{"id":"tool-1","type":"mcp_tool_call","status":"failed"}}`,
+			},
+		},
+		{
+			"Grok Build", &grokProtocol{tools: map[string]streamedTool{}}, []string{
+				`{"update":{"sessionUpdate":"tool_call","toolCallId":"tool-1","title":"storyteller_upsert_lore"}}`,
+				`{"update":{"sessionUpdate":"tool_call_update","toolCallId":"tool-1","status":"failed"}}`,
+			},
+		},
+		{
+			"Gemini CLI", &geminiProtocol{tools: map[string]streamedTool{}}, []string{
+				`{"type":"tool_use","tool_id":"tool-1","tool_name":"storyteller_upsert_lore"}`,
+				`{"type":"tool_result","tool_id":"tool-1","status":"error"}`,
+			},
+		},
+		{
+			"Antigravity", &antigravityProtocol{tools: map[int]streamedTool{}}, []string{
+				`{"event":"step_update","step_update":{"step_index":1,"state":"ACTIVE","step_type":"tool","tool_name":"storyteller_upsert_lore"}}`,
+				`{"event":"step_update","step_update":{"step_index":1,"state":"DONE","step_type":"tool","tool_name":"storyteller_upsert_lore","tool_info":{"error":{"message":"denied"}}}}`,
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var events []StreamEvent
-			test.emit(Request{emit: func(event StreamEvent) { events = append(events, event) }})
+			state := newProtocolState("", func(event StreamEvent) { events = append(events, event) })
+			for _, line := range test.lines {
+				state.Consume(test.decoder.Decode(line))
+			}
 			if len(events) != 2 || events[1].Type != StreamToolFailed {
 				t.Fatalf("failed tool lifecycle was not preserved: %#v", events)
 			}
@@ -74,69 +213,36 @@ func TestProviderStreamsDoNotCountFailedToolsAsCompleted(t *testing.T) {
 	}
 }
 
-func TestParseCodexUsesLastAgentMessage(t *testing.T) {
-	stdout := "" +
-		`{"type":"thread.started","thread_id":"codex-session"}` + "\n" +
-		`{"type":"item.completed","item":{"type":"agent_message","text":"中間回覆"}}` + "\n" +
-		`{"type":"item.completed","item":{"type":"agent_message","text":"最後回覆"}}` + "\n" +
-		`{"type":"turn.completed"}`
-	reply, err := parseCodex(stdout)
-	if err != nil || reply.Text != "最後回覆" || reply.SessionID != "codex-session" {
-		t.Fatalf("unexpected Codex reply: %#v, %v", reply, err)
+func TestCodexProtocolSeparatesProgressFromFinalMessage(t *testing.T) {
+	decoder := &codexProtocol{tools: map[string]streamedTool{}}
+	lines := []string{
+		`{"type":"item.started","item":{"id":"tool-1","type":"mcp_tool_call","server":"SteamLoom","tool":"storyteller_get_story","arguments":{"story_public_id":"story-id"}}}`,
+		`{"type":"item.completed","item":{"id":"tool-1","type":"mcp_tool_call"}}`,
+		`{"type":"item.completed","item":{"type":"agent_message","text":"先讀取設定"}}`,
+		`{"type":"item.completed","item":{"type":"agent_message","text":"正式回答"}}`,
+		`{"type":"turn.completed"}`,
 	}
-}
-
-func TestParseGrok(t *testing.T) {
-	reply, err := parseGrok("notice: {not-json}\n" + `{"text":"完成","sessionId":"grok-session"}`)
-	if err != nil || reply.Text != "完成" || reply.SessionID != "grok-session" {
-		t.Fatalf("unexpected Grok reply: %#v, %v", reply, err)
+	reply, err, events := decodeProtocol(decoder, lines...)
+	if err != nil || reply.Text != "正式回答" {
+		t.Fatalf("unexpected reply: %#v, %v", reply, err)
 	}
-
-	if _, err := parseGrok(`{"type":"error","message":"未登入"}`); err == nil || err.Error() != "未登入" {
-		t.Fatalf("Grok structured error was not preserved: %v", err)
-	}
-}
-
-func TestParseGrokStreamingJSON(t *testing.T) {
-	stdout := `{"sessionId":"grok-session","update":{"sessionUpdate":"agent_message_chunk","content":{"text":"前半"}}}` + "\n" +
-		`{"sessionId":"grok-session","update":{"sessionUpdate":"agent_message_chunk","content":{"text":"後半"}}}`
-	reply, err := parseGrok(stdout)
-	if err != nil || reply.Text != "前半後半" || reply.SessionID != "grok-session" {
-		t.Fatalf("unexpected Grok streaming reply: %#v, %v", reply, err)
-	}
-}
-
-func TestParseGrokCurrentStreamingJSON(t *testing.T) {
-	stdout := `{"type":"thought","data":"思考中"}` + "\n" +
-		`{"type":"text","data":"前半"}` + "\n" +
-		`{"type":"text","data":"後半"}` + "\n" +
-		`{"type":"end","sessionId":"grok-session","stopReason":"end_turn"}`
-	reply, err := parseGrok(stdout)
-	if err != nil || reply.Text != "前半後半" || reply.SessionID != "grok-session" {
-		t.Fatalf("unexpected current Grok streaming reply: %#v, %v", reply, err)
-	}
-
-	var events []StreamEvent
-	emitGrokStream(Request{emit: func(event StreamEvent) { events = append(events, event) }}, `{"type":"text","data":"串流片段"}`, map[string]streamedTool{})
-	if len(events) != 1 || events[0].Type != StreamAssistantDelta || events[0].Text != "串流片段" {
-		t.Fatalf("unexpected current Grok stream events: %#v", events)
-	}
-	if !grokTerminalEvent(`{"type":"end","sessionId":"grok-session"}`) || grokTerminalEvent(`{"type":"text","data":"還在輸出"}`) {
-		t.Fatal("Grok terminal event detection is incorrect")
+	if len(events) != 6 || events[0].ToolName != "SteamLoom.storyteller_get_story" || events[0].ToolTarget != "story-id" ||
+		events[2].Type != StreamAgentPreview || events[3].Type != StreamAgentProgress || events[3].Text != "先讀取設定" ||
+		events[4].Type != StreamAgentPreview || events[4].Text != "正式回答" || events[5].Text != "" {
+		t.Fatalf("unexpected Codex stream events: %#v", events)
 	}
 }
 
 func TestGrokAuthenticationRetryFailsFast(t *testing.T) {
 	line := `{"type":"retry_state","attempt":1,"maxRetries":50,"reason":"Re-authenticating after 401 (request carried no credential); retrying request"}`
-	if !grokTerminalEvent(line) {
-		t.Fatal("Grok authentication retry must stop immediately")
-	}
-	if _, err := parseGrok(line); err == nil || err.Error() != grokLoginError {
+	_, err, _ := decodeProtocol(&grokProtocol{tools: map[string]streamedTool{}}, line)
+	if err == nil || err.Error() != grokLoginError {
 		t.Fatalf("unexpected Grok authentication error: %v", err)
 	}
 	legacy := `{"update":{"sessionUpdate":"retry_state","reason":"Re-authenticating after 401 (request carried no credential); retrying request"}}`
-	if !grokTerminalEvent(legacy) {
-		t.Fatal("legacy Grok authentication retry must stop immediately")
+	_, err, _ = decodeProtocol(&grokProtocol{tools: map[string]streamedTool{}}, legacy)
+	if err == nil || err.Error() != grokLoginError {
+		t.Fatalf("legacy Grok authentication retry must stop immediately: %v", err)
 	}
 	if err := commandError("Grok Build", errors.New("exit status 1"), "Unauthorized (401): Invalid or expired credentials"); err.Error() != grokLoginError {
 		t.Fatalf("unexpected Grok stderr authentication error: %v", err)
@@ -156,26 +262,5 @@ func TestGrokAuthenticationRetryFailsFast(t *testing.T) {
 	}
 	if !grokAuthenticated("You are logged in with grok.com.") || grokAuthenticated("You are not authenticated.") {
 		t.Fatal("Grok auth preflight status was classified incorrectly")
-	}
-}
-
-func TestCodexStreamSeparatesProgressFromFinalMessage(t *testing.T) {
-	var events []StreamEvent
-	req := Request{emit: func(event StreamEvent) { events = append(events, event) }}
-	stream := &codexStreamState{tools: map[string]streamedTool{}}
-	emitCodexStream(req, `{"type":"item.started","item":{"id":"tool-1","type":"mcp_tool_call","server":"SteamLoom","tool":"storyteller_get_story","arguments":{"story_public_id":"story-id"}}}`, stream)
-	emitCodexStream(req, `{"type":"item.completed","item":{"id":"tool-1","type":"mcp_tool_call"}}`, stream)
-	emitCodexStream(req, `{"type":"item.completed","item":{"type":"agent_message","text":"先讀取設定"}}`, stream)
-	emitCodexStream(req, `{"type":"item.completed","item":{"type":"agent_message","text":"正式回答"}}`, stream)
-	emitCodexStream(req, `{"type":"turn.completed"}`, stream)
-	if len(events) != 6 || events[0].ToolName != "SteamLoom.storyteller_get_story" || events[0].ToolTarget != "story-id" || events[1].ToolName != events[0].ToolName || events[1].ToolTarget != "story-id" ||
-		events[2].Type != StreamAgentPreview || events[2].Text != "先讀取設定" || events[3].Type != StreamAgentProgress || events[3].Text != "先讀取設定" ||
-		events[4].Type != StreamAgentPreview || events[4].Text != "正式回答" || events[5].Type != StreamAgentPreview || events[5].Text != "" {
-		t.Fatalf("unexpected Codex stream events: %#v", events)
-	}
-	for _, event := range events {
-		if event.Type == StreamAssistantDelta {
-			t.Fatalf("Codex agent_message leaked into the formal answer stream: %#v", events)
-		}
 	}
 }

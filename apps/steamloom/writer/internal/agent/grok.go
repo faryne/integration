@@ -87,20 +87,18 @@ func (c grokClient) Ask(ctx context.Context, req Request) (Reply, error) {
 	if err != nil || strings.HasPrefix(rel, "..") {
 		return Reply{}, errors.New("無法建立提問暫存檔")
 	}
-	tools := map[string]streamedTool{}
 	args, err := grokRequestArgs(req, dir, promptFile)
 	if err != nil {
 		return Reply{}, err
 	}
 	return invoke(ctx, invocation{
-		name:     "Grok Build",
-		bin:      c.bin,
-		dir:      dir,
-		args:     args,
-		parse:    parseGrok,
-		stream:   func(line string) { emitGrokStream(req, line, tools) },
-		complete: grokTerminalEvent,
-		resume:   req.SessionID,
+		name:    "Grok Build",
+		bin:     c.bin,
+		dir:     dir,
+		args:    args,
+		decoder: &grokProtocol{tools: map[string]streamedTool{}},
+		emit:    req.emit,
+		resume:  req.SessionID,
 	})
 }
 
@@ -154,49 +152,6 @@ type grokResult struct {
 	SessionID string          `json:"sessionId"`
 }
 
-func parseGrok(stdout string) (Reply, error) {
-	var sessionID, text, finalText, failed string
-	for _, line := range strings.Split(stdout, "\n") {
-		var result grokStreamResult
-		if json.Unmarshal([]byte(strings.TrimSpace(line)), &result) != nil {
-			continue
-		}
-		if result.SessionID != "" {
-			sessionID = result.SessionID
-		}
-		if result.Type == "error" {
-			failed = strings.TrimSpace(result.Message)
-			if failed == "" {
-				failed = grokDataText(result.Data)
-			}
-		}
-		if result.loginRetry() {
-			failed = grokLoginError
-		}
-		// Grok Build 1.0.50 的 streaming-json 改成 {"type":"text","data":"..."}；
-		// 舊版 ACP 的 agent_message_chunk 仍保留相容，避免使用者尚未更新時中斷。
-		if result.Type == "text" {
-			text += grokDataText(result.Data)
-		}
-		if strings.TrimSpace(result.Text) != "" {
-			finalText = result.Text
-		}
-		if result.Update.SessionUpdate == "agent_message_chunk" {
-			text += result.Update.Content.Text
-		}
-	}
-	if failed != "" {
-		return Reply{}, outputError{msg: failed}
-	}
-	if strings.TrimSpace(finalText) != "" {
-		text = finalText
-	}
-	if strings.TrimSpace(text) == "" {
-		return Reply{}, errNoResult
-	}
-	return Reply{SessionID: sessionID, Text: text}, nil
-}
-
 func grokDataText(raw json.RawMessage) string {
 	var text string
 	if json.Unmarshal(raw, &text) != nil {
@@ -240,40 +195,57 @@ func (r grokStreamResult) loginRetry() bool {
 	return r.Update.SessionUpdate == "retry_state" && grokLoginRequired(r.Update.Reason)
 }
 
-func emitGrokStream(req Request, line string, tools map[string]streamedTool) {
+type grokProtocol struct{ tools map[string]streamedTool }
+
+func (p *grokProtocol) Decode(line string) []protocolEvent {
 	var result grokStreamResult
 	if json.Unmarshal([]byte(line), &result) != nil {
-		return
+		return nil
+	}
+	events := []protocolEvent{}
+	if result.SessionID != "" {
+		events = append(events, protocolEvent{Type: protocolSession, SessionID: result.SessionID})
+	}
+	if result.loginRetry() {
+		return append(events, protocolEvent{Type: protocolFailed, Text: grokLoginError})
+	}
+	if result.Type == "error" {
+		message := strings.TrimSpace(result.Message)
+		if message == "" {
+			message = grokDataText(result.Data)
+		}
+		if message == "" {
+			message = "Grok Build 沒有回答"
+		}
+		return append(events, protocolEvent{Type: protocolFailed, Text: message})
 	}
 	if result.Type == "text" {
 		if text := grokDataText(result.Data); text != "" {
-			req.emitStream(StreamEvent{Type: StreamAssistantDelta, Text: text})
+			events = append(events, protocolEvent{Type: protocolTextDelta, Text: text})
 		}
-		return
 	}
 	switch result.Update.SessionUpdate {
 	case "agent_message_chunk":
 		if result.Update.Content.Text != "" {
-			req.emitStream(StreamEvent{Type: StreamAssistantDelta, Text: result.Update.Content.Text})
+			events = append(events, protocolEvent{Type: protocolTextDelta, Text: result.Update.Content.Text})
 		}
 	case "tool_call":
 		tool := streamedTool{Name: result.Update.Title, Target: toolTarget(result.Update.Input, result.Update.Arguments, result.Update.RawInput)}
-		tools[result.Update.ToolCallID] = tool
-		req.emitStream(StreamEvent{Type: StreamToolStarted, ToolName: tool.Name, ToolTarget: tool.Target})
+		p.tools[result.Update.ToolCallID] = tool
+		events = append(events, protocolEvent{Type: protocolToolStarted, ToolName: tool.Name, ToolTarget: tool.Target})
 	case "tool_call_update":
 		if result.Update.Status == "completed" || result.Update.Status == "failed" {
-			tool := tools[result.Update.ToolCallID]
-			typeName := StreamToolCompleted
+			tool := p.tools[result.Update.ToolCallID]
+			typeName := protocolToolCompleted
 			if result.Update.Status == "failed" {
-				typeName = StreamToolFailed
+				typeName = protocolToolFailed
 			}
-			req.emitStream(StreamEvent{Type: typeName, ToolName: tool.Name, ToolTarget: tool.Target})
+			events = append(events, protocolEvent{Type: typeName, ToolName: tool.Name, ToolTarget: tool.Target})
 		}
 	}
-}
-
-func grokTerminalEvent(line string) bool {
-	var result grokStreamResult
-	return json.Unmarshal([]byte(line), &result) == nil && (result.Type == "end" || result.Type == "error" ||
-		result.loginRetry())
+	// 舊版 Grok 只回傳一次含 text 的 JSON；新 streaming-json 則由 end 結束。
+	if result.Type == "end" || result.Type == "" && strings.TrimSpace(result.Text) != "" {
+		events = append(events, protocolEvent{Type: protocolCompleted, Text: result.Text, SessionID: result.SessionID})
+	}
+	return events
 }

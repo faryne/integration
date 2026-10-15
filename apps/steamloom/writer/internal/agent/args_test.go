@@ -40,6 +40,27 @@ func TestGrokArgsDisableAutoUpdateAndTools(t *testing.T) {
 	}
 }
 
+func TestGeminiArgsUseHeadlessReadOnlyMode(t *testing.T) {
+	args := geminiArgs("session-id", "SteamLoom")
+	joined := strings.Join(args, " ")
+	if !containsPair(args, "--output-format", "stream-json") || !containsPair(args, "--approval-mode", "plan") ||
+		!containsPair(args, "--resume", "session-id") || !strings.Contains(joined, "mcp_SteamLoom_storyteller_get_story") || strings.Contains(joined, "upsert") {
+		t.Fatalf("Gemini must use the shared read-only contract: %s", joined)
+	}
+}
+
+func TestAntigravityArgsAndInputUseStreamingProtocol(t *testing.T) {
+	args := antigravityArgs("conversation-id")
+	if !containsPair(args, "--input-format", "stream-json") || !containsPair(args, "--output-format", "stream-json") ||
+		!containsPair(args, "--mode", "plan") || !containsPair(args, "--conversation", "conversation-id") {
+		t.Fatalf("Antigravity must use the streaming plan-mode contract: %v", args)
+	}
+	input, err := antigravityInput("第一行\n第二行")
+	if err != nil || !strings.Contains(input, `"event":"user"`) || !strings.Contains(input, `"content":"第一行\n第二行"`) {
+		t.Fatalf("unexpected Antigravity input: %q, %v", input, err)
+	}
+}
+
 func TestProviderArgsExposeOnlySteamLoomReadTools(t *testing.T) {
 	claudeCLIArgs := claudeArgs("", "SteamLoom")
 	claude := strings.Join(claudeCLIArgs, " ")

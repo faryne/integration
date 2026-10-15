@@ -57,51 +57,27 @@ func (c claudeClient) Ask(ctx context.Context, req Request) (Reply, error) {
 	if err != nil {
 		return Reply{}, err
 	}
-	tools := map[string]streamedTool{}
 	return invoke(ctx, invocation{
-		name:   "Claude Code",
-		bin:    c.bin,
-		dir:    dir,
-		args:   claudeRequestArgs(req),
-		stdin:  req.body(),
-		parse:  parseClaude,
-		stream: func(line string) { emitClaudeStream(req, line, tools) },
-		resume: req.SessionID,
+		name:    "Claude Code",
+		bin:     c.bin,
+		dir:     dir,
+		args:    claudeRequestArgs(req),
+		stdin:   req.body(),
+		decoder: &claudeProtocol{tools: map[string]streamedTool{}},
+		emit:    req.emit,
+		resume:  req.SessionID,
 	})
 }
 
-type claudeResult struct {
-	IsError   bool   `json:"is_error"`
-	Result    string `json:"result"`
-	SessionID string `json:"session_id"`
-}
+type claudeProtocol struct{ tools map[string]streamedTool }
 
-func parseClaude(stdout string) (Reply, error) {
-	raw := jsonObject(stdout)
-	if raw == nil {
-		return Reply{}, errNoResult
-	}
-	var result claudeResult
-	if err := json.Unmarshal(raw, &result); err != nil {
-		return Reply{}, errNoResult
-	}
-	if result.IsError {
-		msg := strings.TrimSpace(result.Result)
-		if msg == "" {
-			msg = "Claude Code 沒有回答"
-		}
-		return Reply{}, outputError{msg: msg}
-	}
-	if strings.TrimSpace(result.Result) == "" {
-		return Reply{}, errNoResult
-	}
-	return Reply{SessionID: result.SessionID, Text: result.Result}, nil
-}
-
-func emitClaudeStream(req Request, line string, tools map[string]streamedTool) {
+func (p *claudeProtocol) Decode(line string) []protocolEvent {
 	var message struct {
-		Type  string `json:"type"`
-		Event struct {
+		Type      string `json:"type"`
+		IsError   bool   `json:"is_error"`
+		Result    string `json:"result"`
+		SessionID string `json:"session_id"`
+		Event     struct {
 			Type  string `json:"type"`
 			Delta struct {
 				Type string `json:"type"`
@@ -120,27 +96,41 @@ func emitClaudeStream(req Request, line string, tools map[string]streamedTool) {
 		} `json:"message"`
 	}
 	if json.Unmarshal([]byte(line), &message) != nil {
-		return
+		return nil
+	}
+	events := []protocolEvent{}
+	if message.SessionID != "" {
+		events = append(events, protocolEvent{Type: protocolSession, SessionID: message.SessionID})
+	}
+	if message.Type == "result" {
+		typeName, text := protocolCompleted, message.Result
+		if message.IsError {
+			typeName, text = protocolFailed, strings.TrimSpace(message.Result)
+			if text == "" {
+				text = "Claude Code 沒有回答"
+			}
+		}
+		return append(events, protocolEvent{Type: typeName, Text: text, SessionID: message.SessionID})
 	}
 	if message.Type == "stream_event" && message.Event.Type == "content_block_delta" && message.Event.Delta.Type == "text_delta" && message.Event.Delta.Text != "" {
-		req.emitStream(StreamEvent{Type: StreamAssistantDelta, Text: message.Event.Delta.Text})
-		return
+		return append(events, protocolEvent{Type: protocolTextDelta, Text: message.Event.Delta.Text})
 	}
 	for _, content := range message.Message.Content {
 		switch content.Type {
 		case "tool_use":
 			tool := streamedTool{Name: content.Name, Target: toolTarget(content.Input)}
 			if content.ID != "" {
-				tools[content.ID] = tool
+				p.tools[content.ID] = tool
 			}
-			req.emitStream(StreamEvent{Type: StreamToolStarted, ToolName: tool.Name, ToolTarget: tool.Target})
+			events = append(events, protocolEvent{Type: protocolToolStarted, ToolName: tool.Name, ToolTarget: tool.Target})
 		case "tool_result":
-			tool := tools[content.ToolUseID]
-			typeName := StreamToolCompleted
+			tool := p.tools[content.ToolUseID]
+			typeName := protocolToolCompleted
 			if content.IsError {
-				typeName = StreamToolFailed
+				typeName = protocolToolFailed
 			}
-			req.emitStream(StreamEvent{Type: typeName, ToolName: tool.Name, ToolTarget: tool.Target})
+			events = append(events, protocolEvent{Type: typeName, ToolName: tool.Name, ToolTarget: tool.Target})
 		}
 	}
+	return events
 }

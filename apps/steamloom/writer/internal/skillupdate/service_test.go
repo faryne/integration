@@ -93,3 +93,16 @@ func TestEnsureRejectsUnsupportedAgent(t *testing.T) {
 		t.Fatal("不支援的工具應回傳錯誤")
 	}
 }
+
+func TestSkillsDirSupportsGeminiAndAntigravity(t *testing.T) {
+	tests := map[string]string{
+		"gemini":      filepath.Join("home", ".gemini", "skills"),
+		"antigravity": filepath.Join("home", ".gemini", "antigravity-cli", "skills"),
+	}
+	for agentID, want := range tests {
+		got, err := skillsDir(agentID, "home")
+		if err != nil || got != want {
+			t.Fatalf("unexpected %s skill path: %q, %v", agentID, got, err)
+		}
+	}
+}

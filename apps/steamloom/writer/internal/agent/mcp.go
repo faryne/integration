@@ -68,6 +68,10 @@ func mcpServer(agentID, home string) (string, bool, error) {
 		return tomlMCPServer(filepath.Join(home, ".codex", "config.toml"))
 	case "grok":
 		return tomlMCPServer(filepath.Join(home, ".grok", "config.toml"))
+	case "gemini":
+		return jsonMCPServer(filepath.Join(home, ".gemini", "settings.json"))
+	case "antigravity":
+		return jsonMCPServer(filepath.Join(home, ".gemini", "config", "mcp_config.json"))
 	default:
 		return "", false, errors.New("不支援的 AI Agent")
 	}
@@ -84,6 +88,11 @@ func mcpInstallCommand(agentID string) string {
 			"codex mcp login " + steamLoomMCPName
 	case "grok":
 		return "grok mcp add --transport http --scope user " + steamLoomMCPName + " " + steamLoomMCPURL
+	case "gemini":
+		return "gemini mcp add --transport http --scope user --include-tools " + strings.Join(writerReadOnlyTools, ",") + " " + steamLoomMCPName + " " + steamLoomMCPURL
+	case "antigravity":
+		// Antigravity 目前只提供互動式 /mcp 設定入口。
+		return "agy"
 	default:
 		return ""
 	}
@@ -105,7 +114,9 @@ func sameSteamLoomMCP(raw string) bool {
 }
 
 type mcpURL struct {
-	URL string `json:"url"`
+	URL       string `json:"url"`
+	HTTPURL   string `json:"httpUrl"`
+	ServerURL string `json:"serverUrl"`
 }
 
 func claudeMCPServer(home string) (string, bool, error) {
@@ -132,7 +143,7 @@ func claudeMCPServer(home string) (string, bool, error) {
 func serverNameWithMCP(servers map[string]mcpURL) string {
 	names := make([]string, 0, len(servers))
 	for name, server := range servers {
-		if sameSteamLoomMCP(server.URL) {
+		if sameSteamLoomMCP(server.URL) || sameSteamLoomMCP(server.HTTPURL) || sameSteamLoomMCP(server.ServerURL) {
 			names = append(names, name)
 		}
 	}
@@ -141,6 +152,24 @@ func serverNameWithMCP(servers map[string]mcpURL) string {
 		return ""
 	}
 	return names[0]
+}
+
+func jsonMCPServer(path string) (string, bool, error) {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	var cfg struct {
+		McpServers map[string]mcpURL `json:"mcpServers"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return "", false, err
+	}
+	name := serverNameWithMCP(cfg.McpServers)
+	return name, name != "", nil
 }
 
 func tomlMCPServer(path string) (string, bool, error) {

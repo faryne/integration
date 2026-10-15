@@ -8,7 +8,13 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentTask, AgentThread } from "@writer/lib/backend.ts";
 
-const providerNames: Record<string, string> = { claude: "Claude Code", codex: "Codex", grok: "Grok Build" };
+const providerNames: Record<string, string> = {
+  claude: "Claude Code",
+  codex: "Codex",
+  grok: "Grok Build",
+  gemini: "Gemini CLI",
+  antigravity: "Antigravity",
+};
 
 function dateLabel(date: string, t: (key: string) => string) {
   const days = dayjs().startOf("day").diff(dayjs(date), "day");
