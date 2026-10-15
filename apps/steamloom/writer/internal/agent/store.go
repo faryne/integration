@@ -347,7 +347,7 @@ func validChatKey(agentID, projectID string) error {
 		return errors.New("缺少專案資訊，無法開啟對話")
 	}
 	switch agentID {
-	case "claude", "codex", "grok":
+	case "claude", "codex", "grok", "gemini", "antigravity":
 		return nil
 	default:
 		return errors.New("不支援的 AI Agent")

@@ -61,7 +61,9 @@ export function AssistantSetup({ agentID }: { agentID: string }) {
       )}
       {hint && !hint.installed && (
         <Box sx={{ px: 1.5, py: 1.25, border: 1, borderColor: "divider", borderRadius: 2 }}>
-          <Typography sx={{ fontSize: 13, lineHeight: 1.6 }}>{t("workspace.chat.mcpMissing")}</Typography>
+          <Typography sx={{ fontSize: 13, lineHeight: 1.6 }}>
+            {t(agentID === "antigravity" ? "workspace.chat.mcpMissingAntigravity" : "workspace.chat.mcpMissing")}
+          </Typography>
           <Box
             component="pre"
             sx={{ m: 0, mt: 1, px: 1.25, py: 1, borderRadius: 1, bgcolor: "action.hover", fontSize: 12, overflow: "auto", whiteSpace: "pre-wrap" }}

@@ -70,6 +70,6 @@ macOS 版沒有簽名／notarization，第一次開啟要在 Finder 按右鍵選
 - `internal/auth`：OAuth（PKCE＋loopback）與 token refresh
 - `internal/tokenstore`：憑證存在系統鑰匙圈
 - `internal/api`：呼叫網站的 `/storyteller` API（帶 Bearer token）
-- `internal/agent`：偵測本機的 Claude Code／Codex／Grok Build，並送出問答
-- `internal/skillupdate`：在「AI 助理」選擇工具時，替 Claude Code／Codex／Grok 安裝或更新 SteamLoom Skill（唯一入口，Writer 啟動時不處理）
+- `internal/agent`：偵測本機的 Claude Code／Codex／Grok Build／Gemini CLI／Antigravity，並透過共用事件協定送出問答
+- `internal/skillupdate`：在「AI 助理」選擇工具時，替支援的 Agent 安裝或更新 SteamLoom Skill（唯一入口，Writer 啟動時不處理）
 - `frontend/`：React 前端；主題與共用元件透過 `@steamloom-web` alias 直接 import `static_site/src`

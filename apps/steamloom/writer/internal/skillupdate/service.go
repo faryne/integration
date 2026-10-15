@@ -1,4 +1,4 @@
-// Package skillupdate 負責替本機 AI CLI（Claude Code／Codex／Grok）安裝與更新 SteamLoom Skill。
+// Package skillupdate 負責替本機 AI CLI 安裝與更新 SteamLoom Skill。
 // 只在使用者於「AI 助理」選擇工具時，由 MCP 檢查之後呼叫（app.go 的 EnsureSkill）；Writer 啟動時不會碰使用者的 skills 目錄。
 package skillupdate
 
@@ -68,7 +68,7 @@ func (s *Service) Ensure(ctx context.Context, agentID string) (Result, error) {
 	return Result{Version: latest.Original(), Updated: updated}, nil
 }
 
-// skillsDir：Claude Code 放 ~/.claude/skills，Codex 放 ~/.agents/skills，Grok 放 ~/.grok/skills。
+// skillsDir 回傳各家 CLI 官方使用者層級 Skill 目錄。
 func skillsDir(agentID, home string) (string, error) {
 	switch agentID {
 	case "claude":
@@ -77,6 +77,10 @@ func skillsDir(agentID, home string) (string, error) {
 		return filepath.Join(home, ".agents", "skills"), nil
 	case "grok":
 		return filepath.Join(home, ".grok", "skills"), nil
+	case "gemini":
+		return filepath.Join(home, ".gemini", "skills"), nil
+	case "antigravity":
+		return filepath.Join(home, ".gemini", "antigravity-cli", "skills"), nil
 	}
 	return "", errors.New("不支援的 AI Agent")
 }

@@ -145,11 +145,15 @@ func loginAction(agentID, detail string) (string, []string) {
 		strings.Contains(lower, "not logged in") || strings.Contains(lower, "login required") ||
 		strings.Contains(lower, "invalid or expired credentials") || strings.Contains(lower, "request carried no credential") ||
 		strings.Contains(lower, "authentication required") || strings.Contains(lower, "unauthorized (401)") ||
+		strings.Contains(lower, "not authenticated") || strings.Contains(lower, "auth method") || strings.Contains(lower, "credentials not found") ||
 		strings.Contains(detail, "未登入") || strings.Contains(detail, "登入已過期")
 	if !loginRequired {
 		return "", nil
 	}
-	commands := map[string]string{"claude": "claude auth login", "codex": "codex login", "grok": "grok login"}
+	commands := map[string]string{
+		"claude": "claude auth login", "codex": "codex login", "grok": "grok login",
+		"gemini": "gemini", "antigravity": "agy",
+	}
 	if command := commands[agentID]; command != "" {
 		return "agent.login", []string{command}
 	}

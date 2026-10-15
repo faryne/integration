@@ -1,4 +1,4 @@
-// Package agent 偵測本機的 AI CLI，並定義三家的問答送出介面。
+// Package agent 偵測本機的 AI CLI，並透過共用事件協定送出問答。
 // 呼叫端只組 Request、拿 Reply；每家各自把 Request 編成自己的指令。
 package agent
 
@@ -79,6 +79,8 @@ var catalog = []vendor{
 	{id: "claude", display: "Claude Code", bin: "claude", new: newClaude},
 	{id: "codex", display: "Codex", bin: "codex", new: newCodex},
 	{id: "grok", display: "Grok Build", bin: "grok", new: newGrok},
+	{id: "gemini", display: "Gemini CLI", bin: "gemini", new: newGemini},
+	{id: "antigravity", display: "Antigravity", bin: "agy", new: newAntigravity},
 }
 
 // Ask 把一輪問答交給 id 指定的那一家。

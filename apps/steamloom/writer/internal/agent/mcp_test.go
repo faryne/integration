@@ -46,6 +46,37 @@ func TestMCPServerFindsQuotedTOMLServerName(t *testing.T) {
 	}
 }
 
+func TestMCPServerFindsGeminiAndAntigravityJSONConfigs(t *testing.T) {
+	home := t.TempDir()
+	configs := []struct {
+		agent string
+		path  string
+		body  string
+	}{
+		{"gemini", filepath.Join(home, ".gemini", "settings.json"), `{"mcpServers":{"Gemini SteamLoom":{"httpUrl":"https://steamloom.works/mcp"}}}`},
+		{"antigravity", filepath.Join(home, ".gemini", "config", "mcp_config.json"), `{"mcpServers":{"Antigravity SteamLoom":{"serverUrl":"https://steamloom.works/mcp/"}}}`},
+	}
+	for _, config := range configs {
+		if err := os.MkdirAll(filepath.Dir(config.path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(config.path, []byte(config.body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		name, installed, err := mcpServer(config.agent, home)
+		if err != nil || !installed || !strings.Contains(name, "SteamLoom") {
+			t.Fatalf("unexpected %s MCP result: %q, %v, %v", config.agent, name, installed, err)
+		}
+	}
+}
+
+func TestGeminiMCPInstallCommandRestrictsTools(t *testing.T) {
+	command := mcpInstallCommand("gemini")
+	if !strings.Contains(command, "--transport http --scope user --include-tools") || !strings.Contains(command, "storyteller_get_story") || strings.Contains(command, "upsert") {
+		t.Fatalf("Gemini MCP install command must include only read tools: %s", command)
+	}
+}
+
 func TestWriterReadOnlyToolsContainNoMutation(t *testing.T) {
 	for _, name := range writerReadOnlyTools {
 		for _, mutation := range []string{"upsert", "patch", "replace", "move", "delete", "revert", "upload", "presign", "confirm"} {

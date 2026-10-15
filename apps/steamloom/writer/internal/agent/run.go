@@ -23,26 +23,31 @@ func (e outputError) Error() string { return e.msg }
 var ansi = regexp.MustCompile(`\x1b\[[0-9;]*[A-Za-z]`)
 
 type invocation struct {
-	name     string
-	bin      string
-	dir      string
-	args     []string
-	stdin    string
-	parse    func(stdout string) (Reply, error)
-	stream   func(line string)
-	complete func(line string) bool
-	resume   string
+	name    string
+	bin     string
+	dir     string
+	args    []string
+	stdin   string
+	decoder protocolDecoder
+	emit    func(StreamEvent)
+	resume  string
 }
 
 func invoke(ctx context.Context, call invocation) (Reply, error) {
-	stdout, runErr := run(ctx, call.name, call.bin, call.dir, call.args, call.stdin, call.stream, call.complete)
+	if call.decoder == nil {
+		return Reply{}, errors.New("Agent adapter 沒有設定輸出協定")
+	}
+	state := newProtocolState(call.resume, call.emit)
+	_, runErr := run(ctx, call.name, call.bin, call.dir, call.args, call.stdin, func(line string) bool {
+		return state.Consume(call.decoder.Decode(line))
+	})
 	if ctx.Err() != nil {
 		if runErr != nil {
 			return Reply{}, runErr
 		}
 		return Reply{}, ctx.Err()
 	}
-	reply, parseErr := call.parse(stdout)
+	reply, parseErr := state.Reply()
 	if parseErr == nil {
 		if reply.SessionID == "" {
 			reply.SessionID = call.resume
@@ -59,7 +64,7 @@ func invoke(ctx context.Context, call invocation) (Reply, error) {
 	return Reply{}, parseErr
 }
 
-func run(ctx context.Context, name, bin, dir string, args []string, stdin string, stream func(string), complete func(string) bool) (string, error) {
+func run(ctx context.Context, name, bin, dir string, args []string, stdin string, consume func(string) bool) (string, error) {
 	cmd := newCommand(bin, args)
 	cmd.Dir = dir
 	cmd.Env = withWorkDir(dir)
@@ -88,10 +93,7 @@ func run(ctx context.Context, name, bin, dir string, args []string, stdin string
 			line := scanner.Text()
 			output.WriteString(line)
 			output.WriteByte('\n')
-			if stream != nil {
-				stream(line)
-			}
-			if !terminal && complete != nil && complete(line) {
+			if !terminal && consume != nil && consume(line) {
 				terminal = true
 				killProcessGroup(cmd)
 			}
@@ -174,7 +176,27 @@ func commandError(name string, err error, stderr string) error {
 	if name == "Grok Build" && grokLoginRequired(detail) {
 		return errors.New(grokLoginError)
 	}
+	if (name == "Gemini CLI" || name == "Antigravity") && providerLoginRequired(detail) {
+		command := "gemini"
+		if name == "Antigravity" {
+			command = "agy"
+		}
+		return fmt.Errorf("%s 尚未登入，請先在 Terminal 執行 `%s` 完成登入後再試", name, command)
+	}
 	return fmt.Errorf("%s 執行失敗：%s", name, detail)
+}
+
+func providerLoginRequired(detail string) bool {
+	lower := strings.ToLower(detail)
+	for _, phrase := range []string{
+		"authentication required", "failed to authenticate", "not authenticated", "not logged in",
+		"login required", "please login", "please log in", "auth method", "credentials not found",
+	} {
+		if strings.Contains(lower, phrase) {
+			return true
+		}
+	}
+	return false
 }
 
 func tail(text string, n int) string {
