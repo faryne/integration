@@ -145,6 +145,18 @@ func TestGrokAuthenticationRetryFailsFast(t *testing.T) {
 	if action != "agent.login" || len(commands) != 1 || commands[0] != "grok login" {
 		t.Fatalf("Grok login action was not produced: %q, %#v", action, commands)
 	}
+	for _, detail := range []string{
+		"You are not authenticated.",
+		`Failed to fetch models error=Auth("No auth credentials for cli-chat-proxy")`,
+		"auth recovery: credential-less 401, parking on uncharged resubmit",
+	} {
+		if !grokLoginRequired(detail) {
+			t.Fatalf("Grok login output was not recognized: %s", detail)
+		}
+	}
+	if !grokAuthenticated("You are logged in with grok.com.") || grokAuthenticated("You are not authenticated.") {
+		t.Fatal("Grok auth preflight status was classified incorrectly")
+	}
 }
 
 func TestCodexStreamSeparatesProgressFromFinalMessage(t *testing.T) {

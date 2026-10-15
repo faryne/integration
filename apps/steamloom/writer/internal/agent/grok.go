@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // Grok Build 的問答送出。Grok 的 headless 不讀 stdin，題目寫進暫存檔。
@@ -21,6 +22,10 @@ import (
 // stdout 是一個 JSON：text 是回答，sessionId 用來續聊。
 // 失敗時是 {"type":"error","message":"..."}，程序也會以非 0 結束。
 type grokClient struct{ bin string }
+
+// Grok 的 OAuth refresh 會寫 ~/.grok/auth.json.lock；strict sandbox 不允許。
+// preflight 不接 prompt、沒有 Agent 工具，集中執行可避免多條 thread 同時搶 token lock。
+var grokAuthGate = make(chan struct{}, 1)
 
 func newGrok(bin string) Client { return grokClient{bin: bin} }
 
@@ -62,6 +67,9 @@ func (c grokClient) Ask(ctx context.Context, req Request) (Reply, error) {
 	if err != nil {
 		return Reply{}, err
 	}
+	if err := ensureGrokAuth(ctx, c.bin, dir); err != nil {
+		return Reply{}, err
+	}
 	file, err := os.CreateTemp(dir, "prompt-*.txt")
 	if err != nil {
 		return Reply{}, err
@@ -94,6 +102,47 @@ func (c grokClient) Ask(ctx context.Context, req Request) (Reply, error) {
 		complete: grokTerminalEvent,
 		resume:   req.SessionID,
 	})
+}
+
+const grokAuthCheckTimeout = 20 * time.Second
+
+func ensureGrokAuth(ctx context.Context, bin, dir string) error {
+	select {
+	case grokAuthGate <- struct{}{}:
+		defer func() { <-grokAuthGate }()
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	// 第一次檢查若遇到過期 token，Grok 會在程序結束前完成 refresh，但該次輸出仍可能是未登入；
+	// 因此只在未登入時再確認一次，避免把已更新好的憑證誤判為失效。
+	for attempt := 0; attempt < 2; attempt++ {
+		checkCtx, cancel := context.WithTimeout(ctx, grokAuthCheckTimeout)
+		output, err := runCombined(checkCtx, bin, dir, "--no-auto-update", "--sandbox", "off", "models")
+		cancel()
+		if grokAuthenticated(output) {
+			return nil
+		}
+		if grokLoginRequired(output) {
+			if attempt == 0 {
+				continue
+			}
+			return errors.New(grokLoginError)
+		}
+		if err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			return commandError("Grok Build", err, output)
+		}
+		// 舊版沒有固定的登入狀態文字；交回正式請求處理，避免 preflight 破壞相容性。
+		return nil
+	}
+	return errors.New(grokLoginError)
+}
+
+func grokAuthenticated(detail string) bool {
+	lower := strings.ToLower(detail)
+	return strings.Contains(lower, "you are logged in") || strings.Contains(lower, "authenticated with grok.com")
 }
 
 type grokResult struct {
@@ -161,7 +210,10 @@ const grokLoginError = "Grok Build 登入已過期，請先在 Terminal 執行 `
 func grokLoginRequired(detail string) bool {
 	lower := strings.ToLower(detail)
 	return strings.Contains(lower, "re-authenticating after 401") || strings.Contains(lower, "invalid or expired credentials") ||
-		strings.Contains(lower, "request carried no credential") || strings.Contains(lower, "unauthorized (401)")
+		strings.Contains(lower, "request carried no credential") || strings.Contains(lower, "unauthorized (401)") ||
+		strings.Contains(lower, "you are not authenticated") || strings.Contains(lower, "no auth credentials") ||
+		strings.Contains(lower, "credential-less 401") || strings.Contains(lower, "authentication required") ||
+		strings.Contains(lower, "not logged in") || strings.Contains(lower, "login required")
 }
 
 type grokStreamResult struct {

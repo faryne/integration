@@ -121,6 +121,29 @@ func run(ctx context.Context, name, bin, dir string, args []string, stdin string
 	}
 }
 
+// runCombined 執行不含對話內容的短命令，保留 stdout／stderr 供呼叫端判斷 CLI 狀態。
+func runCombined(ctx context.Context, bin, dir string, args ...string) (string, error) {
+	cmd := newCommand(bin, args)
+	cmd.Dir = dir
+	cmd.Env = withWorkDir(dir)
+	setProcessGroup(cmd)
+	var output bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &output, &output
+	if err := cmd.Start(); err != nil {
+		return "", err
+	}
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	select {
+	case err := <-done:
+		return output.String(), err
+	case <-ctx.Done():
+		killProcessGroup(cmd)
+		<-done
+		return output.String(), ctx.Err()
+	}
+}
+
 // 繼承登入用的環境變數，但把 PWD 改到問答目錄，避免 CLI 沿用 Writer 啟動時的專案路徑。
 func withWorkDir(dir string) []string {
 	env := os.Environ()
