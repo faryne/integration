@@ -87,6 +87,7 @@
       }
     },
     "activity": {
+      "progressTitle": "Progress",
       "runningTitle": "Agent activity",
       "completedTitle": "Agent completed",
       "failedTitle": "Agent failed",

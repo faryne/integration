@@ -87,6 +87,7 @@
       }
     },
     "activity": {
+      "progressTitle": "実行状況",
       "runningTitle": "Agent の実行記録",
       "completedTitle": "Agent が完了しました",
       "failedTitle": "Agent の実行に失敗しました",

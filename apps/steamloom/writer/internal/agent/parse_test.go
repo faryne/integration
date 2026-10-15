@@ -53,9 +53,9 @@ func TestProviderStreamsDoNotCountFailedToolsAsCompleted(t *testing.T) {
 			emitClaudeStream(req, `{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool-1","is_error":true}]}}`, tools)
 		}},
 		{"codex", func(req Request) {
-			tools := map[string]streamedTool{}
-			emitCodexStream(req, `{"type":"item.started","item":{"id":"tool-1","type":"mcp_tool_call","server":"SteamLoom","tool":"storyteller_upsert_lore"}}`, tools)
-			emitCodexStream(req, `{"type":"item.completed","item":{"id":"tool-1","type":"mcp_tool_call","status":"failed"}}`, tools)
+			stream := &codexStreamState{tools: map[string]streamedTool{}}
+			emitCodexStream(req, `{"type":"item.started","item":{"id":"tool-1","type":"mcp_tool_call","server":"SteamLoom","tool":"storyteller_upsert_lore"}}`, stream)
+			emitCodexStream(req, `{"type":"item.completed","item":{"id":"tool-1","type":"mcp_tool_call","status":"failed"}}`, stream)
 		}},
 		{"grok", func(req Request) {
 			tools := map[string]streamedTool{}
@@ -126,14 +126,44 @@ func TestParseGrokCurrentStreamingJSON(t *testing.T) {
 	}
 }
 
-func TestCodexStreamEmitsFinalMessageAndToolLifecycle(t *testing.T) {
+func TestGrokAuthenticationRetryFailsFast(t *testing.T) {
+	line := `{"type":"retry_state","attempt":1,"maxRetries":50,"reason":"Re-authenticating after 401 (request carried no credential); retrying request"}`
+	if !grokTerminalEvent(line) {
+		t.Fatal("Grok authentication retry must stop immediately")
+	}
+	if _, err := parseGrok(line); err == nil || err.Error() != grokLoginError {
+		t.Fatalf("unexpected Grok authentication error: %v", err)
+	}
+	legacy := `{"update":{"sessionUpdate":"retry_state","reason":"Re-authenticating after 401 (request carried no credential); retrying request"}}`
+	if !grokTerminalEvent(legacy) {
+		t.Fatal("legacy Grok authentication retry must stop immediately")
+	}
+	if err := commandError("Grok Build", errors.New("exit status 1"), "Unauthorized (401): Invalid or expired credentials"); err.Error() != grokLoginError {
+		t.Fatalf("unexpected Grok stderr authentication error: %v", err)
+	}
+	action, commands := loginAction("grok", grokLoginError)
+	if action != "agent.login" || len(commands) != 1 || commands[0] != "grok login" {
+		t.Fatalf("Grok login action was not produced: %q, %#v", action, commands)
+	}
+}
+
+func TestCodexStreamSeparatesProgressFromFinalMessage(t *testing.T) {
 	var events []StreamEvent
 	req := Request{emit: func(event StreamEvent) { events = append(events, event) }}
-	tools := map[string]streamedTool{}
-	emitCodexStream(req, `{"type":"item.started","item":{"id":"tool-1","type":"mcp_tool_call","server":"SteamLoom","tool":"storyteller_get_story","arguments":{"story_public_id":"story-id"}}}`, tools)
-	emitCodexStream(req, `{"type":"item.completed","item":{"id":"tool-1","type":"mcp_tool_call"}}`, tools)
-	emitCodexStream(req, `{"type":"item.completed","item":{"type":"agent_message","text":"完成"}}`, tools)
-	if len(events) != 3 || events[0].ToolName != "SteamLoom.storyteller_get_story" || events[0].ToolTarget != "story-id" || events[1].ToolName != events[0].ToolName || events[1].ToolTarget != "story-id" || events[2].Text != "完成" {
+	stream := &codexStreamState{tools: map[string]streamedTool{}}
+	emitCodexStream(req, `{"type":"item.started","item":{"id":"tool-1","type":"mcp_tool_call","server":"SteamLoom","tool":"storyteller_get_story","arguments":{"story_public_id":"story-id"}}}`, stream)
+	emitCodexStream(req, `{"type":"item.completed","item":{"id":"tool-1","type":"mcp_tool_call"}}`, stream)
+	emitCodexStream(req, `{"type":"item.completed","item":{"type":"agent_message","text":"先讀取設定"}}`, stream)
+	emitCodexStream(req, `{"type":"item.completed","item":{"type":"agent_message","text":"正式回答"}}`, stream)
+	emitCodexStream(req, `{"type":"turn.completed"}`, stream)
+	if len(events) != 6 || events[0].ToolName != "SteamLoom.storyteller_get_story" || events[0].ToolTarget != "story-id" || events[1].ToolName != events[0].ToolName || events[1].ToolTarget != "story-id" ||
+		events[2].Type != StreamAgentPreview || events[2].Text != "先讀取設定" || events[3].Type != StreamAgentProgress || events[3].Text != "先讀取設定" ||
+		events[4].Type != StreamAgentPreview || events[4].Text != "正式回答" || events[5].Type != StreamAgentPreview || events[5].Text != "" {
 		t.Fatalf("unexpected Codex stream events: %#v", events)
+	}
+	for _, event := range events {
+		if event.Type == StreamAssistantDelta {
+			t.Fatalf("Codex agent_message leaked into the formal answer stream: %#v", events)
+		}
 	}
 }

@@ -87,6 +87,7 @@
       }
     },
     "activity": {
+      "progressTitle": "진행 상황",
       "runningTitle": "Agent 실행 기록",
       "completedTitle": "Agent 완료",
       "failedTitle": "Agent 실행 실패",

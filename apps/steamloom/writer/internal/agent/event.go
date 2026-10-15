@@ -7,6 +7,7 @@ const (
 	EventSystem           = "system"
 	EventTaskQueued       = "task.queued"
 	EventTaskStarted      = "task.started"
+	EventTaskProgress     = "task.progress"
 	EventTaskToolStarted  = "task.tool.started"
 	EventTaskToolFinished = "task.tool.completed"
 	EventTaskToolFailed   = "task.tool.failed"

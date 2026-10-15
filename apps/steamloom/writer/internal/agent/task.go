@@ -38,6 +38,7 @@ type Task struct {
 	StartedAt      string `json:"started_at,omitempty"`
 	FinishedAt     string `json:"finished_at,omitempty"`
 	Partial        string `json:"partial,omitempty"`
+	Progress       string `json:"progress,omitempty"`
 	Activity       string `json:"activity,omitempty"`
 	ActivityTarget string `json:"activity_target,omitempty"`
 }
@@ -349,6 +350,7 @@ func (m *TaskManager) runApply(ctx context.Context, managed *managedTask) {
 func (m *TaskManager) finish(managed *managedTask, runErr, contextErr error) {
 	m.mu.Lock()
 	managed.cancel = nil
+	managed.task.Progress = ""
 	managed.task.FinishedAt = now()
 	if contextErr != nil {
 		managed.task.State = TaskCanceled
@@ -388,6 +390,11 @@ func (m *TaskManager) stream(managed *managedTask, stream StreamEvent) {
 			return
 		}
 		managed.task.Partial += stream.Text
+	case StreamAgentPreview:
+		managed.task.Progress = stream.Text
+	case StreamAgentProgress:
+		managed.task.Progress = ""
+		activityType = EventTaskProgress
 	case StreamToolStarted:
 		managed.task.Activity = stream.ToolName
 		managed.task.ActivityTarget = stream.ToolTarget
@@ -406,7 +413,11 @@ func (m *TaskManager) stream(managed *managedTask, stream StreamEvent) {
 	task := managed.task
 	m.mu.Unlock()
 	if activityType != "" {
-		_ = recordTaskActivity(task.AgentID, task.ProjectID, task.ThreadID, task.ID, activityType, stream.ToolName, stream.ToolTarget)
+		if activityType == EventTaskProgress {
+			_ = recordTaskProgress(task.AgentID, task.ProjectID, task.ThreadID, task.ID, stream.Text)
+		} else {
+			_ = recordTaskActivity(task.AgentID, task.ProjectID, task.ThreadID, task.ID, activityType, stream.ToolName, stream.ToolTarget)
+		}
 	}
 	m.emit(TaskEvent{Type: stream.Type, Task: task, Stream: &stream})
 }

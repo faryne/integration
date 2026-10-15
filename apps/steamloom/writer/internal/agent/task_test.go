@@ -42,6 +42,48 @@ func TestTaskManagerPersistsToolActivity(t *testing.T) {
 	}
 }
 
+func TestTaskManagerPersistsAgentProgressWithoutDuplicatingFinalAnswer(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("codex", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := make(chan TaskEvent, 20)
+	manager := NewTaskManager(context.Background(), func(_ context.Context, _ string, req Request) (Reply, error) {
+		req.emitStream(StreamEvent{Type: StreamAgentPreview, Text: "先讀取設定"})
+		req.emitStream(StreamEvent{Type: StreamAgentProgress, Text: "先讀取設定"})
+		req.emitStream(StreamEvent{Type: StreamAgentPreview, Text: "正式回答"})
+		req.emitStream(StreamEvent{Type: StreamAgentPreview})
+		return Reply{Text: "正式回答"}, nil
+	}, func(event TaskEvent) { events <- event })
+	defer manager.Close()
+
+	task, err := manager.Start("codex", Request{ThreadID: page.CurrentID, ProjectID: "project", Prompt: "read"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	completed := waitTaskEvent(t, events, task.ID, EventTaskCompleted)
+	if completed.Task.Progress != "" || completed.Task.Partial != "" {
+		t.Fatalf("completed task kept transient Codex text: %#v", completed.Task)
+	}
+	chat, err := OpenChat("codex", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	progress, answers := 0, 0
+	for _, line := range chat.Messages {
+		if line.Type == EventTaskProgress && line.Text == "先讀取設定" {
+			progress++
+		}
+		if line.Type == EventMessageAssistant && line.Text == "正式回答" {
+			answers++
+		}
+	}
+	if progress != 1 || answers != 1 {
+		t.Fatalf("unexpected progress/final persistence: %#v", chat.Messages)
+	}
+}
+
 func TestTaskManagerPersistsLoginCommand(t *testing.T) {
 	withTempConfig(t)
 	page, err := NewChat("claude", "project")
