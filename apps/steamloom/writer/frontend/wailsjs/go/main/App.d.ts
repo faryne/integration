@@ -40,6 +40,8 @@ export function ChatThreads(arg1:string):Promise<Array<agent.ProjectThread>>;
 
 export function CheckForUpdate():Promise<updater.Info>;
 
+export function ConfirmProposalApplied(arg1:string,arg2:string,arg3:string,arg4:string):Promise<agent.Proposal>;
+
 export function Create(arg1:string,arg2:api.CreateRequest):Promise<api.Created>;
 
 export function DecideProposal(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:Array<string>):Promise<agent.Proposal>;

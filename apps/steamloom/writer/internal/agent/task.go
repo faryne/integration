@@ -53,6 +53,7 @@ type TaskEvent struct {
 type TaskRunner func(context.Context, string, Request) (Reply, error)
 type TaskEmitter func(TaskEvent)
 type ProposalApplyRunner func(context.Context, Proposal) (string, error)
+type ProposalPrepareRunner func(context.Context, string, []ProposalItem) ([]ProposalItem, error)
 
 var ErrApplyConflict = errors.New("proposal apply conflict")
 
@@ -71,11 +72,12 @@ type taskQueue struct {
 }
 
 type TaskManager struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	run    TaskRunner
-	apply  ProposalApplyRunner
-	emit   TaskEmitter
+	ctx     context.Context
+	cancel  context.CancelFunc
+	run     TaskRunner
+	apply   ProposalApplyRunner
+	prepare ProposalPrepareRunner
+	emit    TaskEmitter
 
 	mu     sync.Mutex
 	tasks  map[string]*managedTask
@@ -84,6 +86,9 @@ type TaskManager struct {
 
 // SetProposalApplyRunner 注入 Writer 的 REST API 寫入器；Agent package 只負責佇列與對話生命週期。
 func (m *TaskManager) SetProposalApplyRunner(apply ProposalApplyRunner) { m.apply = apply }
+
+// SetProposalPrepareRunner 讓 Writer 在 proposal 落盤前，用 REST API 補齊可信任的版本基準。
+func (m *TaskManager) SetProposalPrepareRunner(prepare ProposalPrepareRunner) { m.prepare = prepare }
 
 func NewTaskManager(parent context.Context, run TaskRunner, emit TaskEmitter) *TaskManager {
 	ctx, cancel := context.WithCancel(parent)
@@ -261,6 +266,9 @@ func (m *TaskManager) runQueue(key string) {
 				m.flushProposalStream(managed)
 				if ctx.Err() != nil {
 					err = ctx.Err()
+				}
+				if err == nil && len(reply.proposals) > 0 && m.prepare != nil {
+					reply.proposals, err = m.prepare(ctx, task.ProjectID, reply.proposals)
 				}
 				if err == nil && len(reply.proposals) > 0 {
 					assetRoot := ""

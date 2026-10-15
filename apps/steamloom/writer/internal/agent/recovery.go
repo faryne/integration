@@ -8,7 +8,7 @@ import (
 
 // RecoverInterruptedApplies 把只有 apply.started、沒有終局事件的工作標成需要確認。
 // 重啟後絕不自動重送 mutation；append-only event 先落盤，snapshot 只是衍生快取。
-func RecoverInterruptedApplies(projectID string) error {
+func RecoverInterruptedApplies(projectID string, activeTaskIDs map[string]bool) error {
 	chatMu.Lock()
 	defer chatMu.Unlock()
 	if err := validChatKey("claude", projectID); err != nil {
@@ -41,6 +41,10 @@ func RecoverInterruptedApplies(projectID string) error {
 				}
 				lifecycle, exists := proposalApplyLifecycle(logPath, proposal.ID)
 				if !exists || lifecycle.status != ProposalApplying {
+					continue
+				}
+				// 同一個 Writer process 仍在等待 REST API 時不是中斷；只能復原前一個 process 留下的工作。
+				if activeTaskIDs[lifecycle.taskID] {
 					continue
 				}
 				// REST request 可能已抵達伺服器；Writer 重啟後不猜測結果也不自動重送。

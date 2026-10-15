@@ -88,6 +88,8 @@ func threadTaskState(path string, thread Thread) (string, string, error) {
 			states[event.TaskID], lastState, lastID = TaskConflict, TaskConflict, event.TaskID
 		case EventApplyInterrupted:
 			states[event.TaskID], lastState, lastID = TaskVerificationRequired, TaskVerificationRequired, event.TaskID
+		case EventApplyVerified:
+			states[event.TaskID], lastState, lastID = TaskApplied, TaskApplied, event.TaskID
 		}
 	}
 	for _, id := range order {

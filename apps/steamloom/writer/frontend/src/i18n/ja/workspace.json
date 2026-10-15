@@ -149,6 +149,10 @@
       },
       "review": "成果を確認",
       "view": "内容を表示",
+      "confirmApplied": "適用済みを確認",
+      "confirmAppliedTitle": "書き込み結果を確認",
+      "confirmAppliedDescription": "SteamLoom に正しい内容があることを先に確認してください。この操作は Writer のローカル記録だけを更新し、書き込みリクエストを再送しません。",
+      "cancel": "キャンセル",
       "selectAll": "すべて選択",
       "selectItem": "{{title}} を選択",
       "kinds": {

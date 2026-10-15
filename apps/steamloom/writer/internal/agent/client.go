@@ -194,7 +194,7 @@ func (r Request) quotedContext() string {
 
 func (r Request) proposalRules() string {
 	return `
-成果規則：只有作者明確要求建立、修改或上傳 SteamLoom 內容時，才在一般回覆摘要之後附上一個 Writer proposal；討論、分析、腦力激盪或文筆示範不要附。proposal 只是本機待確認資料，不得呼叫任何寫入工具。格式必須以獨立行 <<<STEAMLOOM_WRITER_PROPOSAL_V1>>> 開始、<<<END_STEAMLOOM_WRITER_PROPOSAL_V1>>> 結束，中間是單一 JSON object：{"items":[...]}。每個 item 只用 kind（story／lore／asset）、operations（陣列，每項有 tool 與 arguments）、target_id、base_version_id、title、summary、content_type、content、base、local_path、file_name、mime_type、alt_text、collection_id。更新既有 story／lore 時必須附 target_id、讀取時取得的 base_version_id，以及包含 title／summary／content_type／content 的 base snapshot；新增時省略。story／lore 的 review 欄位 title、summary、content_type、content 是作者實際確認的唯一完整版本，搜尋取代或段落／章節修改也必須回傳修改後全文。Writer 只把 operations 保存為意圖紀錄，不會執行其中的 tool 或 arguments；使用者核准後由 Writer 自己呼叫 REST API 套用 review 欄位。asset 的 local_path 必須是目前工作目錄內的絕對路徑。結束標記後不要再輸出任何內容。`
+成果規則：只有作者明確要求建立、修改或上傳 SteamLoom 內容時，才在一般回覆摘要之後附上一個 Writer proposal；討論、分析、腦力激盪或文筆示範不要附。proposal 只是本機待確認資料，不得呼叫任何寫入工具。格式必須以獨立行 <<<STEAMLOOM_WRITER_PROPOSAL_V1>>> 開始、<<<END_STEAMLOOM_WRITER_PROPOSAL_V1>>> 結束，中間是單一 JSON object：{"items":[...]}。每個 item 只用 kind（story／lore／asset）、operations（陣列，每項有 tool 與 arguments）、target_id、base_version_id、title、summary、content_type、content、local_path、file_name、mime_type、alt_text、collection_id。更新既有 story／lore 時必須附 target_id；base_version_id 若能從讀取結果確定就附上，Writer 會透過 REST API 保存可信任的版本與 base snapshot，Agent 不要自行輸出 base。新增時省略 target_id 與 base_version_id。story／lore 的 review 欄位 title、summary、content_type、content 是作者實際確認的唯一完整版本，搜尋取代或段落／章節修改也必須回傳修改後全文。Writer 只把 operations 保存為意圖紀錄，不會執行其中的 tool 或 arguments；使用者核准後由 Writer 自己呼叫 REST API 套用 review 欄位。asset 的 local_path 必須是目前工作目錄內的絕對路徑。結束標記後不要再輸出任何內容。`
 }
 
 // Writer 只傳遞原始指示詞，不展開內容；名稱解析與讀取都由 Agent 的 MCP 工具完成。

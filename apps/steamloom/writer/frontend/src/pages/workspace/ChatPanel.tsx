@@ -43,6 +43,7 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
   const [deleting, setDeleting] = useState(false);
   const [proposals, setProposals] = useState<AgentProposal[] | null>(null);
   const [proposalRevision, setProposalRevision] = useState(0);
+  const [confirmingProposalID, setConfirmingProposalID] = useState("");
   const [review, setReview] = useState<{ proposal: AgentProposal; item: AgentProposalItem; selectedItemIDs: string[] } | null>(null);
   const [deciding, setDeciding] = useState(false);
   const [viewMode, setViewMode] = useState<"empty" | "new" | "thread">("empty");
@@ -260,6 +261,21 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
     }
   };
 
+  const confirmProposalApplied = async (proposal: AgentProposal) => {
+    if (!selected || !currentThreadID || confirmingProposalID) return;
+    const threadID = currentThreadID;
+    setConfirmingProposalID(proposal.id);
+    try {
+      await backend.ConfirmProposalApplied(selected, projectID, threadID, proposal.id);
+      setProposalRevision((value) => value + 1);
+      await Promise.all([chat.refreshVisibleThread(threadID), loadThreads()]);
+    } catch (err) {
+      showError(errorMessage(err));
+    } finally {
+      setConfirmingProposalID("");
+    }
+  };
+
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: "flex" }}>
       <TaskRail
@@ -299,6 +315,8 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
               start={chat.page.start}
               proposals={proposals}
               workspace={workspace}
+              confirmingProposalID={confirmingProposalID}
+              onConfirmApplied={(proposal) => void confirmProposalApplied(proposal)}
               onReview={(proposal, item, selectedItemIDs) => setReview({ proposal, item, selectedItemIDs })}
               onQuote={quoteMessage}
             />

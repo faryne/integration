@@ -149,6 +149,10 @@
       },
       "review": "查看成果",
       "view": "查看内容",
+      "confirmApplied": "确认已套用",
+      "confirmAppliedTitle": "确认写入结果",
+      "confirmAppliedDescription": "请先确认 SteamLoom 已经出现正确内容。这个操作只会更新 Writer 的本机记录，不会再次发送写入请求。",
+      "cancel": "取消",
       "selectAll": "全部选择",
       "selectItem": "选择 {{title}}",
       "kinds": {

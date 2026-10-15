@@ -14,7 +14,7 @@ import type { ChatLine } from "@writer/pages/workspace/useChatLog.ts";
 
 const failedTypes = new Set(["task.failed", "task.tool.failed", "apply.failed"]);
 const attentionTypes = new Set(["apply.conflict", "apply.interrupted"]);
-const completedTypes = new Set(["task.completed", "apply.completed"]);
+const completedTypes = new Set(["task.completed", "apply.completed", "apply.verified"]);
 
 function fallbackLoginCommands(agentID: string, events: ChatLine[]) {
   const failure = [...events].reverse().find((event) => event.type === "task.failed");
@@ -34,7 +34,7 @@ function eventLabel(event: ChatLine, workspace: Workspace, t: (key: string, valu
   if (event.type === "task.tool.started") return t("workspace.chat.activity.toolStarted", { tool });
   if (event.type === "task.tool.completed") return t("workspace.chat.activity.toolCompleted", { tool });
   if (event.type === "task.tool.failed") return t("workspace.chat.activity.toolFailed", { tool });
-  if (event.type === "apply.completed" && event.text) return event.text;
+  if ((event.type === "apply.completed" || event.type === "apply.verified") && event.text) return event.text;
   const key = {
     "task.queued": "queued",
     "task.started": "started",
@@ -73,9 +73,10 @@ export function TaskActivityCard({ agentID, events, workspace }: { agentID: stri
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(true);
   const last = events[events.length - 1];
-  const failed = events.some((event) => failedTypes.has(event.type ?? ""));
-  const attention = events.some((event) => attentionTypes.has(event.type ?? ""));
-  const completed = events.some((event) => completedTypes.has(event.type ?? ""));
+  // 終局事件決定卡片狀態；例如作者確認已套用後，不應再被前面的 interrupted 維持成警告。
+  const failed = failedTypes.has(last?.type ?? "");
+  const attention = attentionTypes.has(last?.type ?? "");
+  const completed = completedTypes.has(last?.type ?? "");
   const writerApply = events.some((event) => event.type?.startsWith("apply."));
   const canceled = last?.type === "task.canceled";
   const commands = [...events].reverse().find((event) => event.action === "agent.login" && event.commands?.length)?.commands ?? fallbackLoginCommands(agentID, events);

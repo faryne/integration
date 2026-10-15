@@ -149,6 +149,10 @@
       },
       "review": "결과 검토",
       "view": "내용 보기",
+      "confirmApplied": "적용 완료 확인",
+      "confirmAppliedTitle": "기록 결과 확인",
+      "confirmAppliedDescription": "먼저 SteamLoom에 올바른 내용이 있는지 확인하세요. 이 작업은 Writer의 로컬 기록만 갱신하며 쓰기 요청을 다시 보내지 않습니다.",
+      "cancel": "취소",
       "selectAll": "전체 선택",
       "selectItem": "{{title}} 선택",
       "kinds": {

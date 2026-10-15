@@ -1,12 +1,13 @@
 import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
-import { Box, Button, Checkbox, Chip, FormControlLabel, Paper, Stack, Typography } from "@mui/material";
+import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, Paper, Stack, Typography } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentProposal, AgentProposalItem } from "@writer/lib/backend.ts";
 
-export function ProposalCard({ proposal, onReview }: { proposal: AgentProposal; onReview: (item: AgentProposalItem, selectedItemIDs: string[]) => void }) {
+export function ProposalCard({ proposal, confirming, onConfirmApplied, onReview }: { proposal: AgentProposal; confirming: boolean; onConfirmApplied: () => void; onReview: (item: AgentProposalItem, selectedItemIDs: string[]) => void }) {
   const { t } = useTranslation();
   const pending = proposal.status === "awaiting_confirmation";
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [selected, setSelected] = useState(() => new Set(proposal.selected_item_ids?.length ? proposal.selected_item_ids : proposal.items.map((item) => item.id)));
   const selectedIDs = proposal.items.filter((item) => selected.has(item.id)).map((item) => item.id);
   const toggle = (id: string) => setSelected((current) => {
@@ -15,7 +16,7 @@ export function ProposalCard({ proposal, onReview }: { proposal: AgentProposal; 
     return next;
   });
   const color = pending || proposal.status === "conflict" || proposal.status === "verification_required" ? "warning" : proposal.status === "applied" ? "success" : proposal.status === "apply_failed" || proposal.status === "rejected" ? "error" : "info";
-  return (
+  return <>
     <Paper variant="outlined" sx={{ width: "100%", p: 1.5, borderColor: pending ? "warning.main" : "divider", bgcolor: pending ? "warning.light" : "action.hover" }}>
       <Stack direction="row" alignItems="center" spacing={1}>
         <RateReviewOutlinedIcon color={pending ? "warning" : "disabled"} fontSize="small" />
@@ -29,6 +30,7 @@ export function ProposalCard({ proposal, onReview }: { proposal: AgentProposal; 
           />
         )}
         <Chip size="small" color={color} label={t(`workspace.chat.states.${proposal.status}`)} />
+        {proposal.status === "verification_required" && <Button size="small" variant="outlined" color="warning" disabled={confirming} onClick={() => setConfirmOpen(true)}>{t("workspace.chat.proposal.confirmApplied")}</Button>}
       </Stack>
       <Stack spacing={0.75} sx={{ mt: 1.25 }}>
         {proposal.items.map((item) => (
@@ -41,5 +43,13 @@ export function ProposalCard({ proposal, onReview }: { proposal: AgentProposal; 
         ))}
       </Stack>
     </Paper>
-  );
+    <Dialog open={confirmOpen} onClose={() => !confirming && setConfirmOpen(false)} maxWidth="xs" fullWidth>
+      <DialogTitle>{t("workspace.chat.proposal.confirmAppliedTitle")}</DialogTitle>
+      <DialogContent><DialogContentText>{t("workspace.chat.proposal.confirmAppliedDescription")}</DialogContentText></DialogContent>
+      <DialogActions>
+        <Button disabled={confirming} onClick={() => setConfirmOpen(false)}>{t("workspace.chat.proposal.cancel")}</Button>
+        <Button variant="contained" color="warning" disabled={confirming} onClick={() => { onConfirmApplied(); setConfirmOpen(false); }}>{t("workspace.chat.proposal.confirmApplied")}</Button>
+      </DialogActions>
+    </Dialog>
+  </>;
 }
