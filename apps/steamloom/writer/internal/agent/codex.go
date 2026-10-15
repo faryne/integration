@@ -91,14 +91,15 @@ func (c codexClient) Ask(ctx context.Context, req Request) (Reply, error) {
 	}
 	stream := &codexStreamState{tools: map[string]streamedTool{}}
 	return invoke(ctx, invocation{
-		name:   "Codex",
-		bin:    c.bin,
-		dir:    dir,
-		args:   args,
-		stdin:  req.body(),
-		parse:  parseCodex,
-		stream: func(line string) { emitCodexStream(req, line, stream) },
-		resume: req.SessionID,
+		name:     "Codex",
+		bin:      c.bin,
+		dir:      dir,
+		args:     args,
+		stdin:    req.body(),
+		parse:    parseCodex,
+		stream:   func(line string) { emitCodexStream(req, line, stream) },
+		complete: codexTerminalEvent,
+		resume:   req.SessionID,
 	})
 }
 
@@ -236,4 +237,15 @@ func emitCodexStream(req Request, line string, state *codexStreamState) {
 		}
 		req.emitStream(StreamEvent{Type: typeName, ToolName: name, ToolTarget: tool.Target})
 	}
+}
+
+// turn.completed／turn.failed 是 Codex JSONL 的終局事件；error 也不會再產生可用回答。
+func codexTerminalEvent(line string) bool {
+	var event struct {
+		Type string `json:"type"`
+	}
+	if json.Unmarshal([]byte(line), &event) != nil {
+		return false
+	}
+	return event.Type == "turn.completed" || event.Type == "turn.failed" || event.Type == "error"
 }

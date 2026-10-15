@@ -179,3 +179,45 @@ func TestCodexStreamSeparatesProgressFromFinalMessage(t *testing.T) {
 		}
 	}
 }
+
+func TestAgentTerminalEvents(t *testing.T) {
+	tests := []struct {
+		name     string
+		terminal func(string) bool
+		done     []string
+		pending  []string
+	}{
+		{
+			name:     "Claude Code",
+			terminal: claudeTerminalEvent,
+			done:     []string{`{"type":"result","is_error":false,"result":"完成"}`, `{"type":"result","is_error":true,"result":"失敗"}`},
+			pending:  []string{`{"type":"assistant"}`, `{"type":"stream_event"}`},
+		},
+		{
+			name:     "Codex",
+			terminal: codexTerminalEvent,
+			done:     []string{`{"type":"turn.completed"}`, `{"type":"turn.failed"}`, `{"type":"error","message":"失敗"}`},
+			pending:  []string{`{"type":"thread.started"}`, `{"type":"item.completed","item":{"type":"agent_message"}}`},
+		},
+		{
+			name:     "Grok Build",
+			terminal: grokTerminalEvent,
+			done:     []string{`{"type":"end"}`, `{"type":"error","message":"失敗"}`},
+			pending:  []string{`{"type":"text","data":"回答"}`, `{"update":{"sessionUpdate":"agent_message_chunk"}}`},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			for _, line := range test.done {
+				if !test.terminal(line) {
+					t.Fatalf("terminal event was not recognized: %s", line)
+				}
+			}
+			for _, line := range test.pending {
+				if test.terminal(line) {
+					t.Fatalf("non-terminal event was treated as terminal: %s", line)
+				}
+			}
+		})
+	}
+}

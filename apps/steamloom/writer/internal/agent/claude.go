@@ -59,14 +59,15 @@ func (c claudeClient) Ask(ctx context.Context, req Request) (Reply, error) {
 	}
 	tools := map[string]streamedTool{}
 	return invoke(ctx, invocation{
-		name:   "Claude Code",
-		bin:    c.bin,
-		dir:    dir,
-		args:   claudeRequestArgs(req),
-		stdin:  req.body(),
-		parse:  parseClaude,
-		stream: func(line string) { emitClaudeStream(req, line, tools) },
-		resume: req.SessionID,
+		name:     "Claude Code",
+		bin:      c.bin,
+		dir:      dir,
+		args:     claudeRequestArgs(req),
+		stdin:    req.body(),
+		parse:    parseClaude,
+		stream:   func(line string) { emitClaudeStream(req, line, tools) },
+		complete: claudeTerminalEvent,
+		resume:   req.SessionID,
 	})
 }
 
@@ -143,4 +144,12 @@ func emitClaudeStream(req Request, line string, tools map[string]streamedTool) {
 			req.emitStream(StreamEvent{Type: typeName, ToolName: tool.Name, ToolTarget: tool.Target})
 		}
 	}
+}
+
+// result 是 Claude Code stream-json 的正式終局事件；收到後不再等待 CLI 程序自行退出。
+func claudeTerminalEvent(line string) bool {
+	var event struct {
+		Type string `json:"type"`
+	}
+	return json.Unmarshal([]byte(line), &event) == nil && event.Type == "result"
 }
