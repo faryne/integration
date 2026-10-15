@@ -22,6 +22,7 @@ export function useWriterDocumentLabels(kind: DocumentKind, variant: Variant = k
   return useMemo(
     () => ({
       tabs: { editor: t("workspace.tabs.editor"), history: t("workspace.tabs.history") },
+      scope: { label: t("workspace.editor.scope.label"), full: t("workspace.editor.scope.full") },
       titlePlaceholder: t(`workspace.editor.titlePlaceholder.${variant}`),
       summaryPlaceholder: t(`workspace.editor.summaryPlaceholder.${variant}`),
       status: t("workspace.editor.status"),

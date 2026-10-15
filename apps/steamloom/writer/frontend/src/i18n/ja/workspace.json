@@ -262,7 +262,11 @@
     },
     "reverted": "このバージョンに戻しました。",
     "revertFailed": "バージョンを戻せませんでした。もう一度お試しください：",
-    "agentApplied": "AI の提案を適用して保存しました。"
+    "agentApplied": "AI の提案を適用して保存しました。",
+    "scope": {
+      "label": "編集範囲",
+      "full": "全文"
+    }
   },
   "assets": {
     "search": "アセットを検索",
