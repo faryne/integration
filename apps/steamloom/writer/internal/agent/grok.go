@@ -99,6 +99,7 @@ func (c grokClient) Ask(ctx context.Context, req Request) (Reply, error) {
 type grokResult struct {
 	Type      string          `json:"type"`
 	Message   string          `json:"message"`
+	Reason    string          `json:"reason"`
 	Text      string          `json:"text"`
 	Data      json.RawMessage `json:"data"`
 	SessionID string          `json:"sessionId"`
@@ -119,6 +120,9 @@ func parseGrok(stdout string) (Reply, error) {
 			if failed == "" {
 				failed = grokDataText(result.Data)
 			}
+		}
+		if result.loginRetry() {
+			failed = grokLoginError
 		}
 		// Grok Build 1.0.50 的 streaming-json 改成 {"type":"text","data":"..."}；
 		// 舊版 ACP 的 agent_message_chunk 仍保留相容，避免使用者尚未更新時中斷。
@@ -152,6 +156,14 @@ func grokDataText(raw json.RawMessage) string {
 	return text
 }
 
+const grokLoginError = "Grok Build 登入已過期，請先在 Terminal 執行 `grok login` 後再試"
+
+func grokLoginRequired(detail string) bool {
+	lower := strings.ToLower(detail)
+	return strings.Contains(lower, "re-authenticating after 401") || strings.Contains(lower, "invalid or expired credentials") ||
+		strings.Contains(lower, "request carried no credential") || strings.Contains(lower, "unauthorized (401)")
+}
+
 type grokStreamResult struct {
 	grokResult
 	Update struct {
@@ -159,6 +171,7 @@ type grokStreamResult struct {
 		ToolCallID    string `json:"toolCallId"`
 		Title         string `json:"title"`
 		Status        string `json:"status"`
+		Reason        string `json:"reason"`
 		Content       struct {
 			Text string `json:"text"`
 		} `json:"content"`
@@ -166,6 +179,13 @@ type grokStreamResult struct {
 		Arguments json.RawMessage `json:"arguments"`
 		RawInput  json.RawMessage `json:"rawInput"`
 	} `json:"update"`
+}
+
+func (r grokStreamResult) loginRetry() bool {
+	if r.Type == "retry_state" {
+		return grokLoginRequired(r.Reason)
+	}
+	return r.Update.SessionUpdate == "retry_state" && grokLoginRequired(r.Update.Reason)
 }
 
 func emitGrokStream(req Request, line string, tools map[string]streamedTool) {
@@ -201,6 +221,7 @@ func emitGrokStream(req Request, line string, tools map[string]streamedTool) {
 }
 
 func grokTerminalEvent(line string) bool {
-	var result grokResult
-	return json.Unmarshal([]byte(line), &result) == nil && (result.Type == "end" || result.Type == "error")
+	var result grokStreamResult
+	return json.Unmarshal([]byte(line), &result) == nil && (result.Type == "end" || result.Type == "error" ||
+		result.loginRetry())
 }

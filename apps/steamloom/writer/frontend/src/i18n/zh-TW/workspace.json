@@ -87,6 +87,7 @@
       }
     },
     "activity": {
+      "progressTitle": "執行進度",
       "runningTitle": "Agent 執行紀錄",
       "completedTitle": "Agent 已完成",
       "failedTitle": "Agent 執行失敗",

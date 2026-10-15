@@ -148,6 +148,9 @@ func commandError(name string, err error, stderr string) error {
 			return errors.New("Claude Code 登入已過期，請先在 Terminal 執行 `claude auth login` 後再試")
 		}
 	}
+	if name == "Grok Build" && grokLoginRequired(detail) {
+		return errors.New(grokLoginError)
+	}
 	return fmt.Errorf("%s 執行失敗：%s", name, detail)
 }
 

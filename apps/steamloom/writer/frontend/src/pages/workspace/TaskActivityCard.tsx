@@ -19,7 +19,7 @@ const completedTypes = new Set(["task.completed", "apply.completed"]);
 function fallbackLoginCommands(agentID: string, events: ChatLine[]) {
   const failure = [...events].reverse().find((event) => event.type === "task.failed");
   const lower = failure?.text.toLowerCase() ?? "";
-  if (!lower.includes("failed to authenticate") && !lower.includes("oauth session expired") && !failure?.text.includes("登入已過期") && !failure?.text.includes("未登入")) return [];
+  if (!lower.includes("failed to authenticate") && !lower.includes("oauth session expired") && !lower.includes("invalid or expired credentials") && !lower.includes("request carried no credential") && !lower.includes("authentication required") && !lower.includes("unauthorized (401)") && !failure?.text.includes("登入已過期") && !failure?.text.includes("未登入")) return [];
   return { claude: ["claude auth login"], codex: ["codex login"], grok: ["grok login"] }[agentID] ?? [];
 }
 

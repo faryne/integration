@@ -129,11 +129,22 @@ func recordTaskActivity(agentID, projectID, threadID, taskID, typeName, toolName
 	return saveIndex(dir, idx)
 }
 
+// Codex 的中途 agent_message 是進度說明，不是正式回答；保留在同一張執行紀錄供日後回看。
+func recordTaskProgress(agentID, projectID, threadID, taskID, text string) error {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return nil
+	}
+	return recordTaskState(agentID, projectID, threadID, taskID, TaskRunning, taskEvent(EventTaskProgress, taskID, text))
+}
+
 // 登入由使用者在 Terminal 完成；Writer 只把可執行指令附在失敗事件，不碰 Agent 憑證。
 func loginAction(agentID, detail string) (string, []string) {
 	lower := strings.ToLower(detail)
 	loginRequired := strings.Contains(lower, "oauth session expired") || strings.Contains(lower, "failed to authenticate") ||
 		strings.Contains(lower, "not logged in") || strings.Contains(lower, "login required") ||
+		strings.Contains(lower, "invalid or expired credentials") || strings.Contains(lower, "request carried no credential") ||
+		strings.Contains(lower, "authentication required") || strings.Contains(lower, "unauthorized (401)") ||
 		strings.Contains(detail, "未登入") || strings.Contains(detail, "登入已過期")
 	if !loginRequired {
 		return "", nil

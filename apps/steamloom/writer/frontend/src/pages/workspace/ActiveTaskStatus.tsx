@@ -9,6 +9,12 @@ export function ActiveTaskStatus({ task, workspace, queued, canceling, onCancel 
   const { t } = useTranslation();
   return (
     <Stack spacing={0.75} alignItems="flex-start">
+      {task.progress && (
+        <Paper variant="outlined" sx={{ px: 1.5, py: 1, maxWidth: "80%", borderRadius: 2, bgcolor: "action.hover" }}>
+          <Typography color="text.secondary" fontWeight={700} sx={{ mb: 0.35, fontSize: 12 }}>{t("workspace.chat.activity.progressTitle")}</Typography>
+          <Typography sx={{ fontSize: 13, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{task.progress}</Typography>
+        </Paper>
+      )}
       {task.partial && (
         <Paper variant="outlined" sx={{ px: 1.5, py: 1, maxWidth: "80%", borderRadius: 2 }}>
           <Typography sx={{ fontSize: 14, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{task.partial}</Typography>

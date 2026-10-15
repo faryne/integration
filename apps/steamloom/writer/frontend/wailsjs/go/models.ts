@@ -460,6 +460,7 @@ export namespace agent {
 	    started_at?: string;
 	    finished_at?: string;
 	    partial?: string;
+	    progress?: string;
 	    activity?: string;
 	    activity_target?: string;
 	
@@ -480,6 +481,7 @@ export namespace agent {
 	        this.started_at = source["started_at"];
 	        this.finished_at = source["finished_at"];
 	        this.partial = source["partial"];
+	        this.progress = source["progress"];
 	        this.activity = source["activity"];
 	        this.activity_target = source["activity_target"];
 	    }
@@ -1165,4 +1167,3 @@ export namespace updater {
 	}
 
 }
-
