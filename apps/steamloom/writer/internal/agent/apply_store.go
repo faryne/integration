@@ -60,6 +60,38 @@ func recordApplyConflict(agentID, projectID, threadID, proposalID, taskID, detai
 	return recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, ProposalConflict, TaskConflict, EventApplyConflict, text, partial)
 }
 
+// ConfirmProposalApplied 只在作者已自行確認 REST 寫入成功時修正本機狀態；不會再次送出 mutation。
+func ConfirmProposalApplied(agentID, projectID, threadID, proposalID string) (Proposal, error) {
+	chatMu.Lock()
+	defer chatMu.Unlock()
+	dir, idx, thread, proposal, path, err := loadProposalForApply(agentID, projectID, threadID, proposalID)
+	if err != nil {
+		return Proposal{}, err
+	}
+	lifecycle, found := proposalApplyLifecycle(filepath.Join(dir, threadID+".jsonl"), proposal.ID)
+	if proposal.Status == ProposalApplied && found && lifecycle.status == ProposalApplied {
+		return proposal, nil
+	}
+	if proposal.Status != ProposalVerificationRequired || !found || lifecycle.status != ProposalVerificationRequired {
+		return Proposal{}, errors.New("這批提案目前不需要確認套用結果")
+	}
+	event := taskEvent(EventApplyVerified, lifecycle.taskID, "你已確認內容成功套用；Writer 沒有再次送出寫入請求")
+	event.ProposalID, event.ContentHash = proposal.ID, proposal.ContentHash
+	if err := appendLines(filepath.Join(dir, threadID+".jsonl"), []ChatLine{event}); err != nil {
+		return Proposal{}, err
+	}
+	proposal.Status, proposal.AppliedAt = ProposalApplied, event.CreatedAt
+	if err := writeProposal(path, proposal); err != nil {
+		return Proposal{}, err
+	}
+	thread.UpdatedAt, thread.LastTaskState, thread.ActiveTaskID = event.CreatedAt, TaskApplied, ""
+	idx.Threads = upsertFront(idx.Threads, thread)
+	if err := saveIndex(dir, idx); err != nil {
+		return Proposal{}, err
+	}
+	return proposal, nil
+}
+
 func recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, proposalState, taskState, eventType, eventText, reply string) (Proposal, error) {
 	chatMu.Lock()
 	defer chatMu.Unlock()
@@ -67,7 +99,12 @@ func recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, propos
 	if err != nil {
 		return Proposal{}, err
 	}
-	if proposal.Status != ProposalApplying && !(proposalState == ProposalApplyFailed && proposal.Status == ProposalApproved) {
+	lateCompletion := false
+	if eventType == EventApplyCompleted && proposal.Status == ProposalVerificationRequired {
+		lifecycle, found := proposalApplyLifecycle(filepath.Join(dir, threadID+".jsonl"), proposal.ID)
+		lateCompletion = found && lifecycle.status == ProposalVerificationRequired && lifecycle.taskID == taskID
+	}
+	if proposal.Status != ProposalApplying && !(proposalState == ProposalApplyFailed && proposal.Status == ProposalApproved) && !lateCompletion {
 		return Proposal{}, fmt.Errorf("提案目前是 %s，不能完成這次 apply", proposal.Status)
 	}
 	if eventType == EventApplyCompleted && reply != "" {

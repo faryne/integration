@@ -6,7 +6,7 @@ import type { ChatLine } from "@writer/pages/workspace/useChatLog.ts";
 
 const activityTypes = new Set([
   "task.queued", "task.started", "task.progress", "task.tool.started", "task.tool.completed", "task.tool.failed", "task.completed", "task.failed", "task.canceled",
-  "apply.started", "apply.completed", "apply.failed", "apply.conflict", "apply.interrupted",
+  "apply.started", "apply.completed", "apply.failed", "apply.conflict", "apply.interrupted", "apply.verified",
 ]);
 
 interface ChatTranscriptProps {
@@ -16,11 +16,13 @@ interface ChatTranscriptProps {
   proposals: AgentProposal[] | null;
   workspace: Workspace;
   onReview: (proposal: AgentProposal, item: AgentProposalItem, selectedItemIDs: string[]) => void;
+  onConfirmApplied: (proposal: AgentProposal) => void;
+  confirmingProposalID: string;
   onQuote: (message: ChatLine, messageID: string) => void;
 }
 
 // 同一 task 的 queued/tool/complete event 收進一張可收合 timeline，避免狀態只閃一下就消失。
-export function ChatTranscript({ agentID, messages, start, proposals, workspace, onReview, onQuote }: ChatTranscriptProps) {
+export function ChatTranscript({ agentID, messages, start, proposals, workspace, onReview, onConfirmApplied, confirmingProposalID, onQuote }: ChatTranscriptProps) {
   const activity = new Map<string, { first: number; events: ChatLine[] }>();
   messages.forEach((message, index) => {
     if (!message.task_id || !activityTypes.has(message.type ?? "")) return;
@@ -36,7 +38,7 @@ export function ChatTranscript({ agentID, messages, start, proposals, workspace,
       return group?.first === index ? <TaskActivityCard key={`activity:${message.task_id}`} agentID={agentID} events={group.events} workspace={workspace} /> : null;
     }
     const proposal = message.type === "proposal.ready" ? proposals?.find((item) => item.id === message.proposal_id) : undefined;
-    if (proposal) return <ProposalCard key={key} proposal={proposal} onReview={(item, selectedItemIDs) => onReview(proposal, item, selectedItemIDs)} />;
+    if (proposal) return <ProposalCard key={key} proposal={proposal} confirming={confirmingProposalID === proposal.id} onConfirmApplied={() => onConfirmApplied(proposal)} onReview={(item, selectedItemIDs) => onReview(proposal, item, selectedItemIDs)} />;
     const quotable = (message.role === "user" || message.role === "assistant") && message.text.trim() !== "";
     return <ChatMessage key={key} message={message} onQuote={quotable ? () => onQuote(message, message.event_id ?? `legacy:${start + index}`) : undefined} />;
   });

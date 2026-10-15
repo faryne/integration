@@ -279,6 +279,8 @@ func proposalApplyLifecycle(path, proposalID string) (proposalDecision, bool) {
 			state, found = proposalDecision{status: ProposalConflict, at: event.CreatedAt, taskID: event.TaskID}, true
 		case EventApplyInterrupted:
 			state, found = proposalDecision{status: ProposalVerificationRequired, at: event.CreatedAt, taskID: event.TaskID}, true
+		case EventApplyVerified:
+			state, found = proposalDecision{status: ProposalApplied, at: event.CreatedAt, taskID: event.TaskID}, true
 		}
 	}
 	return state, found

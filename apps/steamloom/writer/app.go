@@ -8,6 +8,7 @@ import (
 	"net/http"
 	goruntime "runtime"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -34,11 +35,14 @@ type App struct {
 	unsaved atomic.Bool
 	// localImages：圖像作品選好但還沒上傳的本機圖檔（見 local_images.go）
 	localImages localImages
+	// recovery 只在每個專案首次開啟時執行，避免一般列表刷新把正在等待 REST API 的 apply 誤判為中斷。
+	recoveryMu        sync.Mutex
+	recoveredProjects map[string]bool
 }
 
 func NewApp() *App {
 	cfg := config.Load()
-	app := &App{}
+	app := &App{recoveredProjects: map[string]bool{}}
 	app.session = auth.New(cfg, tokenstore.New(cfg.Issuer), func(url string) {
 		// 授權網址也印到 log，瀏覽器沒有自動打開時可以手動複製
 		log.Printf("open authorize url: %s", url)
@@ -60,6 +64,7 @@ func (a *App) startup(ctx context.Context) {
 		runtime.EventsEmit(ctx, agent.TaskEventName, event)
 	})
 	a.tasks.SetProposalApplyRunner(a.applyProposal)
+	a.tasks.SetProposalPrepareRunner(a.prepareProposal)
 }
 
 func (a *App) shutdown(context.Context) {
@@ -128,7 +133,7 @@ func (a *App) McpInstalled(agentID string) (agent.McpHint, error) {
 
 // ChatOpen 讀出這個專案在這個 Agent 底下、目前那一條對話的尾端。
 func (a *App) ChatOpen(agentID, projectID string) (*agent.ChatPage, error) {
-	if err := agent.RecoverInterruptedApplies(projectID); err != nil {
+	if err := a.recoverInterruptedApplies(projectID); err != nil {
 		return nil, err
 	}
 	return chatPage(agent.OpenChat(agentID, projectID))
@@ -172,7 +177,7 @@ func (a *App) ChatDelete(agentID, projectID, threadID string) (*agent.ChatPage, 
 
 // ChatThreads 彙整專案底下所有 provider 的 thread，供專案層級 task rail 顯示。
 func (a *App) ChatThreads(projectID string) ([]agent.ProjectThread, error) {
-	if err := agent.RecoverInterruptedApplies(projectID); err != nil {
+	if err := a.recoverInterruptedApplies(projectID); err != nil {
 		return nil, err
 	}
 	threads, err := agent.ProjectThreads(projectID)
@@ -199,9 +204,37 @@ func (a *App) ChatThreads(projectID string) ([]agent.ProjectThread, error) {
 	return threads, nil
 }
 
+func (a *App) recoverInterruptedApplies(projectID string) error {
+	a.recoveryMu.Lock()
+	defer a.recoveryMu.Unlock()
+	if a.recoveredProjects[projectID] {
+		return nil
+	}
+	active := map[string]bool{}
+	if a.tasks != nil {
+		for _, task := range a.tasks.Active(projectID) {
+			active[task.ID] = true
+		}
+	}
+	if err := agent.RecoverInterruptedApplies(projectID, active); err != nil {
+		return err
+	}
+	a.recoveredProjects[projectID] = true
+	return nil
+}
+
 // ChatProposals 只讀 Writer 本機的待確認成果，不接觸 SteamLoom MCP。
 func (a *App) ChatProposals(agentID, projectID, threadID string) ([]agent.Proposal, error) {
 	return agent.Proposals(agentID, projectID, threadID)
+}
+
+// ConfirmProposalApplied 記錄作者已從 SteamLoom 確認寫入成功；只修正本機狀態，不重送 REST mutation。
+func (a *App) ConfirmProposalApplied(agentID, projectID, threadID, proposalID string) (*agent.Proposal, error) {
+	proposal, err := agent.ConfirmProposalApplied(agentID, projectID, threadID, proposalID)
+	if err != nil {
+		return nil, err
+	}
+	return &proposal, nil
 }
 
 // ProposalAssetPreview 只在使用者打開 review 時讀取 Writer 管理的本機圖片。

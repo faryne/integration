@@ -70,6 +70,10 @@ export function CheckForUpdate() {
   return window['go']['main']['App']['CheckForUpdate']();
 }
 
+export function ConfirmProposalApplied(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['ConfirmProposalApplied'](arg1, arg2, arg3, arg4);
+}
+
 export function Create(arg1, arg2) {
   return window['go']['main']['App']['Create'](arg1, arg2);
 }

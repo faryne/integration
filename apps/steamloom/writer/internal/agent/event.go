@@ -22,6 +22,7 @@ const (
 	EventApplyFailed      = "apply.failed"
 	EventApplyConflict    = "apply.conflict"
 	EventApplyInterrupted = "apply.interrupted"
+	EventApplyVerified    = "apply.verified"
 )
 
 // ChatLine 是 thread 的 append-only event。舊版只有 role/text；讀取時會補上 type，
@@ -66,7 +67,7 @@ func normalizeEvent(line ChatLine) (ChatLine, bool) {
 		return line, true
 	}
 	switch line.Type {
-	case EventMessageUser, EventProposalApproved, EventProposalRejected:
+	case EventMessageUser, EventProposalApproved, EventProposalRejected, EventApplyVerified:
 		// 提案決策是使用者動作，在對話中保留成右側的決策紀錄。
 		line.Role = "user"
 	case EventMessageAssistant, EventMessagePartial:
