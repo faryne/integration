@@ -22,13 +22,16 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import type { Editor } from "@tiptap/core";
-import { useEditorState } from "@tiptap/react";
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 
 import type { StorytellerWritingBookmark } from "@/types/storyteller.ts";
-import { extractDocumentMarkers } from "@/pages/storyteller/wysiwygCore/extractHeadingOutline.ts";
-import { jumpToMarker } from "@/pages/storyteller/wysiwygCore/jumpToMarker.ts";
+import { documentOutline } from "@/pages/storyteller/documentEditor/documentSections.ts";
+import type { DocumentScope } from "@/pages/storyteller/documentEditor/useDocumentScope.ts";
+import {
+  findParagraphPosByMarkerId,
+  jumpToMarker,
+} from "@/pages/storyteller/wysiwygCore/jumpToMarker.ts";
 
 const PREVIEW_CHARS = 24;
 
@@ -36,7 +39,8 @@ interface OutlineListItem {
   key: string;
   kind: "heading" | "bookmark";
   markerId: string;
-  pos: number | null;
+  // 在全文的第幾行；書籤找不到段落（被刪了）時是 null
+  line: number | null;
   text: string;
   level?: number;
   note?: string | null;
@@ -52,26 +56,24 @@ function previewText(text: string): string {
 }
 
 function mergeOutlineItems(
-  headings: ReturnType<typeof extractDocumentMarkers>["headings"],
-  paragraphs: ReturnType<typeof extractDocumentMarkers>["paragraphs"],
+  outline: ReturnType<typeof documentOutline>,
   bookmarks: StorytellerWritingBookmark[],
 ): OutlineListItem[] {
-  const items: OutlineListItem[] = headings.map((heading) => ({
-    key: `heading-${heading.markerId}`,
+  const items: OutlineListItem[] = outline.sections.map((section) => ({
+    key: `heading-${section.markerId}`,
     kind: "heading",
-    markerId: heading.markerId,
-    pos: heading.pos,
-    text: heading.text || "（無標題文字）",
-    level: heading.level,
+    markerId: section.markerId,
+    line: section.start,
+    text: section.title || "（無標題文字）",
+    level: section.level,
   }));
-
   for (const bookmark of bookmarks) {
-    const paragraph = paragraphs.get(bookmark.marker_id);
+    const paragraph = outline.paragraphs.get(bookmark.marker_id);
     items.push({
       key: `bookmark-${bookmark.id}`,
       kind: "bookmark",
       markerId: bookmark.marker_id,
-      pos: paragraph?.pos ?? null,
+      line: paragraph?.line ?? null,
       text: bookmark.note?.trim()
         ? bookmark.note.trim()
         : previewText(paragraph?.text ?? ""),
@@ -79,12 +81,11 @@ function mergeOutlineItems(
       missing: !paragraph,
     });
   }
-
   items.sort((a, b) => {
-    if (a.pos === null && b.pos === null) return a.key.localeCompare(b.key);
-    if (a.pos === null) return 1;
-    if (b.pos === null) return -1;
-    if (a.pos !== b.pos) return a.pos - b.pos;
+    if (a.line === null && b.line === null) return a.key.localeCompare(b.key);
+    if (a.line === null) return 1;
+    if (b.line === null) return -1;
+    if (a.line !== b.line) return a.line - b.line;
     if (a.kind === b.kind) return 0;
     return a.kind === "heading" ? -1 : 1;
   });
@@ -93,56 +94,67 @@ function mergeOutlineItems(
 
 interface StorytellerEditorOutlinePanelProps {
   editor: Editor | null;
+  // 全文（草稿）。大綱永遠列全文的標題與書籤，只編輯某一章時範圍外的變灰
+  content: string;
+  // 目前只編輯的範圍；null＝全文
+  scope: DocumentScope | null;
   bookmarks: StorytellerWritingBookmark[];
   loading?: boolean;
   onDeleteBookmark: (markerId: string) => void;
   onUpdateBookmarkNote: (markerId: string, note: string) => void;
-  // 標題右側的「只編輯這段」（共用編輯頁的編輯範圍）；沒給就不顯示
-  onEditSection?: (markerId: string) => void;
-  // 只編輯某一段時，書籤在全文裡但不在這一段：顯示「在目前範圍外」，點了交給 onOutsideBookmark（回到全文再跳過去）
-  isOutside?: (markerId: string) => boolean;
-  onOutsideBookmark?: (markerId: string) => void;
+  // 標題右側的「只編輯這段」
+  onEditSection: (markerId: string) => void;
+  onBackToFull: () => void;
+  // 點範圍外的標題或書籤：回到全文再跳過去
+  onJumpOutside: (markerId: string) => void;
 }
 
-// 大綱面板內容：標題 + 書籤依文件 pos 合併成同一份清單。外層容器（Popper）
-// 由 StorytellerEditorOutlineToggle 負責，這裡不管怎麼掛到畫面上。
+// 大綱面板內容：全文的標題＋書籤依行號合併成同一份清單，也是「只編輯某一章」的入口。
+// 外層容器（Popper）由 StorytellerEditorOutlineToggle 負責，這裡不管怎麼掛到畫面上。
 export function StorytellerEditorOutlinePanel({
   editor,
+  content,
+  scope,
   bookmarks,
   loading,
   onDeleteBookmark,
   onUpdateBookmarkNote,
   onEditSection,
-  isOutside,
-  onOutsideBookmark,
+  onBackToFull,
+  onJumpOutside,
 }: StorytellerEditorOutlinePanelProps) {
-  const markers = useEditorState({
-    editor,
-    selector: (ctx) =>
-      ctx.editor
-        ? extractDocumentMarkers(ctx.editor.state.doc)
-        : { headings: [], paragraphs: new Map() },
-  });
+  // 面板開著時每次打字都會重新解析全文，延後到閒置時再算，不拖慢打字
+  const deferredContent = useDeferredValue(content);
   const items = useMemo(
-    () =>
-      mergeOutlineItems(
-        markers?.headings ?? [],
-        markers?.paragraphs ?? new Map(),
-        bookmarks,
-      ),
-    [markers, bookmarks],
+    () => mergeOutlineItems(documentOutline(deferredContent), bookmarks),
+    [deferredContent, bookmarks],
   );
   const [editing, setEditing] = useState<OutlineListItem | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [deleting, setDeleting] = useState<OutlineListItem | null>(null);
 
-  const outside = (item: OutlineListItem) =>
-    Boolean(item.missing && isOutside?.(item.markerId));
+  const inScope = (item: OutlineListItem) =>
+    !scope ||
+    (item.line !== null &&
+      item.line >= scope.start &&
+      item.line < scope.start + scope.count);
   const jump = (item: OutlineListItem) => {
-    if (outside(item)) return onOutsideBookmark?.(item.markerId);
-    if (!editor || item.missing || item.pos === null) return;
-    jumpToMarker(editor, item.markerId, item.pos);
+    if (item.missing) return;
+    if (!inScope(item)) return onJumpOutside(item.markerId);
+    if (!editor) return;
+    const pos = findParagraphPosByMarkerId(editor.state.doc, item.markerId);
+    if (pos !== null) jumpToMarker(editor, item.markerId, pos);
   };
+  // 範圍外的項目：字變淡，右側標「全文」提示點了會回到全文
+  const outsideHint = (
+    <Typography
+      variant="caption"
+      color="text.disabled"
+      sx={{ flexShrink: 0, mx: 0.5 }}
+    >
+      全文
+    </Typography>
+  );
 
   const openEdit = (item: OutlineListItem) => {
     setEditing(item);
@@ -169,6 +181,33 @@ export function StorytellerEditorOutlinePanel({
       <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 700 }}>
         大綱與書籤
       </Typography>
+      {scope && (
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          spacing={1}
+          sx={{
+            mb: 1,
+            px: 1.25,
+            py: 0.75,
+            borderRadius: 1,
+            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
+            color: "primary.main",
+          }}
+        >
+          <Typography variant="caption" noWrap>
+            目前只編輯：{scope.title || "（無標題文字）"}
+          </Typography>
+          <Button
+            size="small"
+            onClick={onBackToFull}
+            sx={{ flexShrink: 0, minWidth: 0, py: 0 }}
+          >
+            回到全文
+          </Button>
+        </Stack>
+      )}
       {loading ? (
         <Typography variant="body2" color="text.secondary">
           載入書籤中…
@@ -179,40 +218,63 @@ export function StorytellerEditorOutlinePanel({
         </Typography>
       ) : (
         <List dense disablePadding>
-          {items.map((item) =>
-            item.kind === "heading" ? (
-              <ListItemButton
-                key={item.key}
-                onClick={() => jump(item)}
-                sx={{ pl: 1 + ((item.level ?? 1) - 1) * 1.5 }}
-              >
-                <ListItemIcon sx={{ minWidth: 32 }}>
-                  <ViewHeadlineIcon fontSize="small" color="action" />
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.text}
-                  primaryTypographyProps={{
-                    variant: item.level === 1 ? "body1" : "body2",
-                    fontWeight: item.level === 1 ? 700 : 500,
-                    noWrap: true,
-                  }}
-                />
-                {onEditSection && (
-                  <Tooltip title="只編輯這段">
-                    <IconButton
-                      size="small"
-                      aria-label="只編輯這段"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onEditSection(item.markerId);
-                      }}
+          {items.map((item) => {
+            const outside = !item.missing && !inScope(item);
+            if (item.kind === "heading") {
+              const current = scope?.markerId === item.markerId;
+              return (
+                <ListItemButton
+                  key={item.key}
+                  selected={current}
+                  onClick={() => jump(item)}
+                  sx={{ pl: 1 + ((item.level ?? 1) - 1) * 1.5 }}
+                >
+                  <ListItemIcon sx={{ minWidth: 32 }}>
+                    <ViewHeadlineIcon
+                      fontSize="small"
+                      color={current ? "primary" : "action"}
+                    />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.text}
+                    primaryTypographyProps={{
+                      variant: item.level === 1 ? "body1" : "body2",
+                      fontWeight: item.level === 1 ? 700 : 500,
+                      noWrap: true,
+                      color: current
+                        ? "primary.main"
+                        : outside
+                          ? "text.disabled"
+                          : "text.primary",
+                    }}
+                  />
+                  {outside && outsideHint}
+                  {current ? (
+                    <Typography
+                      variant="caption"
+                      color="primary.main"
+                      sx={{ flexShrink: 0, mx: 0.5 }}
                     >
-                      <CropFreeIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                )}
-              </ListItemButton>
-            ) : (
+                      編輯中
+                    </Typography>
+                  ) : (
+                    <Tooltip title="只編輯這段">
+                      <IconButton
+                        size="small"
+                        aria-label="只編輯這段"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onEditSection(item.markerId);
+                        }}
+                      >
+                        <CropFreeIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </ListItemButton>
+              );
+            }
+            return (
               <ListItemButton
                 key={item.key}
                 // 不用 disabled——MUI 的 disabled ButtonBase 會把 pointer-events
@@ -225,7 +287,7 @@ export function StorytellerEditorOutlinePanel({
                   bgcolor: (theme) =>
                     alpha(
                       theme.palette.warning.main,
-                      item.missing ? 0.04 : 0.08,
+                      item.missing || outside ? 0.04 : 0.08,
                     ),
                   "&:hover": {
                     bgcolor: (theme) => alpha(theme.palette.warning.main, 0.14),
@@ -235,25 +297,24 @@ export function StorytellerEditorOutlinePanel({
                 <ListItemIcon sx={{ minWidth: 32 }}>
                   <BookmarkIcon
                     fontSize="small"
-                    color={item.missing ? "disabled" : "warning"}
+                    color={item.missing || outside ? "disabled" : "warning"}
                   />
                 </ListItemIcon>
                 <ListItemText
                   primary={
-                    outside(item)
-                      ? item.note?.trim()
-                        ? `在目前範圍外：${item.note.trim()}`
-                        : "在目前範圍外"
-                      : item.missing
-                        ? "找不到這個位置了，可能已被刪除"
-                        : item.text
+                    item.missing ? "找不到這個位置了，可能已被刪除" : item.text
                   }
                   primaryTypographyProps={{
                     variant: "body2",
-                    color: item.missing ? "text.secondary" : "text.primary",
+                    color: item.missing
+                      ? "text.secondary"
+                      : outside
+                        ? "text.disabled"
+                        : "text.primary",
                     noWrap: !item.missing,
                   }}
                 />
+                {outside && outsideHint}
                 <Stack
                   direction="row"
                   spacing={0}
@@ -281,8 +342,8 @@ export function StorytellerEditorOutlinePanel({
                   </Tooltip>
                 </Stack>
               </ListItemButton>
-            ),
-          )}
+            );
+          })}
         </List>
       )}
 

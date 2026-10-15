@@ -260,8 +260,8 @@
     "revertFailed": "Couldn't revert. Please try again: ",
     "agentApplied": "AI proposal applied and saved.",
     "scope": {
-      "label": "Editing",
-      "full": "Whole document"
+      "only": "Editing only",
+      "backToFull": "Back to whole document"
     }
   },
   "assets": {

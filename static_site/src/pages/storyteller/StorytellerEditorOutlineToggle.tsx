@@ -1,6 +1,7 @@
 import TocIcon from "@mui/icons-material/Toc";
 import {
   Box,
+  ClickAwayListener,
   Popper,
   ToggleButton,
   Tooltip,
@@ -16,9 +17,10 @@ interface StorytellerEditorOutlineToggleProps {
   children?: ReactNode;
 }
 
-// 大綱／書籤入口：按鈕本身維持 ToggleButton，展開後用 Popper 錨在按鈕上，
-// 不再佔左側 dock。刻意不用 MUI Popover／ClickAwayListener——點編輯區跳轉
-// 時面板要留著，只有再按一次按鈕或 Escape 才關。
+// 大綱／書籤入口：按鈕本身維持 ToggleButton，展開後用 Popper 錨在按鈕上，不再佔左側 dock。
+// 點面板以外的地方、再按一次按鈕或 Escape 都會關；點面板裡的項目跳轉時面板留著。
+// ClickAwayListener 包住按鈕和 Popper：按鈕不算「外面」，否則點按鈕會先關再被切換打開。
+// Popper 與面板裡的對話框（編輯筆記、刪除確認）是 portal，但仍在同一棵 React tree，點它們不會被當成外面。
 export function StorytellerEditorOutlineToggle({
   open,
   onToggle,
@@ -46,46 +48,48 @@ export function StorytellerEditorOutlineToggle({
   }, [open, onToggle]);
 
   return (
-    <>
-      <Box ref={setAnchorEl} sx={{ display: "inline-flex" }}>
-        <Tooltip title={open ? "收合大綱與書籤" : "大綱與書籤"}>
-          <ToggleButton
-            value="outline"
-            selected={open}
-            size="small"
-            aria-label="大綱與書籤"
-            aria-pressed={open}
-            aria-expanded={open}
-            aria-controls={open ? panelId : undefined}
-            onChange={() => onToggle(!open)}
-            sx={compactButtonSx}
-          >
-            <TocIcon fontSize="small" sx={compactIconSx} />
-          </ToggleButton>
-        </Tooltip>
-      </Box>
-      <Popper
-        id={panelId}
-        open={open}
-        anchorEl={anchorEl}
-        placement="bottom-start"
-        modifiers={[
-          { name: "offset", options: { offset: [0, 8] } },
-          { name: "preventOverflow", options: { padding: 8 } },
-        ]}
-        sx={{ zIndex: (theme) => theme.zIndex.modal }}
-      >
-        <Box
-          sx={{
-            width: 360,
-            maxWidth: "calc(100vw - 16px)",
-            maxHeight: "min(70vh, 640px)",
-            overflow: "auto",
-          }}
-        >
-          {children}
+    <ClickAwayListener onClickAway={() => open && onToggle(false)}>
+      <Box sx={{ display: "inline-flex" }}>
+        <Box ref={setAnchorEl} sx={{ display: "inline-flex" }}>
+          <Tooltip title={open ? "收合大綱與書籤" : "大綱與書籤"}>
+            <ToggleButton
+              value="outline"
+              selected={open}
+              size="small"
+              aria-label="大綱與書籤"
+              aria-pressed={open}
+              aria-expanded={open}
+              aria-controls={open ? panelId : undefined}
+              onChange={() => onToggle(!open)}
+              sx={compactButtonSx}
+            >
+              <TocIcon fontSize="small" sx={compactIconSx} />
+            </ToggleButton>
+          </Tooltip>
         </Box>
-      </Popper>
-    </>
+        <Popper
+          id={panelId}
+          open={open}
+          anchorEl={anchorEl}
+          placement="bottom-start"
+          modifiers={[
+            { name: "offset", options: { offset: [0, 8] } },
+            { name: "preventOverflow", options: { padding: 8 } },
+          ]}
+          sx={{ zIndex: (theme) => theme.zIndex.modal }}
+        >
+          <Box
+            sx={{
+              width: 360,
+              maxWidth: "calc(100vw - 16px)",
+              maxHeight: "min(70vh, 640px)",
+              overflow: "auto",
+            }}
+          >
+            {children}
+          </Box>
+        </Popper>
+      </Box>
+    </ClickAwayListener>
   );
 }

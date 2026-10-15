@@ -14,23 +14,29 @@ import type { DocumentEditingState } from "@/pages/storyteller/documentEditor/us
 // 全文被外部換掉（重新載入、回復版本、AI 套用）時用 markerId 重新定位，找不到就回到全文。
 // 每篇記住上次的範圍（本機），下次打開直接回到那一章。
 // 切換範圍時游標跟著走：原本那一段在新範圍裡就回到同一段同一個位置，不在就放到新範圍開頭，捲到畫面中間並保留焦點。
+// 入口是大綱面板（每個標題的「只編輯這段」），範圍模式時頁面上方有狀態標籤可以回到全文。
 
-interface Scope {
+export interface DocumentScope {
   markerId: string;
+  // 範圍的標題文字（狀態標籤、大綱頂端顯示用）
+  title: string;
   start: number;
   count: number;
 }
+type Scope = DocumentScope;
 
 const storageKey = (memoryKey: string) => `steamloom.editor.scope.${memoryKey}`;
-// 標題行（# 開頭）的粗略計數，決定要不要顯示範圍選單；每次打字都跑，不能用完整解析
-const HEADING_LINE = /^#{1,6} /gm;
-
 const locate = (content: string, markerId: string): Scope | null => {
   const section = listDocumentSections(content).find(
     (each) => each.markerId === markerId,
   );
   return section
-    ? { markerId, start: section.start, count: section.count }
+    ? {
+        markerId,
+        title: section.title,
+        start: section.start,
+        count: section.count,
+      }
     : null;
 };
 
@@ -142,19 +148,15 @@ export function useDocumentScope({
     // 交給編輯器的內容：全文或那一段
     value: scope ? sliceLines(content, scope.start, scope.count) : content,
     onChange,
-    activeMarkerId: scope?.markerId ?? null,
-    // 至少兩個標題才有切範圍的意義
-    available:
-      Boolean(scope) || (content.match(HEADING_LINE)?.length ?? 0) >= 2,
-    sections: () => listDocumentSections(contentRef.current),
+    // 目前的範圍（null＝全文）；大綱用它判斷哪些標題、書籤在範圍外
+    scope,
+    // 全文（大綱永遠列全文的標題）
+    content,
     select: (markerId: string | null) => {
       rememberCaret();
       setScope(markerId ? locate(contentRef.current, markerId) : null);
     },
-    // 書籤在全文裡、但不在目前這一段
-    isOutside: (markerId: string) =>
-      Boolean(scopeRef.current) && contentRef.current.includes(`⟦${markerId}⟧`),
-    // 範圍外的書籤：回到全文，游標放到那一段開頭
+    // 範圍外的標題或書籤：回到全文，游標放到那一段開頭
     jumpOutside: (markerId: string) => {
       pendingCaretRef.current = { markerId, offset: 0 };
       setScope(null);

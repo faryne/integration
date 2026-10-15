@@ -347,8 +347,8 @@
     "revertFailed": "回復版本失敗，請重試：",
     "agentApplied": "已套用 AI 提案並存檔。",
     "scope": {
-      "label": "編輯範圍",
-      "full": "全文"
+      "only": "只編輯",
+      "backToFull": "回到全文"
     }
   },
   "assets": {

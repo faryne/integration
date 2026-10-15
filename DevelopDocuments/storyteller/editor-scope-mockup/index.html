@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>編輯範圍 × 大綱 Mockup</title>
+<style>
+/* 夜織（nocturne）色票，對照 static_site/src/data/storytellerTheme.ts */
+:root {
+  --bg: #090c13; --surface: #111724; --raised: #182133; --border: #2d3850; --border-strong: #596b90;
+  --text: #eef2ff; --muted: #aeb8cf; --faint: #6f7a93;
+  --accent: #7aa8ff; --accent-soft: rgba(122,168,255,.14); --warn: #f2b45b; --warn-soft: rgba(242,180,91,.12);
+  font-family: "Noto Sans TC", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); }
+button { font: inherit; color: inherit; cursor: pointer; }
+
+/* mockup 控制列（不屬於產品 UI） */
+.mock-bar { position: sticky; top: 0; z-index: 50; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 16px; background: #1d2433; border-bottom: 1px solid var(--border); font-size: 13px; }
+.mock-bar b { margin-right: 4px; }
+.mock-bar button { border: 1px solid var(--border-strong); background: transparent; border-radius: 4px; padding: 4px 12px; }
+.mock-bar button.on { background: var(--accent); border-color: var(--accent); color: #0b1020; font-weight: 700; }
+.mock-note { padding: 10px 16px; background: #141b29; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--muted); line-height: 1.7; }
+.mock-note strong { color: var(--text); }
+
+/* 產品 UI */
+.page { max-width: 980px; margin: 0 auto; padding: 0 16px 40px; }
+.tabs-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); min-height: 46px; }
+.tabs { display: flex; }
+.tab { border: 0; background: transparent; padding: 12px 14px 10px; font-size: 14px; color: var(--muted); border-bottom: 2px solid transparent; }
+.tab.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 700; }
+
+/* 現況：右上角下拉選單 */
+.scope-select { position: relative; padding-bottom: 6px; min-width: 190px; }
+.scope-select label { display: block; font-size: 11px; color: var(--muted); }
+.scope-select button { width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--border-strong); background: transparent; padding: 3px 18px 3px 0; position: relative; }
+.scope-select button::after { content: "▾"; position: absolute; right: 2px; color: var(--muted); }
+.dropdown { position: absolute; right: 0; top: 100%; z-index: 20; min-width: 220px; padding: 6px 0; background: var(--raised); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 12px 30px rgba(0,0,0,.45); }
+.dropdown button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 7px 14px; font-size: 14px; }
+.dropdown button:hover, .dropdown button.on { background: var(--accent-soft); }
+
+/* 提案：範圍狀態標籤 */
+.scope-chip { margin-bottom: 8px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 12px; border-radius: 99px; background: var(--accent-soft); border: 1px solid rgba(122,168,255,.45); font-size: 13px; color: var(--accent); }
+.scope-chip button { border: 0; background: transparent; width: 22px; height: 22px; border-radius: 50%; color: var(--accent); line-height: 1; }
+.scope-chip button:hover { background: rgba(122,168,255,.22); }
+
+.title { font-size: 34px; font-weight: 800; margin: 18px 0 10px; font-family: "Noto Serif TC", Georgia, serif; }
+.meta { display: flex; gap: 18px; font-size: 13px; color: var(--muted); margin-bottom: 8px; flex-wrap: wrap; }
+.meta b { color: var(--text); }
+
+/* 編輯區 */
+.editor-frame { border-top: 1px solid var(--border); margin-top: 10px; display: flex; flex-direction: column; height: 430px; }
+.editor { flex: 1; overflow: auto; padding: 14px 8px 40px; }
+.editor .h1 { font-size: 22px; font-weight: 800; margin: 18px 0 8px; }
+.editor .h2 { font-size: 18px; font-weight: 700; margin: 14px 0 6px; }
+.editor p { margin: 0 0 8px; line-height: 1.8; font-size: 15px; }
+.editor .bookmarked { box-shadow: inset 3px 0 0 var(--warn); background: var(--warn-soft); padding-left: 8px; }
+.toolbar { position: relative; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 8px 4px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+.toolbar .icons { display: flex; gap: 4px; align-items: center; }
+.icon-btn { border: 1px solid transparent; background: transparent; width: 32px; height: 30px; border-radius: 6px; color: var(--muted); }
+.icon-btn.on { border-color: var(--border-strong); color: var(--text); background: var(--raised); }
+.save { border: 0; background: #2f4a7a; color: #dbe6ff; padding: 6px 12px; border-radius: 6px; font-weight: 700; }
+
+/* 大綱面板 */
+.outline { position: absolute; right: 80px; bottom: 46px; z-index: 30; width: 330px; max-height: 380px; overflow: auto; padding: 14px; background: var(--raised); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 14px 34px rgba(0,0,0,.5); color: var(--text); }
+.outline h4 { margin: 0 0 6px; font-size: 15px; }
+.outline .scope-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; padding: 6px 10px; border-radius: 6px; background: var(--accent-soft); font-size: 12px; color: var(--accent); }
+.outline .scope-line.full { background: transparent; color: var(--muted); padding-left: 0; }
+.outline .scope-line button { border: 0; background: transparent; color: var(--accent); font-size: 12px; text-decoration: underline; }
+.row { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 6px; font-size: 14px; }
+.row:hover { background: rgba(255,255,255,.05); }
+.row .label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.row .glyph { width: 18px; color: var(--muted); text-align: center; }
+.row.outside .label { color: var(--faint); }
+.row.current { background: var(--accent-soft); }
+.row.current .label { color: var(--accent); font-weight: 700; }
+.row .act { border: 0; background: transparent; width: 26px; height: 26px; border-radius: 50%; color: var(--muted); font-size: 13px; }
+.row .act:hover { background: rgba(255,255,255,.08); color: var(--text); }
+.row .hint { font-size: 11px; color: var(--faint); }
+.row.bookmark { background: var(--warn-soft); }
+.row.bookmark .glyph { color: var(--warn); }
+.tooltip-note { margin-top: 10px; font-size: 11px; color: var(--faint); line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="mock-bar">
+  <b>版本</b>
+  <button data-variant="current">現況（上方選單＋大綱）</button>
+  <button data-variant="proposal" class="on">提案（大綱單一入口＋狀態標籤）</button>
+  <span style="flex:1"></span>
+  <button id="reset">重設</button>
+</div>
+<div class="mock-note" id="note"></div>
+
+<div class="page">
+  <div class="tabs-row">
+    <div class="tabs">
+      <button class="tab on">✎ 編輯</button>
+      <button class="tab">⟲ 編輯歷史</button>
+    </div>
+    <div id="scope-slot"></div>
+  </div>
+
+  <div class="title">雲上的驛站</div>
+  <div class="meta"><span>狀態 <b>未公開</b></span><span>冊 <b>不分冊</b></span><span>署名 <b>本人</b></span><span>自動存檔 <b>每 5 分鐘</b></span></div>
+
+  <div class="editor-frame">
+    <div class="editor" id="editor"></div>
+    <div class="toolbar">
+      <span>← 回列表　·　字數 1,284　·　更新於 10/15 10:12</span>
+      <div class="icons">
+        <button class="icon-btn" title="插入資產">▣</button>
+        <button class="icon-btn" id="outline-btn" title="大綱與書籤">☰</button>
+        <button class="icon-btn" title="文字設定">Tт</button>
+        <button class="save">存檔 ⌘S</button>
+      </div>
+      <div class="outline" id="outline" hidden></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 範例文件：三章，第一章底下兩個小節，第二章第 3 段有書籤
+const doc = [
+  { id: "c1", level: 1, text: "第一章 出發" },
+  { id: "c1p1", text: "清晨的霧還沒散，驛站的鐘就響了第一聲。" },
+  { id: "s1", level: 2, text: "場景一 收拾行李" },
+  { id: "s1p1", text: "她把舊地圖摺好，夾進那本快要散掉的筆記。" },
+  { id: "s1p2", text: "桌上還有半杯沒喝完的茶，已經涼了。" },
+  { id: "s2", level: 2, text: "場景二 告別" },
+  { id: "s2p1", text: "老闆娘塞了兩個熱饅頭給她，說路上會餓。" },
+  { id: "s2p2", text: "她回頭看了一眼招牌，才轉身走進霧裡。" },
+  { id: "c2", level: 1, text: "第二章 抵達" },
+  { id: "c2p1", text: "第二座驛站比想像中熱鬧，門口擠滿了等馬車的人。" },
+  { id: "c2p2", text: "她在角落找到位子，攤開地圖重新確認路線。" },
+  { id: "c2p3", text: "有人在背後叫她的名字，聲音很熟。", bookmark: "這裡要埋伏筆" },
+  { id: "c2p4", text: "她沒有馬上回頭。" },
+  { id: "c3", level: 1, text: "第三章 歸途" },
+  { id: "c3p1", text: "回程的路比來時短，或許是因為心裡有了答案。" },
+  { id: "c3p2", text: "驛站的鐘又響了，這次聽起來像在說歡迎回來。" },
+];
+
+// 範圍規則：從這個標題到下一個同級或更高級的標題（維基百科段落編輯）
+function sectionRange(headingId) {
+  const start = doc.findIndex((b) => b.id === headingId);
+  const level = doc[start].level;
+  let end = doc.length;
+  for (let i = start + 1; i < doc.length; i++) if (doc[i].level && doc[i].level <= level) { end = i; break; }
+  return [start, end];
+}
+
+const state = { variant: "proposal", scope: null, outlineOpen: true, dropdownOpen: false, flash: null };
+const inScope = (index) => !state.scope || (index >= state.scope.range[0] && index < state.scope.range[1]);
+const scopeTitle = () => state.scope && doc.find((b) => b.id === state.scope.id).text;
+
+function setScope(id) {
+  state.scope = id ? { id, range: sectionRange(id) } : null;
+  state.dropdownOpen = false;
+  render();
+}
+function jumpTo(id) {
+  const index = doc.findIndex((b) => b.id === id);
+  // 範圍外：回到全文再跳過去
+  if (!inScope(index)) state.scope = null;
+  state.flash = id;
+  render();
+  const el = document.querySelector(`[data-id="${id}"]`);
+  el?.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+function renderEditor() {
+  const editor = document.getElementById("editor");
+  editor.innerHTML = doc
+    .map((b, i) => {
+      if (!inScope(i)) return "";
+      const cls = [b.level === 1 ? "h1" : b.level === 2 ? "h2" : "", b.bookmark ? "bookmarked" : ""].join(" ");
+      const flash = state.flash === b.id ? ' style="outline:1px solid var(--accent);outline-offset:3px;border-radius:4px"' : "";
+      return b.level ? `<div class="${cls}" data-id="${b.id}"${flash}>${b.text}</div>` : `<p class="${cls}" data-id="${b.id}"${flash}>${b.text}</p>`;
+    })
+    .join("");
+}
+
+function renderScopeSlot() {
+  const slot = document.getElementById("scope-slot");
+  if (state.variant === "current") {
+    const headings = doc.filter((b) => b.level);
+    slot.innerHTML = `
+      <div class="scope-select">
+        <label>編輯範圍</label>
+        <button id="dd-btn">${scopeTitle() ?? "全文"}</button>
+        ${state.dropdownOpen ? `<div class="dropdown">
+          <button data-scope="" class="${state.scope ? "" : "on"}">全文</button>
+          ${headings.map((h) => `<button data-scope="${h.id}" class="${state.scope?.id === h.id ? "on" : ""}" style="padding-left:${14 + (h.level - 1) * 16}px">${h.text}</button>`).join("")}
+        </div>` : ""}
+      </div>`;
+  } else {
+    slot.innerHTML = state.scope
+      ? `<span class="scope-chip">只編輯：${scopeTitle()}<button id="chip-x" title="回到全文">✕</button></span>`
+      : "";
+  }
+}
+
+function renderOutline() {
+  const panel = document.getElementById("outline");
+  document.getElementById("outline-btn").classList.toggle("on", state.outlineOpen);
+  panel.hidden = !state.outlineOpen;
+  if (!state.outlineOpen) return;
+  const proposal = state.variant === "proposal";
+  // 現況：大綱只看得到編輯器裡的內容；提案：一律列全文
+  const rows = doc
+    .map((b, i) => ({ ...b, index: i }))
+    .filter((b) => (b.level || b.bookmark) && (proposal || inScope(b.index)));
+  const scopeLine = proposal
+    ? state.scope
+      ? `<div class="scope-line"><span>目前只編輯：${scopeTitle()}</span><button data-full>回到全文</button></div>`
+      : `<div class="scope-line full">目前：全文</div>`
+    : "";
+  const hiddenBookmark = !proposal && state.scope && doc.some((b, i) => b.bookmark && !inScope(i))
+    ? `<div class="row"><span class="glyph">🔖</span><span class="label" style="color:var(--faint)">在目前範圍外：這裡要埋伏筆</span></div>` : "";
+  panel.innerHTML = `
+    <h4>大綱與書籤</h4>
+    ${scopeLine}
+    ${rows.map((b) => {
+      if (b.bookmark && !b.level) {
+        const outside = !inScope(b.index);
+        return `<div class="row bookmark ${outside ? "outside" : ""}"><span class="glyph">🔖</span><span class="label" data-jump="${b.id}">${b.bookmark}</span>${outside && proposal ? '<span class="hint">全文</span>' : ""}<button class="act" title="編輯筆記">✎</button></div>`;
+      }
+      const outside = !inScope(b.index);
+      const current = state.scope?.id === b.id;
+      return `<div class="row ${outside ? "outside" : ""} ${current ? "current" : ""}" style="padding-left:${8 + (b.level - 1) * 16}px">
+        <span class="glyph">≡</span>
+        <span class="label" data-jump="${b.id}">${b.text}</span>
+        ${outside && proposal ? '<span class="hint">全文</span>' : ""}
+        ${current ? '<span class="hint">編輯中</span>' : `<button class="act" data-scope="${b.id}" title="只編輯這段">⛶</button>`}
+      </div>`;
+    }).join("")}
+    ${hiddenBookmark}
+    <div class="tooltip-note">${proposal
+      ? "點標題：跳過去（在範圍外就回到全文再跳）。⛶：只編輯這段。灰色＝目前範圍外。"
+      : "只編輯某一章時，這裡只剩那一章的標題；要換章得去右上角的選單。"}</div>`;
+}
+
+const notes = {
+  current: "<strong>現況</strong>：右上角的「編輯範圍」選單和下方大綱都列標題、都能進入「只編輯某一章」。只編輯某一章時，<strong>大綱只剩那一章的標題</strong>，選單卻列全部章節，兩邊清單不一致。",
+  proposal: "<strong>提案</strong>：拿掉上方選單，<strong>大綱是唯一入口</strong>，永遠列全文的標題（範圍外的變灰）；範圍模式時上方只留<strong>狀態標籤</strong>「只編輯：○○ ✕」，按 ✕ 回到全文。大綱頂端也標出目前範圍。",
+};
+
+function render() {
+  document.querySelectorAll("[data-variant]").forEach((b) => b.classList.toggle("on", b.dataset.variant === state.variant));
+  document.getElementById("note").innerHTML = notes[state.variant];
+  renderScopeSlot();
+  renderEditor();
+  renderOutline();
+}
+
+document.addEventListener("click", (event) => {
+  const t = event.target.closest("button, [data-jump]");
+  if (!t) { if (state.dropdownOpen) { state.dropdownOpen = false; render(); } return; }
+  if (t.dataset.variant) { state.variant = t.dataset.variant; state.dropdownOpen = false; return render(); }
+  if (t.id === "reset") { Object.assign(state, { scope: null, outlineOpen: true, dropdownOpen: false, flash: null }); return render(); }
+  if (t.id === "dd-btn") { state.dropdownOpen = !state.dropdownOpen; return render(); }
+  if (t.id === "outline-btn") { state.outlineOpen = !state.outlineOpen; return render(); }
+  if (t.id === "chip-x" || t.dataset.full !== undefined) return setScope(null);
+  if (t.dataset.scope !== undefined) { state.flash = null; return setScope(t.dataset.scope || null); }
+  if (t.dataset.jump) return jumpTo(t.dataset.jump);
+});
+render();
+</script>
+</body>
+</html>
