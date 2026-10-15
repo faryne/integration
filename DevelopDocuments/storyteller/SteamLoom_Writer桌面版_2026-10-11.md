@@ -86,4 +86,5 @@
   - 共用 static_site 檔案清單寫死在 workflow 的 `paths`，Writer 新 import 了 static_site 的檔案要同步補上。
   - 共用檔案 import 的第三方套件（例如 `@mui/icons-material`）要列進 Writer `vite.config.ts` 的 `resolve.dedupe`，否則 CI 的乾淨環境會因為沒有 `static_site/node_modules` 而解析失敗（本機不會發現）。
   - CI 只裝 Writer 自己的套件，所以 tsconfig 的 `paths` 要把 `react`、`@mui/*`、`@emotion/*` 指向 Writer 的 node_modules，否則 static_site 檔案的型別會找不到（本機因為 `static_site/node_modules` 存在而不會發現）。
+  - 共用檔只用 `import type` 的套件也一樣要裝在 Writer：打包時會被移除，但 `tsc -b` 要讀型別（2026-10-15 `AuthContext.ts` 的 `firebase/auth` 讓 0.3.0-alpha 的 CI 全平台失敗，Writer 改裝 `firebase` 當 devDependency）。改共用檔後先把 `static_site/node_modules` 暫時移開再跑 Writer 的 `pnpm build`，才模擬得出 CI。
   - 沒有簽名／notarization，`linux-arm64` 依賴 GitHub 的 `ubuntu-24.04-arm` runner。
