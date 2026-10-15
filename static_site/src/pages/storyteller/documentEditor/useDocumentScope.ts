@@ -1,6 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import { useEffect, useRef, useState } from "react";
-import { jumpToMarker } from "@/pages/storyteller/wysiwygCore/jumpToMarker.ts";
+import { caretBlock } from "@/pages/storyteller/wysiwygCore/caretFocus.ts";
+import { findParagraphPosByMarkerId } from "@/pages/storyteller/wysiwygCore/jumpToMarker.ts";
 import {
   listDocumentSections,
   sliceLines,
@@ -12,6 +13,7 @@ import type { DocumentEditingState } from "@/pages/storyteller/documentEditor/us
 // 範圍以「切換當下的行範圍」記，之後跟著編輯增減行數；在這一段裡新增或刪除標題不會讓畫面突然跳掉。
 // 全文被外部換掉（重新載入、回復版本、AI 套用）時用 markerId 重新定位，找不到就回到全文。
 // 每篇記住上次的範圍（本機），下次打開直接回到那一章。
+// 切換範圍時游標跟著走：原本那一段在新範圍裡就回到同一段同一個位置，不在就放到新範圍開頭，捲到畫面中間並保留焦點。
 
 interface Scope {
   markerId: string;
@@ -57,7 +59,10 @@ export function useDocumentScope({
   const contentRef = useRef(content);
   // 這份全文是自己接回去的（不是外部換掉的）
   const ownContentRef = useRef(content);
-  const pendingJumpRef = useRef<string | null>(null);
+  // 切換範圍後要把游標放到哪一段（markerId）的第幾個字
+  const pendingCaretRef = useRef<{ markerId: string; offset: number } | null>(
+    null,
+  );
 
   const setScope = (next: Scope | null) => {
     scopeRef.current = next;
@@ -81,13 +86,38 @@ export function useDocumentScope({
     if (current) setScope(locate(content, current.markerId));
   }, [content]);
 
-  // 從範圍外的書籤回到全文後，等編輯器換好內容再跳過去
+  // 換範圍後把游標放回去。編輯器換內容是在子元件（StorytellerWysiwygEditor）的 effect 裡同步做的，
+  // 輪到這裡時已經換好，直接放游標、捲動就好，不等下一幀（rAF 在背景或節流時可能慢上一秒）。
+  // 只看範圍換到哪一章；同一章裡打字只會改行數，不會觸發
+  const scopeMarkerId = scope?.markerId ?? null;
   useEffect(() => {
-    const markerId = pendingJumpRef.current;
-    if (scope || !markerId || !editor) return;
-    pendingJumpRef.current = null;
-    requestAnimationFrame(() => jumpToMarker(editor, markerId));
-  }, [scope, editor]);
+    const target = pendingCaretRef.current;
+    if (!target || !editor || editor.isDestroyed) return;
+    pendingCaretRef.current = null;
+    const { doc } = editor.state;
+    const found = findParagraphPosByMarkerId(doc, target.markerId);
+    // 不在新範圍裡：放到開頭（範圍的標題）
+    const pos = found ?? 0;
+    const end = pos + (doc.nodeAt(pos)?.nodeSize ?? 2) - 1;
+    const offset = found === null ? 0 : target.offset;
+    // 先 focus 再放游標、捲動：直接對編輯區 focus 會把捲動容器捲回開頭（見 jumpToMarker.ts）
+    editor.view.dom.focus({ preventScroll: true });
+    editor.commands.setTextSelection(Math.min(pos + 1 + offset, end));
+    (editor.view.nodeDOM(pos) as HTMLElement | null)?.scrollIntoView({
+      block: "center",
+    });
+  }, [scopeMarkerId, editor]);
+
+  // 記下目前游標在哪一段的第幾個字，切換範圍後放回去
+  const rememberCaret = () => {
+    if (!editor || editor.isDestroyed) return;
+    const block = caretBlock(editor.state);
+    const markerId = block?.node.attrs.markerId as string | undefined;
+    pendingCaretRef.current =
+      block && markerId
+        ? { markerId, offset: editor.state.selection.head - (block.pos + 1) }
+        : null;
+  };
 
   const onChange = (next: string) => {
     const current = scopeRef.current;
@@ -117,13 +147,16 @@ export function useDocumentScope({
     available:
       Boolean(scope) || (content.match(HEADING_LINE)?.length ?? 0) >= 2,
     sections: () => listDocumentSections(contentRef.current),
-    select: (markerId: string | null) =>
-      setScope(markerId ? locate(contentRef.current, markerId) : null),
+    select: (markerId: string | null) => {
+      rememberCaret();
+      setScope(markerId ? locate(contentRef.current, markerId) : null);
+    },
     // 書籤在全文裡、但不在目前這一段
     isOutside: (markerId: string) =>
       Boolean(scopeRef.current) && contentRef.current.includes(`⟦${markerId}⟧`),
+    // 範圍外的書籤：回到全文，游標放到那一段開頭
     jumpOutside: (markerId: string) => {
-      pendingJumpRef.current = markerId;
+      pendingCaretRef.current = { markerId, offset: 0 };
       setScope(null);
     },
   };
