@@ -1,6 +1,6 @@
 import SendIcon from "@mui/icons-material/Send";
 import { Box, Button, CircularProgress, IconButton, MenuItem, Paper, Select, Stack, Typography } from "@mui/material";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EventsOn } from "../../../wailsjs/runtime/runtime";
 import { agent } from "../../../wailsjs/go/models";
@@ -46,6 +46,7 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
   const [review, setReview] = useState<{ proposal: AgentProposal; item: AgentProposalItem; selectedItemIDs: string[] } | null>(null);
   const [deciding, setDeciding] = useState(false);
   const [viewMode, setViewMode] = useState<"empty" | "new" | "thread">("empty");
+  const threadsRequest = useRef(0);
   const selected = agents?.some((agent) => agent.id === agentID) ? agentID : (agents?.[0]?.id ?? "");
   const chat = useChatLog(projectID, selected);
   const currentThreadID = viewMode === "thread" ? (chat.page?.current_id ?? "") : "";
@@ -72,10 +73,13 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
   }, [initialReference, onInitialReferenceConsumed]);
 
   const loadThreads = useCallback(async () => {
+    const token = ++threadsRequest.current;
     try {
-      setThreads(await backend.ChatThreads(projectID));
+      const next = await backend.ChatThreads(projectID);
+      // started／completed 事件很接近時，較早的 request 可能較晚回來；只讓最後一次結果更新 rail。
+      if (threadsRequest.current === token) setThreads(next);
     } catch (err) {
-      showError(errorMessage(err));
+      if (threadsRequest.current === token) showError(errorMessage(err));
     }
   }, [projectID, showError]);
 
