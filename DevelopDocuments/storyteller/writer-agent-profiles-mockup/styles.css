@@ -58,9 +58,6 @@ button { color: inherit; }
 .controls select { padding-right: 28px; }
 .controls select:disabled { color: #778397; background: #171c25; }
 .controls label:nth-child(2) select { min-width: 210px; }
-.controls .custom-model-field { display: none; }
-.controls .custom-model-field.visible { display: grid; }
-.controls .custom-model-field input { width: 190px; }
 .refresh, .send { width: 32px; height: 31px; border: 1px solid #3b465a; border-radius: 4px; background: #172033; cursor: pointer; }
 .refresh.spinning { animation: spin 0.8s linear infinite; }
 .spacer { flex: 1; }
