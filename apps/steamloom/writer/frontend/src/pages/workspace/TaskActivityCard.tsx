@@ -8,13 +8,9 @@ import { Box, Collapse, IconButton, Paper, Stack, Typography } from "@mui/materi
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AgentLoginCard } from "@writer/pages/workspace/AgentLoginCard.tsx";
-import { agentActivityLabel } from "@writer/pages/workspace/agentActivity.ts";
+import { activityEventLabel, activityEventTone } from "@writer/pages/workspace/chatEventRegistry.ts";
 import type { Workspace } from "@writer/lib/backend.ts";
 import type { ChatLine } from "@writer/pages/workspace/useChatLog.ts";
-
-const failedTypes = new Set(["task.failed", "task.tool.failed", "apply.failed"]);
-const attentionTypes = new Set(["apply.conflict", "apply.interrupted"]);
-const completedTypes = new Set(["task.completed", "apply.completed", "apply.verified"]);
 
 function fallbackLoginCommands(agentID: string, events: ChatLine[]) {
   const failure = [...events].reverse().find((event) => event.type === "task.failed");
@@ -27,27 +23,6 @@ function fallbackLoginCommands(agentID: string, events: ChatLine[]) {
     gemini: ["gemini"],
     antigravity: ["agy"],
   }[agentID] ?? [];
-}
-
-function eventLabel(event: ChatLine, workspace: Workspace, t: (key: string, values?: Record<string, string>) => string) {
-  const tool = agentActivityLabel(event.tool_name || event.text, event.tool_target, workspace, t);
-  if (event.type === "task.tool.started") return t("workspace.chat.activity.toolStarted", { tool });
-  if (event.type === "task.tool.completed") return t("workspace.chat.activity.toolCompleted", { tool });
-  if (event.type === "task.tool.failed") return t("workspace.chat.activity.toolFailed", { tool });
-  if ((event.type === "apply.completed" || event.type === "apply.verified") && event.text) return event.text;
-  const key = {
-    "task.queued": "queued",
-    "task.started": "started",
-    "task.completed": "completed",
-    "task.failed": "failed",
-    "task.canceled": "canceled",
-    "apply.started": "applyStarted",
-    "apply.completed": "applyCompleted",
-    "apply.failed": "applyFailed",
-    "apply.conflict": "applyConflict",
-    "apply.interrupted": "applyInterrupted",
-  }[event.type ?? ""];
-  return key ? t(`workspace.chat.activity.${key}`) : event.text;
 }
 
 // 同一次 tool call 完成後以 completed event 取代 started event，避免每個動作重複顯示兩行。
@@ -74,11 +49,12 @@ export function TaskActivityCard({ agentID, events, workspace }: { agentID: stri
   const [expanded, setExpanded] = useState(true);
   const last = events[events.length - 1];
   // 終局事件決定卡片狀態；例如作者確認已套用後，不應再被前面的 interrupted 維持成警告。
-  const failed = failedTypes.has(last?.type ?? "");
-  const attention = attentionTypes.has(last?.type ?? "");
-  const completed = completedTypes.has(last?.type ?? "");
+  const tone = last ? activityEventTone(last) : "running";
+  const failed = tone === "failed";
+  const attention = tone === "attention";
+  const completed = tone === "completed";
   const writerApply = events.some((event) => event.type?.startsWith("apply."));
-  const canceled = last?.type === "task.canceled";
+  const canceled = tone === "canceled";
   const commands = [...events].reverse().find((event) => event.action === "agent.login" && event.commands?.length)?.commands ?? fallbackLoginCommands(agentID, events);
   const timeline = compactToolEvents(events);
 
@@ -99,10 +75,10 @@ export function TaskActivityCard({ agentID, events, workspace }: { agentID: stri
         <Stack spacing={0.75} sx={{ mt: 0.75, ml: 0.5, pl: 1.25, borderLeft: 1, borderColor: "divider" }}>
           {timeline.map((event, index) => (
             <Box key={event.event_id ?? `${event.type}:${index}`}>
-              <Typography color={failedTypes.has(event.type ?? "") ? "error.main" : attentionTypes.has(event.type ?? "") ? "warning.main" : "text.secondary"} sx={{ fontSize: 12.5 }}>
-                {eventLabel(event, workspace, t)}
+              <Typography color={activityEventTone(event) === "failed" ? "error.main" : activityEventTone(event) === "attention" ? "warning.main" : "text.secondary"} sx={{ fontSize: 12.5 }}>
+                {activityEventLabel(event, workspace, t)}
               </Typography>
-              {(failedTypes.has(event.type ?? "") || attentionTypes.has(event.type ?? "")) && event.text && <Typography sx={{ mt: 0.25, fontSize: 12.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{event.text}</Typography>}
+              {(activityEventTone(event) === "failed" || activityEventTone(event) === "attention") && event.text && !event.type?.startsWith("apply.item.") && <Typography sx={{ mt: 0.25, fontSize: 12.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{event.text}</Typography>}
             </Box>
           ))}
         </Stack>

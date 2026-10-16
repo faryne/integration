@@ -37,6 +37,7 @@ export namespace agent {
 	    created_at?: string;
 	    task_id?: string;
 	    proposal_id?: string;
+	    item_id?: string;
 	    content_hash?: string;
 	    event_id?: string;
 	    tool_name?: string;
@@ -57,6 +58,7 @@ export namespace agent {
 	        this.created_at = source["created_at"];
 	        this.task_id = source["task_id"];
 	        this.proposal_id = source["proposal_id"];
+	        this.item_id = source["item_id"];
 	        this.content_hash = source["content_hash"];
 	        this.event_id = source["event_id"];
 	        this.tool_name = source["tool_name"];
@@ -150,6 +152,7 @@ export namespace agent {
 	    id: string;
 	    display_name: string;
 	    path: string;
+	    capabilities: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Installed(source);
@@ -160,6 +163,7 @@ export namespace agent {
 	        this.id = source["id"];
 	        this.display_name = source["display_name"];
 	        this.path = source["path"];
+	        this.capabilities = source["capabilities"];
 	    }
 	}
 	export class McpHint {
@@ -265,8 +269,59 @@ export namespace agent {
 	        this.arguments = source["arguments"];
 	    }
 	}
+	export class ProposalArtifact {
+	    id: string;
+	    provider_id?: string;
+	    provider_job_id?: string;
+	    model?: string;
+	    parameters?: Record<string, any>;
+	    candidate_group?: string;
+	    default_selected: boolean;
+	    local_path?: string;
+	    asset_public_id?: string;
+	    file_name?: string;
+	    mime_type?: string;
+	    file_size?: number;
+	    file_sha256?: string;
+	    alt_text?: string;
+	    description?: string;
+	    width?: number;
+	    height?: number;
+	    duration_ms?: number;
+	    page_id?: string;
+	    sort: number;
+
+	    static createFrom(source: any = {}) {
+	        return new ProposalArtifact(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.provider_id = source["provider_id"];
+	        this.provider_job_id = source["provider_job_id"];
+	        this.model = source["model"];
+	        this.parameters = source["parameters"];
+	        this.candidate_group = source["candidate_group"];
+	        this.default_selected = source["default_selected"];
+	        this.local_path = source["local_path"];
+	        this.asset_public_id = source["asset_public_id"];
+	        this.file_name = source["file_name"];
+	        this.mime_type = source["mime_type"];
+	        this.file_size = source["file_size"];
+	        this.file_sha256 = source["file_sha256"];
+	        this.alt_text = source["alt_text"];
+	        this.description = source["description"];
+	        this.width = source["width"];
+	        this.height = source["height"];
+	        this.duration_ms = source["duration_ms"];
+	        this.page_id = source["page_id"];
+	        this.sort = source["sort"];
+	    }
+	}
 	export class ProposalItem {
 	    id: string;
+	    proposal_type?: string;
 	    kind: string;
 	    operations: ProposalOperation[];
 	    target_id?: string;
@@ -283,6 +338,9 @@ export namespace agent {
 	    file_sha256?: string;
 	    alt_text?: string;
 	    collection_id?: string;
+	    marker_id?: string;
+	    after_marker_id?: string;
+	    artifacts?: ProposalArtifact[];
 	    content_hash: string;
 	
 	    static createFrom(source: any = {}) {
@@ -292,6 +350,7 @@ export namespace agent {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
+	        this.proposal_type = source["proposal_type"];
 	        this.kind = source["kind"];
 	        this.operations = this.convertValues(source["operations"], ProposalOperation);
 	        this.target_id = source["target_id"];
@@ -308,6 +367,9 @@ export namespace agent {
 	        this.file_sha256 = source["file_sha256"];
 	        this.alt_text = source["alt_text"];
 	        this.collection_id = source["collection_id"];
+	        this.marker_id = source["marker_id"];
+	        this.after_marker_id = source["after_marker_id"];
+	        this.artifacts = this.convertValues(source["artifacts"], ProposalArtifact);
 	        this.content_hash = source["content_hash"];
 	    }
 	
@@ -342,6 +404,7 @@ export namespace agent {
 	    applied_at?: string;
 	    interrupted_at?: string;
 	    selected_item_ids?: string[];
+	    selected_artifact_ids?: string[];
 	    items: ProposalItem[];
 	
 	    static createFrom(source: any = {}) {
@@ -362,6 +425,7 @@ export namespace agent {
 	        this.applied_at = source["applied_at"];
 	        this.interrupted_at = source["interrupted_at"];
 	        this.selected_item_ids = source["selected_item_ids"];
+	        this.selected_artifact_ids = source["selected_artifact_ids"];
 	        this.items = this.convertValues(source["items"], ProposalItem);
 	    }
 	

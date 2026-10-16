@@ -12,6 +12,7 @@ export type ChatLine = {
   created_at?: string;
   task_id?: string;
   proposal_id?: string;
+  item_id?: string;
   event_id?: string;
   tool_name?: string;
   tool_target?: string;

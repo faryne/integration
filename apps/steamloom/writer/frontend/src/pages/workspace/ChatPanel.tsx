@@ -44,7 +44,7 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
   const [proposals, setProposals] = useState<AgentProposal[] | null>(null);
   const [proposalRevision, setProposalRevision] = useState(0);
   const [confirmingProposalID, setConfirmingProposalID] = useState("");
-  const [review, setReview] = useState<{ proposal: AgentProposal; item: AgentProposalItem; selectedItemIDs: string[] } | null>(null);
+  const [review, setReview] = useState<{ proposal: AgentProposal; item: AgentProposalItem; selectedIDs: string[] } | null>(null);
   const [deciding, setDeciding] = useState(false);
   const [viewMode, setViewMode] = useState<"empty" | "new" | "thread">("empty");
   const threadsRequest = useRef(0);
@@ -250,7 +250,7 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
     const threadID = currentThreadID;
     setDeciding(true);
     try {
-      await backend.DecideProposal(selected, projectID, threadID, review.proposal.id, decision, review.selectedItemIDs);
+      await backend.DecideProposal(selected, projectID, threadID, review.proposal.id, decision, review.selectedIDs);
       setReview(null);
       setProposalRevision((value) => value + 1);
       await Promise.all([chat.refreshVisibleThread(threadID), loadThreads()]);
@@ -317,7 +317,7 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
               workspace={workspace}
               confirmingProposalID={confirmingProposalID}
               onConfirmApplied={(proposal) => void confirmProposalApplied(proposal)}
-              onReview={(proposal, item, selectedItemIDs) => setReview({ proposal, item, selectedItemIDs })}
+              onReview={(proposal, item, selectedIDs) => setReview({ proposal, item, selectedIDs })}
               onQuote={quoteMessage}
             />
           )}
@@ -375,7 +375,12 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
         threadID={currentThreadID}
         proposal={review?.proposal ?? null}
         item={review?.item ?? null}
-        selectedCount={review?.selectedItemIDs.length ?? 0}
+        selectedCount={review?.selectedIDs.filter((id) => review.proposal.items.some((item) => item.id === id)).length ?? 0}
+		selectedArtifactIDs={review?.selectedIDs.filter((id) => review.item.artifacts?.some((artifact) => artifact.id === id)) ?? []}
+		onArtifactSelectionChange={(artifactIDs) => setReview((current) => current ? {
+			...current,
+			selectedIDs: [...current.selectedIDs.filter((id) => !current.item.artifacts?.some((artifact) => artifact.id === id)), ...artifactIDs],
+		} : null)}
         deciding={deciding}
         onClose={() => setReview(null)}
         onDecision={(decision) => void decideProposal(decision)}
