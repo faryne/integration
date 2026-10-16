@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Writer Proposal Contract Mockup</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">◇</span>SteamLoom <span>Writer</span></div>
+    <div class="project">霧港的信差</div>
+    <div class="avatar">F</div>
+  </header>
+
+  <nav class="breadcrumbs" aria-label="麵包屑">
+    <a href="#">我的專案</a><span>›</span><a href="#">霧港的信差</a><span>›</span><strong>AI 助理提案</strong>
+  </nav>
+
+  <main class="workspace">
+    <aside class="task-rail">
+      <div class="rail-head"><strong>AI 任務</strong><button>＋ 新任務</button></div>
+      <label class="search"><span>⌕</span><input placeholder="搜尋任務標題"></label>
+      <div class="day"><span>⌄</span>今天 <small>3</small></div>
+      <button class="task selected">
+        <span class="provider">Claude Code <b>待確認</b></span>
+        <strong>補完港口追逐與插圖</strong>
+        <small>6 項成果等待確認</small>
+      </button>
+      <button class="task">
+        <span class="provider">PixAI <b class="running">執行中</b></span>
+        <strong>角色 A 表情差分</strong>
+        <small>正在產生第 3／4 張</small>
+      </button>
+      <button class="task">
+        <span class="provider">Codex <b class="done">已完成</b></span>
+        <strong>檢查人物設定一致性</strong>
+        <small>沒有需要寫入的變更</small>
+      </button>
+    </aside>
+
+    <section class="conversation">
+      <header class="conversation-head">
+        <div><small>Claude Code</small><h1>補完港口追逐與插圖</h1></div>
+        <span class="state">Agent 已完成・等待確認</span>
+      </header>
+
+      <div class="conversation-scroll">
+        <article class="message user">補上港口追逐，修改第三章碼頭段落，再替這一話準備三張插圖。</article>
+
+        <article class="activity-card">
+          <div class="activity-title"><span class="success">✓</span><strong>Agent 已完成</strong><button data-action="toggle-activity">⌃</button></div>
+          <ol id="activity-list">
+            <li><span>工作已排入佇列</span><time>14:03:01</time></li>
+            <li><span>Agent 已開始處理</span><time>14:03:02</time></li>
+            <li><span>讀取故事〈第三章　沒寄出的信〉</span><time>14:03:05</time></li>
+            <li><span>讀取設定〈霧港碼頭〉</span><time>14:03:07</time></li>
+            <li><span>Agent 已完成工作</span><time>14:05:44</time></li>
+          </ol>
+        </article>
+
+        <article class="message agent">
+          我整理成六項成果：新增一篇番外、更新既有故事、在第二節後插入追逐段落、替換碼頭段落、上傳一張封面素材，以及建立三頁圖像作品。Writer 尚未寫入任何內容。
+        </article>
+
+        <article class="proposal-card">
+          <div class="proposal-head">
+            <div><span class="proposal-icon">▤</span><strong>6 項成果等待確認</strong><small>proposal.ready・14:05:44</small></div>
+            <span class="proposal-state" id="proposal-state">待確認</span>
+          </div>
+          <div class="proposal-items" id="proposal-items"></div>
+          <div class="proposal-actions">
+            <button class="danger" data-action="reject">否決全部</button>
+            <button class="primary" data-action="approve">由 Writer 套用選取項目</button>
+          </div>
+        </article>
+
+        <article class="apply-card" id="apply-card" hidden>
+          <div><span class="spinner"></span><strong id="apply-title">Writer 正在套用</strong></div>
+          <ol id="apply-events"></ol>
+        </article>
+      </div>
+    </section>
+
+    <aside class="review-panel">
+      <header class="review-head">
+        <div><small id="review-kind">全文提案・新增</small><h2 id="review-title">港口的另一封信</h2></div>
+        <button aria-label="關閉">×</button>
+      </header>
+      <div class="review-tabs" id="review-tabs"></div>
+      <div class="review-body" id="review-body"></div>
+    </aside>
+  </main>
+
+  <section class="contract-panel">
+    <header><div><small>Lifecycle contract</small><h2>事件如何保存與 render</h2></div><button data-action="toggle-contract">收合</button></header>
+    <div class="contract-grid" id="contract-grid"></div>
+  </section>
+
+  <div class="snack" id="snack" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
