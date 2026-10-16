@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SteamLoom Writer · Media Worker 設定 Mockup</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand"><span class="mark">◇</span><strong>SteamLoom</strong><span class="writer-badge">Writer</span></div>
+      <div class="top-spacer"></div>
+      <button class="profile"><span>Faryne</span><i>F</i></button>
+    </header>
+
+    <nav class="breadcrumbs" aria-label="麵包屑">
+      <a href="#">我的專案</a><span>›</span><a href="#">應用程式設定</a><span>›</span><strong>媒體 Worker</strong>
+    </nav>
+
+    <main class="settings-shell">
+      <aside class="settings-nav">
+        <h1>設定</h1>
+        <button><span>⚙</span>一般</button>
+        <button><span>⌁</span>AI Agents</button>
+        <button class="active"><span>◈</span>媒體 Worker</button>
+        <button><span>▣</span>儲存空間</button>
+        <div class="nav-note">Worker 設定只保存在這台裝置；API token 不會傳給 Agent。</div>
+      </aside>
+
+      <section class="page">
+        <header class="page-head">
+          <div>
+            <h2>媒體 Worker</h2>
+            <p>管理圖片、音樂與影片生成服務。Agent 只會取得已啟用 Worker 的能力摘要。</p>
+          </div>
+          <button class="primary" id="addWorker">＋ 新增 Worker</button>
+        </header>
+
+        <div class="workspace">
+          <aside class="registry-panel">
+            <div class="panel-title">
+              <div><strong>Worker Registry</strong><small id="registryCount">3 個設定</small></div>
+              <button class="icon-button" id="refreshRegistry" title="重新檢查所有 Worker">↻</button>
+            </div>
+            <label class="search"><span>⌕</span><input id="workerSearch" placeholder="搜尋 Worker" /></label>
+            <div class="worker-list" id="workerList"></div>
+            <div class="registry-summary">
+              <span><i class="status-dot online"></i><b id="enabledCount">1</b> 個可供 Agent 使用</span>
+              <span><i class="status-dot offline"></i><b id="problemCount">1</b> 個需要處理</span>
+            </div>
+          </aside>
+
+          <section class="detail-panel">
+            <header class="detail-head">
+              <div class="worker-logo" id="workerLogo">CU</div>
+              <div class="detail-name">
+                <div class="eyebrow" id="workerType">ComfyUI</div>
+                <h3 id="workerName">本機 ComfyUI</h3>
+                <div class="status-line" id="workerStatus"></div>
+              </div>
+              <label class="switch-row"><span>供 Agent 使用</span><input type="checkbox" id="workerEnabled" /><i></i></label>
+              <button class="menu-button" id="deleteWorker" title="刪除 Worker">⋯</button>
+            </header>
+
+            <nav class="tabs" id="tabs">
+              <button class="active" data-tab="connection">連線設定</button>
+              <button data-tab="capabilities">能力與輸入</button>
+              <button data-tab="agent">Agent 可見資訊</button>
+            </nav>
+
+            <div class="tab-content" id="connectionTab">
+              <section class="setting-section">
+                <div class="section-heading"><div><h4>基本資料</h4><p>名稱只用於 Writer 畫面及 Agent capability summary。</p></div></div>
+                <div class="form-grid">
+                  <label><span>顯示名稱</span><input id="displayName" /></label>
+                  <label><span>Worker ID</span><input id="workerID" disabled /></label>
+                </div>
+              </section>
+
+              <section class="setting-section">
+                <div class="section-heading">
+                  <div><h4>連線</h4><p id="connectionDescription">Writer 只連線到使用者指定的本機 endpoint。</p></div>
+                  <button class="secondary" id="testConnection">測試連線</button>
+                </div>
+                <div class="form-grid" id="connectionFields"></div>
+                <div class="connection-result" id="connectionResult"></div>
+              </section>
+
+              <section class="setting-section">
+                <div class="section-heading"><div><h4>使用範圍</h4><p>先只支援全域啟用；專案與角色 preset 留到 Media Job 階段。</p></div></div>
+                <label class="check-row"><input type="checkbox" checked /><span><b>允許所有專案使用</b><small>Agent 只會知道這個 Worker 已啟用，不會取得 endpoint 或認證資料。</small></span></label>
+              </section>
+            </div>
+
+            <div class="tab-content" id="capabilitiesTab" hidden>
+              <section class="setting-section">
+                <div class="section-heading">
+                  <div><h4>Discovery 結果</h4><p>連線成功時由 adapter 轉成 Writer 的共用 capability contract。</p></div>
+                  <button class="secondary" id="rediscover">重新同步</button>
+                </div>
+                <div class="capability-strip" id="capabilityStrip"></div>
+              </section>
+              <section class="setting-section schema-section">
+                <div class="section-heading"><div><h4>Media Job 輸入 schema</h4><p>Worker 定義欄位，Writer render 表單；Agent 不會產生表單。</p></div><span class="schema-version" id="schemaVersion"></span></div>
+                <div class="schema-table" id="schemaTable"></div>
+              </section>
+            </div>
+
+            <div class="tab-content" id="agentTab" hidden>
+              <section class="setting-section">
+                <div class="section-heading"><div><h4>提供給 Agent 的摘要</h4><p>每輪只注入可用能力與 brief 欄位；以下內容不包含 secrets、endpoint 或 model catalog。</p></div><button class="secondary" id="copySummary">複製 JSON</button></div>
+                <pre id="agentSummary"></pre>
+              </section>
+              <div class="safe-note"><span>✓</span><div><strong>敏感資訊已隔離</strong><p>API token 交由 OS Keychain 保存；thread、event log 與 Agent prompt 都不保存秘密。</p></div></div>
+            </div>
+
+            <footer class="detail-actions">
+              <span id="dirtyState">尚無未儲存變更</span>
+              <button class="secondary" id="resetChanges" disabled>取消變更</button>
+              <button class="primary" id="saveWorker" disabled>儲存設定</button>
+            </footer>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="addDialog">
+      <form method="dialog">
+        <header><div><small>Worker Registry</small><h3>新增媒體 Worker</h3></div><button value="cancel" class="close-button">×</button></header>
+        <p class="dialog-lead">選擇執行服務。新增後再設定連線，Writer 會自動 discover 可用能力。</p>
+        <div class="provider-grid">
+          <button value="comfyui" class="provider-card"><span class="provider-icon purple">CU</span><span><b>ComfyUI</b><small>連線使用者自管的本機或區網服務</small></span><i>›</i></button>
+          <button value="pixai" class="provider-card"><span class="provider-icon blue">PX</span><span><b>PixAI</b><small>使用 API token 連線雲端圖片生成服務</small></span><i>›</i></button>
+          <button value="custom" class="provider-card" disabled><span class="provider-icon gray">＋</span><span><b>自訂 Worker</b><small>保留給後續 plugin protocol</small></span><em>尚未開放</em></button>
+        </div>
+        <footer><button value="cancel" class="secondary">取消</button></footer>
+      </form>
+    </dialog>
+
+    <dialog id="deleteDialog" class="small-dialog">
+      <form method="dialog">
+        <header><div><small>移除設定</small><h3>刪除這個 Worker？</h3></div></header>
+        <p>只會刪除 Writer 的連線設定與 Keychain token，不會刪除外部服務或已上傳的 SteamLoom 資產。</p>
+        <footer><button value="cancel" class="secondary">取消</button><button value="confirm" class="danger">刪除</button></footer>
+      </form>
+    </dialog>
+
+    <div class="snack" id="snack" role="status"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
