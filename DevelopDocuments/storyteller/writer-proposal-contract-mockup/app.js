@@ -1,11 +1,11 @@
 // 這份 mockup 只驗證 proposal 類型與事件呈現，不會呼叫任何 API。
 const proposals = [
-  { id: "document-create", type: "全文・新增", title: "港口的另一封信", detail: "新故事", kind: "全文提案・新增" },
-  { id: "document-replace", type: "全文・修改", title: "第三章　沒寄出的信", detail: "DB #72 → 提案", kind: "全文提案・已有故事" },
-  { id: "chapter-append", type: "章節・新增", title: "追逐", detail: "插在第二節之後", kind: "章節提案・append" },
-  { id: "chapter-replace", type: "章節・替換", title: "碼頭對峙", detail: "替換 marker ch-03", kind: "章節提案・replace" },
-  { id: "asset-upload", type: "圖片資產", title: "霧港封面.png", detail: "PNG・4.2 MiB", kind: "圖片資產提案" },
-  { id: "image-story", type: "圖像作品", title: "雨夜追逐", detail: "新增・3 頁", kind: "圖像作品提案" },
+  { id: "document-create", type: "全文・新增", title: "港口的另一封信", detail: "新故事", kind: "全文提案・新增", action: "新增故事" },
+  { id: "document-replace", type: "全文・修改", title: "第三章　沒寄出的信", detail: "DB #72 → 提案", kind: "全文提案・已有故事", action: "更新故事" },
+  { id: "chapter-append", type: "章節・新增", title: "追逐", detail: "插在第二節之後", kind: "章節提案・append", action: "新增章節" },
+  { id: "chapter-replace", type: "章節・替換", title: "碼頭對峙", detail: "替換 marker ch-03", kind: "章節提案・replace", action: "更新章節" },
+  { id: "asset-upload", type: "圖片資產", title: "霧港封面.png", detail: "PNG・4.2 MiB", kind: "圖片資產提案", action: "上傳圖片" },
+  { id: "image-story", type: "圖像作品", title: "雨夜追逐", detail: "新增・3 頁", kind: "圖像作品提案", action: "新增圖像作品" },
 ];
 
 const eventContract = [
@@ -27,7 +27,8 @@ const eventContract = [
   ["proposal.rejected", "使用者否決成果", "使用者決策訊息", "persist"],
   ["apply.queued", "Writer 等待套用", "套用紀錄", "persist"],
   ["apply.started", "Writer 開始 REST mutation", "套用紀錄", "persist"],
-  ["apply.item.completed", "單項成果套用成功", "逐項結果", "persist"],
+  ["apply.item.started", "開始套用單項成果", "具體操作與標題", "persist"],
+  ["apply.item.completed", "單項成果套用成功", "具體操作與標題", "persist"],
   ["apply.completed", "整批套用成功", "套用完成卡", "persist"],
   ["apply.failed", "套用失敗", "套用失敗卡", "persist"],
   ["apply.conflict", "base version 衝突", "衝突警告", "persist"],
@@ -72,11 +73,12 @@ function finishDecision(approved) {
   state.textContent = approved ? "已允許" : "已否決";
   $(".proposal-actions").hidden = true;
   if (!approved) return notify("proposal.rejected 已保存；Writer 不會寫入。 ");
-  const selected = [...document.querySelectorAll(".proposal-item input:checked")].length;
+  const selectedIDs = [...document.querySelectorAll(".proposal-item input:checked")].map((input) => input.closest(".proposal-item").dataset.proposal);
+  const selected = proposals.filter((item) => selectedIDs.includes(item.id));
   $("#apply-card").hidden = false;
-  $("#apply-events").innerHTML = `<li><span>apply.queued・等待 Writer 套用 ${selected} 項成果</span><time>剛剛</time></li><li><span>apply.started・正在檢查 base version 與 staged artifact</span><time>剛剛</time></li>`;
+  $("#apply-events").innerHTML = `<li><span>等待 Writer 套用 ${selected.length} 項成果</span><time>剛剛</time></li><li><span>正在檢查版本與暫存成果</span><time>剛剛</time></li>${selected.map((item) => `<li><span>${item.action}「${item.title}」……開始</span><time>剛剛</time></li>`).join("")}`;
   setTimeout(() => {
-    $("#apply-events").insertAdjacentHTML("beforeend", `<li><span>apply.item.completed × ${selected}</span><time>剛剛</time></li><li><span>apply.completed・全部成果已套用</span><time>剛剛</time></li>`);
+    $("#apply-events").insertAdjacentHTML("beforeend", `${selected.map((item) => `<li><span>${item.action}「${item.title}」……完成</span><time>剛剛</time></li>`).join("")}<li><span>全部成果已套用</span><time>剛剛</time></li>`);
     $("#apply-title").textContent = "Writer 已完成套用";
     $("#apply-card .spinner").outerHTML = `<span class="success">✓</span>`;
     state.textContent = "已寫入";

@@ -33,7 +33,7 @@ Provider 不得回傳任意可直接執行的寫入命令。媒體成果先搬�
 - 所有會影響重開 Writer 後狀態的事件必須 append-only 落盤。
 - live stream event 只供畫面即時預覽，不作為終局事實。
 - UI 以集中 registry 決定每個事件是獨立顯示、聚合顯示或 live-only；未知 persisted event 必須顯示「未支援事件」，不能靜默 fallback。
-- apply 逐 item 保存結果；批次中途失敗時，不重送已完成 item。
+- apply 逐 item 保存 started／completed／failed 結果；批次中途失敗時，不重送已完成 item。UI 使用「新增故事『標題』……開始／完成」等具體文案，不直接顯示 event type 或數量縮寫。
 - REST 結果不明時進入 `apply.interrupted`，只能查證／人工確認，不能自動重送。
 
 ## Adapter capability
