@@ -12,8 +12,6 @@ export function ApiProxy(arg1:string,arg2:string,arg3:string):Promise<api.ProxyR
 
 export function AppVersion():Promise<string>;
 
-export function Ask(arg1:string,arg2:agent.Request):Promise<agent.Reply>;
-
 export function Asset(arg1:string,arg2:string):Promise<api.EditorAsset>;
 
 export function Assets(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number):Promise<api.AssetPage>;
@@ -84,9 +82,9 @@ export function PickImageFiles():Promise<main.LocalImagePick>;
 
 export function Projects():Promise<Array<api.Project>>;
 
-export function ProposalAssetPreview(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
-
 export function ProposalArtifactPreview(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string):Promise<string>;
+
+export function ProposalAssetPreview(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
 
 export function Reorder(arg1:string,arg2:string,arg3:Array<string>):Promise<void>;
 

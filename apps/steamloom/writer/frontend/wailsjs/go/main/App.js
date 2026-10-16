@@ -14,10 +14,6 @@ export function AppVersion() {
   return window['go']['main']['App']['AppVersion']();
 }
 
-export function Ask(arg1, arg2) {
-  return window['go']['main']['App']['Ask'](arg1, arg2);
-}
-
 export function Asset(arg1, arg2) {
   return window['go']['main']['App']['Asset'](arg1, arg2);
 }
@@ -158,12 +154,12 @@ export function Projects() {
   return window['go']['main']['App']['Projects']();
 }
 
-export function ProposalAssetPreview(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['ProposalAssetPreview'](arg1, arg2, arg3, arg4, arg5);
-}
-
 export function ProposalArtifactPreview(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['App']['ProposalArtifactPreview'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+export function ProposalAssetPreview(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['ProposalAssetPreview'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function Reorder(arg1, arg2, arg3) {

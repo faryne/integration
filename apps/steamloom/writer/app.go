@@ -309,27 +309,6 @@ func chatPage(page agent.ChatPage, err error) (*agent.ChatPage, error) {
 	return &page, nil
 }
 
-// Ask 把一輪問答交給 id 指定的 CLI，成功後把原文和回答接到這條串的檔案後面。
-// 續聊用的 session 以檔案為準，不採前端傳來的值。
-func (a *App) Ask(id string, req agent.Request) (*agent.Reply, error) {
-	sessionID, err := agent.SessionOf(id, req.ProjectID, req.ThreadID)
-	if err != nil {
-		return nil, err
-	}
-	req.SessionID = sessionID
-	reply, err := agent.Ask(a.ctx, id, req)
-	if err != nil {
-		return nil, err
-	}
-	saved, err := agent.SaveTurn(id, req.ProjectID, req.ThreadID, req.Prompt, req.References, reply.Text, reply.SessionID)
-	if err != nil {
-		return nil, err
-	}
-	reply.ThreadID = saved.ID
-	reply.Title = saved.Title
-	return &reply, nil
-}
-
 // StartTask 立即回傳 task；實際 CLI 執行由 TaskManager 在背景依 thread 排程。
 func (a *App) StartTask(id string, req agent.Request) (*agent.Task, error) {
 	task, err := a.tasks.Start(id, req)
