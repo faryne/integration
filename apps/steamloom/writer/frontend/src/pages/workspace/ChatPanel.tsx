@@ -376,11 +376,15 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
         proposal={review?.proposal ?? null}
         item={review?.item ?? null}
         selectedCount={review?.selectedIDs.filter((id) => review.proposal.items.some((item) => item.id === id)).length ?? 0}
-		selectedArtifactIDs={review?.selectedIDs.filter((id) => review.item.artifacts?.some((artifact) => artifact.id === id)) ?? []}
-		onArtifactSelectionChange={(artifactIDs) => setReview((current) => current ? {
-			...current,
-			selectedIDs: [...current.selectedIDs.filter((id) => !current.item.artifacts?.some((artifact) => artifact.id === id)), ...artifactIDs],
-		} : null)}
+        itemSelected={review?.selectedIDs.includes(review.item.id) ?? false}
+        selectedArtifactIDs={review?.selectedIDs.filter((id) => review.item.artifacts?.some((artifact) => artifact.id === id)) ?? []}
+        onArtifactSelectionChange={(artifactIDs) => setReview((current) => current ? {
+          ...current,
+          selectedIDs: [
+            ...current.selectedIDs.filter((id) => id !== current.item.id && !current.item.artifacts?.some((artifact) => artifact.id === id)),
+            ...(artifactIDs.length ? [current.item.id, ...artifactIDs] : []),
+          ],
+        } : null)}
         deciding={deciding}
         onClose={() => setReview(null)}
         onDecision={(decision) => void decideProposal(decision)}

@@ -28,6 +28,7 @@ export function ProposalReviewDialog({
   proposal,
   item,
   selectedCount,
+  itemSelected,
   selectedArtifactIDs,
   deciding,
   onClose,
@@ -40,6 +41,7 @@ export function ProposalReviewDialog({
   proposal: AgentProposal | null;
   item: AgentProposalItem | null;
   selectedCount: number;
+  itemSelected: boolean;
   selectedArtifactIDs: string[];
   deciding: boolean;
   onClose: () => void;
@@ -150,7 +152,7 @@ export function ProposalReviewDialog({
           </Stack>
         )}
       </DialogContent>
-      <DialogActions><ProposalActions proposal={proposal} selectedCount={selectedCount} deciding={deciding} stale={stale} selectionMissing={artifactsRequired && selectedArtifactIDs.length === 0} onClose={onClose} onDecision={onDecision} /></DialogActions>
+      <DialogActions><ProposalActions proposal={proposal} selectedCount={selectedCount} deciding={deciding} stale={stale} selectionMissing={itemSelected && artifactsRequired && selectedArtifactIDs.length === 0} onClose={onClose} onDecision={onDecision} /></DialogActions>
     </Dialog>
   );
 }

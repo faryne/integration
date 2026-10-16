@@ -363,9 +363,14 @@ func DecideProposal(agentID, projectID, threadID, proposalID, decision string, s
 		selected := map[string]bool{}
 		if len(selectedItemIDs) == 0 {
 			for _, item := range proposal.Items {
-				selected[item.ID] = true
+				itemSelected := len(item.Artifacts) == 0
 				for _, artifact := range item.Artifacts {
-					selected[artifact.ID] = true
+					if artifact.DefaultSelected {
+						selected[artifact.ID], itemSelected = true, true
+					}
+				}
+				if itemSelected {
+					selected[item.ID] = true
 				}
 			}
 		} else {

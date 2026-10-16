@@ -8,7 +8,9 @@ export function ProposalCard({ proposal, confirming, onConfirmApplied, onReview 
   const { t } = useTranslation();
   const pending = proposal.status === "awaiting_confirmation";
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [selected, setSelected] = useState(() => new Set(proposal.selected_item_ids?.length ? proposal.selected_item_ids : proposal.items.map((item) => item.id)));
+  const [selected, setSelected] = useState(() => new Set(proposal.selected_item_ids?.length
+    ? proposal.selected_item_ids
+    : proposal.items.filter((item) => !item.artifacts?.length || item.artifacts.some((artifact) => artifact.default_selected !== false)).map((item) => item.id)));
   const selectedItems = proposal.items.filter((item) => selected.has(item.id));
   const decidedArtifacts = new Set(proposal.selected_artifact_ids ?? []);
   const selectedIDs = [
