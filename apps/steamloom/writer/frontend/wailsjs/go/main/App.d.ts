@@ -36,9 +36,9 @@ export function ChatSelect(arg1:string,arg2:string,arg3:string):Promise<agent.Ch
 
 export function ChatThreads(arg1:string):Promise<Array<agent.ProjectThread>>;
 
-export function CodexModels():Promise<Array<agent.CodexModel>>;
-
 export function CheckForUpdate():Promise<updater.Info>;
+
+export function CodexModels():Promise<Array<agent.CodexModel>>;
 
 export function ConfirmProposalApplied(arg1:string,arg2:string,arg3:string,arg4:string):Promise<agent.Proposal>;
 

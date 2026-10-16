@@ -62,12 +62,12 @@ export function ChatThreads(arg1) {
   return window['go']['main']['App']['ChatThreads'](arg1);
 }
 
-export function CodexModels() {
-  return window['go']['main']['App']['CodexModels']();
-}
-
 export function CheckForUpdate() {
   return window['go']['main']['App']['CheckForUpdate']();
+}
+
+export function CodexModels() {
+  return window['go']['main']['App']['CodexModels']();
 }
 
 export function ConfirmProposalApplied(arg1, arg2, arg3, arg4) {
