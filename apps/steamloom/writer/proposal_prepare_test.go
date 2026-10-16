@@ -59,3 +59,21 @@ func TestPrepareProposalLoadsAgentReferencedHistoricalBase(t *testing.T) {
 		t.Fatalf("Writer did not load historical base: %#v", items[0])
 	}
 }
+
+func TestPrepareProposalScopesChapterBaseAndPreservesMetadata(t *testing.T) {
+	latest := uint64(42)
+	items, err := prepareProposalItems(context.Background(), fakeProposalSource{document: &api.Document{
+		Title: "第一話", Summary: "原摘要", ContentType: "text", LatestVersionID: &latest,
+		Content: "# ⟦one⟧第一章⟦/one⟧\n舊內容\n\n# ⟦two⟧第二章⟦/two⟧\n保留內容",
+	}}, "project", []agent.ProposalItem{{
+		ProposalType: agent.ProposalTypeChapterReplace, Kind: agent.ProposalKindStory, TargetID: "story-1", MarkerID: "one",
+		Content: "# ⟦one⟧第一章⟦/one⟧\n新內容",
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	item := items[0]
+	if item.Title != "第一話" || item.Summary != "原摘要" || item.Base == nil || item.Base.Content != "# ⟦one⟧第一章⟦/one⟧\n舊內容\n" {
+		t.Fatalf("chapter proposal did not preserve metadata or scope base: %#v", item)
+	}
+}

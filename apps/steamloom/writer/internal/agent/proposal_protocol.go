@@ -9,9 +9,11 @@ import (
 )
 
 const (
-	proposalEnvelopeStart = "<<<STEAMLOOM_WRITER_PROPOSAL_V1>>>"
-	proposalEnvelopeEnd   = "<<<END_STEAMLOOM_WRITER_PROPOSAL_V1>>>"
-	maxProposalEnvelope   = 16 << 20
+	proposalEnvelopeStart       = "<<<STEAMLOOM_WRITER_PROPOSAL_V2>>>"
+	proposalEnvelopeEnd         = "<<<END_STEAMLOOM_WRITER_PROPOSAL_V2>>>"
+	legacyProposalEnvelopeStart = "<<<STEAMLOOM_WRITER_PROPOSAL_V1>>>"
+	legacyProposalEnvelopeEnd   = "<<<END_STEAMLOOM_WRITER_PROPOSAL_V1>>>"
+	maxProposalEnvelope         = 16 << 20
 )
 
 type proposalSubmission struct {
@@ -20,20 +22,43 @@ type proposalSubmission struct {
 
 // submission type 刻意不含 id／status／hash，信任邊界內的欄位只能由 Writer 產生。
 type proposalSubmissionItem struct {
-	Kind          string              `json:"kind"`
-	Operations    []ProposalOperation `json:"operations"`
-	TargetID      string              `json:"target_id,omitempty"`
-	BaseVersionID proposalStringID    `json:"base_version_id,omitempty"`
-	Title         string              `json:"title,omitempty"`
-	Summary       string              `json:"summary,omitempty"`
-	ContentType   string              `json:"content_type,omitempty"`
-	Content       string              `json:"content,omitempty"`
-	Base          *ProposalSnapshot   `json:"base,omitempty"`
-	LocalPath     string              `json:"local_path,omitempty"`
-	FileName      string              `json:"file_name,omitempty"`
-	MIMEType      string              `json:"mime_type,omitempty"`
-	AltText       string              `json:"alt_text,omitempty"`
-	CollectionID  string              `json:"collection_id,omitempty"`
+	ProposalType  string                       `json:"proposal_type,omitempty"`
+	Kind          string                       `json:"kind"`
+	Operations    []ProposalOperation          `json:"operations"`
+	TargetID      string                       `json:"target_id,omitempty"`
+	BaseVersionID proposalStringID             `json:"base_version_id,omitempty"`
+	Title         string                       `json:"title,omitempty"`
+	Summary       string                       `json:"summary,omitempty"`
+	ContentType   string                       `json:"content_type,omitempty"`
+	Content       string                       `json:"content,omitempty"`
+	Base          *ProposalSnapshot            `json:"base,omitempty"`
+	LocalPath     string                       `json:"local_path,omitempty"`
+	FileName      string                       `json:"file_name,omitempty"`
+	MIMEType      string                       `json:"mime_type,omitempty"`
+	AltText       string                       `json:"alt_text,omitempty"`
+	CollectionID  string                       `json:"collection_id,omitempty"`
+	MarkerID      string                       `json:"marker_id,omitempty"`
+	AfterMarkerID string                       `json:"after_marker_id,omitempty"`
+	Artifacts     []proposalSubmissionArtifact `json:"artifacts,omitempty"`
+}
+
+// proposalSubmissionArtifact 排除 Writer 產生的 id、檔案大小與 hash，避免 Agent 越過 staging 信任邊界。
+type proposalSubmissionArtifact struct {
+	ProviderJobID   string         `json:"provider_job_id,omitempty"`
+	Model           string         `json:"model,omitempty"`
+	Parameters      map[string]any `json:"parameters,omitempty"`
+	CandidateGroup  string         `json:"candidate_group,omitempty"`
+	DefaultSelected *bool          `json:"default_selected,omitempty"`
+	LocalPath       string         `json:"local_path,omitempty"`
+	AssetPublicID   string         `json:"asset_public_id,omitempty"`
+	FileName        string         `json:"file_name,omitempty"`
+	MIMEType        string         `json:"mime_type,omitempty"`
+	AltText         string         `json:"alt_text,omitempty"`
+	Description     string         `json:"description,omitempty"`
+	Width           int            `json:"width,omitempty"`
+	Height          int            `json:"height,omitempty"`
+	DurationMS      int64          `json:"duration_ms,omitempty"`
+	PageID          string         `json:"page_id,omitempty"`
 }
 
 // MCP 的 version id 是數字，但部分 Agent 會為了避免精度問題輸出字串；兩種都正規化成字串保存。
@@ -61,19 +86,23 @@ func (id *proposalStringID) UnmarshalJSON(raw []byte) error {
 }
 
 func parseProposalEnvelope(answer string) (string, []ProposalItem, error) {
-	start := strings.LastIndex(answer, proposalEnvelopeStart)
+	startMarker, endMarker := proposalEnvelopeStart, proposalEnvelopeEnd
+	start := strings.LastIndex(answer, startMarker)
+	if legacy := strings.LastIndex(answer, legacyProposalEnvelopeStart); legacy > start {
+		start, startMarker, endMarker = legacy, legacyProposalEnvelopeStart, legacyProposalEnvelopeEnd
+	}
 	if start < 0 {
 		return answer, nil, nil
 	}
-	endOffset := strings.Index(answer[start+len(proposalEnvelopeStart):], proposalEnvelopeEnd)
+	endOffset := strings.Index(answer[start+len(startMarker):], endMarker)
 	if endOffset < 0 {
 		return "", nil, errors.New("Agent 回傳的 proposal 缺少結束標記")
 	}
-	end := start + len(proposalEnvelopeStart) + endOffset
-	if strings.TrimSpace(answer[end+len(proposalEnvelopeEnd):]) != "" {
+	end := start + len(startMarker) + endOffset
+	if strings.TrimSpace(answer[end+len(endMarker):]) != "" {
 		return "", nil, errors.New("proposal 結束後不能再附加內容")
 	}
-	payload := strings.TrimSpace(answer[start+len(proposalEnvelopeStart) : end])
+	payload := strings.TrimSpace(answer[start+len(startMarker) : end])
 	if len(payload) > maxProposalEnvelope {
 		return "", nil, errors.New("Agent 回傳的 proposal 超過 16 MiB")
 	}
@@ -95,10 +124,25 @@ func parseProposalEnvelope(answer string) (string, []ProposalItem, error) {
 	}
 	items := make([]ProposalItem, len(submission.Items))
 	for index, item := range submission.Items {
+		artifacts := make([]ProposalArtifact, len(item.Artifacts))
+		for artifactIndex, artifact := range item.Artifacts {
+			defaultSelected := true
+			if artifact.DefaultSelected != nil {
+				defaultSelected = *artifact.DefaultSelected
+			}
+			artifacts[artifactIndex] = ProposalArtifact{
+				ProviderJobID: artifact.ProviderJobID, Model: artifact.Model, Parameters: artifact.Parameters,
+				CandidateGroup: artifact.CandidateGroup, DefaultSelected: defaultSelected,
+				LocalPath: artifact.LocalPath, AssetPublicID: artifact.AssetPublicID, FileName: artifact.FileName,
+				MIMEType: artifact.MIMEType, AltText: artifact.AltText, Description: artifact.Description,
+				Width: artifact.Width, Height: artifact.Height, DurationMS: artifact.DurationMS, PageID: artifact.PageID,
+			}
+		}
 		items[index] = ProposalItem{
-			Kind: item.Kind, Operations: item.Operations, TargetID: item.TargetID, BaseVersionID: string(item.BaseVersionID),
+			ProposalType: item.ProposalType, Kind: item.Kind, Operations: item.Operations, TargetID: item.TargetID, BaseVersionID: string(item.BaseVersionID),
 			Title: item.Title, Summary: item.Summary, ContentType: item.ContentType, Content: item.Content, Base: item.Base,
 			LocalPath: item.LocalPath, FileName: item.FileName, MIMEType: item.MIMEType, AltText: item.AltText, CollectionID: item.CollectionID,
+			MarkerID: item.MarkerID, AfterMarkerID: item.AfterMarkerID, Artifacts: artifacts,
 		}
 	}
 	return visible, items, nil
@@ -141,7 +185,14 @@ func (f *proposalDeltaFilter) Push(text string) string {
 }
 
 func firstEnvelopeIndex(text string) int {
-	return strings.Index(text, proposalEnvelopeStart)
+	current, legacy := strings.Index(text, proposalEnvelopeStart), strings.Index(text, legacyProposalEnvelopeStart)
+	if current < 0 {
+		return legacy
+	}
+	if legacy >= 0 && legacy < current {
+		return legacy
+	}
+	return current
 }
 
 func (f *proposalDeltaFilter) Flush() string {

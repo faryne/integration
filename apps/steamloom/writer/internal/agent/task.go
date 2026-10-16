@@ -52,7 +52,7 @@ type TaskEvent struct {
 
 type TaskRunner func(context.Context, string, Request) (Reply, error)
 type TaskEmitter func(TaskEvent)
-type ProposalApplyRunner func(context.Context, Proposal) (string, error)
+type ProposalApplyRunner func(context.Context, Proposal, ProposalItem) (string, error)
 type ProposalPrepareRunner func(context.Context, string, []ProposalItem) ([]ProposalItem, error)
 
 var ErrApplyConflict = errors.New("proposal apply conflict")
@@ -141,21 +141,27 @@ func (m *TaskManager) Apply(proposal Proposal) (Task, error) {
 	if proposal.Status != ProposalApproved {
 		return Task{}, errors.New("這批提案尚未取得作者允許")
 	}
+	m.mu.Lock()
+	for _, existing := range m.tasks {
+		if existing.applyProposal != nil && existing.applyProposal.ID == proposal.ID && (existing.task.State == TaskQueued || existing.task.State == TaskApplying) {
+			task := existing.task
+			m.mu.Unlock()
+			return task, nil
+		}
+	}
+	m.mu.Unlock()
 	id, err := newThreadID()
 	if err != nil {
 		return Task{}, err
 	}
 	task := Task{ID: id, AgentID: proposal.AgentID, ProjectID: proposal.ProjectID, ThreadID: proposal.ThreadID, Prompt: "執行已核准提案", State: TaskQueued, CreatedAt: now()}
+	proposal, err = recordApplyQueued(task.AgentID, task.ProjectID, task.ThreadID, proposal.ID, task.ID)
+	if err != nil {
+		return Task{}, err
+	}
 	managed := &managedTask{task: task, req: Request{ThreadID: proposal.ThreadID, ProjectID: proposal.ProjectID, Prompt: task.Prompt}, applyProposal: &proposal}
 	key := taskQueueKey(task)
 	m.mu.Lock()
-	for _, existing := range m.tasks {
-		if existing.applyProposal != nil && existing.applyProposal.ID == proposal.ID && (existing.task.State == TaskQueued || existing.task.State == TaskApplying) {
-			task = existing.task
-			m.mu.Unlock()
-			return task, nil
-		}
-	}
 	m.tasks[id] = managed
 	queue := m.queues[key]
 	if queue == nil {
@@ -302,11 +308,29 @@ func (m *TaskManager) runApply(ctx context.Context, managed *managedTask) {
 		if m.apply == nil {
 			err = errors.New("Writer 尚未設定提案寫入器")
 		} else {
-			var summary string
-			summary, err = m.apply(ctx, proposal)
-			if ctx.Err() != nil {
-				err = ctx.Err()
-			} else if err == nil {
+			for _, item := range proposal.ApplyItems() {
+				proposal, err = recordApplyItem(task.AgentID, task.ProjectID, task.ThreadID, proposal.ID, task.ID, item.ID, EventApplyItemStarted, "")
+				if err != nil {
+					break
+				}
+				m.emit(TaskEvent{Type: EventApplyItemStarted, Task: task, Proposal: &proposal})
+				_, err = m.apply(ctx, proposal, item)
+				if ctx.Err() != nil {
+					err = ctx.Err()
+				}
+				if err != nil {
+					_, _ = recordApplyItem(task.AgentID, task.ProjectID, task.ThreadID, proposal.ID, task.ID, item.ID, EventApplyItemFailed, err.Error())
+					m.emit(TaskEvent{Type: EventApplyItemFailed, Task: task, Proposal: &proposal})
+					break
+				}
+				proposal, err = recordApplyItem(task.AgentID, task.ProjectID, task.ThreadID, proposal.ID, task.ID, item.ID, EventApplyItemDone, "")
+				if err != nil {
+					break
+				}
+				m.emit(TaskEvent{Type: EventApplyItemDone, Task: task, Proposal: &proposal})
+			}
+			if err == nil {
+				summary := fmt.Sprintf("Writer 已依你的核准套用 %d 項提案。", len(proposal.ApplyItems()))
 				proposal, err = recordApplyCompleted(task.AgentID, task.ProjectID, task.ThreadID, proposal.ID, task.ID, summary)
 			}
 		}

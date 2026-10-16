@@ -13,7 +13,8 @@ import (
 	"strings"
 )
 
-const maxProposalAssetSize = 100 << 20
+// 與 SteamLoom asset upload API 同步，避免能 review 卻在 apply 時才被拒絕。
+const maxProposalAssetSize = 15 << 20
 
 var proposalAssetExtensions = map[string]string{
 	"image/jpeg": ".jpg",
@@ -55,11 +56,20 @@ func saveProposal(agentID, projectID, threadID, taskID, assetRoot string, reply 
 	}
 	defer os.RemoveAll(stagingDir)
 	for index := range proposal.Items {
-		if proposal.Items[index].Kind != ProposalKindAsset {
-			continue
+		item := &proposal.Items[index]
+		if item.Kind == ProposalKindAsset && len(item.Artifacts) == 0 {
+			if err := stageProposalAsset(item, assetRoot, stagingDir, finalDir); err != nil {
+				return Proposal{}, fmt.Errorf("提案項目 %d：%w", index+1, err)
+			}
 		}
-		if err := stageProposalAsset(&proposal.Items[index], assetRoot, stagingDir, finalDir); err != nil {
-			return Proposal{}, fmt.Errorf("提案項目 %d：%w", index+1, err)
+		for artifactIndex := range item.Artifacts {
+			artifact := &item.Artifacts[artifactIndex]
+			if artifact.LocalPath == "" {
+				continue
+			}
+			if err := stageProposalArtifact(artifact, assetRoot, stagingDir, finalDir); err != nil {
+				return Proposal{}, fmt.Errorf("提案項目 %d 的 artifact %d：%w", index+1, artifactIndex+1, err)
+			}
 		}
 	}
 	if err := setProposalHashes(&proposal); err != nil {
@@ -100,17 +110,27 @@ func saveProposal(agentID, projectID, threadID, taskID, assetRoot string, reply 
 }
 
 func stageProposalAsset(item *ProposalItem, assetRoot, stagingDir, finalDir string) error {
-	extension, ok := proposalAssetExtensions[item.MIMEType]
+	artifact := ProposalArtifact{ID: item.ID, LocalPath: item.LocalPath, FileName: item.FileName, MIMEType: item.MIMEType, AltText: item.AltText}
+	if err := stageProposalArtifact(&artifact, assetRoot, stagingDir, finalDir); err != nil {
+		return err
+	}
+	item.LocalPath, item.FileName, item.MIMEType = artifact.LocalPath, artifact.FileName, artifact.MIMEType
+	item.FileSize, item.FileSHA256 = artifact.FileSize, artifact.FileSHA256
+	return nil
+}
+
+func stageProposalArtifact(artifact *ProposalArtifact, assetRoot, stagingDir, finalDir string) error {
+	extension, ok := proposalAssetExtensions[artifact.MIMEType]
 	if !ok {
 		return errors.New("只接受 JPEG、PNG、WebP 或 GIF 圖片")
 	}
-	if !filepath.IsAbs(item.LocalPath) {
+	if !filepath.IsAbs(artifact.LocalPath) {
 		return errors.New("圖片資產必須使用絕對路徑")
 	}
-	if assetRoot == "" || !pathInside(item.LocalPath, assetRoot) {
+	if assetRoot == "" || !pathInside(artifact.LocalPath, assetRoot) {
 		return errors.New("圖片資產必須位於這條 Agent session 的工作目錄")
 	}
-	source, err := os.Open(item.LocalPath)
+	source, err := os.Open(artifact.LocalPath)
 	if err != nil {
 		return err
 	}
@@ -126,7 +146,7 @@ func stageProposalAsset(item *ProposalItem, assetRoot, stagingDir, finalDir stri
 	if err := os.MkdirAll(artifactDir, 0o700); err != nil {
 		return err
 	}
-	name := item.ID + extension
+	name := artifact.ID + extension
 	destination, err := os.OpenFile(filepath.Join(artifactDir, name), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
 		return err
@@ -141,13 +161,13 @@ func stageProposalAsset(item *ProposalItem, assetRoot, stagingDir, finalDir stri
 		return closeErr
 	}
 	if written > maxProposalAssetSize {
-		return errors.New("圖片資產超過 100 MiB")
+		return errors.New("圖片資產超過 15 MiB")
 	}
-	item.FileSize = written
-	item.FileSHA256 = hex.EncodeToString(hash.Sum(nil))
-	item.LocalPath = filepath.Join(finalDir, "artifacts", name)
-	if item.FileName == "" {
-		item.FileName = filepath.Base(info.Name())
+	artifact.FileSize = written
+	artifact.FileSHA256 = hex.EncodeToString(hash.Sum(nil))
+	artifact.LocalPath = filepath.Join(finalDir, "artifacts", name)
+	if artifact.FileName == "" {
+		artifact.FileName = filepath.Base(info.Name())
 	}
 	return nil
 }
@@ -269,6 +289,8 @@ func proposalApplyLifecycle(path, proposalID string) (proposalDecision, bool) {
 			continue
 		}
 		switch event.Type {
+		case EventApplyQueued:
+			state, found = proposalDecision{status: ProposalApproved, taskID: event.TaskID}, true
 		case EventApplyStarted:
 			state, found = proposalDecision{status: ProposalApplying, taskID: event.TaskID}, true
 		case EventApplyCompleted:
@@ -337,11 +359,19 @@ func DecideProposal(agentID, projectID, threadID, proposalID, decision string, s
 		return Proposal{}, errors.New("這批提案已經不在等待確認狀態")
 	}
 	if decision == ProposalDecisionApprove {
-		proposal.SelectedItemIDs = nil
+		proposal.SelectedItemIDs, proposal.SelectedArtifactIDs = nil, nil
 		selected := map[string]bool{}
 		if len(selectedItemIDs) == 0 {
 			for _, item := range proposal.Items {
-				selected[item.ID] = true
+				itemSelected := len(item.Artifacts) == 0
+				for _, artifact := range item.Artifacts {
+					if artifact.DefaultSelected {
+						selected[artifact.ID], itemSelected = true, true
+					}
+				}
+				if itemSelected {
+					selected[item.ID] = true
+				}
 			}
 		} else {
 			for _, id := range selectedItemIDs[0] {
@@ -352,6 +382,17 @@ func DecideProposal(agentID, projectID, threadID, proposalID, decision string, s
 			if selected[item.ID] {
 				proposal.SelectedItemIDs = append(proposal.SelectedItemIDs, item.ID)
 				delete(selected, item.ID)
+				selectedForItem := 0
+				for _, artifact := range item.Artifacts {
+					if selected[artifact.ID] {
+						proposal.SelectedArtifactIDs = append(proposal.SelectedArtifactIDs, artifact.ID)
+						delete(selected, artifact.ID)
+						selectedForItem++
+					}
+				}
+				if len(item.Artifacts) > 0 && selectedForItem == 0 {
+					return Proposal{}, fmt.Errorf("%s 至少要選擇一份媒體成果", item.Title)
+				}
 			}
 		}
 		if len(proposal.SelectedItemIDs) == 0 {
@@ -362,8 +403,16 @@ func DecideProposal(agentID, projectID, threadID, proposalID, decision string, s
 		}
 		proposalDir := filepath.Dir(path)
 		for _, item := range proposal.ApplyItems() {
-			if item.Kind == ProposalKindAsset {
+			if item.Kind == ProposalKindAsset && len(item.Artifacts) == 0 {
 				if _, err := readVerifiedProposalAsset(item, proposalDir); err != nil {
+					return Proposal{}, err
+				}
+			}
+			for _, artifact := range item.Artifacts {
+				if artifact.LocalPath == "" {
+					continue
+				}
+				if _, err := readVerifiedProposalArtifact(artifact, proposalDir); err != nil {
 					return Proposal{}, err
 				}
 			}

@@ -403,7 +403,7 @@ func TestTaskManagerAppliesApprovedProposalOnSameThread(t *testing.T) {
 		agentCalled <- struct{}{}
 		return Reply{}, nil
 	}, func(event TaskEvent) { events <- event })
-	manager.SetProposalApplyRunner(func(_ context.Context, value Proposal) (string, error) {
+	manager.SetProposalApplyRunner(func(_ context.Context, value Proposal, _ ProposalItem) (string, error) {
 		applied <- value
 		return "Writer 已套用角色設定。", nil
 	})
@@ -435,6 +435,21 @@ func TestTaskManagerAppliesApprovedProposalOnSameThread(t *testing.T) {
 	if got := chat.Messages[len(chat.Messages)-1].Type; got != EventApplyCompleted {
 		t.Fatalf("apply result was not persisted in conversation: %s", got)
 	}
+	types := []string{}
+	texts := []string{}
+	for _, line := range chat.Messages {
+		if line.TaskID != applyTask.ID {
+			continue
+		}
+		types, texts = append(types, line.Type), append(texts, line.Text)
+	}
+	wantTypes := []string{EventApplyQueued, EventApplyStarted, EventApplyItemStarted, EventApplyItemDone, EventApplyCompleted}
+	if fmt.Sprint(types) != fmt.Sprint(wantTypes) {
+		t.Fatalf("apply lifecycle = %#v, want %#v", types, wantTypes)
+	}
+	if texts[2] != "新增設定「角色 A」……開始" || texts[3] != "新增設定「角色 A」……完成" {
+		t.Fatalf("item lifecycle leaked internal event names: %#v", texts)
+	}
 }
 
 func TestTaskManagerPersistsApplyConflictWithoutRetry(t *testing.T) {
@@ -459,7 +474,7 @@ func TestTaskManagerPersistsApplyConflictWithoutRetry(t *testing.T) {
 	}
 	events := make(chan TaskEvent, 20)
 	manager := NewTaskManager(context.Background(), nil, func(event TaskEvent) { events <- event })
-	manager.SetProposalApplyRunner(func(context.Context, Proposal) (string, error) {
+	manager.SetProposalApplyRunner(func(context.Context, Proposal, ProposalItem) (string, error) {
 		return "", fmt.Errorf("%w：latest version is 42", ErrApplyConflict)
 	})
 	defer manager.Close()
@@ -481,6 +496,13 @@ func TestTaskManagerPersistsApplyConflictWithoutRetry(t *testing.T) {
 	}
 	if got := chat.Messages[len(chat.Messages)-1].Type; got != EventApplyConflict {
 		t.Fatalf("conflict event missing from conversation: %s", got)
+	}
+}
+
+func TestProposalItemApplyLabelUsesChapterHeading(t *testing.T) {
+	item := ProposalItem{ProposalType: ProposalTypeChapterAppend, Kind: ProposalKindStory, Title: "第一話", Content: "# ⟦chase⟧追逐⟦/chase⟧\n內容"}
+	if got := ProposalItemApplyLabel(item); got != "新增章節「追逐」" {
+		t.Fatalf("chapter apply label = %q", got)
 	}
 }
 

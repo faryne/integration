@@ -11,11 +11,11 @@ import (
 func Detect() []Installed {
 	found := make([]Installed, 0)
 	for _, item := range catalog {
-		path, ok := lookup(item.bin)
+		path, ok := lookup(item.executable)
 		if !ok {
 			continue
 		}
-		found = append(found, Installed{ID: item.id, DisplayName: item.display, Path: path})
+		found = append(found, Installed{ID: item.descriptor.ID, DisplayName: item.descriptor.DisplayName, Path: path, Capabilities: append([]Capability(nil), item.descriptor.Capabilities...)})
 	}
 	return found
 }

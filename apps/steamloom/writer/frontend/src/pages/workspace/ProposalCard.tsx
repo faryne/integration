@@ -4,12 +4,19 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentProposal, AgentProposalItem } from "@writer/lib/backend.ts";
 
-export function ProposalCard({ proposal, confirming, onConfirmApplied, onReview }: { proposal: AgentProposal; confirming: boolean; onConfirmApplied: () => void; onReview: (item: AgentProposalItem, selectedItemIDs: string[]) => void }) {
+export function ProposalCard({ proposal, confirming, onConfirmApplied, onReview }: { proposal: AgentProposal; confirming: boolean; onConfirmApplied: () => void; onReview: (item: AgentProposalItem, selectedIDs: string[]) => void }) {
   const { t } = useTranslation();
   const pending = proposal.status === "awaiting_confirmation";
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [selected, setSelected] = useState(() => new Set(proposal.selected_item_ids?.length ? proposal.selected_item_ids : proposal.items.map((item) => item.id)));
-  const selectedIDs = proposal.items.filter((item) => selected.has(item.id)).map((item) => item.id);
+  const [selected, setSelected] = useState(() => new Set(proposal.selected_item_ids?.length
+    ? proposal.selected_item_ids
+    : proposal.items.filter((item) => !item.artifacts?.length || item.artifacts.some((artifact) => artifact.default_selected !== false)).map((item) => item.id)));
+  const selectedItems = proposal.items.filter((item) => selected.has(item.id));
+  const decidedArtifacts = new Set(proposal.selected_artifact_ids ?? []);
+  const selectedIDs = [
+    ...selectedItems.map((item) => item.id),
+    ...selectedItems.flatMap((item) => item.artifacts?.filter((artifact) => pending ? artifact.default_selected !== false : decidedArtifacts.size === 0 || decidedArtifacts.has(artifact.id)).map((artifact) => artifact.id) ?? []),
+  ];
   const toggle = (id: string) => setSelected((current) => {
     const next = new Set(current);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -36,7 +43,7 @@ export function ProposalCard({ proposal, confirming, onConfirmApplied, onReview 
         {proposal.items.map((item) => (
           <Stack key={item.id} direction="row" alignItems="center" spacing={1} sx={{ p: 1, borderRadius: 1.5, bgcolor: "background.paper" }}>
             {pending && <Checkbox size="small" checked={selected.has(item.id)} onChange={() => toggle(item.id)} inputProps={{ "aria-label": t("workspace.chat.proposal.selectItem", { title: item.title || item.file_name || "" }) }} />}
-            <Chip size="small" variant="outlined" label={t(`workspace.chat.proposal.kinds.${item.kind}`)} />
+            <Chip size="small" variant="outlined" label={t(`workspace.chat.proposal.types.${item.proposal_type || (item.kind === "asset" ? "asset.upload" : item.target_id ? "document.replace" : "document.create")}`)} />
             <Typography noWrap sx={{ flex: 1, minWidth: 0, fontSize: 13 }}>{item.title || item.file_name || t("workspace.chat.proposal.untitled")}</Typography>
             <Button size="small" onClick={() => onReview(item, selectedIDs)}>{t(pending ? "workspace.chat.proposal.review" : "workspace.chat.proposal.view")}</Button>
           </Stack>

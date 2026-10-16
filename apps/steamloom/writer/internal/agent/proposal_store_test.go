@@ -122,6 +122,37 @@ func TestApproveProposalPersistsSelectedItems(t *testing.T) {
 	}
 }
 
+func TestApproveProposalPersistsSelectedArtifacts(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("grok", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assetRoot := t.TempDir()
+	paths := []string{filepath.Join(assetRoot, "one.png"), filepath.Join(assetRoot, "two.png")}
+	for index, path := range paths {
+		if err := os.WriteFile(path, []byte{byte(index + 1)}, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	taskID, _ := newThreadID()
+	proposal, err := SaveProposal("grok", "project", page.CurrentID, taskID, assetRoot, []ProposalItem{{
+		ProposalType: ProposalTypeAssetUpload, Kind: ProposalKindAsset, Title: "候選圖",
+		Artifacts: []ProposalArtifact{{LocalPath: paths[0], MIMEType: "image/png"}, {LocalPath: paths[1], MIMEType: "image/png"}},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	item, selected := proposal.Items[0], proposal.Items[0].Artifacts[1]
+	approved, err := DecideProposal("grok", "project", page.CurrentID, proposal.ID, ProposalDecisionApprove, []string{item.ID, selected.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if selected.ProviderID != "grok" || len(approved.SelectedArtifactIDs) != 1 || approved.SelectedArtifactIDs[0] != selected.ID || len(approved.ApplyItems()[0].Artifacts) != 1 || approved.ApplyItems()[0].Artifacts[0].ID != selected.ID {
+		t.Fatalf("selected artifacts were not sealed into the decision: %#v", approved)
+	}
+}
+
 func TestSaveProposalStagesAssetAndDeleteChatRemovesIt(t *testing.T) {
 	root := withTempConfig(t)
 	page, err := NewChat("grok", "project")
