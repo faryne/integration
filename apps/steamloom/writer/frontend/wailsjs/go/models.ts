@@ -237,6 +237,22 @@ export namespace agent {
 	    }
 	}
 	
+	export class ProposalEdit {
+	    find: string;
+	    replace: string;
+	    all?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProposalEdit(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.find = source["find"];
+	        this.replace = source["replace"];
+	        this.all = source["all"];
+	    }
+	}
 	export class ProposalArtifact {
 	    id: string;
 	    provider_id?: string;
@@ -341,6 +357,7 @@ export namespace agent {
 	    marker_id?: string;
 	    after_marker_id?: string;
 	    artifacts?: ProposalArtifact[];
+	    edits?: ProposalEdit[];
 	    content_hash: string;
 	
 	    static createFrom(source: any = {}) {
@@ -370,6 +387,7 @@ export namespace agent {
 	        this.marker_id = source["marker_id"];
 	        this.after_marker_id = source["after_marker_id"];
 	        this.artifacts = this.convertValues(source["artifacts"], ProposalArtifact);
+	        this.edits = this.convertValues(source["edits"], ProposalEdit);
 	        this.content_hash = source["content_hash"];
 	    }
 	
@@ -447,6 +465,7 @@ export namespace agent {
 		    return a;
 		}
 	}
+	
 	
 	
 	

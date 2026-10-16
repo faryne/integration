@@ -40,6 +40,7 @@ type proposalSubmissionItem struct {
 	MarkerID      string                       `json:"marker_id,omitempty"`
 	AfterMarkerID string                       `json:"after_marker_id,omitempty"`
 	Artifacts     []proposalSubmissionArtifact `json:"artifacts,omitempty"`
+	Edits         []ProposalEdit               `json:"edits,omitempty"`
 }
 
 // proposalSubmissionArtifact 排除 Writer 產生的 id、檔案大小與 hash，避免 Agent 越過 staging 信任邊界。
@@ -142,7 +143,7 @@ func parseProposalEnvelope(answer string) (string, []ProposalItem, error) {
 			ProposalType: item.ProposalType, Kind: item.Kind, Operations: item.Operations, TargetID: item.TargetID, BaseVersionID: string(item.BaseVersionID),
 			Title: item.Title, Summary: item.Summary, ContentType: item.ContentType, Content: item.Content, Base: item.Base,
 			LocalPath: item.LocalPath, FileName: item.FileName, MIMEType: item.MIMEType, AltText: item.AltText, CollectionID: item.CollectionID,
-			MarkerID: item.MarkerID, AfterMarkerID: item.AfterMarkerID, Artifacts: artifacts,
+			MarkerID: item.MarkerID, AfterMarkerID: item.AfterMarkerID, Artifacts: artifacts, Edits: item.Edits,
 		}
 	}
 	return visible, items, nil

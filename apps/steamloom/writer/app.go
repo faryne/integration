@@ -235,6 +235,11 @@ func (a *App) ConfirmProposalApplied(agentID, projectID, threadID, proposalID st
 	return &proposal, nil
 }
 
+// ProposalInvalidOutput 讀回提案無法使用時保存的 Agent 原始回答，讓作者自行檢視或複製。
+func (a *App) ProposalInvalidOutput(agentID, projectID, threadID, eventID string) (string, error) {
+	return agent.ProposalInvalidOutput(agentID, projectID, threadID, eventID)
+}
+
 // ProposalAssetPreview 只在使用者打開 review 時讀取 Writer 管理的本機圖片。
 func (a *App) ProposalAssetPreview(agentID, projectID, threadID, proposalID, itemID string) (string, error) {
 	return agent.ProposalAssetPreview(agentID, projectID, threadID, proposalID, itemID)

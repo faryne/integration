@@ -12,6 +12,7 @@ const labels: Record<string, string> = {
   "task.completed": "completed",
   "task.failed": "failed",
   "task.canceled": "canceled",
+  "proposal.invalid": "proposalInvalid",
   "apply.queued": "applyQueued",
   "apply.started": "applyStarted",
   "apply.completed": "applyCompleted",
@@ -47,7 +48,7 @@ export function activityEventLabel(event: ChatLine, workspace: Workspace, t: Tra
 export function activityEventTone(event: ChatLine): EventTone {
   if (event.type === "task.canceled") return "canceled";
   if (event.type === "task.failed" || event.type === "task.tool.failed" || event.type === "apply.failed" || event.type === "apply.item.failed") return "failed";
-  if (event.type === "apply.conflict" || event.type === "apply.interrupted") return "attention";
+  if (event.type === "apply.conflict" || event.type === "apply.interrupted" || event.type === "proposal.invalid") return "attention";
   if (event.type === "task.completed" || event.type === "apply.completed" || event.type === "apply.verified") return "completed";
   return "running";
 }

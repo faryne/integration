@@ -115,6 +115,12 @@
       "applyConflict": "バージョン競合を検出し、上書きしませんでした",
       "applyInterrupted": "書き込みが中断され、結果の確認が必要です",
       "applyVerified": "内容の適用を確認しました",
+      "proposalInvalid": "提案を使用できません",
+      "viewRawOutput": "元の出力を表示",
+      "rawOutputTitle": "Agent の元の出力",
+      "rawOutputCopy": "すべてコピー",
+      "rawOutputCopied": "コピーしました",
+      "rawOutputClose": "閉じる",
       "unknown": "未対応イベント：{{type}}"
     },
     "login": {
@@ -165,7 +171,7 @@
         "asset": "画像"
       },
       "types": {
-        "document": { "create": "全文を新規作成", "replace": "全文を更新" },
+        "document": { "create": "全文を新規作成", "replace": "全文を更新", "patch": "部分修正" },
         "chapter": { "append": "章を追加", "replace": "章を更新" },
         "asset": { "upload": "画像アセット" },
         "image_story": { "create": "画像作品を新規作成", "update": "画像作品を更新" }

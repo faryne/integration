@@ -120,14 +120,15 @@ func ProposalItemApplyLabel(item ProposalItem) string {
 	action := map[string]string{
 		ProposalTypeDocumentCreate:   "新增內容",
 		ProposalTypeDocumentReplace:  "更新內容",
+		ProposalTypeDocumentPatch:    "修改內容",
 		ProposalTypeChapterAppend:    "新增章節",
 		ProposalTypeChapterReplace:   "更新章節",
 		ProposalTypeAssetUpload:      "上傳圖片",
 		ProposalTypeImageStoryCreate: "新增圖像作品",
 		ProposalTypeImageStoryUpdate: "更新圖像作品",
 	}[item.ProposalType]
-	if item.ProposalType == ProposalTypeDocumentCreate || item.ProposalType == ProposalTypeDocumentReplace {
-		action = map[string]string{ProposalKindStory: map[bool]string{true: "新增故事", false: "更新故事"}[item.ProposalType == ProposalTypeDocumentCreate], ProposalKindLore: map[bool]string{true: "新增設定", false: "更新設定"}[item.ProposalType == ProposalTypeDocumentCreate]}[item.Kind]
+	if verb := map[string]string{ProposalTypeDocumentCreate: "新增", ProposalTypeDocumentReplace: "更新", ProposalTypeDocumentPatch: "修改"}[item.ProposalType]; verb != "" {
+		action = verb + map[string]string{ProposalKindStory: "故事", ProposalKindLore: "設定"}[item.Kind]
 	}
 	title := item.Title
 	if item.ProposalType == ProposalTypeChapterAppend || item.ProposalType == ProposalTypeChapterReplace {

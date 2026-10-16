@@ -26,6 +26,7 @@ const (
 	ProposalKindAsset            = "asset"
 	ProposalTypeDocumentCreate   = "document.create"
 	ProposalTypeDocumentReplace  = "document.replace"
+	ProposalTypeDocumentPatch    = "document.patch"
 	ProposalTypeChapterAppend    = "chapter.append"
 	ProposalTypeChapterReplace   = "chapter.replace"
 	ProposalTypeAssetUpload      = "asset.upload"
@@ -96,6 +97,17 @@ type ProposalOperation struct {
 	Arguments map[string]any `json:"arguments"`
 }
 
+// ProposalEdit 是 document.patch 的一筆搜尋取代；Writer 依序套在 base 版本上算出全文，Agent 不必重送整份內容。
+// All 為 false 時 Find 必須剛好出現一次，避免改到作者沒看到的同名段落。
+type ProposalEdit struct {
+	Find    string `json:"find"`
+	Replace string `json:"replace"`
+	All     bool   `json:"all,omitempty"`
+}
+
+// maxProposalEdits 限制單一 patch 的筆數；超過代表應改用 document.replace 或拆成多輪。
+const maxProposalEdits = 200
+
 // ProposalArtifact 是 provider 產生或既已存在於 SteamLoom 的媒體成果。
 // LocalPath 會在 proposal 落盤前搬到 Writer staging；AssetPublicID 則代表沿用既有資產。
 type ProposalArtifact struct {
@@ -144,6 +156,7 @@ type ProposalItem struct {
 	MarkerID      string              `json:"marker_id,omitempty"`
 	AfterMarkerID string              `json:"after_marker_id,omitempty"`
 	Artifacts     []ProposalArtifact  `json:"artifacts,omitempty"`
+	Edits         []ProposalEdit      `json:"edits,omitempty"`
 	ContentHash   string              `json:"content_hash"`
 }
 
@@ -172,7 +185,7 @@ func prepareProposal(agentID, projectID, threadID, taskID string, items []Propos
 			return Proposal{}, err
 		}
 		if err := normalizeProposalItem(item, projectID); err != nil {
-			return Proposal{}, fmt.Errorf("提案項目 %d：%w", index+1, err)
+			return Proposal{}, InvalidProposal(fmt.Errorf("提案項目 %d：%w", index+1, err))
 		}
 	}
 	return proposal, nil
@@ -194,7 +207,7 @@ func normalizeProposalItem(item *ProposalItem, projectID string) error {
 		if item.ContentType == "" {
 			item.ContentType = "text"
 		}
-	case ProposalTypeDocumentReplace, ProposalTypeChapterAppend, ProposalTypeChapterReplace:
+	case ProposalTypeDocumentReplace, ProposalTypeDocumentPatch, ProposalTypeChapterAppend, ProposalTypeChapterReplace:
 		if item.Kind != ProposalKindStory && item.Kind != ProposalKindLore {
 			return errors.New("文件與章節提案只支援故事或設定")
 		}
@@ -232,6 +245,9 @@ func normalizeProposalItem(item *ProposalItem, projectID string) error {
 		}
 	default:
 		return errors.New("不支援的提案類型")
+	}
+	if err := validateProposalEdits(item); err != nil {
+		return err
 	}
 	for index := range item.Artifacts {
 		artifact := &item.Artifacts[index]
@@ -292,6 +308,28 @@ func normalizeProposalItem(item *ProposalItem, projectID string) error {
 	return nil
 }
 
+// validateProposalEdits 確保只有 document.patch 帶 edits，且每筆都能定位；實際比對在 Writer 建立基準時進行。
+func validateProposalEdits(item *ProposalItem) error {
+	if item.ProposalType != ProposalTypeDocumentPatch {
+		if len(item.Edits) > 0 {
+			return errors.New("只有 document.patch 可以附 edits")
+		}
+		return nil
+	}
+	if len(item.Edits) == 0 {
+		return errors.New("document.patch 至少要有一筆 edits")
+	}
+	if len(item.Edits) > maxProposalEdits {
+		return fmt.Errorf("document.patch 最多 %d 筆 edits，請改用 document.replace", maxProposalEdits)
+	}
+	for index, edit := range item.Edits {
+		if edit.Find == "" {
+			return fmt.Errorf("edits 第 %d 筆的 find 不可為空", index+1)
+		}
+	}
+	return nil
+}
+
 func inferLegacyProposalType(item ProposalItem) string {
 	if item.Kind == ProposalKindAsset {
 		return ProposalTypeAssetUpload
@@ -334,7 +372,9 @@ func setProposalHashes(proposal *Proposal) error {
 			Operations                                                                                                 []ProposalOperation
 			FileName, MIMEType, FileSHA256, AltText, CollectionID                                                      string
 			Artifacts                                                                                                  []ProposalArtifact
-		}{item.ProposalType, item.Kind, item.TargetID, item.BaseVersionID, item.Title, item.Summary, item.ContentType, item.Content, item.MarkerID, item.AfterMarkerID, item.Base, item.Operations, item.FileName, item.MIMEType, item.FileSHA256, item.AltText, item.CollectionID, item.Artifacts}
+			// omitempty 讓沒有 edits 的既有提案 hash 維持不變。
+			Edits []ProposalEdit `json:",omitempty"`
+		}{item.ProposalType, item.Kind, item.TargetID, item.BaseVersionID, item.Title, item.Summary, item.ContentType, item.Content, item.MarkerID, item.AfterMarkerID, item.Base, item.Operations, item.FileName, item.MIMEType, item.FileSHA256, item.AltText, item.CollectionID, item.Artifacts, item.Edits}
 		hash, err := hashJSON(fingerprint)
 		if err != nil {
 			return err

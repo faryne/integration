@@ -15,6 +15,7 @@ const (
 	EventTaskFailed       = "task.failed"
 	EventTaskCanceled     = "task.canceled"
 	EventProposalReady    = "proposal.ready"
+	EventProposalInvalid  = "proposal.invalid"
 	EventProposalApproved = "proposal.approved"
 	EventProposalRejected = "proposal.rejected"
 	EventApplyQueued      = "apply.queued"

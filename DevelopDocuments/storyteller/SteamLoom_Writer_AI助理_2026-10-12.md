@@ -80,7 +80,8 @@ awaiting_confirmation ─ 作者 ─┬─ rejected
 | type | 用途 | Writer 套用方式 |
 |---|---|---|
 | `document.create` | 新故事／設定全文 | REST 建立新文件 |
-| `document.replace` | 更新既有故事／設定全文（搜尋取代也歸這類） | base version 驗證後存新版本 |
+| `document.patch` | 局部修改／搜尋取代，只交 `edits` | Writer 以 base 內容算出全文，再依 base version 存新版本 |
+| `document.replace` | 大半篇重寫時才用的全文替換 | base version 驗證後存新版本 |
 | `chapter.append` | 在指定 marker 後新增章節 | 本機插入章節後存新版本 |
 | `chapter.replace` | 替換指定 marker 章節 | 本機替換章節後存新版本 |
 | `image_story.create`／`update` | 以既有資產（`asset_public_id`）組圖像作品 | REST 建立／更新頁面清單 |
@@ -98,7 +99,8 @@ awaiting_confirmation ─ 作者 ─┬─ rejected
 
 - CLI 不存在、Agent 登入過期（Claude／Grok／Gemini／Antigravity 依 stderr 判斷）會顯示對應的修復指令卡（`AgentLoginCard`）。
 - 停止或失敗時保存已收到的 partial 回答，標成未完成。
-- **已知限制**：proposal envelope 解析失敗或建立基準失敗時，整輪判定失敗，只留下可見摘要，草稿本體會遺失；SteamLoom MCP 的 OAuth 過期目前偵測不到，Agent 會在沒有工具的情況下回答。兩者的修正規格見 `SteamLoom_Writer_AI助理_長文提案與逾時_2026-10-16.md`。
+- 提案無法使用（格式、欄位、目標或定位錯誤）時，原始回答存檔並在任務活動提供「查看原始輸出」，再續接同一 session 請 Agent 修正一次；細節見 `SteamLoom_Writer_AI助理_長文提案與逾時_2026-10-16.md`。
+- **已知限制**：SteamLoom MCP 的 OAuth 過期目前偵測不到，Agent 會在沒有工具的情況下回答（同一份文件的 D 節）。
 
 ## 尚未完成
 

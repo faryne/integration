@@ -4,7 +4,7 @@ import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import RadioButtonCheckedIcon from "@mui/icons-material/RadioButtonChecked";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
-import { Box, Collapse, IconButton, Paper, Stack, Typography } from "@mui/material";
+import { Box, Button, Collapse, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AgentLoginCard } from "@writer/pages/workspace/AgentLoginCard.tsx";
@@ -44,7 +44,7 @@ function compactToolEvents(events: ChatLine[]) {
   return timeline;
 }
 
-export function TaskActivityCard({ agentID, events, workspace }: { agentID: string; events: ChatLine[]; workspace: Workspace }) {
+export function TaskActivityCard({ agentID, events, workspace, onViewRawOutput }: { agentID: string; events: ChatLine[]; workspace: Workspace; onViewRawOutput: (eventID: string) => void }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(true);
   const last = events[events.length - 1];
@@ -79,6 +79,10 @@ export function TaskActivityCard({ agentID, events, workspace }: { agentID: stri
                 {activityEventLabel(event, workspace, t)}
               </Typography>
               {(activityEventTone(event) === "failed" || activityEventTone(event) === "attention") && event.text && !event.type?.startsWith("apply.item.") && <Typography sx={{ mt: 0.25, fontSize: 12.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{event.text}</Typography>}
+              {/* 提案無法使用時保存了完整原文，作者可自行取回草稿 */}
+              {event.type === "proposal.invalid" && event.event_id && (
+                <Button size="small" onClick={() => onViewRawOutput(event.event_id!)} sx={{ mt: 0.25, px: 0.5, minWidth: 0, fontSize: 12 }}>{t("workspace.chat.activity.viewRawOutput")}</Button>
+              )}
             </Box>
           ))}
         </Stack>

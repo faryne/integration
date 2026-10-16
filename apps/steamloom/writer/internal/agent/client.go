@@ -55,6 +55,8 @@ type Reply struct {
 	ThreadID  string `json:"thread_id"`
 	Title     string `json:"title"`
 	proposals []ProposalItem
+	// raw 是含 proposal envelope 的原始回答；提案無法使用時存檔供作者查閱與 Agent 修正。
+	raw string
 }
 
 // Installed 是選單上的一項：這台機器找得到的 CLI。
@@ -98,9 +100,11 @@ func Ask(ctx context.Context, id string, req Request) (Reply, error) {
 	if err != nil {
 		return Reply{}, err
 	}
-	reply.Text, reply.proposals, err = parseProposalEnvelope(reply.Text)
+	reply.raw = reply.Text
+	reply.Text, reply.proposals, err = parseProposalEnvelope(reply.raw)
 	if err != nil {
-		return Reply{}, err
+		// 回答已完成、只是提案格式有誤；保留 session 與原文，讓 TaskManager 續接同一 session 修正。
+		return Reply{SessionID: reply.SessionID, raw: reply.raw}, &ProposalError{Err: err, Visible: proposalVisibleText(reply.raw), Raw: reply.raw, SessionID: reply.SessionID}
 	}
 	return reply, nil
 }
@@ -184,11 +188,13 @@ func (r Request) proposalRules() string {
 成果規則：只有作者明確要求建立、修改或上傳 SteamLoom 內容時，才在一般回覆摘要之後附上一個 Writer proposal；討論、分析、腦力激盪或文筆示範不要附。proposal 只是本機待確認資料，不得呼叫任何寫入工具。
 格式必須以獨立行 <<<STEAMLOOM_WRITER_PROPOSAL_V2>>> 開始、<<<END_STEAMLOOM_WRITER_PROPOSAL_V2>>> 結束，中間是單一 JSON object：{"items":[...]}，結束標記後不要再輸出內容。每個 item 必須有 proposal_type，允許值如下：
 - document.create：新增完整故事或設定；kind 使用 story 或 lore，附 title、summary、content_type、content，不附 target_id。
-- document.replace：替換既有故事或設定全文；附 kind、target_id、title、summary、content_type、content。搜尋取代或大範圍修改使用此類型。
+- document.patch：修改既有故事或設定的部分段落或搜尋取代；附 kind、target_id、base_version_id 與 edits，不附 content。edits 是 [{"find":"原文片段","replace":"新片段"}] 陣列，依序套用；find 必須逐字複製讀到的原文（含標點與換行），且在當下文字中剛好出現一次，不夠唯一就多帶前後文；同一詞要全篇取代時加 "all":true。title、summary 省略代表不變。
+- document.replace：替換既有故事或設定全文；附 kind、target_id、title、summary、content_type、content。只有大半篇都要重寫時才用，局部修改一律用 document.patch，整章重寫用 chapter.replace。
 - chapter.append：在既有故事或設定新增一個完整 Markdown 章節；附 kind、target_id、after_marker_id（可省略，代表加到文末）及 content。content 第一行必須是帶穩定 marker 的 heading，例如 # ⟦chapter-id⟧標題⟦/chapter-id⟧。
 - chapter.replace：只替換既有章節；附 kind、target_id、marker_id 及該章節的完整 content，不要回傳整份文件。
 - asset.upload：上傳一或多個媒體資產；kind 使用 asset，附 artifacts。
 - image_story.create／image_story.update：新增或更新圖像作品；kind 使用 story、content_type 使用 image，附 title、summary、artifacts；update 另附 target_id。
+所有文字欄位都是 JSON 字串，換行寫成 \n、雙引號寫成 \"。
 artifacts 每項可用 local_path（provider 在目前工作目錄產生的絕對路徑）或 asset_public_id（沿用既有 SteamLoom 資產），並可附 file_name、mime_type、alt_text、description、width、height、duration_ms、page_id、provider_job_id、model、parameters、candidate_group、default_selected。不要輸出 provider_id、artifact id、檔案大小或 hash，這些由 Writer 建立。更新既有內容時可附讀取到的 base_version_id；Writer 會以 REST API 建立可信任的 base snapshot，Agent 不要輸出 base。operations 僅供舊版稽核、可以省略；Writer 不執行其中的 tool 或 arguments。使用者核准後，一律由 Writer 呼叫 REST API 套用已 review 的欄位。`
 }
 

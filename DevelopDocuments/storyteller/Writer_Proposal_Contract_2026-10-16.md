@@ -9,6 +9,7 @@ Writer 是發令、審查與套用介面。Provider adapter 只負責執行工�
 | type | 用途 | Writer 套用方式 |
 |---|---|---|
 | `document.create` | 新故事／設定全文 | 建立新文件 |
+| `document.patch` | 局部修改／搜尋取代（`edits`） | 以 base 內容算出全文後，依 base version 存新版本 |
 | `document.replace` | 更新既有故事／設定全文 | base version 驗證後存新版本 |
 | `chapter.append` | 在指定 anchor 後新增章節 | 驗證 anchor 與 base 後插入章節 |
 | `chapter.replace` | 替換指定 marker 章節 | 只替換指定章節 |
@@ -16,7 +17,7 @@ Writer 是發令、審查與套用介面。Provider adapter 只負責執行工�
 | `image_story.create` | 以圖片候選建立圖像作品 | 上傳資產後依順序建立圖像作品 |
 | `image_story.update` | 修改既有圖像作品頁面 | base version 驗證後更新頁面清單 |
 
-搜尋取代與任意段落修改在第一階段正規化為 `document.replace`；若可可靠對應單一 marker，才使用 chapter proposal。
+搜尋取代與局部段落修改使用 `document.patch`；整章重寫使用 `chapter.replace`；只有大半篇重寫才用 `document.replace`。
 
 ## Artifact contract
 

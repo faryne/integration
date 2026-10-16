@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -267,36 +268,80 @@ func (m *TaskManager) runQueue(key string) {
 			if err == nil {
 				req.SessionID = sessionID
 				req.emit = func(stream StreamEvent) { m.stream(managed, stream) }
-				var reply Reply
-				reply, err = m.run(ctx, task.AgentID, req)
-				m.flushProposalStream(managed)
-				if ctx.Err() != nil {
-					err = ctx.Err()
-				}
-				if err == nil && len(reply.proposals) > 0 && m.prepare != nil {
-					reply.proposals, err = m.prepare(ctx, task.ProjectID, reply.proposals)
-				}
-				if err == nil && len(reply.proposals) > 0 {
-					assetRoot := ""
-					if proposalHasAsset(reply.proposals) {
-						assetRoot, err = req.dir()
-					}
-					if err == nil {
-						var proposal Proposal
-						proposal, err = saveTaskProposal(task.AgentID, task.ProjectID, task.ThreadID, task.ID, assetRoot, reply, reply.proposals)
-						if err == nil {
-							managed.proposal = &proposal
-						}
-					}
-				} else if err == nil {
-					err = recordTaskCompleted(task.AgentID, task.ProjectID, task.ThreadID, task.ID, reply)
-				}
+				err = m.draft(ctx, managed, task, req)
 			}
 		}
 		contextErr := ctx.Err()
 		cancel()
 		m.finish(managed, err, contextErr)
 	}
+}
+
+// draft 執行一輪 Agent 並保存結果。提案本身有問題時先保存原文，再續接同一 session 請 Agent 修正一次；
+// 修正後仍失敗就結束，不再自動重試，避免燒額度。
+func (m *TaskManager) draft(ctx context.Context, managed *managedTask, task Task, req Request) error {
+	for repaired := false; ; repaired = true {
+		reply, err := m.draftOnce(ctx, managed, task, req)
+		var invalid *ProposalError
+		if err == nil || ctx.Err() != nil || !errors.As(err, &invalid) {
+			return err
+		}
+		// 基準建立或欄位驗證失敗時，錯誤本身不帶原文；從這輪回答補上。
+		if invalid.SessionID == "" {
+			invalid.SessionID = reply.SessionID
+		}
+		if invalid.Raw == "" {
+			invalid.Raw = reply.raw
+		}
+		if invalid.Visible == "" {
+			invalid.Visible = strings.TrimSpace(reply.Text)
+		}
+		if saveErr := recordProposalInvalid(task.AgentID, task.ProjectID, task.ThreadID, task.ID, invalid); saveErr != nil {
+			return fmt.Errorf("%v；保存原始輸出時發生：%w", err, saveErr)
+		}
+		// 這輪的摘要已存成訊息；清掉 partial，避免失敗收尾時重複保存。
+		m.mu.Lock()
+		managed.task.Partial, managed.proposalFilter = "", proposalDeltaFilter{}
+		current := managed.task
+		m.mu.Unlock()
+		m.emit(TaskEvent{Type: EventProposalInvalid, Task: current})
+		if repaired || invalid.SessionID == "" {
+			return err
+		}
+		req.SessionID, req.Prompt, req.References = invalid.SessionID, proposalRepairPrompt(invalid.Err), nil
+	}
+}
+
+// draftOnce 是單一輪 CLI 執行：一般回答直接存檔；帶提案時先以 REST 建立基準，再落盤待作者確認。
+func (m *TaskManager) draftOnce(ctx context.Context, managed *managedTask, task Task, req Request) (Reply, error) {
+	reply, err := m.run(ctx, task.AgentID, req)
+	m.flushProposalStream(managed)
+	if ctx.Err() != nil {
+		return reply, ctx.Err()
+	}
+	if err != nil {
+		return reply, err
+	}
+	if len(reply.proposals) == 0 {
+		return reply, recordTaskCompleted(task.AgentID, task.ProjectID, task.ThreadID, task.ID, reply)
+	}
+	if m.prepare != nil {
+		if reply.proposals, err = m.prepare(ctx, task.ProjectID, reply.proposals); err != nil {
+			return reply, err
+		}
+	}
+	assetRoot := ""
+	if proposalHasAsset(reply.proposals) {
+		if assetRoot, err = req.dir(); err != nil {
+			return reply, err
+		}
+	}
+	proposal, err := saveTaskProposal(task.AgentID, task.ProjectID, task.ThreadID, task.ID, assetRoot, reply, reply.proposals)
+	if err != nil {
+		return reply, err
+	}
+	managed.proposal = &proposal
+	return reply, nil
 }
 
 func (m *TaskManager) runApply(ctx context.Context, managed *managedTask) {
