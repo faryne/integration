@@ -63,17 +63,26 @@ func (c claudeClient) Ask(ctx context.Context, req Request) (Reply, error) {
 		dir:     dir,
 		args:    claudeRequestArgs(req),
 		stdin:   req.body(),
-		decoder: &claudeProtocol{tools: map[string]streamedTool{}},
+		decoder: &claudeProtocol{tools: map[string]streamedTool{}, server: req.mcpServer},
 		emit:    req.emit,
 		resume:  req.SessionID,
 	})
 }
 
-type claudeProtocol struct{ tools map[string]streamedTool }
+// server 是使用者設定裡 SteamLoom MCP 的名稱；只有它的連線狀態會影響這輪。
+type claudeProtocol struct {
+	tools  map[string]streamedTool
+	server string
+}
 
 func (p *claudeProtocol) Decode(line string) []protocolEvent {
 	var message struct {
-		Type      string `json:"type"`
+		Type       string `json:"type"`
+		Subtype    string `json:"subtype"`
+		McpServers []struct {
+			Name   string `json:"name"`
+			Status string `json:"status"`
+		} `json:"mcp_servers"`
 		IsError   bool   `json:"is_error"`
 		Result    string `json:"result"`
 		SessionID string `json:"session_id"`
@@ -101,6 +110,15 @@ func (p *claudeProtocol) Decode(line string) []protocolEvent {
 	events := []protocolEvent{}
 	if message.SessionID != "" {
 		events = append(events, protocolEvent{Type: protocolSession, SessionID: message.SessionID})
+	}
+	// init 會列出每個 MCP server 的連線狀態；SteamLoom 讀不到就不讓 Agent 繼續憑空回答。
+	if message.Type == "system" && message.Subtype == "init" && p.server != "" {
+		for _, server := range message.McpServers {
+			if server.Name == p.server && (server.Status == "needs-auth" || server.Status == "failed") {
+				reason := map[bool]string{true: "auth", false: "failed"}[server.Status == "needs-auth"]
+				return append(events, protocolEvent{Type: protocolMCPUnavailable, Text: reason, Server: server.Name})
+			}
+		}
 	}
 	if message.Type == "result" {
 		typeName, text := protocolCompleted, message.Result

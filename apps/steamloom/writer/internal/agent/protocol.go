@@ -17,6 +17,8 @@ const (
 	protocolToolFailed    protocolEventType = "tool.failed"
 	protocolCompleted     protocolEventType = "completed"
 	protocolFailed        protocolEventType = "failed"
+	// protocolMCPUnavailable 表示 SteamLoom MCP 讀不到；Text 為 "auth" 時是確定的授權失效。
+	protocolMCPUnavailable protocolEventType = "mcp.unavailable"
 )
 
 // protocolEvent 是 provider adapter 唯一能交給共用執行器的事件格式。
@@ -27,6 +29,7 @@ type protocolEvent struct {
 	SessionID  string
 	ToolName   string
 	ToolTarget string
+	Server     string // MCP server 名稱，只用於 protocolMCPUnavailable
 }
 
 // protocolDecoder 只翻譯一家 CLI 的輸出，不負責停止程序、選定正式回答或改 task 狀態。
@@ -40,6 +43,7 @@ type protocolState struct {
 	candidate string
 	failed    string
 	terminal  bool
+	mcpErr    *MCPUnavailableError
 	emit      func(StreamEvent)
 }
 
@@ -98,6 +102,10 @@ func (s *protocolState) consume(event protocolEvent) {
 		}
 		s.candidate, s.terminal = "", true
 		s.emit(StreamEvent{Type: StreamAgentPreview})
+	case protocolMCPUnavailable:
+		s.mcpErr = &MCPUnavailableError{Server: event.Server, AuthRequired: event.Text == "auth"}
+		s.candidate, s.terminal = "", true
+		s.emit(StreamEvent{Type: StreamAgentPreview})
 	case protocolFailed:
 		if s.candidate != "" {
 			s.emit(StreamEvent{Type: StreamAgentProgress, Text: s.candidate})
@@ -108,6 +116,9 @@ func (s *protocolState) consume(event protocolEvent) {
 }
 
 func (s *protocolState) Reply() (Reply, error) {
+	if s.mcpErr != nil {
+		return Reply{}, s.mcpErr
+	}
 	if !s.terminal {
 		return Reply{}, errors.New("Agent 輸出結束前沒有送出終局事件")
 	}

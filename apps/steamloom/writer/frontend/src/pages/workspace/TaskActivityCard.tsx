@@ -55,7 +55,8 @@ export function TaskActivityCard({ agentID, events, workspace, onViewRawOutput }
   const completed = tone === "completed";
   const writerApply = events.some((event) => event.type?.startsWith("apply."));
   const canceled = tone === "canceled";
-  const commands = [...events].reverse().find((event) => event.action === "agent.login" && event.commands?.length)?.commands ?? fallbackLoginCommands(agentID, events);
+  const loginEvent = [...events].reverse().find((event) => (event.action === "agent.login" || event.action === "mcp.login") && event.commands?.length);
+  const commands = loginEvent?.commands ?? fallbackLoginCommands(agentID, events);
   const timeline = compactToolEvents(events);
 
   return (
@@ -86,7 +87,7 @@ export function TaskActivityCard({ agentID, events, workspace, onViewRawOutput }
             </Box>
           ))}
         </Stack>
-        {commands.length > 0 && <AgentLoginCard commands={commands} />}
+        {commands.length > 0 && <AgentLoginCard commands={commands} kind={loginEvent?.action === "mcp.login" ? "mcp" : "agent"} />}
       </Collapse>
     </Paper>
   );

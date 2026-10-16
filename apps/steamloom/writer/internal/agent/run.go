@@ -10,6 +10,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
+	"sync/atomic"
 )
 
 // 解析不到回答，而且 CLI 也沒給自己的錯誤說明時用。真正的執行失敗優先顯示 stderr。
@@ -38,9 +40,20 @@ func invoke(ctx context.Context, call invocation) (Reply, error) {
 		return Reply{}, errors.New("Agent adapter 沒有設定輸出協定")
 	}
 	state := newProtocolState(call.resume, call.emit)
+	// stdout 與 stderr 由不同 goroutine 讀取，共用的 protocol state 要串行更新。
+	var mu sync.Mutex
+	consume := func(events []protocolEvent) bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return state.Consume(events)
+	}
+	var consumeErr func(string) bool
+	if decoder, ok := call.decoder.(stderrDecoder); ok {
+		consumeErr = func(line string) bool { return consume(decoder.DecodeStderr(line)) }
+	}
 	_, runErr := run(ctx, call.name, call.bin, call.dir, call.args, call.stdin, func(line string) bool {
-		return state.Consume(call.decoder.Decode(line))
-	})
+		return consume(call.decoder.Decode(line))
+	}, consumeErr)
 	if ctx.Err() != nil {
 		if runErr != nil {
 			return Reply{}, runErr
@@ -58,24 +71,33 @@ func invoke(ctx context.Context, call invocation) (Reply, error) {
 	if errors.As(parseErr, &structured) {
 		return Reply{}, structured
 	}
+	// 中斷程序本身會讓 CLI 以非 0 結束；MCP 不可用才是真正原因，優先回報。
+	var unavailable *MCPUnavailableError
+	if errors.As(parseErr, &unavailable) {
+		return Reply{}, unavailable
+	}
 	if runErr != nil {
 		return Reply{}, runErr
 	}
 	return Reply{}, parseErr
 }
 
-func run(ctx context.Context, name, bin, dir string, args []string, stdin string, consume func(string) bool) (string, error) {
+func run(ctx context.Context, name, bin, dir string, args []string, stdin string, consume, consumeErr func(string) bool) (string, error) {
 	cmd := newCommand(bin, args)
 	cmd.Dir = dir
 	cmd.Env = withWorkDir(dir)
 	cmd.Stdin = strings.NewReader(stdin)
 	setProcessGroup(cmd)
-	var stderr bytes.Buffer
+	var stderrTerminal atomic.Bool
+	stderr := &lineWriter{onLine: consumeErr, stop: func() {
+		stderrTerminal.Store(true)
+		killProcessGroup(cmd)
+	}}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return "", fmt.Errorf("無法讀取 %s 輸出", name)
 	}
-	cmd.Stderr = &stderr
+	cmd.Stderr = stderr
 	if err := cmd.Start(); err != nil {
 		return "", fmt.Errorf("無法啟動 %s", name)
 	}
@@ -100,7 +122,7 @@ func run(ctx context.Context, name, bin, dir string, args []string, stdin string
 		}
 		scanErr := scanner.Err()
 		waitErr := cmd.Wait()
-		if terminal {
+		if terminal || stderrTerminal.Load() {
 			waitErr = scanErr
 		} else if waitErr == nil {
 			waitErr = scanErr

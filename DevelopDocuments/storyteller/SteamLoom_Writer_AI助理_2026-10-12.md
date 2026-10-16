@@ -100,11 +100,12 @@ awaiting_confirmation ─ 作者 ─┬─ rejected
 - CLI 不存在、Agent 登入過期（Claude／Grok／Gemini／Antigravity 依 stderr 判斷）會顯示對應的修復指令卡（`AgentLoginCard`）。
 - 停止或失敗時保存已收到的 partial 回答，標成未完成。
 - 提案無法使用（格式、欄位、目標或定位錯誤）時，原始回答存檔並在任務活動提供「查看原始輸出」，再續接同一 session 請 Agent 修正一次；細節見 `SteamLoom_Writer_AI助理_長文提案與逾時_2026-10-16.md`。
-- **已知限制**：SteamLoom MCP 的 OAuth 過期目前偵測不到，Agent 會在沒有工具的情況下回答（同一份文件的 D 節）。
+- SteamLoom MCP 讀不到時（Claude Code：init 狀態 `needs-auth`／`failed`；Codex：stderr 的 `AuthRequired`）立即中斷這輪，失敗卡片附 `claude mcp login`／`codex mcp login` 指令。
+- **已知限制**：Grok Build 授權失效時沒有可靠訊號，Agent 仍會在沒有工具的情況下回答；Gemini CLI 尚未實測。
 
 ## 尚未完成
 
-- Agent readiness 只檢查設定檔裡有沒有 SteamLoom MCP 位址，不保證 MCP 授權仍有效。
+- Agent readiness 只檢查設定檔裡有沒有 SteamLoom MCP 位址；授權是否有效要等送出後由 CLI 回報（見〈錯誤處理現況〉）。
 - 背景完成只有 task rail 狀態與 thread 內事件；App 不在前景時的 OS 通知（macOS 通知中心等）尚未實作。
 - 刪除 thread 時不會順便刪 provider session；之後若要做，放在刪除 dialog 的次要 checkbox，只對支援的 Agent 顯示，預設不勾。Codex `thread/delete` 會連 descendant threads 一起刪，要額外提示。
 - Antigravity 沒有唯讀工具白名單；是否採用 Antigravity 還在評估，不採用就不補。

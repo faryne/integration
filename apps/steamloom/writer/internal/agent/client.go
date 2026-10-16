@@ -92,6 +92,11 @@ func Ask(ctx context.Context, id string, req Request) (Reply, error) {
 	}
 	reply, err := client.Ask(ctx, req)
 	if err != nil {
+		// protocol 層不知道是哪家 Agent；補上後才能給出對應的重新授權指令。
+		var unavailable *MCPUnavailableError
+		if errors.As(err, &unavailable) {
+			unavailable.AgentID = id
+		}
 		return Reply{}, err
 	}
 	reply.raw = reply.Text

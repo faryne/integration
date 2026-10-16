@@ -207,7 +207,7 @@ func (m *TaskManager) Cancel(taskID string) error {
 		if managed.applyProposal != nil {
 			_, err = recordApplyFailed(managed.task.AgentID, managed.task.ProjectID, managed.task.ThreadID, managed.applyProposal.ID, managed.task.ID, "工作已停止", managed.task.Partial)
 		} else {
-			err = recordTaskStopped(managed.task.AgentID, managed.task.ProjectID, managed.task.ThreadID, managed.task.ID, TaskCanceled, "", managed.task.Partial)
+			err = recordTaskStopped(managed.task.AgentID, managed.task.ProjectID, managed.task.ThreadID, managed.task.ID, TaskCanceled, managed.task.Partial, nil)
 		}
 		if err != nil {
 			m.mu.Unlock()
@@ -481,7 +481,7 @@ func (m *TaskManager) finish(managed *managedTask, runErr, contextErr error) {
 	if task.State == TaskAwaitingConfirmation {
 		eventType = EventProposalReady
 	} else if task.State != TaskCompleted {
-		_ = recordTaskStopped(task.AgentID, task.ProjectID, task.ThreadID, task.ID, task.State, task.Error, task.Partial)
+		_ = recordTaskStopped(task.AgentID, task.ProjectID, task.ThreadID, task.ID, task.State, task.Partial, runErr)
 		if task.State == TaskCanceled {
 			eventType = EventTaskCanceled
 		} else {

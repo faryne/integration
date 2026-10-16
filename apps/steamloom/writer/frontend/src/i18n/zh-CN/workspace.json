@@ -123,6 +123,10 @@
       "rawOutputClose": "关闭",
       "unknown": "不支持的事件：{{type}}"
     },
+    "mcpLogin": {
+      "title": "SteamLoom 需要重新授权",
+      "description": "Agent 读不到 SteamLoom 作品，这轮已中断。请在 Terminal 执行下列指令重新授权后再试；若 MCP 设置使用的是固定 token，请到 SteamLoom 重新生成 token 并更新设置。"
+    },
     "login": {
       "title": "需要重新登录 Agent",
       "description": "请在终端自行执行以下命令，再回到 Writer 重试。Writer 不会读取或保存登录凭据。",

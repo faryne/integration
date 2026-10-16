@@ -123,6 +123,10 @@
       "rawOutputClose": "閉じる",
       "unknown": "未対応イベント：{{type}}"
     },
+    "mcpLogin": {
+      "title": "SteamLoom の再認可が必要です",
+      "description": "Agent が SteamLoom の作品を読み取れないため、この実行を中断しました。Terminal で下のコマンドを実行して再認可してから、もう一度お試しください。MCP 設定で固定トークンを使っている場合は、SteamLoom でトークンを再発行して設定を更新してください。"
+    },
     "login": {
       "title": "Agent への再ログインが必要です",
       "description": "ターミナルで次のコマンドを実行してから、Writer で再試行してください。Writer は認証情報を読み取り、保存しません。",

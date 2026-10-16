@@ -95,7 +95,7 @@ func (c codexClient) Ask(ctx context.Context, req Request) (Reply, error) {
 		dir:     dir,
 		args:    args,
 		stdin:   req.body(),
-		decoder: &codexProtocol{tools: map[string]streamedTool{}},
+		decoder: &codexProtocol{tools: map[string]streamedTool{}, server: req.mcpServer},
 		emit:    req.emit,
 		resume:  req.SessionID,
 	})
@@ -118,7 +118,18 @@ func codexMessage(raw json.RawMessage, fallback string) string {
 	return fallback
 }
 
-type codexProtocol struct{ tools map[string]streamedTool }
+// server 是使用者設定裡 SteamLoom MCP 的名稱；Codex 的 MCP 授權失敗只會出現在 stderr。
+type codexProtocol struct {
+	tools  map[string]streamedTool
+	server string
+}
+
+func (p *codexProtocol) DecodeStderr(line string) []protocolEvent {
+	if p.server == "" || !codexMCPAuthRequired(line) {
+		return nil
+	}
+	return []protocolEvent{{Type: protocolMCPUnavailable, Text: "auth", Server: p.server}}
+}
 
 func (p *codexProtocol) Decode(line string) []protocolEvent {
 	var event struct {

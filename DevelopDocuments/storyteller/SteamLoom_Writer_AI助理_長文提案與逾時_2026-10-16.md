@@ -1,6 +1,6 @@
 # SteamLoom Writer AI 助理：長文提案、提案修正、逾時與 MCP 授權
 
-- 狀態：規格已確認；A、B、C 已實作（2026-10-16），D 未開始
+- 狀態：A、B、C、D 皆已實作（2026-10-16）；D 只涵蓋 Claude Code 與 Codex
 - 日期：2026-10-16
 - Branch：`writer/ai-assistant-followups`
 - 前置文件：`SteamLoom_Writer_AI助理_2026-10-12.md`、`Writer_Proposal_Contract_2026-10-16.md`
@@ -97,10 +97,12 @@ REST 連線失敗、權限錯誤**不**觸發修正，直接失敗（不是 Agen
 
 | Agent | 訊號 | 狀態 |
 |---|---|---|
-| Claude Code | stream-json 第一個 `system/init` 的 `mcp_servers[]`，對應 server 的 `status` 為 `needs-auth`（`failed` 代表連不上） | 已實測 |
-| Codex | **不在 JSONL**；stderr 出現 `rmcp::transport::worker ... AuthRequired(... steamloom.works ...)` | 已實測 |
-| Grok Build | 目前設定用 header 帶固定 bearer token，不走 OAuth；token 被撤銷時的輸出待測 | 待實測 |
-| Gemini CLI | stream-json `init` 是否帶 MCP 狀態待測 | 待實測 |
+| Claude Code | stream-json 第一個 `system/init` 的 `mcp_servers[]`：沒有授權時 `status` 為 `needs-auth`；header 帶無效 token 時為 `failed`（與連不上無法區分） | 已實測，已實作 |
+| Codex | **不在 JSONL**；stderr 出現 `rmcp::transport::worker ... AuthRequired(... steamloom.works ...)`，token 無效時另帶 `error="invalid_token"` | 已實測，已實作 |
+| Grok Build | header 帶無效 token 時，該 server 的工具直接不出現在 `search_tool` 結果；stream、stderr、`~/.grok/logs` 都沒有錯誤 | 已實測，**沒有可靠訊號，不處理** |
+| Gemini CLI | 這台機器的 Gemini CLI 未登入，無法實測 | 待登入後再測 |
+
+實測補充：Grok 的 xAI token 過期時，strict sandbox 無法寫 `~/.grok/auth.json.lock`，headless 會一直卡住；Writer 既有的 `ensureGrokAuth` preflight（`--sandbox off models`）就是處理這件事，手動測試時也要先跑一次。
 
 ### 處理
 
@@ -115,6 +117,13 @@ REST 連線失敗、權限錯誤**不**觸發修正，直接失敗（不是 Agen
 ### 影響檔案
 
 `internal/agent/protocol.go`、`run.go`、`claude.go`、`codex.go`、`task_store.go`（login action 分流成 Agent 登入／MCP 授權）、前端 `TaskActivityCard.tsx`、`agentActivity.ts`、i18n。
+
+## 實作備註（D）
+
+- 共用 `agent.MCPUnavailableError`（`internal/agent/mcp_status.go`）；protocol 層收到 `protocolMCPUnavailable` 就結束這輪，`invoke` 優先回報它而不是程序被中斷的 exit code。
+- `run()` 改用 `lineWriter` 逐行讀 stderr，decoder 實作 `stderrDecoder` 才會收到；stdout／stderr 兩個 goroutine 共用 protocol state，以 mutex 串行。
+- 失敗事件的 `action` 分成 `agent.login`（Agent 本身未登入）與 `mcp.login`（SteamLoom MCP 要重新授權）；前端 `AgentLoginCard` 依 kind 切換標題與說明。
+- 只比對使用者設定裡 SteamLoom 那個 server 的狀態；其他 MCP server 失敗不影響這輪。
 
 ## 常見失敗與應對
 

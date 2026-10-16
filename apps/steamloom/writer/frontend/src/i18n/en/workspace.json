@@ -123,6 +123,10 @@
       "rawOutputClose": "Close",
       "unknown": "Unsupported event: {{type}}"
     },
+    "mcpLogin": {
+      "title": "SteamLoom needs to be reauthorized",
+      "description": "The agent could not read your SteamLoom work, so this run was stopped. Run the command below in Terminal to reauthorize, then try again. If your MCP config uses a fixed token, generate a new token on SteamLoom and update the config."
+    },
     "login": {
       "title": "Agent sign-in required",
       "description": "Run the command below in Terminal, then retry in Writer. Writer does not read or store your credentials.",
