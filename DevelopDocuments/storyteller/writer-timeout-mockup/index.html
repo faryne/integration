@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Writer 逾時提示 mockup</title>
+<style>
+  :root {
+    color-scheme: dark;
+    font-family: Inter, "Noto Sans TC", system-ui, sans-serif;
+    --bg: #090d15; --panel: #111827; --panel-2: #161e2d; --line: #2a3850;
+    --text: #e7ecf6; --muted: #8f9bb0; --blue: #78a9ff; --amber: #f7bd57; --red: #ff7272;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px; background: var(--bg); color: var(--text); }
+  h1 { margin: 0 0 4px; font-size: 18px; }
+  .lead { margin: 0 0 20px; color: var(--muted); font-size: 13px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .state { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); overflow: hidden; }
+  .state > header { padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 700; }
+  .state > header small { margin-left: 6px; color: var(--muted); font-weight: 400; }
+  .label { padding: 10px 14px 4px; color: var(--muted); font-size: 11px; letter-spacing: .04em; }
+  /* TaskRail 單列 */
+  .thread { margin: 4px 10px 10px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel-2); }
+  .thread-row { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .thread-row strong { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .thread small { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+  .chip { padding: 1px 8px; border-radius: 10px; font-size: 10.5px; line-height: 18px; }
+  .chip.primary { background: rgba(120,169,255,.18); color: var(--blue); }
+  .chip.warning { background: rgba(247,189,87,.18); color: var(--amber); }
+  .chip.error { background: rgba(255,114,114,.18); color: var(--red); }
+  .spin { width: 10px; height: 10px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
+  .spin.blue { color: var(--blue); } .spin.amber { color: var(--amber); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* ActiveTaskStatus 底列 */
+  .status { display: flex; align-items: center; gap: 6px; margin: 4px 14px 14px; color: var(--muted); font-size: 12.5px; }
+  .status .slow { color: var(--amber); }
+  .stop { margin-left: 2px; width: 22px; height: 22px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--red); font-size: 15px; }
+  .partial { margin: 4px 14px 6px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; color: #cfd8e8; }
+  /* 失敗後的執行紀錄卡 */
+  .card { margin: 4px 14px 14px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); }
+  .card-title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
+  .card-title .icon { color: var(--red); }
+  .timeline { margin: 6px 0 0 4px; padding-left: 10px; border-left: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+  .timeline div { margin: 4px 0; }
+  .timeline .err { color: var(--red); }
+  .timeline .detail { color: var(--text); }
+  .notes { margin-top: 20px; padding: 12px 16px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); font-size: 12.5px; line-height: 1.7; }
+  .notes strong { color: var(--text); }
+</style>
+</head>
+<body>
+  <h1>AI 助理逾時提示</h1>
+  <p class="lead">同一條 thread 在三個時間點的樣子：左側任務列（TaskRail）＋對話底部的執行狀態列（ActiveTaskStatus）。</p>
+
+  <div class="grid">
+    <section class="state">
+      <header>執行中<small>0～10 分鐘（不變）</small></header>
+      <div class="label">TaskRail</div>
+      <div class="thread">
+        <div class="thread-row"><span class="spin blue"></span><strong>把第一話的梭梭改成那頭</strong><span class="chip primary">執行中</span></div>
+        <small>Claude Code · 3 分鐘前</small>
+      </div>
+      <div class="label">對話底部</div>
+      <div class="partial">我先讀取〈第一話〉與角色設定……</div>
+      <div class="status"><span class="spin blue"></span><span>讀取故事〈第一話〉</span><button class="stop" aria-label="停止">◼</button></div>
+    </section>
+
+    <section class="state">
+      <header>等待回應過長<small>10～15 分鐘（新增）</small></header>
+      <div class="label">TaskRail</div>
+      <div class="thread">
+        <div class="thread-row"><span class="spin amber"></span><strong>把第一話的梭梭改成那頭</strong><span class="chip warning">等待回應過長</span></div>
+        <small>Claude Code · 11 分鐘前</small>
+      </div>
+      <div class="label">對話底部</div>
+      <div class="partial">我先讀取〈第一話〉與角色設定……</div>
+      <div class="status"><span class="spin amber"></span><span>讀取故事〈第一話〉 · <span class="slow">等待回應過長</span></span><button class="stop" aria-label="停止">◼</button></div>
+    </section>
+
+    <section class="state">
+      <header>強制中斷<small>超過 15 分鐘</small></header>
+      <div class="label">TaskRail</div>
+      <div class="thread">
+        <div class="thread-row"><strong>把第一話的梭梭改成那頭</strong><span class="chip error">失敗</span></div>
+        <small>Claude Code · 15 分鐘前</small>
+      </div>
+      <div class="label">對話</div>
+      <div class="partial">我先讀取〈第一話〉與角色設定……<br><span style="color:var(--muted);font-size:11.5px">（未完成的回答照現有方式保留）</span></div>
+      <div class="card">
+        <div class="card-title"><span class="icon">⊘</span>Agent 執行失敗</div>
+        <div class="timeline">
+          <div>Agent 已開始處理</div>
+          <div>已完成：讀取故事〈第一話〉</div>
+          <div class="err">Agent 執行失敗</div>
+          <div class="detail">Claude Code 超過 15 分鐘沒有完成，已中斷</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="notes">
+    <strong>規則</strong><br>
+    ・從 task 開始執行起算，不含排隊；提案自動修正那一輪共用同一個計時。<br>
+    ・「等待回應過長」只是提示，不改變 task 狀態；作者仍可按停止。<br>
+    ・10／15 分鐘先寫成常數，之後「設定」頁可調整。<br>
+    ・不另外跳 snackbar；作者正在看別條 thread 時，任務列的黃色 chip 就是提醒。
+  </div>
+</body>
+</html>
