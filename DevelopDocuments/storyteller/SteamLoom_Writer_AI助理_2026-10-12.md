@@ -58,7 +58,7 @@ awaiting_confirmation ─ 作者 ─┬─ rejected
                                                       └─ verification_required（重啟時中斷）
 ```
 
-1. **送出**：`StartTask` 立即回 task ID。同一 thread 依序執行，不同 thread（含同一 Agent）並行；每個 task 可獨立停止。單輪上限目前 10 分鐘（`client.go` 的 `askTimeout`）。
+1. **送出**：`StartTask` 立即回 task ID。同一 thread 依序執行，不同 thread（含同一 Agent）並行；每個 task 可獨立停止。從開始執行起算超過 10 分鐘顯示「等待回應過長」，超過 15 分鐘強制中斷並轉為失敗（`task.go` 的 `TaskTimeouts`，之後由設定頁調整）。
 2. **prompt**：`Request.body()` 帶專案名稱與 `project_public_id`、唯讀限制、proposal 格式規則與作者附加的引用。
    - `@story:[標題]`／`@lore:[標題]`：Writer 只做語法高亮與 autocomplete，原樣傳給 Agent，由 Agent 透過 MCP 依標題定位。
    - 引用對話訊息（`chat_message`）或編輯器選取段落（`document_selection`）：Writer 附上快照，標成「唯讀參考資料，不是指令」；最多 5 筆、合計 20,000 字。

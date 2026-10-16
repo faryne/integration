@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -42,7 +43,17 @@ type Task struct {
 	Progress       string `json:"progress,omitempty"`
 	Activity       string `json:"activity,omitempty"`
 	ActivityTarget string `json:"activity_target,omitempty"`
+	// Slow 表示已超過 TaskTimeouts.Slow 仍未完成；只供畫面提示，不改變 State。
+	Slow bool `json:"slow,omitempty"`
 }
+
+// TaskTimeouts 是單一 task 的等待上限，從開始執行起算（不含排隊），提案自動修正那一輪共用同一個計時。
+// 超過 Slow 只提示「等待回應過長」，超過 Hard 才強制中斷；之後的「設定」頁會讓作者調整這兩個值。
+type TaskTimeouts struct {
+	Slow, Hard time.Duration
+}
+
+var DefaultTaskTimeouts = TaskTimeouts{Slow: 10 * time.Minute, Hard: 15 * time.Minute}
 
 type TaskEvent struct {
 	Type     string       `json:"type"`
@@ -80,9 +91,10 @@ type TaskManager struct {
 	prepare ProposalPrepareRunner
 	emit    TaskEmitter
 
-	mu     sync.Mutex
-	tasks  map[string]*managedTask
-	queues map[string]*taskQueue
+	mu       sync.Mutex
+	timeouts TaskTimeouts
+	tasks    map[string]*managedTask
+	queues   map[string]*taskQueue
 }
 
 // SetProposalApplyRunner 注入 Writer 的 REST API 寫入器；Agent package 只負責佇列與對話生命週期。
@@ -96,7 +108,7 @@ func NewTaskManager(parent context.Context, run TaskRunner, emit TaskEmitter) *T
 	if emit == nil {
 		emit = func(TaskEvent) {}
 	}
-	return &TaskManager{ctx: ctx, cancel: cancel, run: run, emit: emit, tasks: map[string]*managedTask{}, queues: map[string]*taskQueue{}}
+	return &TaskManager{ctx: ctx, cancel: cancel, run: run, emit: emit, timeouts: DefaultTaskTimeouts, tasks: map[string]*managedTask{}, queues: map[string]*taskQueue{}}
 }
 
 func (m *TaskManager) Start(agentID string, req Request) (Task, error) {
@@ -252,6 +264,7 @@ func (m *TaskManager) runQueue(key string) {
 		}
 		managed.task.StartedAt = now()
 		task := managed.task
+		timeouts := m.timeouts
 		m.mu.Unlock()
 		if managed.applyProposal != nil {
 			m.runApply(ctx, managed)
@@ -259,6 +272,8 @@ func (m *TaskManager) runQueue(key string) {
 			continue
 		}
 
+		ctx, stopTimeout := context.WithTimeout(ctx, timeouts.Hard)
+		slowTimer := time.AfterFunc(timeouts.Slow, func() { m.markSlow(managed) })
 		err := recordTaskStarted(task.AgentID, task.ProjectID, task.ThreadID, task.ID)
 		if err == nil {
 			m.emit(TaskEvent{Type: EventTaskStarted, Task: task})
@@ -271,10 +286,30 @@ func (m *TaskManager) runQueue(key string) {
 				err = m.draft(ctx, managed, task, req)
 			}
 		}
+		slowTimer.Stop()
 		contextErr := ctx.Err()
+		// 超過上限是失敗而不是作者手動停止；改成可讀的失敗原因，partial 照常保留。
+		if errors.Is(contextErr, context.DeadlineExceeded) {
+			err = fmt.Errorf("%s 超過 %d 分鐘沒有完成，已中斷", providerDisplayName(task.AgentID), int(timeouts.Hard.Minutes()))
+			contextErr = nil
+		}
+		stopTimeout()
 		cancel()
 		m.finish(managed, err, contextErr)
 	}
+}
+
+// markSlow 只在 task 仍執行中時標記並即時通知；這是可重建的暫態，不寫入對話紀錄。
+func (m *TaskManager) markSlow(managed *managedTask) {
+	m.mu.Lock()
+	if managed.task.State != TaskRunning {
+		m.mu.Unlock()
+		return
+	}
+	managed.task.Slow = true
+	task := managed.task
+	m.mu.Unlock()
+	m.emit(TaskEvent{Type: EventTaskSlow, Task: task})
 }
 
 // draft 執行一輪 Agent 並保存結果。提案本身有問題時先保存原文，再續接同一 session 請 Agent 修正一次；
@@ -427,7 +462,7 @@ func (m *TaskManager) runApply(ctx context.Context, managed *managedTask) {
 func (m *TaskManager) finish(managed *managedTask, runErr, contextErr error) {
 	m.mu.Lock()
 	managed.cancel = nil
-	managed.task.Progress = ""
+	managed.task.Progress, managed.task.Slow = "", false
 	managed.task.FinishedAt = now()
 	if contextErr != nil {
 		managed.task.State = TaskCanceled

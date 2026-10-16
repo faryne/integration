@@ -1,6 +1,6 @@
 # SteamLoom Writer AI 助理：長文提案、提案修正、逾時與 MCP 授權
 
-- 狀態：規格已確認；A、B 已實作（2026-10-16），C、D 未開始
+- 狀態：規格已確認；A、B、C 已實作（2026-10-16），D 未開始
 - 日期：2026-10-16
 - Branch：`writer/ai-assistant-followups`
 - 前置文件：`SteamLoom_Writer_AI助理_2026-10-12.md`、`Writer_Proposal_Contract_2026-10-16.md`
@@ -133,6 +133,14 @@ REST 連線失敗、權限錯誤**不**觸發修正，直接失敗（不是 Agen
 - 自動修正那一輪不另外顯示 progress；任務活動只會多一行「提案無法使用」＋錯誤原因＋「查看原始輸出」。
 - 原文存在 `proposals/<thread>/invalid/<event_id>.txt`；刪除 thread 時隨 `proposals/<thread>` 一併刪除，proposal 列表會略過這個目錄（名稱不是 16 位 hex）。
 - 前端尚未在 `wails dev` 中實際觸發一次提案失敗驗證畫面。
+
+## 實作備註（C）
+
+- `askTimeout` 已移除；上限改由 `TaskManager.timeouts`（`agent.TaskTimeouts`，預設 `DefaultTaskTimeouts`）持有，設定頁之後再加 setter。
+- 超過 Hard 時 task 轉 `failed`（不是 `canceled`），錯誤為「<Agent> 超過 N 分鐘沒有完成，已中斷」；作者按停止仍是 `canceled`。
+- `task.slow` 只即時 emit、不落盤；`Task.slow` 在 task 結束時清掉。前端以 TaskRail 的 `slow` 顯示狀態（黃色 chip＋spinner）、`ActiveTaskStatus` 接「· 等待回應過長」。
+- Antigravity 的 `--print-timeout` 取 ctx deadline 剩餘時間＋1 分鐘，確保中斷一律由 Writer 發起。
+- 同樣尚未在 `wails dev` 實機看過畫面。
 
 ## 實作順序
 

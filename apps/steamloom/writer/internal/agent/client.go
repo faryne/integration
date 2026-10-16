@@ -10,11 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
-
-// 一輪問答的上限。寫作問答不跑工具，正常遠短於這個時間；逾時就停掉 CLI。
-const askTimeout = 10 * time.Minute
 
 // Request 是一輪問答。三家都吃這一包。對話掛在專案上，不掛某一篇文件。
 // ThreadID 指出要接到哪一條本機對話；空的表示這則會開新串。
@@ -94,8 +90,6 @@ func Ask(ctx context.Context, id string, req Request) (Reply, error) {
 	} else if installed {
 		req.mcpServer = serverName
 	}
-	ctx, cancel := context.WithTimeout(ctx, askTimeout)
-	defer cancel()
 	reply, err := client.Ask(ctx, req)
 	if err != nil {
 		return Reply{}, err

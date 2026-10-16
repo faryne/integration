@@ -131,6 +131,7 @@
     },
     "states": {
       "queued": "Queued",
+      "slow": "Taking too long",
       "running": "Running",
       "completed": "Completed",
       "failed": "Failed",

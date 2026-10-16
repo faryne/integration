@@ -529,6 +529,7 @@ export namespace agent {
 	    progress?: string;
 	    activity?: string;
 	    activity_target?: string;
+	    slow?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Task(source);
@@ -550,6 +551,7 @@ export namespace agent {
 	        this.progress = source["progress"];
 	        this.activity = source["activity"];
 	        this.activity_target = source["activity_target"];
+	        this.slow = source["slow"];
 	    }
 	}
 

@@ -131,6 +131,7 @@
     },
     "states": {
       "queued": "대기 중",
+      "slow": "응답이 너무 오래 걸림",
       "running": "실행 중",
       "completed": "완료",
       "failed": "실패",

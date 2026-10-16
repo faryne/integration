@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -539,5 +541,40 @@ func waitTaskEvents(t *testing.T, events <-chan TaskEvent, eventType string, tas
 		case <-timer.C:
 			t.Fatalf("timed out waiting for %s: %#v", eventType, waiting)
 		}
+	}
+}
+
+func TestTaskManagerWarnsWhenSlowThenFailsAtHardTimeout(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := make(chan TaskEvent, 20)
+	manager := NewTaskManager(context.Background(), func(ctx context.Context, _ string, req Request) (Reply, error) {
+		req.emitStream(StreamEvent{Type: StreamAssistantDelta, Text: "讀到一半"})
+		<-ctx.Done()
+		return Reply{}, ctx.Err()
+	}, func(event TaskEvent) { events <- event })
+	manager.timeouts = TaskTimeouts{Slow: 20 * time.Millisecond, Hard: 120 * time.Millisecond}
+	defer manager.Close()
+
+	task, err := manager.Start("claude", Request{ThreadID: page.CurrentID, ProjectID: "project", Prompt: "慢慢寫"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slow := waitTaskEvent(t, events, task.ID, EventTaskSlow); !slow.Task.Slow || slow.Task.State != TaskRunning {
+		t.Fatalf("slow warning must keep the task running: %#v", slow.Task)
+	}
+	failed := waitTaskEvent(t, events, task.ID, EventTaskFailed)
+	if failed.Task.State != TaskFailed || failed.Task.Slow || !strings.Contains(failed.Task.Error, "Claude Code 超過") || !strings.Contains(failed.Task.Error, "沒有完成，已中斷") {
+		t.Fatalf("hard timeout must fail with a readable reason: %#v", failed.Task)
+	}
+	chat, err := OpenChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(chat.Messages, func(line ChatLine) bool { return line.Type == EventMessagePartial && line.Text == "讀到一半" }) {
+		t.Fatalf("partial answer was not kept after timeout: %#v", chat.Messages)
 	}
 }

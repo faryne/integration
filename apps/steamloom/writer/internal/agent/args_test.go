@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestCodexArgsKeepNewAndResumedSessionsReadOnly(t *testing.T) {
@@ -50,8 +51,8 @@ func TestGeminiArgsUseHeadlessReadOnlyMode(t *testing.T) {
 }
 
 func TestAntigravityArgsAndInputUseStreamingProtocol(t *testing.T) {
-	args := antigravityArgs("conversation-id")
-	if !containsPair(args, "--input-format", "stream-json") || !containsPair(args, "--output-format", "stream-json") ||
+	args := antigravityArgs("conversation-id", 15*time.Minute)
+	if !containsPair(args, "--print-timeout", "16m") || !containsPair(args, "--input-format", "stream-json") || !containsPair(args, "--output-format", "stream-json") ||
 		!containsPair(args, "--mode", "plan") || !containsPair(args, "--conversation", "conversation-id") {
 		t.Fatalf("Antigravity must use the streaming plan-mode contract: %v", args)
 	}

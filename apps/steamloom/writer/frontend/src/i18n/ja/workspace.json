@@ -131,6 +131,7 @@
     },
     "states": {
       "queued": "待機中",
+      "slow": "応答に時間がかかっています",
       "running": "実行中",
       "completed": "完了",
       "failed": "失敗",

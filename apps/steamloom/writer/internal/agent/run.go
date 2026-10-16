@@ -117,7 +117,7 @@ func run(ctx context.Context, name, bin, dir string, args []string, stdin string
 		killProcessGroup(cmd)
 		result := <-done
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return result.stdout, fmt.Errorf("%s 超過 10 分鐘還沒有回答", name)
+			return result.stdout, fmt.Errorf("%s 等待逾時，已中斷", name)
 		}
 		return result.stdout, fmt.Errorf("%s 已取消", name)
 	}
