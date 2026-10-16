@@ -22,6 +22,24 @@ func TestParseProposalEnvelopeSeparatesVisibleReply(t *testing.T) {
 	}
 }
 
+func TestParseProposalEnvelopeV2KeepsExplicitTypeAndArtifacts(t *testing.T) {
+	answer := `已整理成兩頁圖像作品，尚未寫入 SteamLoom。
+<<<STEAMLOOM_WRITER_PROPOSAL_V2>>>
+{"items":[{"proposal_type":"image_story.create","kind":"story","title":"雨夜","content_type":"image","artifacts":[{"local_path":"/tmp/one.png","file_name":"one.png","mime_type":"image/png","alt_text":"雨中的月台","page_id":"page-one","model":"grok-imagine","parameters":{"aspect_ratio":"16:9"}},{"asset_public_id":"asset-two","description":"第二頁","default_selected":false}]}]}
+<<<END_STEAMLOOM_WRITER_PROPOSAL_V2>>>`
+	visible, items, err := parseProposalEnvelope(answer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if visible != "已整理成兩頁圖像作品，尚未寫入 SteamLoom。" || len(items) != 1 {
+		t.Fatalf("unexpected parsed proposal: %q %#v", visible, items)
+	}
+	item := items[0]
+	if item.ProposalType != ProposalTypeImageStoryCreate || len(item.Artifacts) != 2 || item.Artifacts[0].PageID != "page-one" || item.Artifacts[0].Model != "grok-imagine" || !item.Artifacts[0].DefaultSelected || item.Artifacts[1].AssetPublicID != "asset-two" || item.Artifacts[1].DefaultSelected {
+		t.Fatalf("v2 fields were lost: %#v", item)
+	}
+}
+
 func TestParseProposalEnvelopeRejectsUnknownOrTrailingContent(t *testing.T) {
 	for _, answer := range []string{
 		proposalEnvelopeStart + `{"items":[],"status":"approved"}` + proposalEnvelopeEnd,

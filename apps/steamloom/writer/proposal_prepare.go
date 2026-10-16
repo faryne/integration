@@ -22,6 +22,16 @@ func (a *App) prepareProposal(ctx context.Context, projectID string, items []age
 func prepareProposalItems(ctx context.Context, source proposalSource, projectID string, items []agent.ProposalItem) ([]agent.ProposalItem, error) {
 	for index := range items {
 		item := &items[index]
+		proposalType := item.ProposalType
+		if proposalType == "" {
+			proposalType = agent.ProposalTypeDocumentCreate
+			if item.Kind == agent.ProposalKindAsset {
+				proposalType = agent.ProposalTypeAssetUpload
+			} else if item.TargetID != "" {
+				proposalType = agent.ProposalTypeDocumentReplace
+			}
+			item.ProposalType = proposalType
+		}
 		if item.Kind != agent.ProposalKindStory && item.Kind != agent.ProposalKindLore {
 			continue
 		}
@@ -46,17 +56,46 @@ func prepareProposalItems(ctx context.Context, source proposalSource, projectID 
 			return nil, fmt.Errorf("提案項目 %d：目前內容沒有可用的版本編號", index+1)
 		}
 		latest := fmt.Sprint(*document.LatestVersionID)
+		if item.Title == "" {
+			item.Title = document.Title
+		}
+		if proposalType == agent.ProposalTypeChapterAppend || proposalType == agent.ProposalTypeChapterReplace {
+			// 章節提案只改內文局部，文件 metadata 一律沿用 REST API 的目前值。
+			item.Title, item.Summary, item.ContentType = document.Title, document.Summary, document.ContentType
+		}
 		if item.BaseVersionID == "" {
 			item.BaseVersionID = latest
 		}
-		item.Base = &agent.ProposalSnapshot{Title: document.Title, Summary: document.Summary, ContentType: document.ContentType, Content: document.Content}
+		baseTitle, baseSummary, baseContent := document.Title, document.Summary, document.Content
 		if item.BaseVersionID != latest {
 			version, err := source.VersionDetail(ctx, projectID, kind, item.TargetID, item.BaseVersionID)
 			if err != nil {
 				return nil, fmt.Errorf("提案項目 %d：無法讀取基準版本 #%s：%w", index+1, item.BaseVersionID, err)
 			}
-			item.Base = &agent.ProposalSnapshot{Title: version.Title, Summary: version.Summary, ContentType: document.ContentType, Content: version.Content}
+			baseTitle, baseSummary, baseContent = version.Title, version.Summary, version.Content
 		}
+		if proposalType == agent.ProposalTypeChapterReplace {
+			spans := proposalChapterSpans(item.Content)
+			if len(spans) == 0 || spans[0].StartLine != 0 || spans[0].MarkerID != item.MarkerID {
+				return nil, fmt.Errorf("提案項目 %d：替換章節必須以相同 marker 的 heading 開始", index+1)
+			}
+			baseContent, err = proposalChapterContent(baseContent, item.MarkerID)
+			if err != nil {
+				return nil, fmt.Errorf("提案項目 %d：無法讀取要替換的章節：%w", index+1, err)
+			}
+		} else if proposalType == agent.ProposalTypeChapterAppend {
+			spans := proposalChapterSpans(item.Content)
+			if len(spans) == 0 || spans[0].StartLine != 0 || spans[0].MarkerID == "" {
+				return nil, fmt.Errorf("提案項目 %d：新增章節必須以帶 marker 的 heading 開始", index+1)
+			}
+			if item.AfterMarkerID != "" {
+				baseContent, err = proposalChapterContent(baseContent, item.AfterMarkerID)
+				if err != nil {
+					return nil, fmt.Errorf("提案項目 %d：無法讀取插入位置：%w", index+1, err)
+				}
+			}
+		}
+		item.Base = &agent.ProposalSnapshot{Title: baseTitle, Summary: baseSummary, ContentType: document.ContentType, Content: baseContent}
 		for operationIndex := range item.Operations {
 			arguments := item.Operations[operationIndex].Arguments
 			if arguments == nil {

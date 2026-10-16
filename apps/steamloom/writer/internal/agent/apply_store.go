@@ -4,7 +4,31 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 )
+
+func recordApplyQueued(agentID, projectID, threadID, proposalID, taskID string) (Proposal, error) {
+	chatMu.Lock()
+	defer chatMu.Unlock()
+	dir, idx, thread, proposal, _, err := loadProposalForApply(agentID, projectID, threadID, proposalID)
+	if err != nil {
+		return Proposal{}, err
+	}
+	if proposal.Status != ProposalApproved {
+		return Proposal{}, errors.New("這批提案尚未取得作者允許")
+	}
+	event := taskEvent(EventApplyQueued, taskID, "等待 Writer 套用核准的提案")
+	event.ProposalID, event.ContentHash = proposal.ID, proposal.ContentHash
+	if err := appendLines(filepath.Join(dir, threadID+".jsonl"), []ChatLine{event}); err != nil {
+		return Proposal{}, err
+	}
+	thread.UpdatedAt, thread.LastTaskState, thread.ActiveTaskID = event.CreatedAt, TaskQueued, taskID
+	idx.Threads = upsertFront(idx.Threads, thread)
+	if err := saveIndex(dir, idx); err != nil {
+		return Proposal{}, err
+	}
+	return proposal, nil
+}
 
 func recordApplyStarted(agentID, projectID, threadID, proposalID, taskID string) (Proposal, error) {
 	chatMu.Lock()
@@ -42,6 +66,94 @@ func recordApplyStarted(agentID, projectID, threadID, proposalID, taskID string)
 
 func recordApplyCompleted(agentID, projectID, threadID, proposalID, taskID, reply string) (Proposal, error) {
 	return recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, ProposalApplied, TaskApplied, EventApplyCompleted, "Writer 已完成提案套用", reply)
+}
+
+func recordApplyItem(agentID, projectID, threadID, proposalID, taskID, itemID, eventType, detail string) (Proposal, error) {
+	chatMu.Lock()
+	defer chatMu.Unlock()
+	dir, idx, thread, proposal, _, err := loadProposalForApply(agentID, projectID, threadID, proposalID)
+	if err != nil {
+		return Proposal{}, err
+	}
+	if proposal.Status != ProposalApplying {
+		return Proposal{}, fmt.Errorf("提案目前是 %s，不能保存單項套用結果", proposal.Status)
+	}
+	var item ProposalItem
+	for _, candidate := range proposal.ApplyItems() {
+		if candidate.ID == itemID {
+			item = candidate
+			break
+		}
+	}
+	if item.ID == "" {
+		return Proposal{}, errors.New("套用項目不屬於這批已核准提案")
+	}
+	text := ProposalItemApplyLabel(item)
+	switch eventType {
+	case EventApplyItemStarted:
+		text += "……開始"
+	case EventApplyItemDone:
+		text += "……完成"
+	case EventApplyItemFailed:
+		text += "……失敗"
+		if detail != "" {
+			text += "：" + detail
+		}
+	default:
+		return Proposal{}, errors.New("不支援的單項套用事件")
+	}
+	event := taskEvent(eventType, taskID, text)
+	event.ProposalID, event.ItemID, event.ContentHash = proposal.ID, item.ID, item.ContentHash
+	if err := appendLines(filepath.Join(dir, threadID+".jsonl"), []ChatLine{event}); err != nil {
+		return Proposal{}, err
+	}
+	thread.UpdatedAt = event.CreatedAt
+	idx.Threads = upsertFront(idx.Threads, thread)
+	if err := saveIndex(dir, idx); err != nil {
+		return Proposal{}, err
+	}
+	return proposal, nil
+}
+
+// ProposalItemApplyLabel 回傳對作者可讀的具體操作，不把內部 event type 當 UI 文案。
+func ProposalItemApplyLabel(item ProposalItem) string {
+	action := map[string]string{
+		ProposalTypeDocumentCreate:   "新增內容",
+		ProposalTypeDocumentReplace:  "更新內容",
+		ProposalTypeChapterAppend:    "新增章節",
+		ProposalTypeChapterReplace:   "更新章節",
+		ProposalTypeAssetUpload:      "上傳圖片",
+		ProposalTypeImageStoryCreate: "新增圖像作品",
+		ProposalTypeImageStoryUpdate: "更新圖像作品",
+	}[item.ProposalType]
+	if item.ProposalType == ProposalTypeDocumentCreate || item.ProposalType == ProposalTypeDocumentReplace {
+		action = map[string]string{ProposalKindStory: map[bool]string{true: "新增故事", false: "更新故事"}[item.ProposalType == ProposalTypeDocumentCreate], ProposalKindLore: map[bool]string{true: "新增設定", false: "更新設定"}[item.ProposalType == ProposalTypeDocumentCreate]}[item.Kind]
+	}
+	title := item.Title
+	if item.ProposalType == ProposalTypeChapterAppend || item.ProposalType == ProposalTypeChapterReplace {
+		title = proposalChapterTitle(item.Content)
+	}
+	if title == "" {
+		title = item.FileName
+	}
+	if title == "" {
+		return action
+	}
+	return fmt.Sprintf("%s「%s」", action, title)
+}
+
+func proposalChapterTitle(content string) string {
+	line := strings.TrimSpace(strings.SplitN(content, "\n", 2)[0])
+	line = strings.TrimSpace(strings.TrimLeft(line, "#"))
+	if strings.HasPrefix(line, "⟦") {
+		if end := strings.Index(line, "⟧"); end >= 0 {
+			line = line[end+len("⟧"):]
+		}
+	}
+	if end := strings.LastIndex(line, "⟦/"); end >= 0 {
+		line = line[:end]
+	}
+	return strings.TrimSpace(line)
 }
 
 func recordApplyFailed(agentID, projectID, threadID, proposalID, taskID, detail, partial string) (Proposal, error) {

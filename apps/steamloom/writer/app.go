@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	goruntime "runtime"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -242,6 +240,11 @@ func (a *App) ProposalAssetPreview(agentID, projectID, threadID, proposalID, ite
 	return agent.ProposalAssetPreview(agentID, projectID, threadID, proposalID, itemID)
 }
 
+// ProposalArtifactPreview 讀取圖像作品或批次媒體提案中的單一 staged artifact。
+func (a *App) ProposalArtifactPreview(agentID, projectID, threadID, proposalID, itemID, artifactID string) (string, error) {
+	return agent.ProposalArtifactPreview(agentID, projectID, threadID, proposalID, itemID, artifactID)
+}
+
 // DecideProposal 保存作者決策；核准後由 Writer 經 REST API 套用，Agent 不會再取得寫入權限。
 func (a *App) DecideProposal(agentID, projectID, threadID, proposalID, decision string, selectedItemIDs []string) (*agent.Proposal, error) {
 	proposal, err := agent.ProposalByID(agentID, projectID, threadID, proposalID)
@@ -279,60 +282,6 @@ func (a *App) DecideProposal(agentID, projectID, threadID, proposalID, decision 
 		}
 	}
 	return &decided, nil
-}
-
-// applyProposal 只採用 Writer 已 staging、hash 驗證並由使用者核准的 review 欄位；
-// Operations 僅保留為 Agent 的意圖紀錄，不會被當成可執行指令。
-func (a *App) applyProposal(ctx context.Context, proposal agent.Proposal) (string, error) {
-	items := proposal.ApplyItems()
-	for _, item := range items {
-		switch item.Kind {
-		case agent.ProposalKindStory, agent.ProposalKindLore:
-			kind := api.DocumentKind(item.Kind)
-			if item.TargetID == "" {
-				_, err := a.api.CreateProposedDocument(ctx, proposal.ProjectID, kind, api.ProposedDocumentInput{
-					Title: item.Title, Summary: item.Summary, Content: item.Content, ContentType: item.ContentType, GroupPublicID: item.CollectionID,
-				})
-				if err != nil {
-					return "", err
-				}
-				continue
-			}
-			baseVersionID, err := strconv.ParseUint(item.BaseVersionID, 10, 64)
-			if err != nil {
-				return "", fmt.Errorf("%s 的 base_version_id 不正確：%w", item.Title, err)
-			}
-			_, err = a.api.SaveDocument(ctx, proposal.ProjectID, kind, item.TargetID, api.SaveInput{
-				Title: item.Title, Summary: item.Summary, Content: item.Content, Trigger: "manual",
-				BaseVersionID: &baseVersionID, AbortOnConflict: true,
-			})
-			if api.IsHTTPStatus(err, http.StatusConflict) {
-				return "", fmt.Errorf("%w：%s", agent.ErrApplyConflict, item.Title)
-			}
-			if err != nil {
-				return "", err
-			}
-		case agent.ProposalKindAsset:
-			path, err := agent.ProposalAssetPath(proposal.AgentID, proposal.ProjectID, proposal.ThreadID, proposal.ID, item.ID)
-			if err != nil {
-				return "", err
-			}
-			uploaded, err := a.api.UploadAssets(ctx, proposal.ProjectID, item.CollectionID, []string{path})
-			if err != nil {
-				return "", err
-			}
-			assetID := uploaded.Created[path]
-			if assetID == "" {
-				return "", fmt.Errorf("圖片 %s 未成功上傳", item.FileName)
-			}
-			if _, err := a.api.UpdateAsset(ctx, proposal.ProjectID, assetID, api.AssetInput{Title: item.Title, AltText: item.AltText, Description: item.Summary}); err != nil {
-				return "", err
-			}
-		default:
-			return "", fmt.Errorf("不支援的提案類型：%s", item.Kind)
-		}
-	}
-	return fmt.Sprintf("Writer 已依你的核准套用 %d 項提案。", len(items)), nil
 }
 
 func staleTaskState(state string, active []agent.Task, agentID, threadID string) string {

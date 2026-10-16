@@ -24,23 +24,31 @@ const (
 	ProposalKindStory            = "story"
 	ProposalKindLore             = "lore"
 	ProposalKindAsset            = "asset"
+	ProposalTypeDocumentCreate   = "document.create"
+	ProposalTypeDocumentReplace  = "document.replace"
+	ProposalTypeChapterAppend    = "chapter.append"
+	ProposalTypeChapterReplace   = "chapter.replace"
+	ProposalTypeAssetUpload      = "asset.upload"
+	ProposalTypeImageStoryCreate = "image_story.create"
+	ProposalTypeImageStoryUpdate = "image_story.update"
 )
 
 // Proposal 是單一 task 交付的一批成果；使用者之後預設整批審查，但授權仍逐 item 綁定 hash。
 type Proposal struct {
-	ID              string         `json:"id"`
-	TaskID          string         `json:"task_id"`
-	ThreadID        string         `json:"thread_id"`
-	AgentID         string         `json:"agent_id"`
-	ProjectID       string         `json:"project_id"`
-	Status          string         `json:"status"`
-	ContentHash     string         `json:"content_hash"`
-	CreatedAt       string         `json:"created_at"`
-	DecidedAt       string         `json:"decided_at,omitempty"`
-	AppliedAt       string         `json:"applied_at,omitempty"`
-	InterruptedAt   string         `json:"interrupted_at,omitempty"`
-	SelectedItemIDs []string       `json:"selected_item_ids,omitempty"`
-	Items           []ProposalItem `json:"items"`
+	ID                  string         `json:"id"`
+	TaskID              string         `json:"task_id"`
+	ThreadID            string         `json:"thread_id"`
+	AgentID             string         `json:"agent_id"`
+	ProjectID           string         `json:"project_id"`
+	Status              string         `json:"status"`
+	ContentHash         string         `json:"content_hash"`
+	CreatedAt           string         `json:"created_at"`
+	DecidedAt           string         `json:"decided_at,omitempty"`
+	AppliedAt           string         `json:"applied_at,omitempty"`
+	InterruptedAt       string         `json:"interrupted_at,omitempty"`
+	SelectedItemIDs     []string       `json:"selected_item_ids,omitempty"`
+	SelectedArtifactIDs []string       `json:"selected_artifact_ids,omitempty"`
+	Items               []ProposalItem `json:"items"`
 }
 
 // ApplyItems 回傳作者核准的項目；舊版 proposal 沒有 selection 時維持整批套用相容性。
@@ -52,9 +60,22 @@ func (p Proposal) ApplyItems() []ProposalItem {
 	for _, id := range p.SelectedItemIDs {
 		selected[id] = true
 	}
+	selectedArtifacts := make(map[string]bool, len(p.SelectedArtifactIDs))
+	for _, id := range p.SelectedArtifactIDs {
+		selectedArtifacts[id] = true
+	}
 	items := make([]ProposalItem, 0, len(selected))
 	for _, item := range p.Items {
 		if selected[item.ID] {
+			if len(selectedArtifacts) > 0 && len(item.Artifacts) > 0 {
+				artifacts := make([]ProposalArtifact, 0, len(item.Artifacts))
+				for _, artifact := range item.Artifacts {
+					if selectedArtifacts[artifact.ID] {
+						artifacts = append(artifacts, artifact)
+					}
+				}
+				item.Artifacts = artifacts
+			}
 			items = append(items, item)
 		}
 	}
@@ -75,9 +96,35 @@ type ProposalOperation struct {
 	Arguments map[string]any `json:"arguments"`
 }
 
+// ProposalArtifact 是 provider 產生或既已存在於 SteamLoom 的媒體成果。
+// LocalPath 會在 proposal 落盤前搬到 Writer staging；AssetPublicID 則代表沿用既有資產。
+type ProposalArtifact struct {
+	ID              string         `json:"id"`
+	ProviderID      string         `json:"provider_id,omitempty"`
+	ProviderJobID   string         `json:"provider_job_id,omitempty"`
+	Model           string         `json:"model,omitempty"`
+	Parameters      map[string]any `json:"parameters,omitempty"`
+	CandidateGroup  string         `json:"candidate_group,omitempty"`
+	DefaultSelected bool           `json:"default_selected"`
+	LocalPath       string         `json:"local_path,omitempty"`
+	AssetPublicID   string         `json:"asset_public_id,omitempty"`
+	FileName        string         `json:"file_name,omitempty"`
+	MIMEType        string         `json:"mime_type,omitempty"`
+	FileSize        int64          `json:"file_size,omitempty"`
+	FileSHA256      string         `json:"file_sha256,omitempty"`
+	AltText         string         `json:"alt_text,omitempty"`
+	Description     string         `json:"description,omitempty"`
+	Width           int            `json:"width,omitempty"`
+	Height          int            `json:"height,omitempty"`
+	DurationMS      int64          `json:"duration_ms,omitempty"`
+	PageID          string         `json:"page_id,omitempty"`
+	Sort            int            `json:"sort"`
+}
+
 // ProposalItem 同時涵蓋故事、設定與圖片資產；真正套用只採用經 review 的正規化欄位。
 type ProposalItem struct {
 	ID            string              `json:"id"`
+	ProposalType  string              `json:"proposal_type,omitempty"`
 	Kind          string              `json:"kind"`
 	Operations    []ProposalOperation `json:"operations"`
 	TargetID      string              `json:"target_id,omitempty"`
@@ -94,6 +141,9 @@ type ProposalItem struct {
 	FileSHA256    string              `json:"file_sha256,omitempty"`
 	AltText       string              `json:"alt_text,omitempty"`
 	CollectionID  string              `json:"collection_id,omitempty"`
+	MarkerID      string              `json:"marker_id,omitempty"`
+	AfterMarkerID string              `json:"after_marker_id,omitempty"`
+	Artifacts     []ProposalArtifact  `json:"artifacts,omitempty"`
 	ContentHash   string              `json:"content_hash"`
 }
 
@@ -114,6 +164,9 @@ func prepareProposal(agentID, projectID, threadID, taskID string, items []Propos
 	proposal := Proposal{ID: id, TaskID: taskID, ThreadID: threadID, AgentID: agentID, ProjectID: projectID, Status: ProposalAwaitingConfirmation, CreatedAt: now(), Items: items}
 	for index := range proposal.Items {
 		item := &proposal.Items[index]
+		for artifactIndex := range item.Artifacts {
+			item.Artifacts[artifactIndex].ProviderID = agentID
+		}
 		item.ID, err = newThreadID()
 		if err != nil {
 			return Proposal{}, err
@@ -126,27 +179,79 @@ func prepareProposal(agentID, projectID, threadID, taskID string, items []Propos
 }
 
 func normalizeProposalItem(item *ProposalItem, projectID string) error {
+	if item.ProposalType == "" {
+		item.ProposalType = inferLegacyProposalType(*item)
+	}
 	targetKey := ""
-	switch item.Kind {
-	case ProposalKindStory, ProposalKindLore:
+	switch item.ProposalType {
+	case ProposalTypeDocumentCreate:
+		if item.Kind != ProposalKindStory && item.Kind != ProposalKindLore {
+			return errors.New("新增全文只支援故事或設定")
+		}
+		if item.TargetID != "" {
+			return errors.New("新增全文不能指定既有目標")
+		}
+		if item.ContentType == "" {
+			item.ContentType = "text"
+		}
+	case ProposalTypeDocumentReplace, ProposalTypeChapterAppend, ProposalTypeChapterReplace:
+		if item.Kind != ProposalKindStory && item.Kind != ProposalKindLore {
+			return errors.New("文件與章節提案只支援故事或設定")
+		}
 		targetKey = map[string]string{ProposalKindStory: "story_public_id", ProposalKindLore: "lore_public_id"}[item.Kind]
 		if item.ContentType == "" {
 			item.ContentType = "text"
 		}
-		if item.TargetID != "" && (item.BaseVersionID == "" || item.Base == nil) {
+		if item.TargetID == "" {
+			return errors.New("修改既有內容時必須指定 target_id")
+		}
+		if item.BaseVersionID == "" || item.Base == nil {
 			return errors.New("更新既有內容時必須保存 base_version_id 與 base snapshot")
 		}
-	case ProposalKindAsset:
-		if item.LocalPath == "" || item.MIMEType == "" {
+		if item.ProposalType == ProposalTypeChapterReplace && item.MarkerID == "" {
+			return errors.New("替換章節時必須指定 marker_id")
+		}
+	case ProposalTypeAssetUpload:
+		item.Kind = ProposalKindAsset
+		if len(item.Artifacts) == 0 && (item.LocalPath == "" || item.MIMEType == "") {
 			return errors.New("圖片資產提案缺少本機檔案或 MIME type")
+		}
+	case ProposalTypeImageStoryCreate, ProposalTypeImageStoryUpdate:
+		item.Kind, item.ContentType = ProposalKindStory, "image"
+		if len(item.Artifacts) == 0 {
+			return errors.New("圖像作品提案至少需要一頁")
+		}
+		if item.ProposalType == ProposalTypeImageStoryCreate && item.TargetID != "" {
+			return errors.New("新增圖像作品不能指定既有目標")
+		}
+		if item.ProposalType == ProposalTypeImageStoryUpdate {
+			targetKey = "story_public_id"
+			if item.TargetID == "" || item.BaseVersionID == "" || item.Base == nil {
+				return errors.New("更新圖像作品時必須保存 target_id、base_version_id 與 base snapshot")
+			}
 		}
 	default:
 		return errors.New("不支援的提案類型")
 	}
-	if len(item.Operations) == 0 {
-		return errors.New("缺少建議執行的 SteamLoom tool")
+	for index := range item.Artifacts {
+		artifact := &item.Artifacts[index]
+		if artifact.ID == "" {
+			id, err := newThreadID()
+			if err != nil {
+				return err
+			}
+			artifact.ID = id
+		}
+		if artifact.LocalPath == "" && artifact.AssetPublicID == "" {
+			return fmt.Errorf("artifact %d 缺少本機檔案或既有資產", index+1)
+		}
+		if item.ProposalType == ProposalTypeAssetUpload && artifact.LocalPath == "" {
+			return fmt.Errorf("artifact %d 不是可上傳的本機檔案", index+1)
+		}
+		artifact.Sort = index
 	}
-	targetMatched := item.TargetID == ""
+	// V2 proposal 直接以正規化欄位描述變更，operations 僅保留舊版稽核資訊。
+	targetMatched := item.TargetID == "" || len(item.Operations) == 0
 	for index := range item.Operations {
 		operation := &item.Operations[index]
 		if !strings.HasPrefix(operation.Tool, "storyteller_") || writerReadOnlyTool(operation.Tool) {
@@ -187,6 +292,16 @@ func normalizeProposalItem(item *ProposalItem, projectID string) error {
 	return nil
 }
 
+func inferLegacyProposalType(item ProposalItem) string {
+	if item.Kind == ProposalKindAsset {
+		return ProposalTypeAssetUpload
+	}
+	if item.TargetID == "" {
+		return ProposalTypeDocumentCreate
+	}
+	return ProposalTypeDocumentReplace
+}
+
 func writerReadOnlyTool(name string) bool {
 	for _, tool := range writerReadOnlyTools {
 		if tool == name {
@@ -214,11 +329,12 @@ func setProposalHashes(proposal *Proposal) error {
 	for index := range proposal.Items {
 		item := &proposal.Items[index]
 		fingerprint := struct {
-			Kind, TargetID, BaseVersionID, Title, Summary, ContentType, Content string
-			Base                                                                *ProposalSnapshot
-			Operations                                                          []ProposalOperation
-			FileName, MIMEType, FileSHA256, AltText, CollectionID               string
-		}{item.Kind, item.TargetID, item.BaseVersionID, item.Title, item.Summary, item.ContentType, item.Content, item.Base, item.Operations, item.FileName, item.MIMEType, item.FileSHA256, item.AltText, item.CollectionID}
+			ProposalType, Kind, TargetID, BaseVersionID, Title, Summary, ContentType, Content, MarkerID, AfterMarkerID string
+			Base                                                                                                       *ProposalSnapshot
+			Operations                                                                                                 []ProposalOperation
+			FileName, MIMEType, FileSHA256, AltText, CollectionID                                                      string
+			Artifacts                                                                                                  []ProposalArtifact
+		}{item.ProposalType, item.Kind, item.TargetID, item.BaseVersionID, item.Title, item.Summary, item.ContentType, item.Content, item.MarkerID, item.AfterMarkerID, item.Base, item.Operations, item.FileName, item.MIMEType, item.FileSHA256, item.AltText, item.CollectionID, item.Artifacts}
 		hash, err := hashJSON(fingerprint)
 		if err != nil {
 			return err

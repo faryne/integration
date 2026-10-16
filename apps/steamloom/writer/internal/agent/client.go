@@ -59,28 +59,15 @@ type Reply struct {
 
 // Installed 是選單上的一項：這台機器找得到的 CLI。
 type Installed struct {
-	ID          string `json:"id"`
-	DisplayName string `json:"display_name"`
-	Path        string `json:"path"`
+	ID           string       `json:"id"`
+	DisplayName  string       `json:"display_name"`
+	Path         string       `json:"path"`
+	Capabilities []Capability `json:"capabilities"`
 }
 
 // Client 是一家 CLI 的問答送出介面。
 type Client interface {
 	Ask(ctx context.Context, req Request) (Reply, error)
-}
-
-type vendor struct {
-	id, display, bin string
-	new              func(path string) Client
-}
-
-// 順序就是選單順序。沒安裝的在 Detect 時拿掉。
-var catalog = []vendor{
-	{id: "claude", display: "Claude Code", bin: "claude", new: newClaude},
-	{id: "codex", display: "Codex", bin: "codex", new: newCodex},
-	{id: "grok", display: "Grok Build", bin: "grok", new: newGrok},
-	{id: "gemini", display: "Gemini CLI", bin: "gemini", new: newGemini},
-	{id: "antigravity", display: "Antigravity", bin: "agy", new: newAntigravity},
 }
 
 // Ask 把一輪問答交給 id 指定的那一家。
@@ -120,14 +107,14 @@ func Ask(ctx context.Context, id string, req Request) (Reply, error) {
 
 func open(id string) (Client, error) {
 	for _, item := range catalog {
-		if item.id != id {
+		if item.descriptor.ID != id {
 			continue
 		}
-		path, ok := lookup(item.bin)
+		path, ok := lookup(item.executable)
 		if !ok {
-			return nil, fmt.Errorf("這台電腦沒有安裝 %s", item.display)
+			return nil, fmt.Errorf("這台電腦沒有安裝 %s", item.descriptor.DisplayName)
 		}
-		return item.new(path), nil
+		return item.open(path), nil
 	}
 	return nil, errors.New("不支援的 AI Agent")
 }
@@ -194,7 +181,15 @@ func (r Request) quotedContext() string {
 
 func (r Request) proposalRules() string {
 	return `
-成果規則：只有作者明確要求建立、修改或上傳 SteamLoom 內容時，才在一般回覆摘要之後附上一個 Writer proposal；討論、分析、腦力激盪或文筆示範不要附。proposal 只是本機待確認資料，不得呼叫任何寫入工具。格式必須以獨立行 <<<STEAMLOOM_WRITER_PROPOSAL_V1>>> 開始、<<<END_STEAMLOOM_WRITER_PROPOSAL_V1>>> 結束，中間是單一 JSON object：{"items":[...]}。每個 item 只用 kind（story／lore／asset）、operations（陣列，每項有 tool 與 arguments）、target_id、base_version_id、title、summary、content_type、content、local_path、file_name、mime_type、alt_text、collection_id。更新既有 story／lore 時必須附 target_id；base_version_id 若能從讀取結果確定就附上，Writer 會透過 REST API 保存可信任的版本與 base snapshot，Agent 不要自行輸出 base。新增時省略 target_id 與 base_version_id。story／lore 的 review 欄位 title、summary、content_type、content 是作者實際確認的唯一完整版本，搜尋取代或段落／章節修改也必須回傳修改後全文。Writer 只把 operations 保存為意圖紀錄，不會執行其中的 tool 或 arguments；使用者核准後由 Writer 自己呼叫 REST API 套用 review 欄位。asset 的 local_path 必須是目前工作目錄內的絕對路徑。結束標記後不要再輸出任何內容。`
+成果規則：只有作者明確要求建立、修改或上傳 SteamLoom 內容時，才在一般回覆摘要之後附上一個 Writer proposal；討論、分析、腦力激盪或文筆示範不要附。proposal 只是本機待確認資料，不得呼叫任何寫入工具。
+格式必須以獨立行 <<<STEAMLOOM_WRITER_PROPOSAL_V2>>> 開始、<<<END_STEAMLOOM_WRITER_PROPOSAL_V2>>> 結束，中間是單一 JSON object：{"items":[...]}，結束標記後不要再輸出內容。每個 item 必須有 proposal_type，允許值如下：
+- document.create：新增完整故事或設定；kind 使用 story 或 lore，附 title、summary、content_type、content，不附 target_id。
+- document.replace：替換既有故事或設定全文；附 kind、target_id、title、summary、content_type、content。搜尋取代或大範圍修改使用此類型。
+- chapter.append：在既有故事或設定新增一個完整 Markdown 章節；附 kind、target_id、after_marker_id（可省略，代表加到文末）及 content。content 第一行必須是帶穩定 marker 的 heading，例如 # ⟦chapter-id⟧標題⟦/chapter-id⟧。
+- chapter.replace：只替換既有章節；附 kind、target_id、marker_id 及該章節的完整 content，不要回傳整份文件。
+- asset.upload：上傳一或多個媒體資產；kind 使用 asset，附 artifacts。
+- image_story.create／image_story.update：新增或更新圖像作品；kind 使用 story、content_type 使用 image，附 title、summary、artifacts；update 另附 target_id。
+artifacts 每項可用 local_path（provider 在目前工作目錄產生的絕對路徑）或 asset_public_id（沿用既有 SteamLoom 資產），並可附 file_name、mime_type、alt_text、description、width、height、duration_ms、page_id、provider_job_id、model、parameters、candidate_group、default_selected。不要輸出 provider_id、artifact id、檔案大小或 hash，這些由 Writer 建立。更新既有內容時可附讀取到的 base_version_id；Writer 會以 REST API 建立可信任的 base snapshot，Agent 不要輸出 base。operations 僅供舊版稽核、可以省略；Writer 不執行其中的 tool 或 arguments。使用者核准後，一律由 Writer 呼叫 REST API 套用已 review 的欄位。`
 }
 
 // Writer 只傳遞原始指示詞，不展開內容；名稱解析與讀取都由 Agent 的 MCP 工具完成。

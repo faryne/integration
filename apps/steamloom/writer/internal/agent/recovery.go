@@ -15,7 +15,7 @@ func RecoverInterruptedApplies(projectID string, activeTaskIDs map[string]bool) 
 		return err
 	}
 	for _, provider := range catalog {
-		dir, idx, err := loadChat(provider.id, projectID)
+		dir, idx, err := loadChat(provider.descriptor.ID, projectID)
 		if err != nil {
 			return err
 		}

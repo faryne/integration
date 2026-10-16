@@ -23,7 +23,7 @@ func ProjectThreads(projectID string) ([]ProjectThread, error) {
 	}
 	threads := []ProjectThread{}
 	for _, provider := range catalog {
-		dir, idx, err := loadChat(provider.id, projectID)
+		dir, idx, err := loadChat(provider.descriptor.ID, projectID)
 		if err != nil {
 			return nil, err
 		}
@@ -34,7 +34,7 @@ func ProjectThreads(projectID string) ([]ProjectThread, error) {
 			}
 			threads = append(threads, ProjectThread{
 				ID:            thread.ID,
-				AgentID:       provider.id,
+				AgentID:       provider.descriptor.ID,
 				Title:         thread.Title,
 				UpdatedAt:     thread.UpdatedAt,
 				LastTaskState: state,
@@ -78,6 +78,11 @@ func threadTaskState(path string, thread Thread) (string, string, error) {
 			states[event.TaskID], lastState, lastID = TaskApproved, TaskApproved, event.TaskID
 		case EventProposalRejected:
 			states[event.TaskID], lastState, lastID = TaskRejected, TaskRejected, event.TaskID
+		case EventApplyQueued:
+			if _, exists := states[event.TaskID]; !exists {
+				order = append(order, event.TaskID)
+			}
+			states[event.TaskID], lastState, lastID = TaskQueued, TaskQueued, event.TaskID
 		case EventApplyStarted:
 			states[event.TaskID], lastState, lastID = TaskApplying, TaskApplying, event.TaskID
 		case EventApplyCompleted:

@@ -17,7 +17,11 @@ const (
 	EventProposalReady    = "proposal.ready"
 	EventProposalApproved = "proposal.approved"
 	EventProposalRejected = "proposal.rejected"
+	EventApplyQueued      = "apply.queued"
 	EventApplyStarted     = "apply.started"
+	EventApplyItemStarted = "apply.item.started"
+	EventApplyItemDone    = "apply.item.completed"
+	EventApplyItemFailed  = "apply.item.failed"
 	EventApplyCompleted   = "apply.completed"
 	EventApplyFailed      = "apply.failed"
 	EventApplyConflict    = "apply.conflict"
@@ -34,6 +38,7 @@ type ChatLine struct {
 	CreatedAt   string            `json:"created_at,omitempty"`
 	TaskID      string            `json:"task_id,omitempty"`
 	ProposalID  string            `json:"proposal_id,omitempty"`
+	ItemID      string            `json:"item_id,omitempty"`
 	ContentHash string            `json:"content_hash,omitempty"`
 	EventID     string            `json:"event_id,omitempty"`
 	ToolName    string            `json:"tool_name,omitempty"`
