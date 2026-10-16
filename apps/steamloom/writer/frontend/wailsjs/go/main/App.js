@@ -146,6 +146,26 @@ export function MoveStory(arg1, arg2, arg3) {
   return window['go']['main']['App']['MoveStory'](arg1, arg2, arg3);
 }
 
+export function WorkerAdapters() {
+  return window['go']['main']['App']['WorkerAdapters']();
+}
+
+export function Workers() {
+  return window['go']['main']['App']['Workers']();
+}
+
+export function SaveWorker(arg1) {
+  return window['go']['main']['App']['SaveWorker'](arg1);
+}
+
+export function TestWorker(arg1) {
+  return window['go']['main']['App']['TestWorker'](arg1);
+}
+
+export function DeleteWorker(arg1) {
+  return window['go']['main']['App']['DeleteWorker'](arg1);
+}
+
 export function PatchDocument(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['PatchDocument'](arg1, arg2, arg3, arg4);
 }

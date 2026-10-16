@@ -1,0 +1,6 @@
+{
+  "title": "앱 설정",
+  "workers": {
+    "title": "미디어 Worker", "subtitle": "모든 프로젝트에서 사용할 수 있는 기기 전역 미디어 서비스를 관리합니다. Agent에는 기능만 공개되며 연결 정보와 비밀은 공개되지 않습니다.", "add": "Worker 추가", "empty": "설정된 Worker가 없습니다", "emptyHint": "ComfyUI 또는 SteamLoom Worker Protocol 호환 서비스를 추가하세요.", "enabled": "활성화", "save": "설정 저장", "saving": "저장 중", "test": "연결 테스트", "testing": "테스트 중", "delete": "Worker 삭제", "deleteTitle": "Worker를 삭제할까요?", "deleteMessage": "‘{{name}}’의 설정과 OS Keychain 비밀이 삭제됩니다.", "cancel": "취소", "confirmDelete": "삭제", "name": "표시 이름", "adapter": "Adapter", "connection": "연결 설정", "capabilities": "감지된 기능", "noCapabilities": "연결 테스트에 성공하면 Worker 기능이 여기에 표시됩니다.", "addTitle": "Worker 유형 선택", "addHint": "Writer에 등록된 adapter 목록입니다. 같은 유형을 여러 개 만들 수 있습니다.", "status": { "online": "연결됨", "error": "연결 오류", "unconfigured": "테스트 안 함" }, "secretStored": "안전하게 저장됨. 비워 두면 유지됩니다", "clearSecret": "저장된 {{label}} 지우기", "saved": "Worker 설정을 저장했습니다", "tested": "연결 테스트를 완료했습니다", "deleted": "Worker를 삭제했습니다", "capability": { "text_to_image": "텍스트로 이미지 생성", "image_to_image": "이미지로 이미지 생성", "reference_image": "참조 이미지", "lora": "LoRA" }
+  }
+}

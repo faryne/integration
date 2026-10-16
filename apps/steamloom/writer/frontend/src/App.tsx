@@ -13,6 +13,7 @@ import { WebApiProvider } from "@writer/lib/webApi.tsx";
 import { LoadErrorPage } from "@writer/pages/LoadErrorPage.tsx";
 import { LoginPage } from "@writer/pages/LoginPage.tsx";
 import { ProjectsPage } from "@writer/pages/ProjectsPage.tsx";
+import { WorkerSettingsPage } from "@writer/pages/settings/WorkerSettingsPage.tsx";
 import { WorkspacePage } from "@writer/pages/workspace/WorkspacePage.tsx";
 
 // 外觀先固定 nocturne（網站預設的深色），之後要切換再接網站的 appearance 設定
@@ -40,6 +41,7 @@ function Shell() {
   const [openProject, setOpenProject] = useState<Project | null>(null);
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [appVersion, setAppVersion] = useState("dev");
 
   // 啟動時與授權完成後共用：只有 not_logged_in 才回登入頁，其他錯誤（離線、站台錯誤）給重試
@@ -82,6 +84,7 @@ function Shell() {
   const handleSessionExpired = useCallback(() => {
     setProfile(null);
     setOpenProject(null);
+    setSettingsOpen(false);
     showError(t("auth.sessionExpired"));
   }, [showError, t]);
 
@@ -92,6 +95,7 @@ function Shell() {
       .finally(() => {
         setProfile(null);
         setOpenProject(null);
+        setSettingsOpen(false);
       });
 
   const installUpdate = () =>
@@ -103,7 +107,7 @@ function Shell() {
   return (
     <SessionExpiredContext.Provider value={handleSessionExpired}>
       <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-        <AppHeader profile={typeof profile === "object" ? profile : null} onLogout={logout} />
+        <AppHeader profile={typeof profile === "object" ? profile : null} onSettings={() => setSettingsOpen(true)} onLogout={logout} />
         {profile === undefined ? (
           <Box sx={{ flex: 1, display: "grid", placeItems: "center" }}>
             <CircularProgress size={24} />
@@ -114,7 +118,9 @@ function Shell() {
           <LoadErrorPage onRetry={loadProfile} onLogout={logout} />
         ) : (
           <WebApiProvider onExpired={handleSessionExpired}>
-            {openProject ? (
+            {settingsOpen ? (
+              <WorkerSettingsPage rootLabel={openProject?.name ?? t("projects.title")} onBack={() => setSettingsOpen(false)} />
+            ) : openProject ? (
               <WorkspacePage key={openProject.public_id} project={openProject} profile={profile} onBack={() => setOpenProject(null)} />
             ) : (
               <ProjectsPage onOpen={setOpenProject} />

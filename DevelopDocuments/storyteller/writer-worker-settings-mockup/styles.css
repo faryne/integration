@@ -111,11 +111,6 @@ button { color: inherit; }
 .connection-result { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 9px 11px; border-radius: 5px; background: #122c23; color: #8cddb3; font-size: 11px; }
 .connection-result.error { background: #382125; color: #ffabab; }
 .connection-result.testing { background: #202938; color: #aab6c8; }
-.check-row { display: flex; gap: 9px; align-items: flex-start; color: #c5cfdd; font-size: 11px; }
-.check-row input { margin-top: 3px; accent-color: #4d83cd; }
-.check-row span { display: grid; gap: 4px; }
-.check-row small { color: var(--muted); line-height: 1.45; }
-
 .capability-strip { display: flex; flex-wrap: wrap; gap: 7px; }
 .capability { padding: 5px 9px; border: 1px solid #365177; border-radius: 999px; background: #18283d; color: #a8c9fb; font-size: 10.5px; }
 .detail-actions { min-height: 56px; display: flex; align-items: center; justify-content: flex-end; gap: 9px; padding: 10px 22px; border-top: 1px solid var(--line); background: #0c121b; }

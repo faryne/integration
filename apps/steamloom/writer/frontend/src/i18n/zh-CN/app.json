@@ -1,6 +1,7 @@
 {
   "name": "SteamLoom",
   "account": {
+    "settings": "应用程序设置",
     "logout": "退出登录"
   },
   "update": {

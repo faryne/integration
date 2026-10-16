@@ -5,6 +5,7 @@ import {api} from '../models';
 import {updater} from '../models';
 import {skillupdate} from '../models';
 import {main} from '../models';
+import {mediaworker} from '../models';
 
 export function Agents():Promise<Array<agent.Installed>>;
 
@@ -77,6 +78,16 @@ export function MoveAsset(arg1:string,arg2:string,arg3:string):Promise<api.Asset
 export function MoveLore(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function MoveStory(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function WorkerAdapters():Promise<Array<mediaworker.AdapterDescriptor>>;
+
+export function Workers():Promise<Array<mediaworker.Worker>>;
+
+export function SaveWorker(arg1:mediaworker.SaveInput):Promise<mediaworker.Worker>;
+
+export function TestWorker(arg1:string):Promise<mediaworker.Worker>;
+
+export function DeleteWorker(arg1:string):Promise<void>;
 
 export function PatchDocument(arg1:string,arg2:string,arg3:string,arg4:api.AttributePatch):Promise<void>;
 

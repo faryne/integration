@@ -1,6 +1,6 @@
 // Go 端（app.go）綁定方法的薄包裝：統一型別名稱與錯誤判斷，元件不直接碰 wailsjs 產生檔。
 import * as App from "../../wailsjs/go/main/App";
-import type { agent, api, updater } from "../../wailsjs/go/models";
+import type { agent, api, mediaworker, updater } from "../../wailsjs/go/models";
 
 export type Profile = api.Profile;
 export type Project = api.Project;
@@ -28,6 +28,9 @@ export type AgentThread = agent.ProjectThread;
 export type VersionDetail = api.VersionDetail;
 export type ListedDocument = api.ListedDocument;
 export type Asset = api.Asset;
+export type WorkerAdapter = mediaworker.AdapterDescriptor;
+export type MediaWorker = mediaworker.Worker;
+export type WorkerSaveInput = mediaworker.SaveInput;
 // 對應 internal/api 的 UncategorizedAssets：資產列表「未分類」的篩選值
 export const UNCATEGORIZED_ASSETS = "__uncategorized__";
 // 對應 internal/api 的 DocumentKind

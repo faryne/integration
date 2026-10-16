@@ -14,6 +14,7 @@ import (
 	"faryne.dev/apps/steamloom/writer/internal/api"
 	"faryne.dev/apps/steamloom/writer/internal/auth"
 	"faryne.dev/apps/steamloom/writer/internal/config"
+	"faryne.dev/apps/steamloom/writer/internal/mediaworker"
 	"faryne.dev/apps/steamloom/writer/internal/skillupdate"
 	"faryne.dev/apps/steamloom/writer/internal/tokenstore"
 	appupdate "faryne.dev/apps/steamloom/writer/internal/updater"
@@ -29,6 +30,7 @@ type App struct {
 	updater *appupdate.Service
 	skill   *skillupdate.Service
 	tasks   *agent.TaskManager
+	workers *mediaworker.Service
 	// unsaved：編輯分頁有沒有未存檔的內容，由前端回報（見 unsaved.go）
 	unsaved atomic.Bool
 	// localImages：圖像作品選好但還沒上傳的本機圖檔（見 local_images.go）
@@ -48,6 +50,7 @@ func NewApp() *App {
 	})
 	app.api = api.New(cfg.APIBase, app.session)
 	app.skill = skillupdate.New(cfg.SkillURL)
+	app.workers = mediaworker.NewDefault()
 	var err error
 	app.updater, err = appupdate.New(version)
 	if err != nil {
@@ -123,6 +126,22 @@ func (a *App) Versions(project, kind, id string) ([]api.Version, error) {
 
 // Agents 回傳這台機器偵測得到的本機 AI CLI。沒安裝的不會出現在選單。
 func (a *App) Agents() []agent.Installed { return agent.Detect() }
+
+// WorkerAdapters 回傳實際註冊的媒體 Worker adapter；設定頁不維護另一份寫死清單。
+func (a *App) WorkerAdapters() []mediaworker.AdapterDescriptor { return a.workers.Adapters() }
+
+// Workers 回傳這台裝置的全域 Worker 設定；密鑰只會以 has_secrets 告知是否存在。
+func (a *App) Workers() ([]mediaworker.Worker, error) { return a.workers.Workers() }
+
+func (a *App) SaveWorker(input mediaworker.SaveInput) (*mediaworker.Worker, error) {
+	return a.workers.Save(input)
+}
+
+func (a *App) TestWorker(id string) (*mediaworker.Worker, error) {
+	return a.workers.Test(a.ctx, id)
+}
+
+func (a *App) DeleteWorker(id string) error { return a.workers.Delete(id) }
 
 // CodexModels 由本機 Codex app-server 取得 model 與各自支援的 reasoning effort。
 func (a *App) CodexModels() ([]agent.CodexModel, error) { return agent.CodexModels(a.ctx) }

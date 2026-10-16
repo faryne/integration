@@ -1,6 +1,7 @@
 {
   "name": "SteamLoom",
   "account": {
+    "settings": "Application settings",
     "logout": "Sign out"
   },
   "update": {

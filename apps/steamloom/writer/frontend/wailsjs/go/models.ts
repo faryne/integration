@@ -1212,6 +1212,100 @@ export namespace api {
 
 }
 
+export namespace mediaworker {
+
+	export class SettingField {
+	    key: string;
+	    label: string;
+	    kind: string;
+	    required: boolean;
+	    secret: boolean;
+	    placeholder?: string;
+	    default?: string;
+
+	    static createFrom(source: any = {}) { return new SettingField(source); }
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.label = source["label"];
+	        this.kind = source["kind"];
+	        this.required = source["required"];
+	        this.secret = source["secret"];
+	        this.placeholder = source["placeholder"];
+	        this.default = source["default"];
+	    }
+	}
+	export class AdapterDescriptor {
+	    id: string;
+	    name: string;
+	    description: string;
+	    media_types: string[];
+	    fields: SettingField[];
+
+	    static createFrom(source: any = {}) { return new AdapterDescriptor(source); }
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.media_types = source["media_types"];
+	        this.fields = this.convertValues(source["fields"], SettingField);
+	    }
+		convertValues(a: any, classs: any): any {
+		    if (!a) return a;
+		    return a.slice && a.map ? a.map((elem: any) => this.convertValues(elem, classs)) : new classs(a);
+		}
+	}
+	export class Worker {
+	    id: string;
+	    adapter_id: string;
+	    name: string;
+	    enabled: boolean;
+	    settings: Record<string, string>;
+	    has_secrets: Record<string, boolean>;
+	    status: string;
+	    status_message?: string;
+	    capabilities: string[];
+	    last_checked_at?: string;
+
+	    static createFrom(source: any = {}) { return new Worker(source); }
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.adapter_id = source["adapter_id"];
+	        this.name = source["name"];
+	        this.enabled = source["enabled"];
+	        this.settings = source["settings"];
+	        this.has_secrets = source["has_secrets"];
+	        this.status = source["status"];
+	        this.status_message = source["status_message"];
+	        this.capabilities = source["capabilities"];
+	        this.last_checked_at = source["last_checked_at"];
+	    }
+	}
+	export class SaveInput {
+	    id: string;
+	    adapter_id: string;
+	    name: string;
+	    enabled: boolean;
+	    settings: Record<string, string>;
+	    secrets: Record<string, string>;
+	    clear_secrets: string[];
+
+	    static createFrom(source: any = {}) { return new SaveInput(source); }
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.adapter_id = source["adapter_id"];
+	        this.name = source["name"];
+	        this.enabled = source["enabled"];
+	        this.settings = source["settings"];
+	        this.secrets = source["secrets"];
+	        this.clear_secrets = source["clear_secrets"];
+	    }
+	}
+}
+
 export namespace main {
 	
 	export class LocalImage {
@@ -1302,4 +1396,3 @@ export namespace updater {
 	}
 
 }
-

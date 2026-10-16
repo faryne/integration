@@ -1,0 +1,43 @@
+{
+  "title": "應用程式設定",
+  "workers": {
+    "title": "媒體 Worker",
+    "subtitle": "管理這台裝置可供所有專案使用的媒體服務。Agent 只能得知能力，不會取得連線資訊或密鑰。",
+    "add": "新增 Worker",
+    "empty": "尚未設定 Worker",
+    "emptyHint": "新增 ComfyUI 或符合 SteamLoom Worker Protocol 的服務。",
+    "enabled": "啟用",
+    "save": "儲存設定",
+    "saving": "儲存中",
+    "test": "測試連線",
+    "testing": "測試中",
+    "delete": "刪除 Worker",
+    "deleteTitle": "刪除 Worker？",
+    "deleteMessage": "「{{name}}」的設定與存在 OS Keychain 的密鑰都會移除。",
+    "cancel": "取消",
+    "confirmDelete": "確認刪除",
+    "name": "顯示名稱",
+    "adapter": "Adapter",
+    "connection": "連線設定",
+    "capabilities": "已偵測能力",
+    "noCapabilities": "通過連線測試後，這裡會顯示 Worker 實際提供的能力。",
+    "addTitle": "選擇 Worker 類型",
+    "addHint": "此清單直接來自 Writer 已註冊的 adapter。相同類型可以建立多個 instance。",
+    "status": {
+      "online": "連線正常",
+      "error": "連線異常",
+      "unconfigured": "尚未測試"
+    },
+    "secretStored": "已安全儲存；留白即保留原值",
+    "clearSecret": "清除已儲存的 {{label}}",
+    "saved": "Worker 設定已儲存",
+    "tested": "連線測試完成",
+    "deleted": "Worker 已刪除",
+    "capability": {
+      "text_to_image": "文字生圖",
+      "image_to_image": "圖片生圖",
+      "reference_image": "參考圖片",
+      "lora": "LoRA"
+    }
+  }
+}
