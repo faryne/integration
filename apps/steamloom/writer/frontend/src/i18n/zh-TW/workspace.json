@@ -181,6 +181,7 @@
         "document": { "create": "新增全文", "replace": "全文更新", "patch": "部分修改" },
         "chapter": { "append": "新增章節", "replace": "章節更新" },
         "asset": { "upload": "圖片資產" },
+        "media": { "brief": "媒體生成需求" },
         "image_story": { "create": "新增圖像作品", "update": "更新圖像作品" }
       },
       "untitled": "未命名成果",
@@ -203,6 +204,9 @@
       "later": "稍後確認",
       "reject": "否決變更",
       "approve": "由 Writer 套用（{{count}} 項）",
+      "generate": "確認並開始生成",
+      "mediaBriefNotice": "確認後 Writer 會呼叫 {{worker}}；生成結果會另列為資產提案，不會自動上傳 SteamLoom。",
+      "mediaNotes": "Agent 備註",
       "dbSource": "DB #{{version}}",
       "agentSource": "{{agent}} 提案",
       "fileName": "檔名",

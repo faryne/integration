@@ -394,6 +394,23 @@ export namespace agent {
 	        this.arguments = source["arguments"];
 	    }
 	}
+	export class MediaBrief {
+	    prompt: string;
+	    negative_prompt?: string;
+	    aspect_ratio?: string;
+	    candidate_count?: number;
+	    notes?: string;
+
+	    static createFrom(source: any = {}) { return new MediaBrief(source); }
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.prompt = source["prompt"];
+	        this.negative_prompt = source["negative_prompt"];
+	        this.aspect_ratio = source["aspect_ratio"];
+	        this.candidate_count = source["candidate_count"];
+	        this.notes = source["notes"];
+	    }
+	}
 	export class ProposalItem {
 	    id: string;
 	    proposal_type?: string;
@@ -415,6 +432,9 @@ export namespace agent {
 	    collection_id?: string;
 	    marker_id?: string;
 	    after_marker_id?: string;
+	    worker_id?: string;
+	    brief?: MediaBrief;
+	    job_inputs?: Record<string, any>;
 	    artifacts?: ProposalArtifact[];
 	    edits?: ProposalEdit[];
 	    content_hash: string;
@@ -445,6 +465,9 @@ export namespace agent {
 	        this.collection_id = source["collection_id"];
 	        this.marker_id = source["marker_id"];
 	        this.after_marker_id = source["after_marker_id"];
+	        this.worker_id = source["worker_id"];
+	        this.brief = this.convertValues(source["brief"], MediaBrief);
+	        this.job_inputs = source["job_inputs"];
 	        this.artifacts = this.convertValues(source["artifacts"], ProposalArtifact);
 	        this.edits = this.convertValues(source["edits"], ProposalEdit);
 	        this.content_hash = source["content_hash"];
@@ -1213,6 +1236,54 @@ export namespace api {
 }
 
 export namespace mediaworker {
+	export class JobOption {
+	    value: string;
+	    label: string;
+	    static createFrom(source: any = {}) { return new JobOption(source); }
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.value = source["value"];
+	        this.label = source["label"];
+	    }
+	}
+	export class JobField {
+	    key: string;
+	    label: string;
+	    kind: string;
+	    description?: string;
+	    required: boolean;
+	    default?: any;
+	    min?: number;
+	    max?: number;
+	    step?: number;
+	    options?: JobOption[];
+	    static createFrom(source: any = {}) { return new JobField(source); }
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.label = source["label"];
+	        this.kind = source["kind"];
+	        this.description = source["description"];
+	        this.required = source["required"];
+	        this.default = source["default"];
+	        this.min = source["min"];
+	        this.max = source["max"];
+	        this.step = source["step"];
+	        this.options = source["options"]?.map((item: any) => new JobOption(item));
+	    }
+	}
+	export class JobSpec {
+	    worker_id: string;
+	    worker_name: string;
+	    fields: JobField[];
+	    static createFrom(source: any = {}) { return new JobSpec(source); }
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.worker_id = source["worker_id"];
+	        this.worker_name = source["worker_name"];
+	        this.fields = source["fields"]?.map((item: any) => new JobField(item)) ?? [];
+	    }
+	}
 
 	export class SettingField {
 	    key: string;

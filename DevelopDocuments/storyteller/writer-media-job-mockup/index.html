@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SteamLoom Writer — Media Job lifecycle</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="shell">
+    <aside>
+      <h2>AI 任務</h2>
+      <section class="task active"><small>Codex · 待確認</small><strong>產生莊瓊的角色設定圖</strong></section>
+      <section class="task"><small>Claude Code · 已完成</small><strong>檢查第十一話設定</strong></section>
+    </aside>
+    <section class="chat">
+      <header><b>產生莊瓊的角色設定圖</b><span>media.brief → Worker Job → asset.upload</span></header>
+      <article class="message">請依照設定產生四張角色設定圖。</article>
+      <article class="proposal">
+        <div><span class="badge">媒體生成需求</span><b>莊瓊角色設定圖</b></div>
+        <p>Agent 只交付 brief；尚未呼叫 Worker。</p>
+        <button data-dialog="job">檢視並設定參數</button>
+      </article>
+      <article class="progress hidden" id="progress">
+        <b>Mock Image Worker 執行進度</b>
+        <p>生成媒體「莊瓊角色設定圖」……開始</p>
+        <p class="done">生成媒體「莊瓊角色設定圖」……完成</p>
+      </article>
+      <article class="proposal hidden" id="result">
+        <div><span class="badge green">圖片資產</span><b>4 項媒體成果等待確認上傳</b></div>
+        <div class="gallery"><i></i><i></i><i></i><i></i></div>
+        <p>可選擇一張、多張或全部；尚未上傳 SteamLoom。</p>
+      </article>
+    </section>
+  </main>
+
+  <dialog id="job">
+    <form method="dialog">
+      <header><div><small>Mock Image Worker</small><h2>莊瓊角色設定圖</h2></div><button value="cancel" class="icon">×</button></header>
+      <div class="notice">確認後由 Writer 呼叫 Worker；結果會另列為資產提案，不會自動上傳。</div>
+      <label>Prompt<textarea required>anime character sheet, 莊瓊, elegant dark uniform, front and side views</textarea></label>
+      <label>Negative prompt<textarea>low quality, malformed hands, text watermark</textarea></label>
+      <div class="grid">
+        <label>Style<select><option>Illustration</option><option>Concept art</option><option>Manga</option></select></label>
+        <label>張數<input type="number" value="4" min="1" max="4" /></label>
+        <label>Width<input type="number" value="768" /></label>
+        <label>Height<input type="number" value="768" /></label>
+        <label>Seed<input type="number" value="42" /></label>
+      </div>
+      <footer><button value="cancel">稍後確認</button><button value="reject" class="danger">否決</button><button id="generate" value="default" class="primary">確認並開始生成</button></footer>
+    </form>
+  </dialog>
+  <script src="script.js"></script>
+</body>
+</html>

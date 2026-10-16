@@ -185,6 +185,7 @@
         "document": { "create": "全文を新規作成", "replace": "全文を更新", "patch": "部分修正" },
         "chapter": { "append": "章を追加", "replace": "章を更新" },
         "asset": { "upload": "画像アセット" },
+        "media": { "brief": "メディア生成リクエスト" },
         "image_story": { "create": "画像作品を新規作成", "update": "画像作品を更新" }
       },
       "untitled": "無題の成果",
@@ -207,6 +208,9 @@
       "later": "後で確認",
       "reject": "変更を却下",
       "approve": "Writer で適用（{{count}} 件）",
+      "generate": "確認して生成開始",
+      "mediaBriefNotice": "確認後、Writer が {{worker}} を呼び出します。生成結果は別のアセット提案になり、自動アップロードされません。",
+      "mediaNotes": "Agent メモ",
       "dbSource": "DB #{{version}}",
       "agentSource": "{{agent}} の提案",
       "fileName": "ファイル名",

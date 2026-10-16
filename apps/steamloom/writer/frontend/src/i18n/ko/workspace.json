@@ -185,6 +185,7 @@
         "document": { "create": "전체 문서 생성", "replace": "전체 문서 업데이트", "patch": "부분 수정" },
         "chapter": { "append": "챕터 추가", "replace": "챕터 업데이트" },
         "asset": { "upload": "이미지 자산" },
+        "media": { "brief": "미디어 생성 요청" },
         "image_story": { "create": "이미지 작품 생성", "update": "이미지 작품 업데이트" }
       },
       "untitled": "제목 없는 결과",
@@ -207,6 +208,9 @@
       "later": "나중에 검토",
       "reject": "변경 거절",
       "approve": "Writer로 적용({{count}}개)",
+      "generate": "확인 후 생성 시작",
+      "mediaBriefNotice": "확인 후 Writer가 {{worker}}를 호출합니다. 생성 결과는 별도의 자산 제안으로 표시되며 자동 업로드되지 않습니다.",
+      "mediaNotes": "Agent 메모",
       "dbSource": "DB #{{version}}",
       "agentSource": "{{agent}} 제안",
       "fileName": "파일 이름",

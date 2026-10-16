@@ -47,6 +47,8 @@ export function Create(arg1:string,arg2:api.CreateRequest):Promise<api.Created>;
 
 export function DecideProposal(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:Array<string>):Promise<agent.Proposal>;
 
+export function DecideMediaProposal(arg1:string,arg2:string,arg3:string,arg4:string,arg5:Record<string, any>):Promise<agent.Proposal>;
+
 export function DeleteAsset(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteAssetCollection(arg1:string,arg2:string):Promise<void>;
@@ -80,6 +82,8 @@ export function MoveLore(arg1:string,arg2:string,arg3:string):Promise<void>;
 export function MoveStory(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function WorkerAdapters():Promise<Array<mediaworker.AdapterDescriptor>>;
+
+export function WorkerJobSpec(arg1:string):Promise<mediaworker.JobSpec>;
 
 export function Workers():Promise<Array<mediaworker.Worker>>;
 

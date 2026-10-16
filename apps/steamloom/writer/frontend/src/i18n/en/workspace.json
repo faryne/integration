@@ -181,6 +181,7 @@
         "document": { "create": "New document", "replace": "Full replacement", "patch": "Partial edit" },
         "chapter": { "append": "New chapter", "replace": "Chapter update" },
         "asset": { "upload": "Image assets" },
+        "media": { "brief": "Media generation request" },
         "image_story": { "create": "New image story", "update": "Image story update" }
       },
       "untitled": "Untitled result",
@@ -203,6 +204,9 @@
       "later": "Review later",
       "reject": "Reject changes",
       "approve": "Apply with Writer ({{count}})",
+      "generate": "Confirm and generate",
+      "mediaBriefNotice": "Writer will call {{worker}} after confirmation. Generated results become a separate asset proposal and are not uploaded automatically.",
+      "mediaNotes": "Agent notes",
       "dbSource": "DB #{{version}}",
       "agentSource": "{{agent}} proposal",
       "fileName": "File name",

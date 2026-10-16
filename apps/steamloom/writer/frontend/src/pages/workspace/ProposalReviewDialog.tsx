@@ -18,7 +18,8 @@ import { useTranslation } from "react-i18next";
 import { StorytellerVersionCompareDialog, type StorytellerVersionCompareEntry } from "@steamloom-web/pages/storyteller/StorytellerVersionCompareDialog.tsx";
 import { stripMarkerForDiffContent } from "@steamloom-web/pages/storyteller/wysiwygCore/parser.ts";
 import { useSnack } from "@writer/components/SnackProvider.tsx";
-import { backend, errorMessage, type AgentProposal, type AgentProposalItem, type Document } from "@writer/lib/backend.ts";
+import { backend, errorMessage, type AgentProposal, type AgentProposalItem, type Document, type WorkerJobSpec } from "@writer/lib/backend.ts";
+import { initialMediaJobInputs, MediaJobForm } from "@writer/pages/workspace/MediaJobForm.tsx";
 import { ProposalArtifactGallery } from "@writer/pages/workspace/ProposalArtifactGallery.tsx";
 
 export function ProposalReviewDialog({
@@ -33,6 +34,7 @@ export function ProposalReviewDialog({
   deciding,
   onClose,
   onDecision,
+  onMediaDecision,
   onArtifactSelectionChange,
 }: {
   agentID: string;
@@ -46,6 +48,7 @@ export function ProposalReviewDialog({
   deciding: boolean;
   onClose: () => void;
   onDecision: (decision: "approve" | "reject") => void;
+  onMediaDecision: (inputs: Record<string, unknown>) => void;
   onArtifactSelectionChange: (ids: string[]) => void;
 }) {
   const { t } = useTranslation();
@@ -54,6 +57,8 @@ export function ProposalReviewDialog({
   const [imageURL, setImageURL] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const [jobSpec, setJobSpec] = useState<WorkerJobSpec | null>(null);
+  const [jobInputs, setJobInputs] = useState<Record<string, unknown>>({});
   const open = Boolean(proposal && item);
 
   useEffect(() => {
@@ -61,8 +66,17 @@ export function ProposalReviewDialog({
     setDocument(null);
     setImageURL("");
     setLoadError("");
+    setJobSpec(null);
+    setJobInputs({});
     if (!proposal || !item) return;
-    const request = item.kind === "asset" && !item.artifacts?.length
+    const request = proposalType(item) === "media.brief" && item.worker_id
+      ? backend.WorkerJobSpec(item.worker_id).then((spec) => {
+        if (!canceled) {
+          setJobSpec(spec);
+          setJobInputs(initialMediaJobInputs(spec, item));
+        }
+      })
+      : item.kind === "asset" && !item.artifacts?.length
       ? backend.ProposalAssetPreview(agentID, projectID, threadID, proposal.id, item.id).then((url) => { if (!canceled) setImageURL(url); })
       : item.target_id
         ? backend.Document(projectID, item.kind, item.target_id).then((next) => { if (!canceled) setDocument(next); })
@@ -81,7 +95,8 @@ export function ProposalReviewDialog({
 
   const versions = useMemo(() => buildVersions(proposal, item, document, t), [document, item, proposal, t]);
   const type = proposalType(item);
-  const mediaProposal = type === "asset.upload" || type.startsWith("image_story.");
+  const mediaBrief = type === "media.brief";
+  const mediaProposal = mediaBrief || type === "asset.upload" || type.startsWith("image_story.");
   if (proposal && item && !mediaProposal && item.target_id && document && versions) {
     const currentVersion = document.latest_version_id?.toString() ?? "";
     const stale = Boolean(item.base_version_id && currentVersion && item.base_version_id !== currentVersion);
@@ -116,6 +131,14 @@ export function ProposalReviewDialog({
       <DialogContent dividers>
         {loading && <CircularProgress size={22} />}
         {loadError && <Alert severity="error">{loadError}</Alert>}
+        {!loading && !loadError && mediaBrief && item && jobSpec && (
+          <Stack spacing={2}>
+            <Alert severity="info">{t("workspace.chat.proposal.mediaBriefNotice", { worker: jobSpec.worker_name })}</Alert>
+            {item.summary && <Metadata label={t("workspace.chat.proposal.summary")} value={item.summary} />}
+            {item.brief?.notes && <Metadata label={t("workspace.chat.proposal.mediaNotes")} value={item.brief.notes} />}
+            <MediaJobForm spec={jobSpec} values={jobInputs} disabled={proposal?.status !== "awaiting_confirmation"} onChange={setJobInputs} />
+          </Stack>
+        )}
         {!loading && !loadError && item && artifactsRequired && proposal && (
           <Stack spacing={2}>
             <Alert severity={stale ? "warning" : "info"}>{stale ? t("workspace.chat.proposal.stale", { base: item.base_version_id, current: currentVersion }) : t(type.startsWith("image_story.") ? "workspace.chat.proposal.imageStoryNotWritten" : "workspace.chat.proposal.assetsNotUploaded")}</Alert>
@@ -152,7 +175,7 @@ export function ProposalReviewDialog({
           </Stack>
         )}
       </DialogContent>
-      <DialogActions><ProposalActions proposal={proposal} selectedCount={selectedCount} deciding={deciding} stale={stale} selectionMissing={itemSelected && artifactsRequired && selectedArtifactIDs.length === 0} onClose={onClose} onDecision={onDecision} /></DialogActions>
+      <DialogActions><ProposalActions proposal={proposal} selectedCount={selectedCount} deciding={deciding} stale={stale} selectionMissing={itemSelected && artifactsRequired && selectedArtifactIDs.length === 0} approveLabel={mediaBrief ? t("workspace.chat.proposal.generate") : undefined} onClose={onClose} onDecision={(decision) => decision === "approve" && mediaBrief ? onMediaDecision(jobInputs) : onDecision(decision)} /></DialogActions>
     </Dialog>
   );
 }
@@ -163,6 +186,7 @@ function ProposalActions({
   deciding,
   stale = false,
   selectionMissing = false,
+  approveLabel,
   onClose,
   onDecision,
 }: {
@@ -171,6 +195,7 @@ function ProposalActions({
   deciding: boolean;
   stale?: boolean;
   selectionMissing?: boolean;
+  approveLabel?: string;
   onClose: () => void;
   onDecision: (decision: "approve" | "reject") => void;
 }) {
@@ -181,7 +206,7 @@ function ProposalActions({
       <Button disabled={deciding} onClick={onClose}>{t("workspace.chat.proposal.later")}</Button>
       <Button color="error" disabled={deciding} onClick={() => onDecision("reject")}>{t("workspace.chat.proposal.reject")}</Button>
       <Button variant="contained" disabled={deciding || stale || selectionMissing || selectedCount === 0} onClick={() => onDecision("approve")}>
-        {deciding ? <CircularProgress size={16} color="inherit" /> : t("workspace.chat.proposal.approve", { count: selectedCount })}
+        {deciding ? <CircularProgress size={16} color="inherit" /> : approveLabel || t("workspace.chat.proposal.approve", { count: selectedCount })}
       </Button>
     </>
   );

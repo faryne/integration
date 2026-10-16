@@ -82,6 +82,10 @@ export function DecideProposal(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['App']['DecideProposal'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
+export function DecideMediaProposal(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['DecideMediaProposal'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function DeleteAsset(arg1, arg2) {
   return window['go']['main']['App']['DeleteAsset'](arg1, arg2);
 }
@@ -148,6 +152,10 @@ export function MoveStory(arg1, arg2, arg3) {
 
 export function WorkerAdapters() {
   return window['go']['main']['App']['WorkerAdapters']();
+}
+
+export function WorkerJobSpec(arg1) {
+  return window['go']['main']['App']['WorkerJobSpec'](arg1);
 }
 
 export function Workers() {
