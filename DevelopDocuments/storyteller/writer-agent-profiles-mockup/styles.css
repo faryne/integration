@@ -29,9 +29,11 @@ button { color: inherit; }
 .thread-header h1 { margin: 0; font-size: 16px; }
 .thread-header p { margin: 5px 0 0; color: #8995a9; font-size: 12px; }
 .icon-button { border: 0; background: transparent; color: #9cacbf; cursor: pointer; font-size: 19px; }
-.scenario-bar { display: flex; align-items: center; gap: 7px; padding: 8px 26px; border-bottom: 1px solid #202a3b; color: #7f8da4; font-size: 12px; }
-.scenario { border: 1px solid #344159; border-radius: 999px; padding: 4px 10px; background: transparent; cursor: pointer; }
-.scenario.active { color: #dce8ff; border-color: #6f9ce8; background: #263754; }
+.preview-bars { border-bottom: 1px solid #202a3b; }
+.scenario-bar { display: flex; align-items: center; gap: 7px; padding: 7px 26px; color: #7f8da4; font-size: 12px; }
+.provider-bar { padding-bottom: 3px; }
+.scenario, .provider { border: 1px solid #344159; border-radius: 999px; padding: 4px 10px; background: transparent; cursor: pointer; }
+.scenario.active, .provider.active { color: #dce8ff; border-color: #6f9ce8; background: #263754; }
 .messages { overflow: auto; padding: 30px max(24px, calc((100% - 780px) / 2)); }
 .bubble { max-width: 70%; padding: 12px 15px 8px; border: 1px solid #3b465b; border-radius: 5px; background: #303744; }
 .bubble.user { margin-left: auto; }
