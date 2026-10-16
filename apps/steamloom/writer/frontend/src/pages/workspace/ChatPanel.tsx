@@ -14,6 +14,7 @@ import { ChatTranscript } from "@writer/pages/workspace/ChatTranscript.tsx";
 import { ChatThreadHeader } from "@writer/pages/workspace/ChatThreadHeader.tsx";
 import { ChatTaskLanding } from "@writer/pages/workspace/ChatTaskLanding.tsx";
 import { ProposalRawOutputDialog } from "@writer/pages/workspace/ProposalRawOutputDialog.tsx";
+import { CodexExecutionControls, type CodexExecutionProfile } from "@writer/pages/workspace/CodexExecutionControls.tsx";
 import { ProposalReviewDialog } from "@writer/pages/workspace/ProposalReviewDialog.tsx";
 import { TaskRail } from "@writer/pages/workspace/TaskRail.tsx";
 import { ThreadDeleteDialog } from "@writer/pages/workspace/ThreadDeleteDialog.tsx";
@@ -33,6 +34,7 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
   const { showError } = useSnack();
   const agents = useBackendData(() => backend.Agents(), []);
   const [agentID, setAgentID] = useState("");
+  const [codexProfile, setCodexProfile] = useState<CodexExecutionProfile>({ model: "", reasoningEffort: "" });
   const [draft, setDraft] = useState("");
   const [references, setReferences] = useState<PromptReference[]>([]);
   const [starting, setStarting] = useState(false);
@@ -67,6 +69,7 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
     setPendingThread(null);
     setDraft("");
     setReferences([]);
+    setCodexProfile({ model: "", reasoningEffort: "" });
   }, [projectID]);
 
   useEffect(() => {
@@ -152,8 +155,16 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
     setReview(null);
     setDraft("");
     setReferences([]);
+    setCodexProfile({ model: "", reasoningEffort: "" });
     setViewMode("new");
   };
+
+  // 重開 Codex thread 時沿用上一輪真正送出的設定；過時 model 會由 picker 自動回退帳號預設。
+  useEffect(() => {
+    if (selected !== "codex" || viewMode !== "thread" || chat.page?.current_id !== currentThreadID) return;
+    const message = [...chat.page.messages].reverse().find((item) => item.role === "user" && Boolean(item.model));
+    setCodexProfile({ model: message?.model ?? "", reasoningEffort: message?.reasoning_effort ?? "" });
+  }, [chat.page?.current_id, currentThreadID, selected, viewMode]);
 
   const renameThread = async (title: string) => {
     if (!(await chat.renameCurrent(title))) return false;
@@ -175,6 +186,8 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
         title: projectName,
         prompt,
         references,
+        model: selected === "codex" ? codexProfile.model : "",
+        reasoning_effort: selected === "codex" ? codexProfile.reasoningEffort : "",
       }));
       setDraft("");
       setReferences([]);
@@ -362,6 +375,9 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
                 </MenuItem>
               ))}
             </Select>
+            {selected === "codex" && (
+              <CodexExecutionControls value={codexProfile} disabled={starting} onChange={setCodexProfile} />
+            )}
             <Box sx={{ flex: 1 }} />
             <IconButton color="primary" disabled={!selected || starting || (viewMode === "thread" && !currentThreadID) || !draft.trim()} aria-label={t("workspace.chat.send")} onClick={() => void send()}>
               {starting ? <CircularProgress size={16} /> : <SendIcon fontSize="small" />}

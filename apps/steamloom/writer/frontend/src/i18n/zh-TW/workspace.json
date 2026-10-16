@@ -24,6 +24,12 @@
       "lore": "設定"
     },
     "send": "送出",
+    "codexModel": "Model",
+    "codexEffort": "推理等級",
+    "codexModelDefault": "帳號預設",
+    "codexEffortDefault": "model 預設",
+    "codexModelsLoading": "正在取得 Codex models……",
+    "codexModelsRefresh": "重新取得 Codex models",
     "submitHint": "Enter 送出・Shift + Enter 換行",
     "quoteReply": "引用回覆",
     "referenceUser": "你的訊息",

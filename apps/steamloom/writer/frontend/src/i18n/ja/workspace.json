@@ -24,6 +24,12 @@
       "lore": "設定"
     },
     "send": "送信",
+    "codexModel": "Model",
+    "codexEffort": "推論レベル",
+    "codexModelDefault": "アカウントの既定値",
+    "codexEffortDefault": "model の既定値",
+    "codexModelsLoading": "Codex models を取得中……",
+    "codexModelsRefresh": "Codex models を再取得",
     "submitHint": "Enter で送信・Shift + Enter で改行",
     "quoteReply": "引用して返信",
     "referenceUser": "あなたのメッセージ",

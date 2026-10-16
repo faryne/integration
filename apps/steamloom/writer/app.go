@@ -124,6 +124,9 @@ func (a *App) Versions(project, kind, id string) ([]api.Version, error) {
 // Agents 回傳這台機器偵測得到的本機 AI CLI。沒安裝的不會出現在選單。
 func (a *App) Agents() []agent.Installed { return agent.Detect() }
 
+// CodexModels 由本機 Codex app-server 取得 model 與各自支援的 reasoning effort。
+func (a *App) CodexModels() ([]agent.CodexModel, error) { return agent.CodexModels(a.ctx) }
+
 // McpInstalled 只看這個 Agent 的設定裡有沒有 SteamLoom 的 MCP 位址。沒有時附上使用者自己執行的安裝指令。
 func (a *App) McpInstalled(agentID string) (agent.McpHint, error) {
 	return agent.McpHintFor(agentID)

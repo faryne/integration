@@ -8,12 +8,12 @@ import (
 )
 
 func TestCodexArgsKeepNewAndResumedSessionsReadOnly(t *testing.T) {
-	newArgs := codexArgs("", "/tmp/writer", "")
+	newArgs := codexArgs("", "/tmp/writer", "", "", "")
 	if !slices.Contains(newArgs, "read-only") || !slices.Contains(newArgs, "/tmp/writer") {
 		t.Fatalf("new Codex session must be read-only and use Writer cwd: %v", newArgs)
 	}
 
-	resumed := codexArgs("session-id", "/tmp/writer", "")
+	resumed := codexArgs("session-id", "/tmp/writer", "", "", "")
 	if !slices.Contains(resumed, `sandbox_mode="read-only"`) || !slices.Contains(resumed, "session-id") {
 		t.Fatalf("resumed Codex session must keep the read-only override: %v", resumed)
 	}
@@ -69,7 +69,7 @@ func TestProviderArgsExposeOnlySteamLoomReadTools(t *testing.T) {
 		t.Fatalf("Claude must receive only the Writer read allowlist: %s", claude)
 	}
 
-	codex := strings.Join(codexArgs("", "/tmp/writer", "SteamLoom"), " ")
+	codex := strings.Join(codexArgs("", "/tmp/writer", "SteamLoom", "", ""), " ")
 	if !strings.Contains(codex, `mcp_servers.SteamLoom.enabled_tools=`) || strings.Contains(codex, `mcp_servers."SteamLoom"`) || !strings.Contains(codex, "storyteller_get_story") || strings.Contains(codex, "upsert") {
 		t.Fatalf("Codex must receive only the Writer read allowlist: %s", codex)
 	}

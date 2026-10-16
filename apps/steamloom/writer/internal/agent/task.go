@@ -29,20 +29,22 @@ const (
 
 // Task 是 thread 裡的一輪 Agent 工作；同一 thread 串行，不同 thread 可並行。
 type Task struct {
-	ID             string `json:"id"`
-	AgentID        string `json:"agent_id"`
-	ProjectID      string `json:"project_id"`
-	ThreadID       string `json:"thread_id"`
-	Prompt         string `json:"prompt"`
-	State          string `json:"state"`
-	Error          string `json:"error,omitempty"`
-	CreatedAt      string `json:"created_at"`
-	StartedAt      string `json:"started_at,omitempty"`
-	FinishedAt     string `json:"finished_at,omitempty"`
-	Partial        string `json:"partial,omitempty"`
-	Progress       string `json:"progress,omitempty"`
-	Activity       string `json:"activity,omitempty"`
-	ActivityTarget string `json:"activity_target,omitempty"`
+	ID              string `json:"id"`
+	AgentID         string `json:"agent_id"`
+	ProjectID       string `json:"project_id"`
+	ThreadID        string `json:"thread_id"`
+	Prompt          string `json:"prompt"`
+	State           string `json:"state"`
+	Error           string `json:"error,omitempty"`
+	CreatedAt       string `json:"created_at"`
+	StartedAt       string `json:"started_at,omitempty"`
+	FinishedAt      string `json:"finished_at,omitempty"`
+	Partial         string `json:"partial,omitempty"`
+	Progress        string `json:"progress,omitempty"`
+	Activity        string `json:"activity,omitempty"`
+	ActivityTarget  string `json:"activity_target,omitempty"`
+	Model           string `json:"model,omitempty"`
+	ReasoningEffort string `json:"reasoning_effort,omitempty"`
 	// Slow 表示已超過 TaskTimeouts.Slow 仍未完成；只供畫面提示，不改變 State。
 	Slow bool `json:"slow,omitempty"`
 }
@@ -112,6 +114,7 @@ func NewTaskManager(parent context.Context, run TaskRunner, emit TaskEmitter) *T
 }
 
 func (m *TaskManager) Start(agentID string, req Request) (Task, error) {
+	normalizeExecutionProfile(agentID, &req)
 	if err := req.validate(); err != nil {
 		return Task{}, err
 	}
@@ -124,7 +127,7 @@ func (m *TaskManager) Start(agentID string, req Request) (Task, error) {
 		return Task{}, err
 	}
 	req.ThreadID = thread.ID
-	task := Task{ID: id, AgentID: agentID, ProjectID: req.ProjectID, ThreadID: thread.ID, Prompt: req.Prompt, State: TaskQueued, CreatedAt: now()}
+	task := Task{ID: id, AgentID: agentID, ProjectID: req.ProjectID, ThreadID: thread.ID, Prompt: req.Prompt, State: TaskQueued, CreatedAt: now(), Model: req.Model, ReasoningEffort: req.ReasoningEffort}
 	managed := &managedTask{task: task, req: req}
 	key := taskQueueKey(task)
 

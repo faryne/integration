@@ -31,7 +31,7 @@ func prepareTask(agentID string, req Request, taskID string) (Thread, error) {
 		thread = found
 	}
 	message := messageEvent("user", req.Prompt)
-	message.TaskID, message.References = taskID, req.References
+	message.TaskID, message.References, message.Model, message.ReasoningEffort = taskID, req.References, req.Model, req.ReasoningEffort
 	if err := appendLines(filepath.Join(dir, thread.ID+".jsonl"), []ChatLine{
 		message,
 		taskEvent(EventTaskQueued, taskID, "工作已排入佇列"),

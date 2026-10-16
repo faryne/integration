@@ -45,6 +45,8 @@ export namespace agent {
 	    action?: string;
 	    commands?: string[];
 	    references?: PromptReference[];
+	    model?: string;
+	    reasoning_effort?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ChatLine(source);
@@ -66,6 +68,8 @@ export namespace agent {
 	        this.action = source["action"];
 	        this.commands = source["commands"];
 	        this.references = this.convertValues(source["references"], PromptReference);
+	        this.model = source["model"];
+	        this.reasoning_effort = source["reasoning_effort"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -79,6 +83,55 @@ export namespace agent {
 		            for (const key of Object.keys(a)) {
 		                a[key] = new classs(a[key]);
 		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CodexReasoningEffort {
+	    id: string;
+	    description: string;
+
+	    static createFrom(source: any = {}) {
+	        return new CodexReasoningEffort(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.description = source["description"];
+	    }
+	}
+	export class CodexModel {
+	    id: string;
+	    display_name: string;
+	    description: string;
+	    is_default: boolean;
+	    default_reasoning_effort: string;
+	    supported_reasoning_efforts: CodexReasoningEffort[];
+
+	    static createFrom(source: any = {}) {
+	        return new CodexModel(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.display_name = source["display_name"];
+	        this.description = source["description"];
+	        this.is_default = source["is_default"];
+	        this.default_reasoning_effort = source["default_reasoning_effort"];
+	        this.supported_reasoning_efforts = this.convertValues(source["supported_reasoning_efforts"], CodexReasoningEffort);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) return a;
+		    if (a.slice && a.map) return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) a[key] = new classs(a[key]);
 		            return a;
 		        }
 		        return new classs(a);
@@ -479,6 +532,8 @@ export namespace agent {
 	    title: string;
 	    prompt: string;
 	    references?: PromptReference[];
+	    model?: string;
+	    reasoning_effort?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Request(source);
@@ -494,6 +549,8 @@ export namespace agent {
 	        this.title = source["title"];
 	        this.prompt = source["prompt"];
 	        this.references = this.convertValues(source["references"], PromptReference);
+	        this.model = source["model"];
+	        this.reasoning_effort = source["reasoning_effort"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -530,6 +587,8 @@ export namespace agent {
 	    activity?: string;
 	    activity_target?: string;
 	    slow?: boolean;
+	    model?: string;
+	    reasoning_effort?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Task(source);
@@ -552,6 +611,8 @@ export namespace agent {
 	        this.activity = source["activity"];
 	        this.activity_target = source["activity_target"];
 	        this.slow = source["slow"];
+	        this.model = source["model"];
+	        this.reasoning_effort = source["reasoning_effort"];
 	    }
 	}
 
@@ -1235,4 +1296,3 @@ export namespace updater {
 	}
 
 }
-

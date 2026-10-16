@@ -16,17 +16,19 @@ import (
 // ThreadID 指出要接到哪一條本機對話；空的表示這則會開新串。
 // SessionID 由那條串的紀錄決定，空字串才會讓 CLI 開新 session。
 type Request struct {
-	ThreadID   string            `json:"thread_id"`
-	SessionID  string            `json:"session_id"`
-	ProjectID  string            `json:"project_id"`
-	Kind       string            `json:"kind"`
-	DocumentID string            `json:"document_id"`
-	Title      string            `json:"title"`
-	Prompt     string            `json:"prompt"`
-	References []PromptReference `json:"references,omitempty"`
-	emit       func(StreamEvent)
-	mcpServer  string
-	workDir    string
+	ThreadID        string            `json:"thread_id"`
+	SessionID       string            `json:"session_id"`
+	ProjectID       string            `json:"project_id"`
+	Kind            string            `json:"kind"`
+	DocumentID      string            `json:"document_id"`
+	Title           string            `json:"title"`
+	Prompt          string            `json:"prompt"`
+	References      []PromptReference `json:"references,omitempty"`
+	Model           string            `json:"model,omitempty"`
+	ReasoningEffort string            `json:"reasoning_effort,omitempty"`
+	emit            func(StreamEvent)
+	mcpServer       string
+	workDir         string
 }
 
 // PromptReference 是作者明確附上的唯讀上下文。Writer 保存快照並交給 Agent 參考，
@@ -70,6 +72,7 @@ type Client interface {
 
 // Ask 把一輪問答交給 id 指定的那一家。
 func Ask(ctx context.Context, id string, req Request) (Reply, error) {
+	normalizeExecutionProfile(id, &req)
 	if err := req.validate(); err != nil {
 		return Reply{}, err
 	}
@@ -108,6 +111,14 @@ func Ask(ctx context.Context, id string, req Request) (Reply, error) {
 	return reply, nil
 }
 
+// 目前只有 Codex 開放執行設定；後端也清掉其他 adapter 來源不明的值。
+func normalizeExecutionProfile(agentID string, req *Request) {
+	if agentID == "codex" {
+		return
+	}
+	req.Model, req.ReasoningEffort = "", ""
+}
+
 func open(id string) (Client, error) {
 	for _, item := range catalog {
 		if item.descriptor.ID != id {
@@ -132,6 +143,9 @@ func (r Request) validate() error {
 	if !validSession(r.SessionID) {
 		return errors.New("對話編號不正確，請重新開一段對話")
 	}
+	if !validExecutionOption(r.Model, 200) || !validExecutionOption(r.ReasoningEffort, 40) {
+		return errors.New("Agent 執行設定不正確，請重新選擇")
+	}
 	if len(r.References) > 5 {
 		return errors.New("一次最多引用 5 筆內容")
 	}
@@ -146,6 +160,22 @@ func (r Request) validate() error {
 		return errors.New("引用內容合計不能超過 20,000 字")
 	}
 	return nil
+}
+
+// model / effort 會作為獨立 argv 或 TOML 字串傳給 CLI；仍拒絕控制字元與選項型前綴。
+func validExecutionOption(value string, limit int) bool {
+	if value == "" {
+		return true
+	}
+	if len(value) > limit || strings.TrimSpace(value) != value || strings.HasPrefix(value, "-") {
+		return false
+	}
+	for _, char := range value {
+		if char < 0x20 || char == 0x7f {
+			return false
+		}
+	}
+	return true
 }
 
 // 只接受 CLI 回傳的 session id，避免被當成額外的指令參數。
