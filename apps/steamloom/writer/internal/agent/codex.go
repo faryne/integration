@@ -24,8 +24,9 @@ type codexClient struct{ bin string }
 
 func newCodex(bin string) Client { return codexClient{bin: bin} }
 
-func codexArgs(sessionID, dir, mcpServer string) []string {
+func codexArgs(sessionID, dir, mcpServer, model, effort string) []string {
 	config := codexMCPConfig(mcpServer, writerReadOnlyTools)
+	profile := codexProfileArgs(model, effort)
 	// resume 子命令沒有 --color，色碼靠 --json 就不會進 stdout
 	if sessionID != "" {
 		args := []string{
@@ -34,6 +35,7 @@ func codexArgs(sessionID, dir, mcpServer string) []string {
 			"--skip-git-repo-check",
 			"-c", `sandbox_mode="read-only"`,
 		}
+		args = append(args, profile...)
 		args = append(args, config...)
 		return append(args, sessionID, "-")
 	}
@@ -45,8 +47,21 @@ func codexArgs(sessionID, dir, mcpServer string) []string {
 		"--skip-git-repo-check",
 		"-C", dir,
 	}
+	args = append(args, profile...)
 	args = append(args, config...)
 	return append(args, "-")
+}
+
+func codexProfileArgs(model, effort string) []string {
+	args := []string{}
+	if model != "" {
+		args = append(args, "--model", model)
+	}
+	if effort != "" {
+		quoted, _ := json.Marshal(effort) // JSON 字串同時是合法 TOML basic string。
+		args = append(args, "-c", "model_reasoning_effort="+string(quoted))
+	}
+	return args
 }
 
 func codexMCPConfig(server string, allowed []string) []string {
@@ -65,7 +80,7 @@ func codexRequestArgs(req Request, dir string) ([]string, error) {
 	if req.mcpServer != "" && !codexBareKey(req.mcpServer) {
 		return nil, errors.New("Codex 的 SteamLoom MCP 名稱只能使用英數字、- 或 _，請重新命名後再試")
 	}
-	return codexArgs(req.SessionID, dir, req.mcpServer), nil
+	return codexArgs(req.SessionID, dir, req.mcpServer, req.Model, req.ReasoningEffort), nil
 }
 
 func codexBareKey(value string) bool {

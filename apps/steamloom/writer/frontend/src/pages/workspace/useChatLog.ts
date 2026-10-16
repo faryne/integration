@@ -19,6 +19,8 @@ export type ChatLine = {
   action?: string;
   commands?: string[];
   references?: PromptReference[];
+  model?: string;
+  reasoning_effort?: string;
 };
 type ChatPage = {
   threads: ChatThread[];

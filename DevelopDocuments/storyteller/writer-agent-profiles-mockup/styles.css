@@ -6,6 +6,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; min-width: 960px; min-height: 100vh; background: #080c14; }
 button, input, textarea, select { font: inherit; }
 button { color: inherit; }

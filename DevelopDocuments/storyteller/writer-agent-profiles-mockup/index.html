@@ -42,7 +42,7 @@
             <button class="provider" data-provider="gemini">Gemini CLI</button>
             <button class="provider" data-provider="antigravity">Antigravity</button>
           </div>
-          <div class="scenario-bar">
+          <div id="profileScenarioBar" class="scenario-bar">
             <span>狀態</span>
             <button class="scenario active" data-scenario="ready">可執行</button>
             <button class="scenario" data-scenario="invalid">Model 已失效</button>
@@ -55,7 +55,7 @@
             <p>幫我在她回到宿舍之前補一段不安的轉場，先提出草稿。</p>
             <footer id="messageMeta">2026-10-16 14:18 · Codex · GPT-5.6-Sol · Low</footer>
           </article>
-          <article class="activity error">
+          <article id="activityCard" class="activity error">
             <header><span>!</span><strong>Agent 執行失敗</strong></header>
             <p id="errorText">這個 model 無法由目前的 ChatGPT 帳號使用。Writer 已重新取得可用清單，請在下方改選後重試。</p>
             <code id="errorModel">gpt-6-sol</code>
@@ -67,11 +67,11 @@
           <div class="shortcut">Enter 送出 · Shift + Enter 換行</div>
           <div id="profileNotice" class="profile-notice">已依目前 ChatGPT 帳號同步 3 個可用 models。</div>
           <div class="controls">
-            <label>
+            <label id="modelField">
               <span>Agent</span>
               <select id="agentSelect" disabled><option>Codex</option></select>
             </label>
-            <label>
+            <label id="effortField">
               <span>Model</span>
               <select id="modelSelect">
                 <option value="gpt-5.6-sol">GPT-5.6-Sol（帳號預設）</option>

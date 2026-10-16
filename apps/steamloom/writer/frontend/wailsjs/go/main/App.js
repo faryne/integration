@@ -66,6 +66,10 @@ export function ChatThreads(arg1) {
   return window['go']['main']['App']['ChatThreads'](arg1);
 }
 
+export function CodexModels() {
+  return window['go']['main']['App']['CodexModels']();
+}
+
 export function CheckForUpdate() {
   return window['go']['main']['App']['CheckForUpdate']();
 }

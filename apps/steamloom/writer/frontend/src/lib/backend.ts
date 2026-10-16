@@ -17,6 +17,7 @@ export type Document = api.Document;
 export type Version = api.Version;
 export type UpdateInfo = updater.Info;
 export type InstalledAgent = agent.Installed;
+export type CodexModel = agent.CodexModel;
 export type AskRequest = agent.Request;
 export type AskReply = agent.Reply;
 export type AgentTask = agent.Task;

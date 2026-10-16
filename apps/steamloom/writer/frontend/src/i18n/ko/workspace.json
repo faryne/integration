@@ -24,6 +24,12 @@
       "lore": "설정"
     },
     "send": "보내기",
+    "codexModel": "Model",
+    "codexEffort": "추론 수준",
+    "codexModelDefault": "계정 기본값",
+    "codexEffortDefault": "model 기본값",
+    "codexModelsLoading": "Codex models 불러오는 중……",
+    "codexModelsRefresh": "Codex models 다시 불러오기",
     "submitHint": "Enter로 보내기 · Shift + Enter로 줄 바꿈",
     "quoteReply": "인용하여 답장",
     "referenceUser": "내 메시지",

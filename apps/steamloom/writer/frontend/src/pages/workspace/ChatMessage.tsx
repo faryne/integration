@@ -12,6 +12,7 @@ export function ChatMessage({ message, onQuote }: { message: ChatLine; onQuote?:
   const system = message.role === "system";
   const markdown = message.role === "assistant";
   const time = message.created_at ? dayjs(message.created_at) : null;
+  const metadata = [time?.isValid() ? time.format("YYYY-MM-DD HH:mm") : "", message.model, message.reasoning_effort].filter(Boolean);
   const align = system ? "center" : message.role === "user" ? "flex-end" : "flex-start";
   return (
     <Box sx={{ display: "flex", flexDirection: "column", alignItems: align, "&:hover .chat-quote-action, &:focus-within .chat-quote-action": { opacity: 1 } }}>
@@ -60,9 +61,9 @@ export function ChatMessage({ message, onQuote }: { message: ChatLine; onQuote?:
         </Tooltip>
       )}
       </Box>
-      {time?.isValid() && (
+      {metadata.length > 0 && (
         <Typography component="time" dateTime={message.created_at} color="text.disabled" sx={{ mt: 0.4, px: 0.5, fontSize: 10.5 }}>
-          {time.format("YYYY-MM-DD HH:mm")}
+          {metadata.join(" · ")}
         </Typography>
       )}
     </Box>

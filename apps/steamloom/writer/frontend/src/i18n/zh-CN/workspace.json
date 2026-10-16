@@ -24,6 +24,12 @@
       "lore": "设定"
     },
     "send": "发送",
+    "codexModel": "Model",
+    "codexEffort": "推理级别",
+    "codexModelDefault": "账号默认",
+    "codexEffortDefault": "model 默认",
+    "codexModelsLoading": "正在获取 Codex models……",
+    "codexModelsRefresh": "重新获取 Codex models",
     "submitHint": "Enter 发送・Shift + Enter 换行",
     "quoteReply": "引用回复",
     "referenceUser": "你的消息",

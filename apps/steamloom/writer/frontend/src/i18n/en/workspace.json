@@ -24,6 +24,12 @@
       "lore": "Lore"
     },
     "send": "Send",
+    "codexModel": "Model",
+    "codexEffort": "Reasoning effort",
+    "codexModelDefault": "account default",
+    "codexEffortDefault": "model default",
+    "codexModelsLoading": "Loading Codex models…",
+    "codexModelsRefresh": "Refresh Codex models",
     "submitHint": "Enter to send · Shift + Enter for a new line",
     "quoteReply": "Quote in reply",
     "referenceUser": "Your message",
