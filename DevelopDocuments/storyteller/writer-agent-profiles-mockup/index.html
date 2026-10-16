@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Writer Agent 執行設定 Mockup</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="task-rail">
+        <div class="rail-title"><strong>AI 任務</strong><button class="text-button">＋ 新對話</button></div>
+        <label class="search"><span>⌕</span><input value="" placeholder="搜尋任務標題" /></label>
+        <section>
+          <button class="group">⌄ 今天（2）</button>
+          <article class="task active">
+            <div><span>Codex</span><b>失敗</b></div>
+            <strong>替第十一話補一段轉場</strong>
+          </article>
+          <article class="task">
+            <div><span>Claude Code</span><em>已完成</em></div>
+            <strong>檢查芷瑄的角色設定</strong>
+          </article>
+        </section>
+      </aside>
+
+      <section class="conversation">
+        <header class="thread-header">
+          <div>
+            <h1>替第十一話補一段轉場</h1>
+            <p>Codex · 可在下一輪調整 model 與推理等級</p>
+          </div>
+          <button class="icon-button" aria-label="編輯標題">✎</button>
+        </header>
+
+        <div class="scenario-bar">
+          <span>Mockup 狀態</span>
+          <button class="scenario active" data-scenario="ready">可執行</button>
+          <button class="scenario" data-scenario="invalid">Model 已失效</button>
+          <button class="scenario" data-scenario="loading">重新同步中</button>
+        </div>
+
+        <div class="messages">
+          <article class="bubble user">
+            <p>幫我在她回到宿舍之前補一段不安的轉場，先提出草稿。</p>
+            <footer>2026-10-16 14:18 · Codex · GPT-5.6-Sol · Low</footer>
+          </article>
+          <article class="activity error">
+            <header><span>!</span><strong>Agent 執行失敗</strong></header>
+            <p>這個 model 無法由目前的 ChatGPT 帳號使用。Writer 已重新取得可用清單，請在下方改選後重試。</p>
+            <code>gpt-6-sol</code>
+          </article>
+        </div>
+
+        <section class="composer">
+          <textarea rows="4" placeholder="輸入訊息；使用 @story: 或 @lore: 引用專案內容……"></textarea>
+          <div class="shortcut">Enter 送出 · Shift + Enter 換行</div>
+          <div id="profileNotice" class="profile-notice">已依目前 ChatGPT 帳號同步 3 個可用 models。</div>
+          <div class="controls">
+            <label>
+              <span>Agent</span>
+              <select disabled><option>Codex</option></select>
+            </label>
+            <label>
+              <span>Model</span>
+              <select id="modelSelect">
+                <option value="gpt-5.6-sol">GPT-5.6-Sol（帳號預設）</option>
+                <option value="gpt-5.6-terra">GPT-5.6-Terra</option>
+                <option value="gpt-5.6-luna">GPT-5.6-Luna</option>
+              </select>
+            </label>
+            <label>
+              <span>推理等級</span>
+              <select id="effortSelect">
+                <option>Low（model 預設）</option>
+                <option>Medium</option>
+                <option>High</option>
+                <option>Extra high</option>
+                <option>Max</option>
+                <option>Ultra</option>
+              </select>
+            </label>
+            <button id="refreshButton" class="refresh" title="重新同步 model">↻</button>
+            <span class="spacer"></span>
+            <button id="sendButton" class="send" aria-label="送出">➤</button>
+          </div>
+        </section>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
