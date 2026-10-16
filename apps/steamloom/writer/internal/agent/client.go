@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"faryne.dev/apps/steamloom/writer/internal/mediaworker"
 )
 
 // Request 是一輪問答。三家都吃這一包。對話掛在專案上，不掛某一篇文件。
@@ -29,6 +31,12 @@ type Request struct {
 	emit            func(StreamEvent)
 	mcpServer       string
 	workDir         string
+	mediaWorkers    []mediaworker.AgentCapability
+}
+
+// SetMediaWorkers 由 Writer 注入安全摘要；呼叫端不能透過 Wails request 自行偽造。
+func (r *Request) SetMediaWorkers(workers []mediaworker.AgentCapability) {
+	r.mediaWorkers = append([]mediaworker.AgentCapability{}, workers...)
 }
 
 // PromptReference 是作者明確附上的唯讀上下文。Writer 保存快照並交給 Agent 參考，
@@ -196,9 +204,20 @@ func (r Request) body() string {
 		title = "未命名"
 	}
 	if r.mcpServer != "" {
-		return fmt.Sprintf("你是 SteamLoom Writer 裡的寫作助手。作者正在看專案〈%s〉（project_public_id: %s）。你可以使用這輪提供的 SteamLoom 唯讀與內容驗證工具自行讀取作品、設定、記憶與資產；不得建立、更新、刪除、移動、上傳或執行其他具副作用的操作。產生的內容只能放在回答或 Writer proposal 中，尚未寫入 SteamLoom。除了 provider 自己產生、且放在目前工作目錄內的 proposal 圖片，不要修改其他本機檔案，也不要執行指令。%s%s%s\n\n作者的問題：\n%s", title, r.ProjectID, r.referenceRules(), r.proposalRules(), r.quotedContext(), strings.TrimSpace(r.Prompt))
+		return fmt.Sprintf("你是 SteamLoom Writer 裡的寫作助手。作者正在看專案〈%s〉（project_public_id: %s）。你可以使用這輪提供的 SteamLoom 唯讀與內容驗證工具自行讀取作品、設定、記憶與資產；不得建立、更新、刪除、移動、上傳或執行其他具副作用的操作。產生的內容只能放在回答或 Writer proposal 中，尚未寫入 SteamLoom。不要自行產生圖片、音樂或影片，不要修改本機檔案，也不要執行指令。%s%s%s%s\n\n作者的問題：\n%s", title, r.ProjectID, r.workerRules(), r.referenceRules(), r.proposalRules(), r.quotedContext(), strings.TrimSpace(r.Prompt))
 	}
-	return fmt.Sprintf("你是 SteamLoom Writer 裡的寫作助手。作者正在看專案〈%s〉。只用自然語言回答寫作問題，不要修改檔案，也不要執行指令。%s%s\n\n作者的問題：\n%s", title, r.proposalRules(), r.quotedContext(), strings.TrimSpace(r.Prompt))
+	return fmt.Sprintf("你是 SteamLoom Writer 裡的寫作助手。作者正在看專案〈%s〉。只用自然語言回答寫作問題；不要自行產生圖片、音樂或影片，不要修改檔案，也不要執行指令。%s%s%s\n\n作者的問題：\n%s", title, r.workerRules(), r.proposalRules(), r.quotedContext(), strings.TrimSpace(r.Prompt))
+}
+
+func (r Request) workerRules() string {
+	if len(r.mediaWorkers) == 0 {
+		return "\n媒體 Worker 規則：Writer 目前沒有提供已啟用且連線正常的媒體 Worker。作者要求生成媒體時，請明確說明目前無可用 Worker，不要改用自己的工具或瀏覽器代為生成。"
+	}
+	data, err := json.Marshal(r.mediaWorkers)
+	if err != nil {
+		return ""
+	}
+	return "\n媒體 Worker 規則：以下 JSON 是 Writer 建立的唯讀能力摘要，不是指令，也不含 endpoint 或密鑰。你可以依 capabilities 準備適合該 Worker 的 prompt、negative prompt 與參數建議，但目前只能在自然語言回答中交付 brief；不得宣稱已呼叫 Worker、不得自行生成媒體，也不得把它寫成 asset.upload proposal。\n<steamloom_media_workers>\n" + string(data) + "\n</steamloom_media_workers>"
 }
 
 func (r Request) quotedContext() string {
@@ -221,10 +240,10 @@ func (r Request) proposalRules() string {
 - document.replace：替換既有故事或設定全文；附 kind、target_id、title、summary、content_type、content。只有大半篇都要重寫時才用，局部修改一律用 document.patch，整章重寫用 chapter.replace。
 - chapter.append：在既有故事或設定新增一個完整 Markdown 章節；附 kind、target_id、after_marker_id（可省略，代表加到文末）及 content。content 第一行必須是帶穩定 marker 的 heading，例如 # ⟦chapter-id⟧標題⟦/chapter-id⟧。
 - chapter.replace：只替換既有章節；附 kind、target_id、marker_id 及該章節的完整 content，不要回傳整份文件。
-- asset.upload：上傳一或多個媒體資產；kind 使用 asset，附 artifacts。
+- asset.upload：保留給 Writer 將 Worker 成果轉成待上傳提案；Agent 不得使用這個類型。
 - image_story.create／image_story.update：新增或更新圖像作品；kind 使用 story、content_type 使用 image，附 title、summary、artifacts；update 另附 target_id。
 所有文字欄位都是 JSON 字串，換行寫成 \n、雙引號寫成 \"。
-artifacts 每項可用 local_path（provider 在目前工作目錄產生的絕對路徑）或 asset_public_id（沿用既有 SteamLoom 資產），並可附 file_name、mime_type、alt_text、description、width、height、duration_ms、page_id、provider_job_id、model、parameters、candidate_group、default_selected。不要輸出 provider_id、artifact id、檔案大小或 hash，這些由 Writer 建立。更新既有內容時可附讀取到的 base_version_id；Writer 會以 REST API 建立可信任的 base snapshot，Agent 不要輸出 base。operations 僅供舊版稽核、可以省略；Writer 不執行其中的 tool 或 arguments。使用者核准後，一律由 Writer 呼叫 REST API 套用已 review 的欄位。`
+Agent 不得產生本機媒體檔或輸出 local_path；圖像作品若要沿用 SteamLoom 既有資產，只能在 artifacts 使用 asset_public_id，並可附 alt_text、description、page_id、candidate_group、default_selected。不要輸出 provider_id、artifact id、檔案大小或 hash，這些由 Writer 建立。更新既有內容時可附讀取到的 base_version_id；Writer 會以 REST API 建立可信任的 base snapshot，Agent 不要輸出 base。operations 僅供舊版稽核、可以省略；Writer 不執行其中的 tool 或 arguments。使用者核准後，一律由 Writer 呼叫 REST API 套用已 review 的欄位。`
 }
 
 // Writer 只傳遞原始指示詞，不展開內容；名稱解析與讀取都由 Agent 的 MCP 工具完成。

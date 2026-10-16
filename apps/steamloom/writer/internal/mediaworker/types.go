@@ -29,6 +29,14 @@ type AdapterDescriptor struct {
 	Fields      []SettingField `json:"fields"`
 }
 
+// AgentCapability 是 Agent 唯一可見的 Worker 資料，不包含設定、endpoint、狀態細節或密鑰。
+type AgentCapability struct {
+	WorkerID     string   `json:"worker_id"`
+	Name         string   `json:"name"`
+	MediaTypes   []string `json:"media_types"`
+	Capabilities []string `json:"capabilities"`
+}
+
 // Worker 是可重複建立的 adapter instance；Settings 永遠不含密鑰。
 type Worker struct {
 	ID            string            `json:"id"`

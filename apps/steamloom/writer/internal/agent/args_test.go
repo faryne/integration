@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"faryne.dev/apps/steamloom/writer/internal/mediaworker"
 )
 
 func TestCodexArgsKeepNewAndResumedSessionsReadOnly(t *testing.T) {
@@ -103,6 +105,34 @@ func TestRequestBodyDelegatesSteamLoomReadToAgent(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Fatalf("Agent prompt missing proposal boundary %q: %s", want, body)
 		}
+	}
+}
+
+func TestRequestBodyOnlyExposesSafeWorkerCapabilities(t *testing.T) {
+	request := Request{ProjectID: "project-123", Title: "測試作品", Prompt: "幫我準備角色圖需求"}
+	request.SetMediaWorkers([]mediaworker.AgentCapability{{
+		WorkerID: "mock-1", Name: "測試 Worker", MediaTypes: []string{"image"}, Capabilities: []string{"text_to_image", "reference_image"},
+	}})
+	body := request.body()
+	for _, want := range []string{"<steamloom_media_workers>", `"worker_id":"mock-1"`, `"name":"測試 Worker"`, `"text_to_image"`, "只能在自然語言回答中交付 brief"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("worker summary missing %q: %s", want, body)
+		}
+	}
+	for _, forbidden := range []string{"http://", `"settings"`, `"has_secrets"`, `"token":`} {
+		if strings.Contains(body, forbidden) {
+			t.Fatalf("worker summary leaked %q: %s", forbidden, body)
+		}
+	}
+	if strings.Contains(body, "provider 自己產生") || !strings.Contains(body, "Agent 不得產生本機媒體檔") {
+		t.Fatalf("direct Agent media generation was not disabled: %s", body)
+	}
+}
+
+func TestRequestBodyExplainsWhenNoWorkerIsAvailable(t *testing.T) {
+	body := (Request{ProjectID: "project-123", Prompt: "幫我生圖"}).body()
+	if !strings.Contains(body, "目前沒有提供已啟用且連線正常的媒體 Worker") || !strings.Contains(body, "不要改用自己的工具或瀏覽器代為生成") {
+		t.Fatalf("missing unavailable Worker rule: %s", body)
 	}
 }
 

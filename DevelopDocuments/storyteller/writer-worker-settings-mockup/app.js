@@ -1,11 +1,26 @@
 // 正式版由 WorkerRegistry 回傳；新增畫面不硬編碼個別 provider。
 const adapterFactories = [
+  { id: "mock-image", type: "Mock Image Worker", initials: "MW", color: "gray", badge: "驗證用 adapter", description: "不連外，驗證連線狀態與 Agent capability summary" },
   { id: "comfyui", type: "ComfyUI", initials: "CU", color: "purple", badge: "內建 adapter", description: "連線使用者自管的本機或區網服務" },
   { id: "pixai", type: "PixAI", initials: "PX", color: "blue", badge: "內建 adapter", description: "使用 API token 連線雲端圖片生成服務" },
   { id: "compatible", type: "相容 Worker", initials: "WP", color: "gray", badge: "Worker Protocol", description: "連線實作 SteamLoom Worker Protocol 的外部服務" },
 ];
 
 const workers = [
+  {
+    id: "mock-image-local",
+    adapter: "mock-image",
+    type: "Mock Image Worker",
+    name: "驗證用 Mock Worker",
+    initials: "MW",
+    enabled: true,
+    status: "unconfigured",
+    statusLabel: "尚未測試",
+    detail: "不會連線外部服務",
+    scenario: "success",
+    capabilities: [],
+    description: "使用 success／error 情境驗證 Registry、連線測試及 Agent capability summary。",
+  },
   {
     id: "comfyui-local",
     adapter: "comfyui",
@@ -89,6 +104,7 @@ const capabilityLabels = {
   image_to_image: "參考圖生成",
   reference_image: "參考圖片",
   lora: "LoRA",
+  batch_candidates: "多候選結果",
 };
 
 function renderFactories() {
@@ -122,7 +138,11 @@ function renderRegistry() {
 }
 
 function renderConnectionFields(worker) {
-  if (worker.adapter === "pixai") {
+  if (worker.adapter === "mock-image") {
+    $("#connectionFields").innerHTML = `
+      <label><span>測試情境</span><select data-field="scenario"><option value="success" ${worker.scenario === "success" ? "selected" : ""}>success（連線成功）</option><option value="error" ${worker.scenario === "error" ? "selected" : ""}>error（模擬失敗）</option></select></label>
+    `;
+  } else if (worker.adapter === "pixai") {
     $("#connectionFields").innerHTML = `
       <label><span>API endpoint</span><input data-field="endpoint" value="${escapeHTML(worker.endpoint)}" /></label>
       <label><span>API token</span><span class="secret-field"><input id="tokenField" type="password" data-field="token" value="${escapeHTML(worker.token || "")}" placeholder="尚未設定" /><button type="button" id="revealToken">◉</button></span></label>
@@ -214,6 +234,26 @@ $("#testConnection").addEventListener("click", () => {
   result.className = "connection-result testing";
   result.textContent = "↻ 正在測試連線並同步支援功能……";
   window.setTimeout(() => {
+    if (worker.adapter === "mock-image") {
+      if (worker.scenario === "error") {
+        worker.status = "error";
+        worker.statusLabel = "模擬連線失敗";
+        worker.detail = "剛剛完成檢查";
+        worker.capabilities = [];
+        dirty = true;
+        render();
+        showSnack("Mock Worker 已回傳預期的失敗狀態");
+        return;
+      }
+      worker.status = "online";
+      worker.statusLabel = "連線正常";
+      worker.detail = "Mock adapter · 剛剛完成檢查";
+      worker.capabilities = ["text_to_image", "image_to_image", "reference_image", "batch_candidates"];
+      dirty = true;
+      render();
+      showSnack("Mock Worker 連線成功，能力摘要已可供 Agent 使用");
+      return;
+    }
     if (!worker.endpoint) {
       result.className = "connection-result error";
       result.textContent = "! 請先輸入 Worker endpoint。";
@@ -257,10 +297,13 @@ addDialog.addEventListener("close", () => {
     statusLabel: "尚未完成設定",
     detail: "等待設定連線",
     endpoint: factory.id === "pixai" ? "https://api.pixai.art" : "",
+    scenario: factory.id === "mock-image" ? "success" : "",
     token: "",
     workflow: "尚未同步",
     capabilities: [],
-    description: factory.id === "pixai"
+    description: factory.id === "mock-image"
+      ? "使用 success／error 情境驗證 Registry、連線測試及 Agent capability summary。"
+      : factory.id === "pixai"
       ? "API token 只會保存到 OS Keychain，不會寫入設定檔。"
       : factory.id === "compatible"
         ? "外部服務必須實作 SteamLoom Worker Protocol，Writer 會先驗證 manifest 版本。"

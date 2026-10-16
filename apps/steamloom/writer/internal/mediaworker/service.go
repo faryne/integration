@@ -29,7 +29,7 @@ func NewDefault() *Service {
 		dir = "."
 	}
 	client := &http.Client{Timeout: 10 * time.Second}
-	registry, err := NewRegistry(NewComfyUIAdapter(client), NewCompatibleAdapter(client))
+	registry, err := NewRegistry(NewComfyUIAdapter(client), NewCompatibleAdapter(client), NewMockAdapter())
 	if err != nil {
 		panic(err)
 	}
@@ -43,6 +43,29 @@ func NewService(registry *Registry, path string, vault secretVault) *Service {
 
 // Adapters 回傳正式註冊清單，前端不另外維護 provider 名單。
 func (s *Service) Adapters() []AdapterDescriptor { return s.registry.List() }
+
+// AgentCapabilities 只暴露已啟用且連線正常的安全摘要；設定與密鑰不會離開 Service。
+func (s *Service) AgentCapabilities() ([]AgentCapability, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	workers, err := s.store.load()
+	if err != nil {
+		return nil, err
+	}
+	result := []AgentCapability{}
+	for _, worker := range workers {
+		adapter, exists := s.registry.Get(worker.AdapterID)
+		if !exists || !worker.Enabled || worker.Status != StatusOnline || len(worker.Capabilities) == 0 {
+			continue
+		}
+		result = append(result, AgentCapability{
+			WorkerID: worker.ID, Name: worker.Name,
+			MediaTypes: append([]string{}, adapter.Descriptor().MediaTypes...), Capabilities: append([]string{}, worker.Capabilities...),
+		})
+	}
+	sort.SliceStable(result, func(i, j int) bool { return result[i].Name < result[j].Name })
+	return result, nil
+}
 
 // Workers 列出裝置上的全域設定，密鑰只回傳是否存在。
 func (s *Service) Workers() ([]Worker, error) {

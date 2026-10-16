@@ -37,6 +37,7 @@
       "text_to_image": "文字生圖",
       "image_to_image": "圖片生圖",
       "reference_image": "參考圖片",
+      "batch_candidates": "多候選結果",
       "lora": "LoRA"
     }
   }

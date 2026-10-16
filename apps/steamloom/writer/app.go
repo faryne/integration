@@ -338,6 +338,11 @@ func chatPage(page agent.ChatPage, err error) (*agent.ChatPage, error) {
 
 // StartTask 立即回傳 task；實際 CLI 執行由 TaskManager 在背景依 thread 排程。
 func (a *App) StartTask(id string, req agent.Request) (*agent.Task, error) {
+	workers, err := a.workers.AgentCapabilities()
+	if err != nil {
+		return nil, err
+	}
+	req.SetMediaWorkers(workers)
 	task, err := a.tasks.Start(id, req)
 	if err != nil {
 		return nil, err

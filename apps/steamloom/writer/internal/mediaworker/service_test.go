@@ -55,3 +55,32 @@ func TestServiceKeepsSecretsOutOfFileAndTestsWorker(t *testing.T) {
 		t.Fatalf("secret remains after delete: %#v", vault.values)
 	}
 }
+
+func TestAgentCapabilitiesOnlyIncludeEnabledOnlineWorkers(t *testing.T) {
+	registry, err := NewRegistry(NewMockAdapter())
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewService(registry, filepath.Join(t.TempDir(), "workers.json"), &memoryVault{values: map[string]map[string]string{}})
+	online, err := service.Save(SaveInput{AdapterID: "mock-image", Name: "可用 Mock", Enabled: true, Settings: map[string]string{"scenario": "success"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Test(context.Background(), online.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Save(SaveInput{AdapterID: "mock-image", Name: "未測試 Mock", Enabled: true, Settings: map[string]string{"scenario": "success"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Save(SaveInput{AdapterID: "mock-image", Name: "停用 Mock", Enabled: false, Settings: map[string]string{"scenario": "success"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	capabilities, err := service.AgentCapabilities()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(capabilities) != 1 || capabilities[0].WorkerID != online.ID || capabilities[0].Name != "可用 Mock" {
+		t.Fatalf("agent capabilities = %#v", capabilities)
+	}
+}
