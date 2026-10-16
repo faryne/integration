@@ -2,6 +2,8 @@ const scenarioButtons = document.querySelectorAll(".scenario");
 const providerButtons = document.querySelectorAll(".provider");
 const agent = document.querySelector("#agentSelect");
 const model = document.querySelector("#modelSelect");
+const customModelField = document.querySelector("#customModelField");
+const customModelInput = document.querySelector("#customModelInput");
 const effort = document.querySelector("#effortSelect");
 const notice = document.querySelector("#profileNotice");
 const refresh = document.querySelector("#refreshButton");
@@ -58,6 +60,16 @@ function optionList(items, placeholder = false) {
   return items.map((label, index) => `<option value="${placeholder && index === 0 ? "" : label}">${label}</option>`).join("");
 }
 
+function updateCustomModel() {
+  const custom = model.value.includes("手動指定 model ID");
+  customModelField.classList.toggle("visible", custom);
+  if (!custom) customModelInput.value = "";
+  if (custom) {
+    customModelInput.focus();
+    send.disabled = !customModelInput.value.trim();
+  }
+}
+
 function render() {
   const config = providers[currentProvider];
   providerButtons.forEach((button) => button.classList.toggle("active", button.dataset.provider === currentProvider));
@@ -73,6 +85,8 @@ function render() {
     model.innerHTML = "<option>同步中……</option>";
     effort.innerHTML = "<option>同步中……</option>";
     model.disabled = effort.disabled = send.disabled = true;
+    customModelField.classList.remove("visible");
+    customModelInput.value = "";
     refresh.classList.add("spinning");
     return;
   }
@@ -89,6 +103,7 @@ function render() {
   send.disabled = invalid;
   refresh.classList.remove("spinning");
   messageMeta.textContent = `2026-10-16 14:18 · ${config.name} · ${config.models[0]} · ${config.efforts[0]}`;
+  updateCustomModel();
 }
 
 providerButtons.forEach((button) => button.addEventListener("click", () => {
@@ -102,10 +117,17 @@ scenarioButtons.forEach((button) => button.addEventListener("click", () => {
 model.addEventListener("change", () => {
   if (!model.value) return;
   const config = providers[currentProvider];
-  notice.textContent = `將使用 ${model.options[model.selectedIndex].text}；${config.effortDisabled ? "推理等級由 Agent 管理。" : "推理等級已依 adapter 能力更新。"}`;
+  updateCustomModel();
+  const custom = model.value.includes("手動指定 model ID");
+  notice.textContent = custom
+    ? "請輸入 provider 接受的完整 model ID；Writer 會保存於這一輪 task，執行失敗時仍可直接改選。"
+    : `將使用 ${model.options[model.selectedIndex].text}；${config.effortDisabled ? "推理等級由 Agent 管理。" : "推理等級已依 adapter 能力更新。"}`;
   notice.className = "profile-notice";
   effort.disabled = Boolean(config.effortDisabled);
-  send.disabled = false;
+  send.disabled = custom && !customModelInput.value.trim();
+});
+customModelInput.addEventListener("input", () => {
+  send.disabled = !customModelInput.value.trim();
 });
 refresh.addEventListener("click", () => {
   currentScenario = "loading";
