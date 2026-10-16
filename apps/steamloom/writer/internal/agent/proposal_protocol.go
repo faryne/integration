@@ -39,6 +39,8 @@ type proposalSubmissionItem struct {
 	CollectionID  string                       `json:"collection_id,omitempty"`
 	MarkerID      string                       `json:"marker_id,omitempty"`
 	AfterMarkerID string                       `json:"after_marker_id,omitempty"`
+	WorkerID      string                       `json:"worker_id,omitempty"`
+	Brief         *MediaBrief                  `json:"brief,omitempty"`
 	Artifacts     []proposalSubmissionArtifact `json:"artifacts,omitempty"`
 	Edits         []ProposalEdit               `json:"edits,omitempty"`
 }
@@ -143,7 +145,7 @@ func parseProposalEnvelope(answer string) (string, []ProposalItem, error) {
 			ProposalType: item.ProposalType, Kind: item.Kind, Operations: item.Operations, TargetID: item.TargetID, BaseVersionID: string(item.BaseVersionID),
 			Title: item.Title, Summary: item.Summary, ContentType: item.ContentType, Content: item.Content, Base: item.Base,
 			LocalPath: item.LocalPath, FileName: item.FileName, MIMEType: item.MIMEType, AltText: item.AltText, CollectionID: item.CollectionID,
-			MarkerID: item.MarkerID, AfterMarkerID: item.AfterMarkerID, Artifacts: artifacts, Edits: item.Edits,
+			MarkerID: item.MarkerID, AfterMarkerID: item.AfterMarkerID, WorkerID: item.WorkerID, Brief: item.Brief, Artifacts: artifacts, Edits: item.Edits,
 		}
 	}
 	return visible, items, nil

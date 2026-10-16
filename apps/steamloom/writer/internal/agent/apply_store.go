@@ -3,6 +3,7 @@ package agent
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -124,6 +125,7 @@ func ProposalItemApplyLabel(item ProposalItem) string {
 		ProposalTypeChapterAppend:    "新增章節",
 		ProposalTypeChapterReplace:   "更新章節",
 		ProposalTypeAssetUpload:      "上傳圖片",
+		ProposalTypeMediaBrief:       "生成媒體",
 		ProposalTypeImageStoryCreate: "新增圖像作品",
 		ProposalTypeImageStoryUpdate: "更新圖像作品",
 	}[item.ProposalType]
@@ -238,11 +240,31 @@ func recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, propos
 		return Proposal{}, err
 	}
 	thread.UpdatedAt, thread.LastTaskState, thread.ActiveTaskID = now(), taskState, ""
+	if eventType == EventApplyCompleted && hasAwaitingProposal(dir, threadID, proposalID) {
+		thread.LastTaskState = TaskAwaitingConfirmation
+	}
 	idx.Threads = upsertFront(idx.Threads, thread)
 	if err := saveIndex(dir, idx); err != nil {
 		return Proposal{}, err
 	}
 	return proposal, nil
+}
+
+func hasAwaitingProposal(dir, threadID, excludeID string) bool {
+	entries, err := os.ReadDir(filepath.Join(dir, "proposals", threadID))
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() || entry.Name() == excludeID || !validThread(entry.Name()) {
+			continue
+		}
+		proposal, err := readProposal(filepath.Join(dir, "proposals", threadID, entry.Name(), "proposal.json"))
+		if err == nil && proposal.Status == ProposalAwaitingConfirmation {
+			return true
+		}
+	}
+	return false
 }
 
 func loadProposalForApply(agentID, projectID, threadID, proposalID string) (string, chatIndex, Thread, Proposal, string, error) {

@@ -203,6 +203,38 @@ func TestSaveProposalStagesAssetAndDeleteChatRemovesIt(t *testing.T) {
 	}
 }
 
+func TestSaveGeneratedProposalPreservesWorkerAndStagesArtifacts(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("codex", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	source := filepath.Join(root, "candidate.png")
+	if err := os.WriteFile(source, []byte("mock png"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	taskID, _ := newThreadID()
+	proposal, err := SaveGeneratedProposal("codex", "project", page.CurrentID, taskID, root, "Mock Image Worker", []ProposalItem{{
+		ProposalType: ProposalTypeAssetUpload, Kind: ProposalKindAsset, Title: "角色圖",
+		Artifacts: []ProposalArtifact{{ProviderID: "worker-1", LocalPath: source, FileName: "candidate.png", MIMEType: "image/png", DefaultSelected: true}},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifact := proposal.Items[0].Artifacts[0]
+	if artifact.ProviderID != "worker-1" || artifact.LocalPath == source {
+		t.Fatalf("generated artifact was not staged correctly: %#v", artifact)
+	}
+	page, err = SelectChat("codex", "project", page.CurrentID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(page.Messages[len(page.Messages)-1].Text, "Mock Image Worker 已產生 1 項媒體成果") {
+		t.Fatalf("generated proposal event missing: %#v", page.Messages)
+	}
+}
+
 func TestApproveProposalPersistsUserDecisionAndClearsPendingState(t *testing.T) {
 	withTempConfig(t)
 	page, err := NewChat("claude", "project")

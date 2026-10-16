@@ -40,6 +40,22 @@ func TestParseProposalEnvelopeV2KeepsExplicitTypeAndArtifacts(t *testing.T) {
 	}
 }
 
+func TestParseMediaBriefProposal(t *testing.T) {
+	answer := "已整理成生成需求，尚未呼叫 Worker。\n" + proposalEnvelopeStart + "\n" +
+		`{"items":[{"proposal_type":"media.brief","kind":"media","worker_id":"mock-1","title":"角色設定圖","brief":{"prompt":"blue-haired heroine","negative_prompt":"watermark","candidate_count":2}}]}` +
+		"\n" + proposalEnvelopeEnd
+	_, items, err := parseProposalEnvelope(answer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 || items[0].WorkerID != "mock-1" || items[0].Brief == nil || items[0].Brief.Prompt != "blue-haired heroine" {
+		t.Fatalf("media brief fields were lost: %#v", items)
+	}
+	if err := normalizeProposalItem(&items[0], "project"); err != nil || items[0].Kind != ProposalKindMedia {
+		t.Fatalf("media brief was not normalized: %#v, %v", items[0], err)
+	}
+}
+
 func TestParseProposalEnvelopeRejectsUnknownOrTrailingContent(t *testing.T) {
 	for _, answer := range []string{
 		proposalEnvelopeStart + `{"items":[],"status":"approved"}` + proposalEnvelopeEnd,

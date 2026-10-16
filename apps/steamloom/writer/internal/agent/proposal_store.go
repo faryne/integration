@@ -25,15 +25,24 @@ var proposalAssetExtensions = map[string]string{
 
 // SaveProposal 將 Agent 回傳的成果搬進 Writer 管理的本機目錄，再追加 proposal.ready event。
 func SaveProposal(agentID, projectID, threadID, taskID, assetRoot string, items []ProposalItem) (Proposal, error) {
-	return saveProposal(agentID, projectID, threadID, taskID, assetRoot, Reply{}, items)
+	return saveProposal(agentID, projectID, threadID, taskID, assetRoot, Reply{}, items, "")
+}
+
+// SaveGeneratedProposal 保存 Worker 的本機產物，轉成第二階段 asset.upload 確認，不會直接上傳。
+func SaveGeneratedProposal(agentID, projectID, threadID, taskID, assetRoot, workerName string, items []ProposalItem) (Proposal, error) {
+	count := 0
+	for _, item := range items {
+		count += len(item.Artifacts)
+	}
+	return saveProposal(agentID, projectID, threadID, taskID, assetRoot, Reply{}, items, fmt.Sprintf("%s 已產生 %d 項媒體成果，等待確認上傳", workerName, count))
 }
 
 // saveTaskProposal 在提案驗證成功後才把摘要、completed 與 proposal.ready 一起落盤。
 func saveTaskProposal(agentID, projectID, threadID, taskID, assetRoot string, reply Reply, items []ProposalItem) (Proposal, error) {
-	return saveProposal(agentID, projectID, threadID, taskID, assetRoot, reply, items)
+	return saveProposal(agentID, projectID, threadID, taskID, assetRoot, reply, items, "")
 }
 
-func saveProposal(agentID, projectID, threadID, taskID, assetRoot string, reply Reply, items []ProposalItem) (Proposal, error) {
+func saveProposal(agentID, projectID, threadID, taskID, assetRoot string, reply Reply, items []ProposalItem, readyText string) (Proposal, error) {
 	chatMu.Lock()
 	defer chatMu.Unlock()
 	dir, idx, err := loadChat(agentID, projectID)
@@ -85,7 +94,10 @@ func saveProposal(agentID, projectID, threadID, taskID, assetRoot string, reply 
 	if err := os.Rename(stagingDir, finalDir); err != nil {
 		return Proposal{}, err
 	}
-	event := taskEvent(EventProposalReady, taskID, fmt.Sprintf("Agent 已提出 %d 項成果，等待確認", len(proposal.Items)))
+	if readyText == "" {
+		readyText = fmt.Sprintf("Agent 已提出 %d 項成果，等待確認", len(proposal.Items))
+	}
+	event := taskEvent(EventProposalReady, taskID, readyText)
 	event.ProposalID = proposal.ID
 	events := make([]ChatLine, 0, 3)
 	if reply.Text != "" {
@@ -104,6 +116,45 @@ func saveProposal(agentID, projectID, threadID, taskID, assetRoot string, reply 
 	thread.ActiveTaskID = ""
 	idx.Threads = upsertFront(idx.Threads, thread)
 	if err := saveIndex(dir, idx); err != nil {
+		return Proposal{}, err
+	}
+	return proposal, nil
+}
+
+// ConfigureMediaProposal 保存作者在動態表單確認過的輸入，並重算授權用 hash。
+func ConfigureMediaProposal(agentID, projectID, threadID, proposalID string, inputs map[string]any) (Proposal, error) {
+	chatMu.Lock()
+	defer chatMu.Unlock()
+	if !validThread(threadID) || !validThread(proposalID) {
+		return Proposal{}, errors.New("找不到這批提案")
+	}
+	dir, idx, err := loadChat(agentID, projectID)
+	if err != nil {
+		return Proposal{}, err
+	}
+	if !hasThread(idx, threadID) {
+		return Proposal{}, errors.New("找不到這段對話")
+	}
+	path := filepath.Join(dir, "proposals", threadID, proposalID, "proposal.json")
+	proposal, err := readProposal(path)
+	if err != nil {
+		return Proposal{}, err
+	}
+	if proposal.Status != ProposalAwaitingConfirmation || len(proposal.Items) != 1 || proposal.Items[0].ProposalType != ProposalTypeMediaBrief {
+		return Proposal{}, errors.New("這批提案不是可設定的媒體生成需求")
+	}
+	decisions, err := proposalDecisions(filepath.Join(dir, threadID+".jsonl"))
+	if err != nil {
+		return Proposal{}, err
+	}
+	if _, decided := decisions[proposalID]; decided {
+		return Proposal{}, errors.New("這批提案已經完成決策")
+	}
+	proposal.Items[0].JobInputs = inputs
+	if err := setProposalHashes(&proposal); err != nil {
+		return Proposal{}, err
+	}
+	if err := writeProposal(path, proposal); err != nil {
 		return Proposal{}, err
 	}
 	return proposal, nil
@@ -447,7 +498,7 @@ func proposalDecisionText(proposal Proposal, decision string) string {
 	}
 	items := make([]string, 0, len(proposalItems))
 	for _, item := range proposalItems {
-		kind := map[string]string{ProposalKindStory: "故事", ProposalKindLore: "設定", ProposalKindAsset: "圖片"}[item.Kind]
+		kind := map[string]string{ProposalKindStory: "故事", ProposalKindLore: "設定", ProposalKindAsset: "圖片", ProposalKindMedia: "媒體生成"}[item.Kind]
 		title := strings.TrimSpace(item.Title)
 		if title == "" {
 			title = strings.TrimSpace(item.FileName)
@@ -461,6 +512,8 @@ func proposalDecisionText(proposal Proposal, decision string) string {
 	action := "同意套用"
 	if decision == ProposalDecisionReject {
 		action = "否決"
+	} else if len(proposalItems) == 1 && proposalItems[0].ProposalType == ProposalTypeMediaBrief {
+		action = "同意執行"
 	}
 	return fmt.Sprintf("你已%s %d 項變更：%s", action, len(items), strings.Join(items, "、"))
 }

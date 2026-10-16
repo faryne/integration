@@ -114,7 +114,7 @@ func TestRequestBodyOnlyExposesSafeWorkerCapabilities(t *testing.T) {
 		WorkerID: "mock-1", Name: "測試 Worker", MediaTypes: []string{"image"}, Capabilities: []string{"text_to_image", "reference_image"},
 	}})
 	body := request.body()
-	for _, want := range []string{"<steamloom_media_workers>", `"worker_id":"mock-1"`, `"name":"測試 Worker"`, `"text_to_image"`, "只能在自然語言回答中交付 brief"} {
+	for _, want := range []string{"<steamloom_media_workers>", `"worker_id":"mock-1"`, `"name":"測試 Worker"`, `"text_to_image"`, "交付 media.brief proposal"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("worker summary missing %q: %s", want, body)
 		}

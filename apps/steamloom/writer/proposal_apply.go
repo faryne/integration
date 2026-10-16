@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 
 	"faryne.dev/apps/steamloom/writer/internal/agent"
@@ -24,11 +26,40 @@ func (a *App) applyProposal(ctx context.Context, proposal agent.Proposal, item a
 		return agent.ProposalItemApplyLabel(item), a.applyTextProposal(ctx, proposal, item)
 	case agent.ProposalTypeAssetUpload:
 		return agent.ProposalItemApplyLabel(item), a.applyAssetProposal(ctx, proposal, item)
+	case agent.ProposalTypeMediaBrief:
+		return agent.ProposalItemApplyLabel(item), a.applyMediaBrief(ctx, proposal, item)
 	case agent.ProposalTypeImageStoryCreate, agent.ProposalTypeImageStoryUpdate:
 		return agent.ProposalItemApplyLabel(item), a.applyImageStoryProposal(ctx, proposal, item)
 	default:
 		return "", fmt.Errorf("不支援的提案類型：%s", item.ProposalType)
 	}
+}
+
+func (a *App) applyMediaBrief(ctx context.Context, proposal agent.Proposal, item agent.ProposalItem) error {
+	spec, err := a.workers.JobSpec(item.WorkerID)
+	if err != nil {
+		return err
+	}
+	result, err := a.workers.Execute(ctx, item.WorkerID, item.JobInputs)
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(result.Root)
+	artifacts := make([]agent.ProposalArtifact, 0, len(result.Artifacts))
+	for _, artifact := range result.Artifacts {
+		artifacts = append(artifacts, agent.ProposalArtifact{
+			ProviderID: item.WorkerID, ProviderJobID: artifact.ProviderJobID, Model: artifact.Model, Parameters: artifact.Parameters,
+			CandidateGroup: artifact.CandidateGroup, DefaultSelected: true, LocalPath: artifact.LocalPath, FileName: artifact.FileName,
+			MIMEType: artifact.MIMEType, AltText: artifact.AltText, Description: artifact.Description, Width: artifact.Width, Height: artifact.Height,
+		})
+	}
+	if len(artifacts) == 0 {
+		return errors.New("Worker 沒有回傳任何媒體成果")
+	}
+	_, err = agent.SaveGeneratedProposal(proposal.AgentID, proposal.ProjectID, proposal.ThreadID, proposal.TaskID, result.Root, spec.WorkerName, []agent.ProposalItem{{
+		ProposalType: agent.ProposalTypeAssetUpload, Kind: agent.ProposalKindAsset, Title: item.Title, Summary: item.Summary, CollectionID: item.CollectionID, Artifacts: artifacts,
+	}})
+	return err
 }
 
 func (a *App) applyTextProposal(ctx context.Context, proposal agent.Proposal, item agent.ProposalItem) error {

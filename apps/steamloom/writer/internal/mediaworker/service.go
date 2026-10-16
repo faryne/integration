@@ -55,7 +55,8 @@ func (s *Service) AgentCapabilities() ([]AgentCapability, error) {
 	result := []AgentCapability{}
 	for _, worker := range workers {
 		adapter, exists := s.registry.Get(worker.AdapterID)
-		if !exists || !worker.Enabled || worker.Status != StatusOnline || len(worker.Capabilities) == 0 {
+		_, executable := adapter.(Generator)
+		if !exists || !executable || !worker.Enabled || worker.Status != StatusOnline || len(worker.Capabilities) == 0 || len(worker.JobFields) == 0 {
 			continue
 		}
 		result = append(result, AgentCapability{
@@ -139,7 +140,7 @@ func (s *Service) Save(input SaveInput) (*Worker, error) {
 	if index >= 0 {
 		previous := workers[index]
 		if previous.AdapterID == item.AdapterID && mapsEqual(previous.Settings, item.Settings) && len(input.Secrets) == 0 && len(input.ClearSecrets) == 0 {
-			item.Status, item.StatusMessage, item.Capabilities, item.LastCheckedAt = previous.Status, previous.StatusMessage, previous.Capabilities, previous.LastCheckedAt
+			item.Status, item.StatusMessage, item.Capabilities, item.JobFields, item.LastCheckedAt = previous.Status, previous.StatusMessage, previous.Capabilities, previous.JobFields, previous.LastCheckedAt
 		}
 		workers[index] = item
 	} else {
@@ -177,11 +178,20 @@ func (s *Service) Test(ctx context.Context, id string) (*Worker, error) {
 		return nil, err
 	}
 	discovery, discoverErr := adapter.Discover(ctx, item.Settings, secrets)
+	if discoverErr == nil {
+		if _, executable := adapter.(Generator); executable {
+			if len(discovery.JobFields) == 0 {
+				discoverErr = errors.New("Worker 沒有提供可執行的 Job schema")
+			} else {
+				discoverErr = validateJobSchema(discovery.JobFields)
+			}
+		}
+	}
 	item.LastCheckedAt = time.Now().UTC()
 	if discoverErr != nil {
-		item.Status, item.StatusMessage, item.Capabilities = StatusError, discoverErr.Error(), []string{}
+		item.Status, item.StatusMessage, item.Capabilities, item.JobFields = StatusError, discoverErr.Error(), []string{}, nil
 	} else {
-		item.Status, item.StatusMessage, item.Capabilities = StatusOnline, discovery.Message, discovery.Capabilities
+		item.Status, item.StatusMessage, item.Capabilities, item.JobFields = StatusOnline, discovery.Message, discovery.Capabilities, discovery.JobFields
 	}
 	workers[index] = item
 	if err := s.store.save(workers); err != nil {
@@ -192,6 +202,80 @@ func (s *Service) Test(ctx context.Context, id string) (*Worker, error) {
 		return nil, err
 	}
 	return &result, nil
+}
+
+// JobSpec 只回傳表單 schema，不暴露 Worker endpoint、設定或密鑰。
+func (s *Service) JobSpec(id string) (*JobSpec, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	worker, _, err := s.executableWorker(id)
+	if err != nil {
+		return nil, err
+	}
+	return &JobSpec{WorkerID: worker.ID, WorkerName: worker.Name, Fields: cloneJobFields(worker.JobFields)}, nil
+}
+
+// ValidateJob 套用 Worker schema 的預設值並拒絕未知或不合法欄位。
+func (s *Service) ValidateJob(id string, input map[string]any) (map[string]any, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	worker, _, err := s.executableWorker(id)
+	if err != nil {
+		return nil, err
+	}
+	return validateJobInput(worker.JobFields, input)
+}
+
+// Execute 驗證 job 後才把設定、密鑰與輸入交給 adapter；Agent 不會進入這條路徑。
+func (s *Service) Execute(ctx context.Context, id string, input map[string]any) (GenerateResult, error) {
+	s.mu.Lock()
+	worker, adapter, err := s.executableWorker(id)
+	if err != nil {
+		s.mu.Unlock()
+		return GenerateResult{}, err
+	}
+	validated, err := validateJobInput(worker.JobFields, input)
+	if err != nil {
+		s.mu.Unlock()
+		return GenerateResult{}, err
+	}
+	secrets, err := s.vault.load(id)
+	s.mu.Unlock()
+	if err != nil {
+		return GenerateResult{}, err
+	}
+	root, err := os.MkdirTemp("", "steamloom-worker-job-*")
+	if err != nil {
+		return GenerateResult{}, err
+	}
+	result, err := adapter.(Generator).Generate(ctx, cloneMap(worker.Settings), secrets, validated, root)
+	if err != nil {
+		_ = os.RemoveAll(root)
+		return GenerateResult{}, err
+	}
+	// 輸出目錄由 Writer 建立與回收，不信任 adapter 自行指定可遞迴刪除的路徑。
+	result.Root = root
+	return result, nil
+}
+
+func (s *Service) executableWorker(id string) (storedWorker, Adapter, error) {
+	workers, err := s.store.load()
+	if err != nil {
+		return storedWorker{}, nil, err
+	}
+	index := workerIndex(workers, id)
+	if index < 0 {
+		return storedWorker{}, nil, errors.New("找不到指定的 Worker")
+	}
+	worker := workers[index]
+	adapter, exists := s.registry.Get(worker.AdapterID)
+	if !exists {
+		return storedWorker{}, nil, errors.New("這個 Worker 的 adapter 已不存在")
+	}
+	if _, ok := adapter.(Generator); !ok || !worker.Enabled || worker.Status != StatusOnline || len(worker.JobFields) == 0 {
+		return storedWorker{}, nil, errors.New("這個 Worker 尚未啟用、連線或提供可執行的 Job schema")
+	}
+	return worker, adapter, nil
 }
 
 // Delete 同時移除非敏感設定與 OS Keychain 中的密鑰。

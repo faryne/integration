@@ -24,12 +24,14 @@ const (
 	ProposalKindStory            = "story"
 	ProposalKindLore             = "lore"
 	ProposalKindAsset            = "asset"
+	ProposalKindMedia            = "media"
 	ProposalTypeDocumentCreate   = "document.create"
 	ProposalTypeDocumentReplace  = "document.replace"
 	ProposalTypeDocumentPatch    = "document.patch"
 	ProposalTypeChapterAppend    = "chapter.append"
 	ProposalTypeChapterReplace   = "chapter.replace"
 	ProposalTypeAssetUpload      = "asset.upload"
+	ProposalTypeMediaBrief       = "media.brief"
 	ProposalTypeImageStoryCreate = "image_story.create"
 	ProposalTypeImageStoryUpdate = "image_story.update"
 )
@@ -105,6 +107,15 @@ type ProposalEdit struct {
 	All     bool   `json:"all,omitempty"`
 }
 
+// MediaBrief 是 Agent 對 Worker 的標準化創作意圖；真正的動態參數由 Writer 表單收集。
+type MediaBrief struct {
+	Prompt         string `json:"prompt"`
+	NegativePrompt string `json:"negative_prompt,omitempty"`
+	AspectRatio    string `json:"aspect_ratio,omitempty"`
+	CandidateCount int    `json:"candidate_count,omitempty"`
+	Notes          string `json:"notes,omitempty"`
+}
+
 // maxProposalEdits 限制單一 patch 的筆數；超過代表應改用 document.replace 或拆成多輪。
 const maxProposalEdits = 200
 
@@ -155,6 +166,9 @@ type ProposalItem struct {
 	CollectionID  string              `json:"collection_id,omitempty"`
 	MarkerID      string              `json:"marker_id,omitempty"`
 	AfterMarkerID string              `json:"after_marker_id,omitempty"`
+	WorkerID      string              `json:"worker_id,omitempty"`
+	Brief         *MediaBrief         `json:"brief,omitempty"`
+	JobInputs     map[string]any      `json:"job_inputs,omitempty"`
 	Artifacts     []ProposalArtifact  `json:"artifacts,omitempty"`
 	Edits         []ProposalEdit      `json:"edits,omitempty"`
 	ContentHash   string              `json:"content_hash"`
@@ -178,7 +192,9 @@ func prepareProposal(agentID, projectID, threadID, taskID string, items []Propos
 	for index := range proposal.Items {
 		item := &proposal.Items[index]
 		for artifactIndex := range item.Artifacts {
-			item.Artifacts[artifactIndex].ProviderID = agentID
+			if item.Artifacts[artifactIndex].ProviderID == "" {
+				item.Artifacts[artifactIndex].ProviderID = agentID
+			}
 		}
 		item.ID, err = newThreadID()
 		if err != nil {
@@ -228,6 +244,17 @@ func normalizeProposalItem(item *ProposalItem, projectID string) error {
 		item.Kind = ProposalKindAsset
 		if len(item.Artifacts) == 0 && (item.LocalPath == "" || item.MIMEType == "") {
 			return errors.New("圖片資產提案缺少本機檔案或 MIME type")
+		}
+	case ProposalTypeMediaBrief:
+		item.Kind = ProposalKindMedia
+		if item.WorkerID == "" {
+			return errors.New("媒體生成需求缺少 worker_id")
+		}
+		if item.Brief == nil || strings.TrimSpace(item.Brief.Prompt) == "" {
+			return errors.New("媒體生成需求缺少 brief.prompt")
+		}
+		if item.Title == "" {
+			item.Title = "未命名媒體"
 		}
 	case ProposalTypeImageStoryCreate, ProposalTypeImageStoryUpdate:
 		item.Kind, item.ContentType = ProposalKindStory, "image"
@@ -373,8 +400,11 @@ func setProposalHashes(proposal *Proposal) error {
 			FileName, MIMEType, FileSHA256, AltText, CollectionID                                                      string
 			Artifacts                                                                                                  []ProposalArtifact
 			// omitempty 讓沒有 edits 的既有提案 hash 維持不變。
-			Edits []ProposalEdit `json:",omitempty"`
-		}{item.ProposalType, item.Kind, item.TargetID, item.BaseVersionID, item.Title, item.Summary, item.ContentType, item.Content, item.MarkerID, item.AfterMarkerID, item.Base, item.Operations, item.FileName, item.MIMEType, item.FileSHA256, item.AltText, item.CollectionID, item.Artifacts, item.Edits}
+			Edits     []ProposalEdit `json:",omitempty"`
+			WorkerID  string         `json:",omitempty"`
+			Brief     *MediaBrief    `json:",omitempty"`
+			JobInputs map[string]any `json:",omitempty"`
+		}{item.ProposalType, item.Kind, item.TargetID, item.BaseVersionID, item.Title, item.Summary, item.ContentType, item.Content, item.MarkerID, item.AfterMarkerID, item.Base, item.Operations, item.FileName, item.MIMEType, item.FileSHA256, item.AltText, item.CollectionID, item.Artifacts, item.Edits, item.WorkerID, item.Brief, item.JobInputs}
 		hash, err := hashJSON(fingerprint)
 		if err != nil {
 			return err

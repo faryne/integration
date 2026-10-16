@@ -143,6 +143,9 @@ func (a *App) TestWorker(id string) (*mediaworker.Worker, error) {
 
 func (a *App) DeleteWorker(id string) error { return a.workers.Delete(id) }
 
+// WorkerJobSpec 提供動態 job 表單；只包含 discovery schema，不含連線設定與密鑰。
+func (a *App) WorkerJobSpec(id string) (*mediaworker.JobSpec, error) { return a.workers.JobSpec(id) }
+
 // CodexModels 由本機 Codex app-server 取得 model 與各自支援的 reasoning effort。
 func (a *App) CodexModels() ([]agent.CodexModel, error) { return agent.CodexModels(a.ctx) }
 
@@ -309,6 +312,26 @@ func (a *App) DecideProposal(agentID, projectID, threadID, proposalID, decision 
 		}
 	}
 	return &decided, nil
+}
+
+// DecideMediaProposal 先以 Worker schema 驗證作者調整的參數，再沿用一般 proposal apply lifecycle。
+func (a *App) DecideMediaProposal(agentID, projectID, threadID, proposalID string, inputs map[string]any) (*agent.Proposal, error) {
+	proposal, err := agent.ProposalByID(agentID, projectID, threadID, proposalID)
+	if err != nil {
+		return nil, err
+	}
+	if len(proposal.Items) != 1 || proposal.Items[0].ProposalType != agent.ProposalTypeMediaBrief {
+		return nil, errors.New("這批提案不是媒體生成需求")
+	}
+	validated, err := a.workers.ValidateJob(proposal.Items[0].WorkerID, inputs)
+	if err != nil {
+		return nil, err
+	}
+	configured, err := agent.ConfigureMediaProposal(agentID, projectID, threadID, proposalID, validated)
+	if err != nil {
+		return nil, err
+	}
+	return a.DecideProposal(agentID, projectID, threadID, proposalID, agent.ProposalDecisionApprove, []string{configured.Items[0].ID})
 }
 
 func staleTaskState(state string, active []agent.Task, agentID, threadID string) string {

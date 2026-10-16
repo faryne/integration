@@ -27,7 +27,24 @@ func proposalSourceError(err error) error {
 }
 
 func (a *App) prepareProposal(ctx context.Context, projectID string, items []agent.ProposalItem) ([]agent.ProposalItem, error) {
-	return prepareProposalItems(ctx, a.api, projectID, items)
+	prepared, err := prepareProposalItems(ctx, a.api, projectID, items)
+	if err != nil {
+		return nil, err
+	}
+	mediaCount := 0
+	for index := range prepared {
+		if prepared[index].ProposalType != agent.ProposalTypeMediaBrief {
+			continue
+		}
+		mediaCount++
+		if _, err := a.workers.JobSpec(prepared[index].WorkerID); err != nil {
+			return nil, agent.InvalidProposal(fmt.Errorf("提案項目 %d：%w", index+1, err))
+		}
+	}
+	if mediaCount > 0 && len(prepared) != 1 {
+		return nil, agent.InvalidProposal(errors.New("media.brief 必須單獨成為一批提案"))
+	}
+	return prepared, nil
 }
 
 // prepareProposalItems 以 Writer REST API 的資料建立 diff 基準，不能信任 Agent 自行重建的 snapshot。

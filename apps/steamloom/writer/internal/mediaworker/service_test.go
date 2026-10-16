@@ -2,6 +2,7 @@ package mediaworker
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -12,6 +13,43 @@ func (v *memoryVault) load(id string) (map[string]string, error) { return cloneM
 func (v *memoryVault) save(id string, values map[string]string) error {
 	v.values[id] = cloneMap(values)
 	return nil
+}
+
+func TestMockWorkerJobSpecValidationAndExecution(t *testing.T) {
+	registry, err := NewRegistry(NewMockAdapter())
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewService(registry, filepath.Join(t.TempDir(), "workers.json"), &memoryVault{values: map[string]map[string]string{}})
+	worker, err := service.Save(SaveInput{AdapterID: "mock-image", Name: "Mock", Enabled: true, Settings: map[string]string{"scenario": "success"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Test(context.Background(), worker.ID); err != nil {
+		t.Fatal(err)
+	}
+	spec, err := service.JobSpec(worker.ID)
+	if err != nil || len(spec.Fields) == 0 {
+		t.Fatalf("job spec = %#v, err = %v", spec, err)
+	}
+	input, err := service.ValidateJob(worker.ID, map[string]any{"prompt": "藍髮少女", "candidate_count": 1})
+	if err != nil || input["width"] != float64(768) {
+		t.Fatalf("validated input = %#v, err = %v", input, err)
+	}
+	result, err := service.Execute(context.Background(), worker.ID, input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(result.Root)
+	if len(result.Artifacts) != 1 {
+		t.Fatalf("artifacts = %#v", result.Artifacts)
+	}
+	if _, err := os.Stat(result.Artifacts[0].LocalPath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.ValidateJob(worker.ID, map[string]any{"prompt": "test", "unknown": true}); err == nil {
+		t.Fatal("unknown job field should fail")
+	}
 }
 func (v *memoryVault) delete(id string) error { delete(v.values, id); return nil }
 

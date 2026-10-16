@@ -11,6 +11,11 @@ type Adapter interface {
 	Discover(context.Context, map[string]string, map[string]string) (Discovery, error)
 }
 
+// Generator 由可真正執行 Media Job 的 adapter 實作；只有 discovery 同時提供 JobFields 才會暴露給 Agent。
+type Generator interface {
+	Generate(context.Context, map[string]string, map[string]string, map[string]any, string) (GenerateResult, error)
+}
+
 // Registry 是 Writer 內唯一的 adapter 清單；UI 與後續 Media Job 都從這裡取得實作。
 type Registry struct{ adapters map[string]Adapter }
 
