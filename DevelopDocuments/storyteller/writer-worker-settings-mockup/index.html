@@ -45,7 +45,7 @@
             <label class="search"><span>⌕</span><input id="workerSearch" placeholder="搜尋 Worker" /></label>
             <div class="worker-list" id="workerList"></div>
             <div class="registry-summary">
-              <span><i class="status-dot online"></i><b id="enabledCount">1</b> 個可供 Agent 使用</span>
+              <span><i class="status-dot online"></i><b id="enabledCount">1</b> 個已啟用且可使用</span>
               <span><i class="status-dot offline"></i><b id="problemCount">1</b> 個需要處理</span>
             </div>
           </aside>
@@ -58,19 +58,13 @@
                 <h3 id="workerName">本機 ComfyUI</h3>
                 <div class="status-line" id="workerStatus"></div>
               </div>
-              <label class="switch-row"><span>供 Agent 使用</span><input type="checkbox" id="workerEnabled" /><i></i></label>
+              <label class="switch-row"><span>啟用</span><input type="checkbox" id="workerEnabled" /><i></i></label>
               <button class="menu-button" id="deleteWorker" title="刪除 Worker">⋯</button>
             </header>
 
-            <nav class="tabs" id="tabs">
-              <button class="active" data-tab="connection">連線設定</button>
-              <button data-tab="capabilities">能力與輸入</button>
-              <button data-tab="agent">Agent 可見資訊</button>
-            </nav>
-
-            <div class="tab-content" id="connectionTab">
+            <div class="detail-content">
               <section class="setting-section">
-                <div class="section-heading"><div><h4>基本資料</h4><p>名稱只用於 Writer 畫面及 Agent capability summary。</p></div></div>
+                <div class="section-heading"><div><h4>基本資料</h4><p>名稱用於 Writer 畫面及建立 Media Job 時辨識服務。</p></div></div>
                 <div class="form-grid">
                   <label><span>顯示名稱</span><input id="displayName" /></label>
                   <label><span>Worker ID</span><input id="workerID" disabled /></label>
@@ -87,31 +81,17 @@
               </section>
 
               <section class="setting-section">
-                <div class="section-heading"><div><h4>使用範圍</h4><p>先只支援全域啟用；專案與角色 preset 留到 Media Job 階段。</p></div></div>
-                <label class="check-row"><input type="checkbox" checked /><span><b>允許所有專案使用</b><small>Agent 只會知道這個 Worker 已啟用，不會取得 endpoint 或認證資料。</small></span></label>
-              </section>
-            </div>
-
-            <div class="tab-content" id="capabilitiesTab" hidden>
-              <section class="setting-section">
                 <div class="section-heading">
-                  <div><h4>Discovery 結果</h4><p>連線成功時由 adapter 轉成 Writer 的共用 capability contract。</p></div>
+                  <div><h4>支援功能</h4><p>由 adapter 在連線時自動確認；完整輸入規格不需要由使用者管理。</p></div>
                   <button class="secondary" id="rediscover">重新同步</button>
                 </div>
                 <div class="capability-strip" id="capabilityStrip"></div>
               </section>
-              <section class="setting-section schema-section">
-                <div class="section-heading"><div><h4>Media Job 輸入 schema</h4><p>Worker 定義欄位，Writer render 表單；Agent 不會產生表單。</p></div><span class="schema-version" id="schemaVersion"></span></div>
-                <div class="schema-table" id="schemaTable"></div>
-              </section>
-            </div>
 
-            <div class="tab-content" id="agentTab" hidden>
               <section class="setting-section">
-                <div class="section-heading"><div><h4>提供給 Agent 的摘要</h4><p>每輪只注入可用能力與 brief 欄位；以下內容不包含 secrets、endpoint 或 model catalog。</p></div><button class="secondary" id="copySummary">複製 JSON</button></div>
-                <pre id="agentSummary"></pre>
+                <div class="section-heading"><div><h4>使用範圍</h4><p>先只支援全域啟用；專案與角色 preset 留到 Media Job 階段。</p></div></div>
+                <label class="check-row"><input type="checkbox" checked /><span><b>允許所有專案使用</b><small>啟用後可直接建立 Media Job，也會將精簡能力摘要提供給 Agent；endpoint 與認證資料不會離開 Writer。</small></span></label>
               </section>
-              <div class="safe-note"><span>✓</span><div><strong>敏感資訊已隔離</strong><p>API token 交由 OS Keychain 保存；thread、event log 與 Agent prompt 都不保存秘密。</p></div></div>
             </div>
 
             <footer class="detail-actions">
@@ -127,12 +107,8 @@
     <dialog id="addDialog">
       <form method="dialog">
         <header><div><small>Worker Registry</small><h3>新增媒體 Worker</h3></div><button value="cancel" class="close-button">×</button></header>
-        <p class="dialog-lead">選擇執行服務。新增後再設定連線，Writer 會自動 discover 可用能力。</p>
-        <div class="provider-grid">
-          <button value="comfyui" class="provider-card"><span class="provider-icon purple">CU</span><span><b>ComfyUI</b><small>連線使用者自管的本機或區網服務</small></span><i>›</i></button>
-          <button value="pixai" class="provider-card"><span class="provider-icon blue">PX</span><span><b>PixAI</b><small>使用 API token 連線雲端圖片生成服務</small></span><i>›</i></button>
-          <button value="custom" class="provider-card" disabled><span class="provider-icon gray">＋</span><span><b>自訂 Worker</b><small>保留給後續 plugin protocol</small></span><em>尚未開放</em></button>
-        </div>
+        <p class="dialog-lead">以下類型由 Worker Registry 動態提供；同一種類可以設定多個 instance。</p>
+        <div class="provider-grid" id="providerGrid"></div>
         <footer><button value="cancel" class="secondary">取消</button></footer>
       </form>
     </dialog>
