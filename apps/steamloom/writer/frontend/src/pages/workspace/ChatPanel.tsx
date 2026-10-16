@@ -13,6 +13,7 @@ import { AssistantSetup } from "@writer/pages/workspace/AssistantSetup.tsx";
 import { ChatTranscript } from "@writer/pages/workspace/ChatTranscript.tsx";
 import { ChatThreadHeader } from "@writer/pages/workspace/ChatThreadHeader.tsx";
 import { ChatTaskLanding } from "@writer/pages/workspace/ChatTaskLanding.tsx";
+import { ProposalRawOutputDialog } from "@writer/pages/workspace/ProposalRawOutputDialog.tsx";
 import { ProposalReviewDialog } from "@writer/pages/workspace/ProposalReviewDialog.tsx";
 import { TaskRail } from "@writer/pages/workspace/TaskRail.tsx";
 import { ThreadDeleteDialog } from "@writer/pages/workspace/ThreadDeleteDialog.tsx";
@@ -46,6 +47,8 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
   const [confirmingProposalID, setConfirmingProposalID] = useState("");
   const [review, setReview] = useState<{ proposal: AgentProposal; item: AgentProposalItem; selectedIDs: string[] } | null>(null);
   const [deciding, setDeciding] = useState(false);
+  const [rawOutputEventID, setRawOutputEventID] = useState("");
+  const closeRawOutput = useCallback(() => setRawOutputEventID(""), []);
   const [viewMode, setViewMode] = useState<"empty" | "new" | "thread">("empty");
   const threadsRequest = useRef(0);
   const selected = agents?.some((agent) => agent.id === agentID) ? agentID : (agents?.[0]?.id ?? "");
@@ -105,7 +108,7 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
   useEffect(() => EventsOn("agent:task", (event: AgentTaskEvent) => {
     if (event.task.project_id !== projectID) return;
     setTasks((current) => ({ ...current, [event.task.id]: event.task }));
-    if (event.type.startsWith("task.") || event.type.startsWith("tool.") || event.type.startsWith("apply.") || event.type === "proposal.ready") {
+    if (event.type.startsWith("task.") || event.type.startsWith("tool.") || event.type.startsWith("apply.") || event.type.startsWith("proposal.")) {
       void loadThreads();
       if (event.task.agent_id === selected && viewMode === "thread") {
         void chat.refreshVisibleThread(event.task.thread_id);
@@ -319,6 +322,7 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
               onConfirmApplied={(proposal) => void confirmProposalApplied(proposal)}
               onReview={(proposal, item, selectedIDs) => setReview({ proposal, item, selectedIDs })}
               onQuote={quoteMessage}
+              onViewRawOutput={setRawOutputEventID}
             />
           )}
           {activeTask && <ActiveTaskStatus task={activeTask} workspace={workspace} queued={Math.max(0, activeTasks.length - 1)} canceling={canceling === activeTask.id} onCancel={() => void cancelTask()} />}
@@ -368,6 +372,7 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
         </>
         )}
       </Box>
+      <ProposalRawOutputDialog agentID={selected} projectID={projectID} threadID={currentThreadID} eventID={rawOutputEventID} onClose={closeRawOutput} />
       <ThreadDeleteDialog open={deleteTarget !== null} deleting={deleting} onClose={() => setDeleteTarget(null)} onDelete={() => void deleteThread()} />
       <ProposalReviewDialog
         agentID={selected}

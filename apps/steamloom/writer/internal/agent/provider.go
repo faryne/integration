@@ -35,3 +35,13 @@ var catalog = []providerAdapter{
 	conversationProvider("gemini", "Gemini CLI", "gemini", newGemini),
 	conversationProvider("antigravity", "Antigravity", "agy", newAntigravity),
 }
+
+// providerDisplayName 給錯誤訊息用；找不到就退回 id。
+func providerDisplayName(id string) string {
+	for _, item := range catalog {
+		if item.descriptor.ID == id {
+			return item.descriptor.DisplayName
+		}
+	}
+	return id
+}

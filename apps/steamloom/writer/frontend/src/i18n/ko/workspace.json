@@ -115,7 +115,17 @@
       "applyConflict": "버전 충돌이 감지되어 내용을 덮어쓰지 않음",
       "applyInterrupted": "기록이 중단되어 결과 확인이 필요함",
       "applyVerified": "콘텐츠 적용을 확인함",
+      "proposalInvalid": "제안을 사용할 수 없음",
+      "viewRawOutput": "원본 출력 보기",
+      "rawOutputTitle": "Agent 원본 출력",
+      "rawOutputCopy": "전체 복사",
+      "rawOutputCopied": "복사함",
+      "rawOutputClose": "닫기",
       "unknown": "지원하지 않는 이벤트: {{type}}"
+    },
+    "mcpLogin": {
+      "title": "SteamLoom 재승인이 필요합니다",
+      "description": "Agent가 SteamLoom 작품을 읽을 수 없어 이번 실행을 중단했습니다. Terminal에서 아래 명령을 실행해 재승인한 뒤 다시 시도하세요. MCP 설정에 고정 토큰을 쓰고 있다면 SteamLoom에서 토큰을 다시 발급해 설정을 업데이트하세요."
     },
     "login": {
       "title": "Agent 재로그인 필요",
@@ -125,6 +135,7 @@
     },
     "states": {
       "queued": "대기 중",
+      "slow": "응답이 너무 오래 걸림",
       "running": "실행 중",
       "completed": "완료",
       "failed": "실패",
@@ -165,7 +176,7 @@
         "asset": "이미지"
       },
       "types": {
-        "document": { "create": "전체 문서 생성", "replace": "전체 문서 업데이트" },
+        "document": { "create": "전체 문서 생성", "replace": "전체 문서 업데이트", "patch": "부분 수정" },
         "chapter": { "append": "챕터 추가", "replace": "챕터 업데이트" },
         "asset": { "upload": "이미지 자산" },
         "image_story": { "create": "이미지 작품 생성", "update": "이미지 작품 업데이트" }

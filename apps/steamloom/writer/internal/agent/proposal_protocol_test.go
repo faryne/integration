@@ -70,3 +70,43 @@ func TestProposalDeltaFilterHidesEnvelopeAcrossChunks(t *testing.T) {
 		t.Fatalf("plain stream was changed: %q", got)
 	}
 }
+
+func TestPatchProposalKeepsEditsAndRequiresThem(t *testing.T) {
+	answer := "改好了，尚未寫入。\n" + proposalEnvelopeStart + "\n" +
+		`{"items":[{"proposal_type":"document.patch","kind":"story","target_id":"story-1","base_version_id":42,"edits":[{"find":"梭梭","replace":"那頭","all":true}]}]}` +
+		"\n" + proposalEnvelopeEnd
+	_, items, err := parseProposalEnvelope(answer)
+	if err != nil || len(items[0].Edits) != 1 || !items[0].Edits[0].All {
+		t.Fatalf("edits were lost: %#v, %v", items, err)
+	}
+	patch := ProposalItem{ProposalType: ProposalTypeDocumentPatch, Kind: ProposalKindStory, TargetID: "story-1", BaseVersionID: "42", Base: &ProposalSnapshot{}}
+	if err := normalizeProposalItem(&patch, "project"); err == nil || !strings.Contains(err.Error(), "至少要有一筆 edits") {
+		t.Fatalf("patch without edits must fail: %v", err)
+	}
+	create := ProposalItem{ProposalType: ProposalTypeDocumentCreate, Kind: ProposalKindStory, Edits: []ProposalEdit{{Find: "a"}}}
+	if err := normalizeProposalItem(&create, "project"); err == nil || !strings.Contains(err.Error(), "只有 document.patch") {
+		t.Fatalf("edits on other proposal types must fail: %v", err)
+	}
+}
+
+func TestProposalHashIgnoresEmptyEditsForExistingProposals(t *testing.T) {
+	// 既有待確認提案沒有 edits 欄位；加入 Edits 後 hash 必須與舊格式相同，否則會被誤判為遭到修改。
+	item := ProposalItem{ProposalType: ProposalTypeDocumentReplace, Kind: ProposalKindStory, TargetID: "story-1", Content: "內容"}
+	legacy, err := hashJSON(struct {
+		ProposalType, Kind, TargetID, BaseVersionID, Title, Summary, ContentType, Content, MarkerID, AfterMarkerID string
+		Base                                                                                                       *ProposalSnapshot
+		Operations                                                                                                 []ProposalOperation
+		FileName, MIMEType, FileSHA256, AltText, CollectionID                                                      string
+		Artifacts                                                                                                  []ProposalArtifact
+	}{item.ProposalType, item.Kind, item.TargetID, "", "", "", "", item.Content, "", "", nil, nil, "", "", "", "", "", nil})
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposal := Proposal{Items: []ProposalItem{item}}
+	if err := setProposalHashes(&proposal); err != nil {
+		t.Fatal(err)
+	}
+	if proposal.Items[0].ContentHash != legacy {
+		t.Fatalf("hash changed for proposals without edits: %s != %s", proposal.Items[0].ContentHash, legacy)
+	}
+}

@@ -115,7 +115,17 @@
       "applyConflict": "A version conflict was detected; content was not overwritten",
       "applyInterrupted": "The final write result was not received and needs confirmation",
       "applyVerified": "The content was confirmed as applied",
+      "proposalInvalid": "Proposal could not be used",
+      "viewRawOutput": "View raw output",
+      "rawOutputTitle": "Agent raw output",
+      "rawOutputCopy": "Copy all",
+      "rawOutputCopied": "Copied",
+      "rawOutputClose": "Close",
       "unknown": "Unsupported event: {{type}}"
+    },
+    "mcpLogin": {
+      "title": "SteamLoom needs to be reauthorized",
+      "description": "The agent could not read your SteamLoom work, so this run was stopped. Run the command below in Terminal to reauthorize, then try again. If your MCP config uses a fixed token, generate a new token on SteamLoom and update the config."
     },
     "login": {
       "title": "Agent sign-in required",
@@ -125,6 +135,7 @@
     },
     "states": {
       "queued": "Queued",
+      "slow": "Taking too long",
       "running": "Running",
       "completed": "Completed",
       "failed": "Failed",
@@ -161,7 +172,7 @@
       "selectItem": "Select {{title}}",
       "kinds": { "story": "Story", "lore": "Lore", "asset": "Image" },
       "types": {
-        "document": { "create": "New document", "replace": "Full replacement" },
+        "document": { "create": "New document", "replace": "Full replacement", "patch": "Partial edit" },
         "chapter": { "append": "New chapter", "replace": "Chapter update" },
         "asset": { "upload": "Image assets" },
         "image_story": { "create": "New image story", "update": "Image story update" }

@@ -235,6 +235,11 @@ func (a *App) ConfirmProposalApplied(agentID, projectID, threadID, proposalID st
 	return &proposal, nil
 }
 
+// ProposalInvalidOutput 讀回提案無法使用時保存的 Agent 原始回答，讓作者自行檢視或複製。
+func (a *App) ProposalInvalidOutput(agentID, projectID, threadID, eventID string) (string, error) {
+	return agent.ProposalInvalidOutput(agentID, projectID, threadID, eventID)
+}
+
 // ProposalAssetPreview 只在使用者打開 review 時讀取 Writer 管理的本機圖片。
 func (a *App) ProposalAssetPreview(agentID, projectID, threadID, proposalID, itemID string) (string, error) {
 	return agent.ProposalAssetPreview(agentID, projectID, threadID, proposalID, itemID)
@@ -307,27 +312,6 @@ func chatPage(page agent.ChatPage, err error) (*agent.ChatPage, error) {
 		return nil, err
 	}
 	return &page, nil
-}
-
-// Ask 把一輪問答交給 id 指定的 CLI，成功後把原文和回答接到這條串的檔案後面。
-// 續聊用的 session 以檔案為準，不採前端傳來的值。
-func (a *App) Ask(id string, req agent.Request) (*agent.Reply, error) {
-	sessionID, err := agent.SessionOf(id, req.ProjectID, req.ThreadID)
-	if err != nil {
-		return nil, err
-	}
-	req.SessionID = sessionID
-	reply, err := agent.Ask(a.ctx, id, req)
-	if err != nil {
-		return nil, err
-	}
-	saved, err := agent.SaveTurn(id, req.ProjectID, req.ThreadID, req.Prompt, req.References, reply.Text, reply.SessionID)
-	if err != nil {
-		return nil, err
-	}
-	reply.ThreadID = saved.ID
-	reply.Title = saved.Title
-	return &reply, nil
 }
 
 // StartTask 立即回傳 task；實際 CLI 執行由 TaskManager 在背景依 thread 排程。

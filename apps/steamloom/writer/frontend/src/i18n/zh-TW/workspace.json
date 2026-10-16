@@ -115,7 +115,17 @@
       "applyConflict": "偵測到版本衝突，未覆寫內容",
       "applyInterrupted": "未取得最終寫入結果，需要確認",
       "applyVerified": "已確認內容成功套用",
+      "proposalInvalid": "提案無法使用",
+      "viewRawOutput": "查看原始輸出",
+      "rawOutputTitle": "Agent 原始輸出",
+      "rawOutputCopy": "複製全文",
+      "rawOutputCopied": "已複製",
+      "rawOutputClose": "關閉",
       "unknown": "未支援事件：{{type}}"
+    },
+    "mcpLogin": {
+      "title": "SteamLoom 需要重新授權",
+      "description": "Agent 讀不到 SteamLoom 作品，這輪已中斷。請在 Terminal 執行下列指令重新授權後再試；若 MCP 設定用的是固定 token，請到 SteamLoom 重新產生 token 並更新設定。"
     },
     "login": {
       "title": "需要重新登入 Agent",
@@ -125,6 +135,7 @@
     },
     "states": {
       "queued": "排隊中",
+      "slow": "等待回應過長",
       "running": "執行中",
       "completed": "已完成",
       "failed": "失敗",
@@ -161,7 +172,7 @@
       "selectItem": "選取 {{title}}",
       "kinds": { "story": "故事", "lore": "設定", "asset": "圖片" },
       "types": {
-        "document": { "create": "新增全文", "replace": "全文更新" },
+        "document": { "create": "新增全文", "replace": "全文更新", "patch": "部分修改" },
         "chapter": { "append": "新增章節", "replace": "章節更新" },
         "asset": { "upload": "圖片資產" },
         "image_story": { "create": "新增圖像作品", "update": "更新圖像作品" }

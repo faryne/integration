@@ -14,7 +14,10 @@ const (
 	EventTaskCompleted    = "task.completed"
 	EventTaskFailed       = "task.failed"
 	EventTaskCanceled     = "task.canceled"
+	// EventTaskSlow 只即時通知畫面「等待回應過長」，不落盤。
+	EventTaskSlow         = "task.slow"
 	EventProposalReady    = "proposal.ready"
+	EventProposalInvalid  = "proposal.invalid"
 	EventProposalApproved = "proposal.approved"
 	EventProposalRejected = "proposal.rejected"
 	EventApplyQueued      = "apply.queued"

@@ -82,7 +82,12 @@ func recordTaskCompleted(agentID, projectID, threadID, taskID string, reply Repl
 	return saveIndex(dir, idx)
 }
 
-func recordTaskStopped(agentID, projectID, threadID, taskID, state, detail, partial string) error {
+// recordTaskStopped 保存失敗／停止事件；cause 用來決定失敗卡片要附哪一種修復指令，停止時傳 nil。
+func recordTaskStopped(agentID, projectID, threadID, taskID, state, partial string, cause error) error {
+	detail := ""
+	if cause != nil {
+		detail = cause.Error()
+	}
 	typeName, text := EventTaskFailed, "Agent 執行失敗："+detail
 	if state == TaskCanceled {
 		typeName, text = EventTaskCanceled, "工作已停止"
@@ -92,7 +97,7 @@ func recordTaskStopped(agentID, projectID, threadID, taskID, state, detail, part
 		events = append(events, ChatLine{Type: EventMessagePartial, Role: "assistant", Text: partial, CreatedAt: now(), TaskID: taskID})
 	}
 	event := taskEvent(typeName, taskID, text)
-	event.Action, event.Commands = loginAction(agentID, detail)
+	event.Action, event.Commands = failureAction(agentID, cause)
 	events = append(events, event)
 	return recordTaskState(agentID, projectID, threadID, taskID, state, events...)
 }
@@ -136,6 +141,18 @@ func recordTaskProgress(agentID, projectID, threadID, taskID, text string) error
 		return nil
 	}
 	return recordTaskState(agentID, projectID, threadID, taskID, TaskRunning, taskEvent(EventTaskProgress, taskID, text))
+}
+
+// failureAction 分開「Agent 本身未登入」與「SteamLoom MCP 授權失效」，兩者的修復指令不同。
+func failureAction(agentID string, cause error) (string, []string) {
+	if cause == nil {
+		return "", nil
+	}
+	var unavailable *MCPUnavailableError
+	if errors.As(cause, &unavailable) {
+		return "mcp.login", unavailable.Commands()
+	}
+	return loginAction(agentID, cause.Error())
 }
 
 // 登入由使用者在 Terminal 完成；Writer 只把可執行指令附在失敗事件，不碰 Agent 憑證。

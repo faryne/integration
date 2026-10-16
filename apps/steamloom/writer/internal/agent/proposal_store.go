@@ -59,7 +59,7 @@ func saveProposal(agentID, projectID, threadID, taskID, assetRoot string, reply 
 		item := &proposal.Items[index]
 		if item.Kind == ProposalKindAsset && len(item.Artifacts) == 0 {
 			if err := stageProposalAsset(item, assetRoot, stagingDir, finalDir); err != nil {
-				return Proposal{}, fmt.Errorf("提案項目 %d：%w", index+1, err)
+				return Proposal{}, InvalidProposal(fmt.Errorf("提案項目 %d：%w", index+1, err))
 			}
 		}
 		for artifactIndex := range item.Artifacts {
@@ -68,7 +68,7 @@ func saveProposal(agentID, projectID, threadID, taskID, assetRoot string, reply 
 				continue
 			}
 			if err := stageProposalArtifact(artifact, assetRoot, stagingDir, finalDir); err != nil {
-				return Proposal{}, fmt.Errorf("提案項目 %d 的 artifact %d：%w", index+1, artifactIndex+1, err)
+				return Proposal{}, InvalidProposal(fmt.Errorf("提案項目 %d 的 artifact %d：%w", index+1, artifactIndex+1, err))
 			}
 		}
 	}

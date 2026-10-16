@@ -43,7 +43,7 @@ func grokArgs(sessionID, dir, promptFile, mcpServer string) []string {
 		"--no-subagents",
 		"--disable-web-search",
 		"--tools", "",
-		// 讀故事、設定與記憶通常需要多輪 tool call；仍受 Writer 的 10 分鐘 task timeout 約束。
+		// 讀故事、設定與記憶通常需要多輪 tool call；仍受 Writer 的 TaskTimeouts 上限約束。
 		"--max-turns", "12",
 	}
 	// Grok Build 自行載入使用者既有的 MCP 設定；dontAsk 只核准精確列出的 SteamLoom 唯讀工具。

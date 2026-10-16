@@ -20,7 +20,7 @@ func (a *App) applyProposal(ctx context.Context, proposal agent.Proposal, item a
 			Title: item.Title, Summary: item.Summary, Content: item.Content, ContentType: item.ContentType, GroupPublicID: item.CollectionID,
 		})
 		return agent.ProposalItemApplyLabel(item), err
-	case agent.ProposalTypeDocumentReplace, agent.ProposalTypeChapterAppend, agent.ProposalTypeChapterReplace:
+	case agent.ProposalTypeDocumentReplace, agent.ProposalTypeDocumentPatch, agent.ProposalTypeChapterAppend, agent.ProposalTypeChapterReplace:
 		return agent.ProposalItemApplyLabel(item), a.applyTextProposal(ctx, proposal, item)
 	case agent.ProposalTypeAssetUpload:
 		return agent.ProposalItemApplyLabel(item), a.applyAssetProposal(ctx, proposal, item)

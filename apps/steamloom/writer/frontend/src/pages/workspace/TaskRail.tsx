@@ -26,7 +26,8 @@ function dateLabel(date: string, t: (key: string) => string) {
 
 function taskState(thread: AgentThread, tasks: Record<string, AgentTask>) {
   const active = Object.values(tasks).filter((task) => task.agent_id === thread.agent_id && task.thread_id === thread.id && (task.state === "queued" || task.state === "running" || task.state === "applying"));
-  return active.some((task) => task.state === "applying") ? "applying" : active.some((task) => task.state === "running") ? "running" : active.length > 0 ? "queued" : thread.last_task_state ?? "";
+  // slow 只是執行中的提示（超過 TaskTimeouts.Slow），不是後端的 task 狀態。
+  return active.some((task) => task.state === "applying") ? "applying" : active.some((task) => task.state === "running" && task.slow) ? "slow" : active.some((task) => task.state === "running") ? "running" : active.length > 0 ? "queued" : thread.last_task_state ?? "";
 }
 
 // 專案層級 thread rail：同一 provider 的多條 thread 都是獨立項目，不以 agent_id 合併。
@@ -96,7 +97,7 @@ export function TaskRail({ threads, tasks, selectedAgent, selectedThread, canCre
                   {items.map((thread) => {
                     const state = taskState(thread, tasks);
                     const selected = thread.agent_id === selectedAgent && thread.id === selectedThread;
-                    const deletingDisabled = state === "queued" || state === "running" || state === "applying";
+                    const deletingDisabled = state === "queued" || state === "running" || state === "slow" || state === "applying";
                     return (
                       <Box
                         key={`${thread.agent_id}:${thread.id}`}
@@ -108,10 +109,10 @@ export function TaskRail({ threads, tasks, selectedAgent, selectedThread, canCre
                           sx={{ width: "100%", p: 1.25, pr: 4.5, textAlign: "left", color: "inherit", bgcolor: "transparent", border: 0, borderRadius: "inherit", cursor: "pointer", "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: 1 } }}
                         >
                           <Stack direction="row" alignItems="center" spacing={0.75}>
-                            {(state === "running" || state === "applying") && <CircularProgress size={10} />}
+                            {(state === "running" || state === "slow" || state === "applying") && <CircularProgress size={10} color={state === "slow" ? "warning" : "primary"} />}
                             <Typography color="text.secondary" sx={{ fontSize: 11.5 }}>{providerNames[thread.agent_id] ?? thread.agent_id}</Typography>
                             <Box sx={{ flex: 1 }} />
-                            {state && <Chip size="small" color={state === "failed" || state === "apply_failed" ? "error" : state === "conflict" || state === "verification_required" ? "warning" : state === "running" || state === "applying" ? "primary" : "default"} label={t(`workspace.chat.states.${state}`)} sx={{ height: 20, fontSize: 10.5 }} />}
+                            {state && <Chip size="small" color={state === "failed" || state === "apply_failed" ? "error" : state === "conflict" || state === "verification_required" || state === "slow" ? "warning" : state === "running" || state === "applying" ? "primary" : "default"} label={t(`workspace.chat.states.${state}`)} sx={{ height: 20, fontSize: 10.5 }} />}
                           </Stack>
                           <Typography noWrap fontWeight={500} sx={{ mt: 0.5, fontSize: 13 }}>{thread.title || t("workspace.chat.newThread")}</Typography>
                         </Box>

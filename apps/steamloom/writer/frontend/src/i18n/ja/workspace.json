@@ -115,7 +115,17 @@
       "applyConflict": "バージョン競合を検出し、上書きしませんでした",
       "applyInterrupted": "書き込みが中断され、結果の確認が必要です",
       "applyVerified": "内容の適用を確認しました",
+      "proposalInvalid": "提案を使用できません",
+      "viewRawOutput": "元の出力を表示",
+      "rawOutputTitle": "Agent の元の出力",
+      "rawOutputCopy": "すべてコピー",
+      "rawOutputCopied": "コピーしました",
+      "rawOutputClose": "閉じる",
       "unknown": "未対応イベント：{{type}}"
+    },
+    "mcpLogin": {
+      "title": "SteamLoom の再認可が必要です",
+      "description": "Agent が SteamLoom の作品を読み取れないため、この実行を中断しました。Terminal で下のコマンドを実行して再認可してから、もう一度お試しください。MCP 設定で固定トークンを使っている場合は、SteamLoom でトークンを再発行して設定を更新してください。"
     },
     "login": {
       "title": "Agent への再ログインが必要です",
@@ -125,6 +135,7 @@
     },
     "states": {
       "queued": "待機中",
+      "slow": "応答に時間がかかっています",
       "running": "実行中",
       "completed": "完了",
       "failed": "失敗",
@@ -165,7 +176,7 @@
         "asset": "画像"
       },
       "types": {
-        "document": { "create": "全文を新規作成", "replace": "全文を更新" },
+        "document": { "create": "全文を新規作成", "replace": "全文を更新", "patch": "部分修正" },
         "chapter": { "append": "章を追加", "replace": "章を更新" },
         "asset": { "upload": "画像アセット" },
         "image_story": { "create": "画像作品を新規作成", "update": "画像作品を更新" }

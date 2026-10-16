@@ -16,10 +16,11 @@ interface ChatTranscriptProps {
   onConfirmApplied: (proposal: AgentProposal) => void;
   confirmingProposalID: string;
   onQuote: (message: ChatLine, messageID: string) => void;
+  onViewRawOutput: (eventID: string) => void;
 }
 
 // 同一 task 的 queued/tool/complete event 收進一張可收合 timeline，避免狀態只閃一下就消失。
-export function ChatTranscript({ agentID, messages, start, proposals, workspace, onReview, onConfirmApplied, confirmingProposalID, onQuote }: ChatTranscriptProps) {
+export function ChatTranscript({ agentID, messages, start, proposals, workspace, onReview, onConfirmApplied, confirmingProposalID, onQuote, onViewRawOutput }: ChatTranscriptProps) {
   const { t } = useTranslation();
   const activity = new Map<string, { first: number; events: ChatLine[] }>();
   messages.forEach((message, index) => {
@@ -33,7 +34,7 @@ export function ChatTranscript({ agentID, messages, start, proposals, workspace,
     const key = message.event_id ?? `${start}:${index}`;
     if (message.task_id && activityEventTypes.has(message.type ?? "")) {
       const group = activity.get(message.task_id);
-      return group?.first === index ? <TaskActivityCard key={`activity:${message.task_id}`} agentID={agentID} events={group.events} workspace={workspace} /> : null;
+      return group?.first === index ? <TaskActivityCard key={`activity:${message.task_id}`} agentID={agentID} events={group.events} workspace={workspace} onViewRawOutput={onViewRawOutput} /> : null;
     }
     const proposal = message.type === "proposal.ready" ? proposals?.find((item) => item.id === message.proposal_id) : undefined;
     if (proposal) return <ProposalCard key={key} proposal={proposal} confirming={confirmingProposalID === proposal.id} onConfirmApplied={() => onConfirmApplied(proposal)} onReview={(item, selectedItemIDs) => onReview(proposal, item, selectedItemIDs)} />;

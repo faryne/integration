@@ -1,5 +1,5 @@
 import StopCircleOutlinedIcon from "@mui/icons-material/StopCircleOutlined";
-import { CircularProgress, IconButton, Paper, Stack, Typography } from "@mui/material";
+import { Box, CircularProgress, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import type { AgentTask, Workspace } from "@writer/lib/backend.ts";
 import { agentActivityLabel } from "@writer/pages/workspace/agentActivity.ts";
@@ -21,11 +21,13 @@ export function ActiveTaskStatus({ task, workspace, queued, canceling, onCancel 
         </Paper>
       )}
       <Stack direction="row" spacing={0.75} alignItems="center" sx={{ color: "text.secondary" }}>
-        <CircularProgress size={13} />
+        <CircularProgress size={13} color={task.slow ? "warning" : "primary"} />
         <Typography sx={{ fontSize: 12.5 }}>
           {task.activity
             ? t("workspace.chat.taskTool", { tool: agentActivityLabel(task.activity, task.activity_target, workspace, t) })
             : task.state === "queued" ? t("workspace.chat.taskQueued") : task.state === "applying" ? t("workspace.chat.taskApplying") : t("workspace.chat.taskRunning")}
+          {/* 超過 TaskTimeouts.Slow 仍在執行時提示；不改變狀態，作者仍可自行停止 */}
+          {task.slow && <Box component="span" sx={{ color: "warning.main" }}>{` · ${t("workspace.chat.states.slow")}`}</Box>}
           {queued > 0 ? ` · ${t("workspace.chat.taskQueuedCount", { count: queued })}` : ""}
         </Typography>
         <IconButton size="small" color="error" disabled={canceling} aria-label={t("workspace.chat.stopTask")} onClick={onCancel}>

@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
+	"time"
 )
 
 // Antigravity 用 agy 的雙向 JSONL 協定。Writer 每次只送一輪並在 stdin EOF 後結束程序，
@@ -13,13 +15,14 @@ type antigravityClient struct{ bin string }
 
 func newAntigravity(bin string) Client { return antigravityClient{bin: bin} }
 
-func antigravityArgs(sessionID string) []string {
+// agy 自己也有輸出上限；設成比 Writer 的 Hard 多一分鐘，讓中斷一律由 TaskManager 處理並顯示一致的原因。
+func antigravityArgs(sessionID string, timeout time.Duration) []string {
 	args := []string{
 		"--input-format", "stream-json",
 		"--output-format", "stream-json",
 		"--mode", "plan",
 		"--sandbox",
-		"--print-timeout", "10m",
+		"--print-timeout", fmt.Sprintf("%dm", int(math.Ceil(timeout.Minutes()))+1),
 	}
 	if sessionID != "" {
 		args = append(args, "--conversation", sessionID)
@@ -51,11 +54,15 @@ func (c antigravityClient) Ask(ctx context.Context, req Request) (Reply, error) 
 	if err != nil {
 		return Reply{}, err
 	}
+	timeout := DefaultTaskTimeouts.Hard
+	if deadline, ok := ctx.Deadline(); ok {
+		timeout = time.Until(deadline)
+	}
 	return invoke(ctx, invocation{
 		name:    "Antigravity",
 		bin:     c.bin,
 		dir:     dir,
-		args:    antigravityArgs(req.SessionID),
+		args:    antigravityArgs(req.SessionID, timeout),
 		stdin:   input,
 		decoder: &antigravityProtocol{tools: map[int]streamedTool{}},
 		emit:    req.emit,

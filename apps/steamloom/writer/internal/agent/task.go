@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -41,7 +43,17 @@ type Task struct {
 	Progress       string `json:"progress,omitempty"`
 	Activity       string `json:"activity,omitempty"`
 	ActivityTarget string `json:"activity_target,omitempty"`
+	// Slow 表示已超過 TaskTimeouts.Slow 仍未完成；只供畫面提示，不改變 State。
+	Slow bool `json:"slow,omitempty"`
 }
+
+// TaskTimeouts 是單一 task 的等待上限，從開始執行起算（不含排隊），提案自動修正那一輪共用同一個計時。
+// 超過 Slow 只提示「等待回應過長」，超過 Hard 才強制中斷；之後的「設定」頁會讓作者調整這兩個值。
+type TaskTimeouts struct {
+	Slow, Hard time.Duration
+}
+
+var DefaultTaskTimeouts = TaskTimeouts{Slow: 10 * time.Minute, Hard: 15 * time.Minute}
 
 type TaskEvent struct {
 	Type     string       `json:"type"`
@@ -79,9 +91,10 @@ type TaskManager struct {
 	prepare ProposalPrepareRunner
 	emit    TaskEmitter
 
-	mu     sync.Mutex
-	tasks  map[string]*managedTask
-	queues map[string]*taskQueue
+	mu       sync.Mutex
+	timeouts TaskTimeouts
+	tasks    map[string]*managedTask
+	queues   map[string]*taskQueue
 }
 
 // SetProposalApplyRunner 注入 Writer 的 REST API 寫入器；Agent package 只負責佇列與對話生命週期。
@@ -95,7 +108,7 @@ func NewTaskManager(parent context.Context, run TaskRunner, emit TaskEmitter) *T
 	if emit == nil {
 		emit = func(TaskEvent) {}
 	}
-	return &TaskManager{ctx: ctx, cancel: cancel, run: run, emit: emit, tasks: map[string]*managedTask{}, queues: map[string]*taskQueue{}}
+	return &TaskManager{ctx: ctx, cancel: cancel, run: run, emit: emit, timeouts: DefaultTaskTimeouts, tasks: map[string]*managedTask{}, queues: map[string]*taskQueue{}}
 }
 
 func (m *TaskManager) Start(agentID string, req Request) (Task, error) {
@@ -194,7 +207,7 @@ func (m *TaskManager) Cancel(taskID string) error {
 		if managed.applyProposal != nil {
 			_, err = recordApplyFailed(managed.task.AgentID, managed.task.ProjectID, managed.task.ThreadID, managed.applyProposal.ID, managed.task.ID, "工作已停止", managed.task.Partial)
 		} else {
-			err = recordTaskStopped(managed.task.AgentID, managed.task.ProjectID, managed.task.ThreadID, managed.task.ID, TaskCanceled, "", managed.task.Partial)
+			err = recordTaskStopped(managed.task.AgentID, managed.task.ProjectID, managed.task.ThreadID, managed.task.ID, TaskCanceled, managed.task.Partial, nil)
 		}
 		if err != nil {
 			m.mu.Unlock()
@@ -251,6 +264,7 @@ func (m *TaskManager) runQueue(key string) {
 		}
 		managed.task.StartedAt = now()
 		task := managed.task
+		timeouts := m.timeouts
 		m.mu.Unlock()
 		if managed.applyProposal != nil {
 			m.runApply(ctx, managed)
@@ -258,6 +272,8 @@ func (m *TaskManager) runQueue(key string) {
 			continue
 		}
 
+		ctx, stopTimeout := context.WithTimeout(ctx, timeouts.Hard)
+		slowTimer := time.AfterFunc(timeouts.Slow, func() { m.markSlow(managed) })
 		err := recordTaskStarted(task.AgentID, task.ProjectID, task.ThreadID, task.ID)
 		if err == nil {
 			m.emit(TaskEvent{Type: EventTaskStarted, Task: task})
@@ -267,36 +283,100 @@ func (m *TaskManager) runQueue(key string) {
 			if err == nil {
 				req.SessionID = sessionID
 				req.emit = func(stream StreamEvent) { m.stream(managed, stream) }
-				var reply Reply
-				reply, err = m.run(ctx, task.AgentID, req)
-				m.flushProposalStream(managed)
-				if ctx.Err() != nil {
-					err = ctx.Err()
-				}
-				if err == nil && len(reply.proposals) > 0 && m.prepare != nil {
-					reply.proposals, err = m.prepare(ctx, task.ProjectID, reply.proposals)
-				}
-				if err == nil && len(reply.proposals) > 0 {
-					assetRoot := ""
-					if proposalHasAsset(reply.proposals) {
-						assetRoot, err = req.dir()
-					}
-					if err == nil {
-						var proposal Proposal
-						proposal, err = saveTaskProposal(task.AgentID, task.ProjectID, task.ThreadID, task.ID, assetRoot, reply, reply.proposals)
-						if err == nil {
-							managed.proposal = &proposal
-						}
-					}
-				} else if err == nil {
-					err = recordTaskCompleted(task.AgentID, task.ProjectID, task.ThreadID, task.ID, reply)
-				}
+				err = m.draft(ctx, managed, task, req)
 			}
 		}
+		slowTimer.Stop()
 		contextErr := ctx.Err()
+		// 超過上限是失敗而不是作者手動停止；改成可讀的失敗原因，partial 照常保留。
+		if errors.Is(contextErr, context.DeadlineExceeded) {
+			err = fmt.Errorf("%s 超過 %d 分鐘沒有完成，已中斷", providerDisplayName(task.AgentID), int(timeouts.Hard.Minutes()))
+			contextErr = nil
+		}
+		stopTimeout()
 		cancel()
 		m.finish(managed, err, contextErr)
 	}
+}
+
+// markSlow 只在 task 仍執行中時標記並即時通知；這是可重建的暫態，不寫入對話紀錄。
+func (m *TaskManager) markSlow(managed *managedTask) {
+	m.mu.Lock()
+	if managed.task.State != TaskRunning {
+		m.mu.Unlock()
+		return
+	}
+	managed.task.Slow = true
+	task := managed.task
+	m.mu.Unlock()
+	m.emit(TaskEvent{Type: EventTaskSlow, Task: task})
+}
+
+// draft 執行一輪 Agent 並保存結果。提案本身有問題時先保存原文，再續接同一 session 請 Agent 修正一次；
+// 修正後仍失敗就結束，不再自動重試，避免燒額度。
+func (m *TaskManager) draft(ctx context.Context, managed *managedTask, task Task, req Request) error {
+	for repaired := false; ; repaired = true {
+		reply, err := m.draftOnce(ctx, managed, task, req)
+		var invalid *ProposalError
+		if err == nil || ctx.Err() != nil || !errors.As(err, &invalid) {
+			return err
+		}
+		// 基準建立或欄位驗證失敗時，錯誤本身不帶原文；從這輪回答補上。
+		if invalid.SessionID == "" {
+			invalid.SessionID = reply.SessionID
+		}
+		if invalid.Raw == "" {
+			invalid.Raw = reply.raw
+		}
+		if invalid.Visible == "" {
+			invalid.Visible = strings.TrimSpace(reply.Text)
+		}
+		if saveErr := recordProposalInvalid(task.AgentID, task.ProjectID, task.ThreadID, task.ID, invalid); saveErr != nil {
+			return fmt.Errorf("%v；保存原始輸出時發生：%w", err, saveErr)
+		}
+		// 這輪的摘要已存成訊息；清掉 partial，避免失敗收尾時重複保存。
+		m.mu.Lock()
+		managed.task.Partial, managed.proposalFilter = "", proposalDeltaFilter{}
+		current := managed.task
+		m.mu.Unlock()
+		m.emit(TaskEvent{Type: EventProposalInvalid, Task: current})
+		if repaired || invalid.SessionID == "" {
+			return err
+		}
+		req.SessionID, req.Prompt, req.References = invalid.SessionID, proposalRepairPrompt(invalid.Err), nil
+	}
+}
+
+// draftOnce 是單一輪 CLI 執行：一般回答直接存檔；帶提案時先以 REST 建立基準，再落盤待作者確認。
+func (m *TaskManager) draftOnce(ctx context.Context, managed *managedTask, task Task, req Request) (Reply, error) {
+	reply, err := m.run(ctx, task.AgentID, req)
+	m.flushProposalStream(managed)
+	if ctx.Err() != nil {
+		return reply, ctx.Err()
+	}
+	if err != nil {
+		return reply, err
+	}
+	if len(reply.proposals) == 0 {
+		return reply, recordTaskCompleted(task.AgentID, task.ProjectID, task.ThreadID, task.ID, reply)
+	}
+	if m.prepare != nil {
+		if reply.proposals, err = m.prepare(ctx, task.ProjectID, reply.proposals); err != nil {
+			return reply, err
+		}
+	}
+	assetRoot := ""
+	if proposalHasAsset(reply.proposals) {
+		if assetRoot, err = req.dir(); err != nil {
+			return reply, err
+		}
+	}
+	proposal, err := saveTaskProposal(task.AgentID, task.ProjectID, task.ThreadID, task.ID, assetRoot, reply, reply.proposals)
+	if err != nil {
+		return reply, err
+	}
+	managed.proposal = &proposal
+	return reply, nil
 }
 
 func (m *TaskManager) runApply(ctx context.Context, managed *managedTask) {
@@ -382,7 +462,7 @@ func (m *TaskManager) runApply(ctx context.Context, managed *managedTask) {
 func (m *TaskManager) finish(managed *managedTask, runErr, contextErr error) {
 	m.mu.Lock()
 	managed.cancel = nil
-	managed.task.Progress = ""
+	managed.task.Progress, managed.task.Slow = "", false
 	managed.task.FinishedAt = now()
 	if contextErr != nil {
 		managed.task.State = TaskCanceled
@@ -401,7 +481,7 @@ func (m *TaskManager) finish(managed *managedTask, runErr, contextErr error) {
 	if task.State == TaskAwaitingConfirmation {
 		eventType = EventProposalReady
 	} else if task.State != TaskCompleted {
-		_ = recordTaskStopped(task.AgentID, task.ProjectID, task.ThreadID, task.ID, task.State, task.Error, task.Partial)
+		_ = recordTaskStopped(task.AgentID, task.ProjectID, task.ThreadID, task.ID, task.State, task.Partial, runErr)
 		if task.State == TaskCanceled {
 			eventType = EventTaskCanceled
 		} else {
