@@ -42,21 +42,6 @@ func TestComfyUIDiscoversCapabilities(t *testing.T) {
 	}
 }
 
-func TestCompatibleAdapterSendsToken(t *testing.T) {
-	client := jsonClient(t, func(r *http.Request) {
-		if got := r.Header.Get("Authorization"); got != "Bearer secret" {
-			t.Fatalf("authorization = %q", got)
-		}
-	}, `{"protocol":"steamloom-media-worker/v1","capabilities":["text_to_image"]}`)
-	discovery, err := NewCompatibleAdapter(client).Discover(context.Background(), map[string]string{"endpoint": "https://worker.test/manifest"}, map[string]string{"token": "secret"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(discovery.Capabilities) != 1 || discovery.Capabilities[0] != "text_to_image" {
-		t.Fatalf("capabilities = %v", discovery.Capabilities)
-	}
-}
-
 func TestMockAdapterSupportsSuccessAndErrorScenarios(t *testing.T) {
 	adapter := NewMockAdapter()
 	discovery, err := adapter.Discover(context.Background(), map[string]string{"scenario": "success"}, nil)

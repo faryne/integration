@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"slices"
 	"strings"
 )
 
@@ -31,21 +30,6 @@ func NewComfyUIAdapter(client *http.Client) Adapter {
 			Fields: []SettingField{{Key: "endpoint", Label: "服務位址", Kind: "url", Required: true, Placeholder: "http://127.0.0.1:8188"}},
 		},
 		discover: discoverComfyUI,
-	}
-}
-
-// NewCompatibleAdapter 驗證 SteamLoom Media Worker Protocol 的 capability manifest。
-func NewCompatibleAdapter(client *http.Client) Adapter {
-	return httpAdapter{
-		client: client,
-		descriptor: AdapterDescriptor{
-			ID: "compatible", Name: "相容 Worker", Description: "使用 SteamLoom Media Worker Protocol v1", MediaTypes: []string{"image", "audio"},
-			Fields: []SettingField{
-				{Key: "endpoint", Label: "Manifest 位址", Kind: "url", Required: true, Placeholder: "https://worker.example.com/manifest"},
-				{Key: "token", Label: "Access Token", Kind: "password", Secret: true, Placeholder: "選填"},
-			},
-		},
-		discover: discoverCompatible,
 	}
 }
 
@@ -76,36 +60,6 @@ func discoverComfyUI(ctx context.Context, client *http.Client, settings, _ map[s
 		return Discovery{}, errors.New("已連上 ComfyUI，但找不到可支援的生圖節點")
 	}
 	return Discovery{Capabilities: capabilities, Message: "已連上 ComfyUI"}, nil
-}
-
-type compatibleManifest struct {
-	Protocol     string   `json:"protocol"`
-	Capabilities []string `json:"capabilities"`
-}
-
-func discoverCompatible(ctx context.Context, client *http.Client, settings, secrets map[string]string) (Discovery, error) {
-	target, err := endpoint(settings["endpoint"])
-	if err != nil {
-		return Discovery{}, err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
-	if err != nil {
-		return Discovery{}, err
-	}
-	if token := strings.TrimSpace(secrets["token"]); token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-	var manifest compatibleManifest
-	if err := fetchJSON(client, req, &manifest); err != nil {
-		return Discovery{}, err
-	}
-	if manifest.Protocol != "steamloom-media-worker/v1" {
-		return Discovery{}, fmt.Errorf("不支援的 Worker Protocol：%s", manifest.Protocol)
-	}
-	if len(manifest.Capabilities) == 0 {
-		return Discovery{}, errors.New("Worker 沒有宣告任何能力")
-	}
-	return Discovery{Capabilities: slices.Compact(manifest.Capabilities), Message: "Worker Protocol 驗證成功"}, nil
 }
 
 func endpoint(raw string) (string, error) {

@@ -45,15 +45,17 @@ export function ConfirmProposalApplied(arg1:string,arg2:string,arg3:string,arg4:
 
 export function Create(arg1:string,arg2:api.CreateRequest):Promise<api.Created>;
 
-export function DecideProposal(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:Array<string>):Promise<agent.Proposal>;
-
 export function DecideMediaProposal(arg1:string,arg2:string,arg3:string,arg4:string,arg5:Record<string, any>):Promise<agent.Proposal>;
+
+export function DecideProposal(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:Array<string>):Promise<agent.Proposal>;
 
 export function DeleteAsset(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteAssetCollection(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteDocument(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function DeleteWorker(arg1:string):Promise<void>;
 
 export function Document(arg1:string,arg2:string,arg3:string):Promise<api.Document>;
 
@@ -81,18 +83,6 @@ export function MoveLore(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function MoveStory(arg1:string,arg2:string,arg3:string):Promise<void>;
 
-export function WorkerAdapters():Promise<Array<mediaworker.AdapterDescriptor>>;
-
-export function WorkerJobSpec(arg1:string):Promise<mediaworker.JobSpec>;
-
-export function Workers():Promise<Array<mediaworker.Worker>>;
-
-export function SaveWorker(arg1:mediaworker.SaveInput):Promise<mediaworker.Worker>;
-
-export function TestWorker(arg1:string):Promise<mediaworker.Worker>;
-
-export function DeleteWorker(arg1:string):Promise<void>;
-
 export function PatchDocument(arg1:string,arg2:string,arg3:string,arg4:api.AttributePatch):Promise<void>;
 
 export function PickImageFiles():Promise<main.LocalImagePick>;
@@ -109,9 +99,13 @@ export function Reorder(arg1:string,arg2:string,arg3:Array<string>):Promise<void
 
 export function SaveDocument(arg1:string,arg2:string,arg3:string,arg4:api.SaveInput):Promise<api.SaveResult>;
 
+export function SaveWorker(arg1:mediaworker.SaveInput):Promise<mediaworker.Worker>;
+
 export function SetUnsaved(arg1:boolean):Promise<void>;
 
 export function StartTask(arg1:string,arg2:agent.Request):Promise<agent.Task>;
+
+export function TestWorker(arg1:string):Promise<mediaworker.Worker>;
 
 export function UpdateAsset(arg1:string,arg2:string,arg3:api.AssetInput):Promise<api.Asset>;
 
@@ -124,5 +118,11 @@ export function UploadLocalImages(arg1:string,arg2:Array<string>):Promise<Record
 export function VersionDetail(arg1:string,arg2:string,arg3:string,arg4:string):Promise<api.VersionDetail>;
 
 export function Versions(arg1:string,arg2:string,arg3:string):Promise<Array<api.Version>>;
+
+export function WorkerAdapters():Promise<Array<mediaworker.AdapterDescriptor>>;
+
+export function WorkerJobSpec(arg1:string):Promise<mediaworker.JobSpec>;
+
+export function Workers():Promise<Array<mediaworker.Worker>>;
 
 export function Workspace(arg1:string):Promise<api.Workspace>;

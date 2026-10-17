@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -29,7 +30,8 @@ func NewDefault() *Service {
 		dir = "."
 	}
 	client := &http.Client{Timeout: 10 * time.Second}
-	registry, err := NewRegistry(NewComfyUIAdapter(client), NewCompatibleAdapter(client), NewMockAdapter())
+	// PixAI 需要下載整張成圖，10 秒上限對 1.5k PNG 太緊，另用較寬的 client。
+	registry, err := NewRegistry(NewComfyUIAdapter(client), NewPixAIAdapter(&http.Client{Timeout: time.Minute}), NewMockAdapter())
 	if err != nil {
 		panic(err)
 	}
@@ -56,7 +58,7 @@ func (s *Service) AgentCapabilities() ([]AgentCapability, error) {
 	for _, worker := range workers {
 		adapter, exists := s.registry.Get(worker.AdapterID)
 		_, executable := adapter.(Generator)
-		if !exists || !executable || !worker.Enabled || worker.Status != StatusOnline || len(worker.Capabilities) == 0 || len(worker.JobFields) == 0 {
+		if !exists || !executable || !worker.Enabled || worker.Status != StatusOnline || len(worker.Capabilities) == 0 {
 			continue
 		}
 		result = append(result, AgentCapability{
@@ -107,6 +109,11 @@ func (s *Service) Save(input SaveInput) (*Worker, error) {
 		if field.Required && !field.Secret && strings.TrimSpace(input.Settings[field.Key]) == "" {
 			return nil, errors.New(field.Label + "不能留白")
 		}
+		if value := strings.TrimSpace(input.Settings[field.Key]); field.Kind == "url" && value != "" {
+			if _, err := endpoint(value); err != nil {
+				return nil, fmt.Errorf("%s：%w", field.Label, err)
+			}
+		}
 	}
 	workers, err := s.store.load()
 	if err != nil {
@@ -133,6 +140,12 @@ func (s *Service) Save(input SaveInput) (*Worker, error) {
 	for _, key := range input.ClearSecrets {
 		delete(secrets, key)
 	}
+	// 必填 secret 要看合併後結果：留白代表沿用已存值，只有勾選清除且沒填新值才算缺。
+	for _, field := range adapter.Descriptor().Fields {
+		if field.Required && field.Secret && secrets[field.Key] == "" {
+			return nil, errors.New(field.Label + "不能留白")
+		}
+	}
 	if err := s.vault.save(input.ID, secrets); err != nil {
 		return nil, err
 	}
@@ -140,7 +153,7 @@ func (s *Service) Save(input SaveInput) (*Worker, error) {
 	if index >= 0 {
 		previous := workers[index]
 		if previous.AdapterID == item.AdapterID && mapsEqual(previous.Settings, item.Settings) && len(input.Secrets) == 0 && len(input.ClearSecrets) == 0 {
-			item.Status, item.StatusMessage, item.Capabilities, item.JobFields, item.LastCheckedAt = previous.Status, previous.StatusMessage, previous.Capabilities, previous.JobFields, previous.LastCheckedAt
+			item.Status, item.StatusMessage, item.Capabilities, item.LastCheckedAt = previous.Status, previous.StatusMessage, previous.Capabilities, previous.LastCheckedAt
 		}
 		workers[index] = item
 	} else {
@@ -179,19 +192,20 @@ func (s *Service) Test(ctx context.Context, id string) (*Worker, error) {
 	}
 	discovery, discoverErr := adapter.Discover(ctx, item.Settings, secrets)
 	if discoverErr == nil {
-		if _, executable := adapter.(Generator); executable {
-			if len(discovery.JobFields) == 0 {
+		// 連線測試時順便驗證 adapter 自帶的 schema，避免壞 schema 讓 Agent 看得到卻跑不動。
+		if generator, executable := adapter.(Generator); executable {
+			if fields := generator.JobFields(item.Settings); len(fields) == 0 {
 				discoverErr = errors.New("Worker 沒有提供可執行的 Job schema")
 			} else {
-				discoverErr = validateJobSchema(discovery.JobFields)
+				discoverErr = validateJobSchema(fields)
 			}
 		}
 	}
 	item.LastCheckedAt = time.Now().UTC()
 	if discoverErr != nil {
-		item.Status, item.StatusMessage, item.Capabilities, item.JobFields = StatusError, discoverErr.Error(), []string{}, nil
+		item.Status, item.StatusMessage, item.Capabilities = StatusError, discoverErr.Error(), []string{}
 	} else {
-		item.Status, item.StatusMessage, item.Capabilities, item.JobFields = StatusOnline, discovery.Message, discovery.Capabilities, discovery.JobFields
+		item.Status, item.StatusMessage, item.Capabilities = StatusOnline, discovery.Message, discovery.Capabilities
 	}
 	workers[index] = item
 	if err := s.store.save(workers); err != nil {
@@ -208,33 +222,33 @@ func (s *Service) Test(ctx context.Context, id string) (*Worker, error) {
 func (s *Service) JobSpec(id string) (*JobSpec, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	worker, _, err := s.executableWorker(id)
+	worker, generator, err := s.executableWorker(id)
 	if err != nil {
 		return nil, err
 	}
-	return &JobSpec{WorkerID: worker.ID, WorkerName: worker.Name, Fields: cloneJobFields(worker.JobFields)}, nil
+	return &JobSpec{WorkerID: worker.ID, WorkerName: worker.Name, Fields: generator.JobFields(worker.Settings)}, nil
 }
 
 // ValidateJob 套用 Worker schema 的預設值並拒絕未知或不合法欄位。
 func (s *Service) ValidateJob(id string, input map[string]any) (map[string]any, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	worker, _, err := s.executableWorker(id)
+	worker, generator, err := s.executableWorker(id)
 	if err != nil {
 		return nil, err
 	}
-	return validateJobInput(worker.JobFields, input)
+	return validateJobInput(generator.JobFields(worker.Settings), input)
 }
 
 // Execute 驗證 job 後才把設定、密鑰與輸入交給 adapter；Agent 不會進入這條路徑。
 func (s *Service) Execute(ctx context.Context, id string, input map[string]any) (GenerateResult, error) {
 	s.mu.Lock()
-	worker, adapter, err := s.executableWorker(id)
+	worker, generator, err := s.executableWorker(id)
 	if err != nil {
 		s.mu.Unlock()
 		return GenerateResult{}, err
 	}
-	validated, err := validateJobInput(worker.JobFields, input)
+	validated, err := validateJobInput(generator.JobFields(worker.Settings), input)
 	if err != nil {
 		s.mu.Unlock()
 		return GenerateResult{}, err
@@ -248,7 +262,7 @@ func (s *Service) Execute(ctx context.Context, id string, input map[string]any) 
 	if err != nil {
 		return GenerateResult{}, err
 	}
-	result, err := adapter.(Generator).Generate(ctx, cloneMap(worker.Settings), secrets, validated, root)
+	result, err := generator.Generate(ctx, cloneMap(worker.Settings), secrets, validated, root)
 	if err != nil {
 		_ = os.RemoveAll(root)
 		return GenerateResult{}, err
@@ -258,7 +272,7 @@ func (s *Service) Execute(ctx context.Context, id string, input map[string]any) 
 	return result, nil
 }
 
-func (s *Service) executableWorker(id string) (storedWorker, Adapter, error) {
+func (s *Service) executableWorker(id string) (storedWorker, Generator, error) {
 	workers, err := s.store.load()
 	if err != nil {
 		return storedWorker{}, nil, err
@@ -272,10 +286,11 @@ func (s *Service) executableWorker(id string) (storedWorker, Adapter, error) {
 	if !exists {
 		return storedWorker{}, nil, errors.New("這個 Worker 的 adapter 已不存在")
 	}
-	if _, ok := adapter.(Generator); !ok || !worker.Enabled || worker.Status != StatusOnline || len(worker.JobFields) == 0 {
+	generator, ok := adapter.(Generator)
+	if !ok || !worker.Enabled || worker.Status != StatusOnline {
 		return storedWorker{}, nil, errors.New("這個 Worker 尚未啟用、連線或提供可執行的 Job schema")
 	}
-	return worker, adapter, nil
+	return worker, generator, nil
 }
 
 // Delete 同時移除非敏感設定與 OS Keychain 中的密鑰。

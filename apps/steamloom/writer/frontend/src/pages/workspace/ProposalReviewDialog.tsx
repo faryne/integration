@@ -19,7 +19,7 @@ import { StorytellerVersionCompareDialog, type StorytellerVersionCompareEntry } 
 import { stripMarkerForDiffContent } from "@steamloom-web/pages/storyteller/wysiwygCore/parser.ts";
 import { useSnack } from "@writer/components/SnackProvider.tsx";
 import { backend, errorMessage, type AgentProposal, type AgentProposalItem, type Document, type WorkerJobSpec } from "@writer/lib/backend.ts";
-import { initialMediaJobInputs, MediaJobForm } from "@writer/pages/workspace/MediaJobForm.tsx";
+import { canRetryMedia, initialMediaJobInputs, MediaJobForm } from "@writer/pages/workspace/MediaJobForm.tsx";
 import { ProposalArtifactGallery } from "@writer/pages/workspace/ProposalArtifactGallery.tsx";
 
 export function ProposalReviewDialog({
@@ -96,6 +96,7 @@ export function ProposalReviewDialog({
   const versions = useMemo(() => buildVersions(proposal, item, document, t), [document, item, proposal, t]);
   const type = proposalType(item);
   const mediaBrief = type === "media.brief";
+  const mediaRetry = Boolean(proposal && canRetryMedia(proposal));
   const mediaProposal = mediaBrief || type === "asset.upload" || type.startsWith("image_story.");
   if (proposal && item && !mediaProposal && item.target_id && document && versions) {
     const currentVersion = document.latest_version_id?.toString() ?? "";
@@ -136,7 +137,7 @@ export function ProposalReviewDialog({
             <Alert severity="info">{t("workspace.chat.proposal.mediaBriefNotice", { worker: jobSpec.worker_name })}</Alert>
             {item.summary && <Metadata label={t("workspace.chat.proposal.summary")} value={item.summary} />}
             {item.brief?.notes && <Metadata label={t("workspace.chat.proposal.mediaNotes")} value={item.brief.notes} />}
-            <MediaJobForm spec={jobSpec} values={jobInputs} disabled={proposal?.status !== "awaiting_confirmation"} onChange={setJobInputs} />
+            <MediaJobForm spec={jobSpec} values={jobInputs} disabled={proposal?.status !== "awaiting_confirmation" && !mediaRetry} onChange={setJobInputs} />
           </Stack>
         )}
         {!loading && !loadError && item && artifactsRequired && proposal && (
@@ -175,7 +176,14 @@ export function ProposalReviewDialog({
           </Stack>
         )}
       </DialogContent>
-      <DialogActions><ProposalActions proposal={proposal} selectedCount={selectedCount} deciding={deciding} stale={stale} selectionMissing={itemSelected && artifactsRequired && selectedArtifactIDs.length === 0} approveLabel={mediaBrief ? t("workspace.chat.proposal.generate") : undefined} onClose={onClose} onDecision={(decision) => decision === "approve" && mediaBrief ? onMediaDecision(jobInputs) : onDecision(decision)} /></DialogActions>
+      <DialogActions>{mediaRetry ? (
+        <>
+          <Button disabled={deciding} onClick={onClose}>{t("workspace.chat.proposal.close")}</Button>
+          <Button variant="contained" disabled={deciding || !jobSpec} onClick={() => onMediaDecision(jobInputs)}>
+            {deciding ? <CircularProgress size={16} color="inherit" /> : t("workspace.chat.proposal.regenerate")}
+          </Button>
+        </>
+      ) : <ProposalActions proposal={proposal} selectedCount={selectedCount} deciding={deciding} stale={stale} selectionMissing={itemSelected && artifactsRequired && selectedArtifactIDs.length === 0} approveLabel={mediaBrief ? t("workspace.chat.proposal.generate") : undefined} onClose={onClose} onDecision={(decision) => decision === "approve" && mediaBrief ? onMediaDecision(jobInputs) : onDecision(decision)} />}</DialogActions>
     </Dialog>
   );
 }

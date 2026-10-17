@@ -11,8 +11,11 @@ type Adapter interface {
 	Discover(context.Context, map[string]string, map[string]string) (Discovery, error)
 }
 
-// Generator 由可真正執行 Media Job 的 adapter 實作；只有 discovery 同時提供 JobFields 才會暴露給 Agent。
+// Generator 由可真正執行 Media Job 的 adapter 實作。
+// JobFields 每次都由 adapter 程式碼即時產生（只依非敏感設定），不存進 workers.json；
+// adapter 改版後表單立刻跟著新 schema，不必重新連線測試。
 type Generator interface {
+	JobFields(settings map[string]string) []JobField
 	Generate(context.Context, map[string]string, map[string]string, map[string]any, string) (GenerateResult, error)
 }
 

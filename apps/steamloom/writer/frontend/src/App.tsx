@@ -13,7 +13,7 @@ import { WebApiProvider } from "@writer/lib/webApi.tsx";
 import { LoadErrorPage } from "@writer/pages/LoadErrorPage.tsx";
 import { LoginPage } from "@writer/pages/LoginPage.tsx";
 import { ProjectsPage } from "@writer/pages/ProjectsPage.tsx";
-import { WorkerSettingsPage } from "@writer/pages/settings/WorkerSettingsPage.tsx";
+import { defaultSettingsSection, SettingsPage, type SettingsSection } from "@writer/pages/settings/SettingsPage.tsx";
 import { WorkspacePage } from "@writer/pages/workspace/WorkspacePage.tsx";
 
 // 外觀先固定 nocturne（網站預設的深色），之後要切換再接網站的 appearance 設定
@@ -41,7 +41,8 @@ function Shell() {
   const [openProject, setOpenProject] = useState<Project | null>(null);
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // 設定頁目前的分類；null＝沒開。入口在作業系統選單列的「設定…」。
+  const [settings, setSettings] = useState<SettingsSection | null>(null);
   const [appVersion, setAppVersion] = useState("dev");
 
   // 啟動時與授權完成後共用：只有 not_logged_in 才回登入頁，其他錯誤（離線、站台錯誤）給重試
@@ -77,14 +78,19 @@ function Shell() {
 
   useEffect(() => {
     backend.AppVersion().then(setAppVersion).catch((err) => showError(errorMessage(err)));
-    return EventsOn("app:show-about", () => setAboutOpen(true));
+    const offAbout = EventsOn("app:show-about", () => setAboutOpen(true));
+    const offSettings = EventsOn("app:show-settings", () => setSettings((current) => current ?? defaultSettingsSection));
+    return () => {
+      offAbout();
+      offSettings();
+    };
   }, [showError]);
 
   // 呼叫 API 時發現授權失效（過期或在網站上被撤銷）
   const handleSessionExpired = useCallback(() => {
     setProfile(null);
     setOpenProject(null);
-    setSettingsOpen(false);
+    setSettings(null);
     showError(t("auth.sessionExpired"));
   }, [showError, t]);
 
@@ -95,7 +101,7 @@ function Shell() {
       .finally(() => {
         setProfile(null);
         setOpenProject(null);
-        setSettingsOpen(false);
+        setSettings(null);
       });
 
   const installUpdate = () =>
@@ -107,7 +113,7 @@ function Shell() {
   return (
     <SessionExpiredContext.Provider value={handleSessionExpired}>
       <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-        <AppHeader profile={typeof profile === "object" ? profile : null} onSettings={() => setSettingsOpen(true)} onLogout={logout} />
+        <AppHeader profile={typeof profile === "object" ? profile : null} onLogout={logout} />
         {profile === undefined ? (
           <Box sx={{ flex: 1, display: "grid", placeItems: "center" }}>
             <CircularProgress size={24} />
@@ -118,8 +124,8 @@ function Shell() {
           <LoadErrorPage onRetry={loadProfile} onLogout={logout} />
         ) : (
           <WebApiProvider onExpired={handleSessionExpired}>
-            {settingsOpen ? (
-              <WorkerSettingsPage rootLabel={openProject?.name ?? t("projects.title")} onBack={() => setSettingsOpen(false)} />
+            {settings ? (
+              <SettingsPage rootLabel={openProject?.name ?? t("projects.title")} section={settings} onSection={setSettings} onBack={() => setSettings(null)} />
             ) : openProject ? (
               <WorkspacePage key={openProject.public_id} project={openProject} profile={profile} onBack={() => setOpenProject(null)} />
             ) : (

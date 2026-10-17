@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { AgentTask, Workspace } from "@writer/lib/backend.ts";
 import { agentActivityLabel } from "@writer/pages/workspace/agentActivity.ts";
 
-// 同一 thread 只會有一個 running task，其餘維持 queued；不同 thread 不共用這個狀態。
+// 同一 thread 的對話只會有一個 running task，其餘維持 queued；背景媒體生成（task.background）各自顯示一列。
 export function ActiveTaskStatus({ task, workspace, queued, canceling, onCancel }: { task: AgentTask; workspace: Workspace; queued: number; canceling: boolean; onCancel: () => void }) {
   const { t } = useTranslation();
   return (
@@ -25,7 +25,7 @@ export function ActiveTaskStatus({ task, workspace, queued, canceling, onCancel 
         <Typography sx={{ fontSize: 12.5 }}>
           {task.activity
             ? t("workspace.chat.taskTool", { tool: agentActivityLabel(task.activity, task.activity_target, workspace, t) })
-            : task.state === "queued" ? t("workspace.chat.taskQueued") : task.state === "applying" ? t("workspace.chat.taskApplying") : t("workspace.chat.taskRunning")}
+            : task.state === "queued" ? t("workspace.chat.taskQueued") : task.state === "applying" ? t(task.background ? "workspace.chat.taskGenerating" : "workspace.chat.taskApplying") : t("workspace.chat.taskRunning")}
           {/* 超過 TaskTimeouts.Slow 仍在執行時提示；不改變狀態，作者仍可自行停止 */}
           {task.slow && <Box component="span" sx={{ color: "warning.main" }}>{` · ${t("workspace.chat.states.slow")}`}</Box>}
           {queued > 0 ? ` · ${t("workspace.chat.taskQueuedCount", { count: queued })}` : ""}

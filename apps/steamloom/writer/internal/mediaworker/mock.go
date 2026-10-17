@@ -33,11 +33,10 @@ func (mockAdapter) Discover(_ context.Context, settings, _ map[string]string) (D
 	return Discovery{
 		Capabilities: []string{"text_to_image", "image_to_image", "reference_image", "batch_candidates"},
 		Message:      "Mock Worker 連線測試成功；不會送出任何外部請求",
-		JobFields:    mockJobFields(),
 	}, nil
 }
 
-func mockJobFields() []JobField {
+func (mockAdapter) JobFields(map[string]string) []JobField {
 	return []JobField{
 		{Key: "prompt", Label: "Prompt", Kind: "textarea", Required: true},
 		{Key: "negative_prompt", Label: "Negative prompt", Kind: "textarea"},

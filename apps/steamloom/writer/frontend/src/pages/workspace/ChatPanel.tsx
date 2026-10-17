@@ -56,10 +56,13 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
   const selected = agents?.some((agent) => agent.id === agentID) ? agentID : (agents?.[0]?.id ?? "");
   const chat = useChatLog(projectID, selected);
   const currentThreadID = viewMode === "thread" ? (chat.page?.current_id ?? "") : "";
-  const activeTasks = useMemo(
+  const threadTasks = useMemo(
     () => Object.values(tasks).filter((task) => task.agent_id === selected && task.thread_id === currentThreadID && (task.state === "queued" || task.state === "running" || task.state === "applying")),
     [currentThreadID, selected, tasks],
   );
+  // 媒體 Worker 生成走背景佇列，和對話 task 並行；狀態列分開顯示，不算進對話的排隊數。
+  const activeTasks = threadTasks.filter((task) => !task.background);
+  const backgroundTasks = threadTasks.filter((task) => task.background);
   const activeTask = activeTasks.find((task) => task.state === "applying" || task.state === "running") ?? activeTasks[0];
   const currentTitle = chat.page?.threads.find((thread) => thread.id === currentThreadID)?.title || t("workspace.chat.newThread");
   const agentLocked = viewMode === "thread" || starting || Boolean(pendingThread);
@@ -226,11 +229,11 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
     });
   };
 
-  const cancelTask = async () => {
-    if (!activeTask || canceling) return;
-    setCanceling(activeTask.id);
+  const cancelTask = async (taskID: string) => {
+    if (canceling) return;
+    setCanceling(taskID);
     try {
-      await backend.CancelTask(activeTask.id);
+      await backend.CancelTask(taskID);
     } catch (err) {
       showError(errorMessage(err));
     } finally {
@@ -354,7 +357,8 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
               onViewRawOutput={setRawOutputEventID}
             />
           )}
-          {activeTask && <ActiveTaskStatus task={activeTask} workspace={workspace} queued={Math.max(0, activeTasks.length - 1)} canceling={canceling === activeTask.id} onCancel={() => void cancelTask()} />}
+          {backgroundTasks.map((task) => <ActiveTaskStatus key={task.id} task={task} workspace={workspace} queued={0} canceling={canceling === task.id} onCancel={() => void cancelTask(task.id)} />)}
+          {activeTask && <ActiveTaskStatus task={activeTask} workspace={workspace} queued={Math.max(0, activeTasks.length - 1)} canceling={canceling === activeTask.id} onCancel={() => void cancelTask(activeTask.id)} />}
         </Stack>
         </Box>
         <Box sx={{ px: 2.5, pt: 1.25, pb: 2.25 }}>

@@ -1,13 +1,12 @@
 import { SteamLoomMark } from "@steamloom-web/components/storyteller/SteamLoomMark.tsx";
 import LogoutIcon from "@mui/icons-material/Logout";
-import SettingsIcon from "@mui/icons-material/Settings";
 import { Avatar, Box, ButtonBase, ListItemIcon, Menu, MenuItem, Stack, Typography } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Profile } from "@writer/lib/backend.ts";
 
-// 頂部列：左邊品牌標誌，右邊登入後的作者帳號與裝置層級設定入口。
-export function AppHeader({ profile, onSettings, onLogout }: { profile: Profile | null; onSettings: () => void; onLogout: () => void }) {
+// 頂部列：左邊品牌標誌，右邊登入後的作者帳號。應用程式設定的入口在作業系統選單列（menu.go），不放在這裡。
+export function AppHeader({ profile, onLogout }: { profile: Profile | null; onLogout: () => void }) {
   const { t } = useTranslation();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   return (
@@ -36,17 +35,6 @@ export function AppHeader({ profile, onSettings, onLogout }: { profile: Profile 
             <Avatar src={profile.avatar_url || undefined} sx={{ width: 28, height: 28 }} />
           </ButtonBase>
           <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
-            <MenuItem
-              onClick={() => {
-                setAnchor(null);
-                onSettings();
-              }}
-            >
-              <ListItemIcon>
-                <SettingsIcon fontSize="small" />
-              </ListItemIcon>
-              {t("app.account.settings")}
-            </MenuItem>
             <MenuItem
               onClick={() => {
                 setAnchor(null);

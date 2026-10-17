@@ -1,15 +1,34 @@
 import { FormControlLabel, MenuItem, Stack, Switch, TextField, Typography } from "@mui/material";
-import type { AgentProposalItem, WorkerJobSpec } from "@writer/lib/backend.ts";
+import type { AgentProposal, AgentProposalItem, WorkerJobSpec } from "@writer/lib/backend.ts";
+
+// canRetryMedia：生成失敗的媒體需求可以調整參數重跑；ProposalCard 與 ReviewDialog 共用同一判斷。
+export const canRetryMedia = (proposal: AgentProposal) => proposal.status === "apply_failed" && proposal.items.length === 1 && proposal.items[0].proposal_type === "media.brief";
+
+type JobField = WorkerJobSpec["fields"][number];
+
+// fitJobValue 把 Agent brief 的值轉成欄位接受的型別；不合 schema（例如 select 沒有這個選項）就回 undefined 改用預設值，
+// 避免表單顯示空白、送出才被後端以「必須是文字／不是可用選項」擋下。
+function fitJobValue(field: JobField, value: unknown): unknown {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (field.kind === "select") return field.options?.some((option) => option.value === String(value)) ? String(value) : undefined;
+  if (field.kind === "number") {
+    const number = Number(value);
+    return Number.isFinite(number) && (field.min == null || number >= field.min) && (field.max == null || number <= field.max) ? number : undefined;
+  }
+  return field.kind === "boolean" ? (typeof value === "boolean" ? value : undefined) : String(value);
+}
 
 export function initialMediaJobInputs(spec: WorkerJobSpec, item: AgentProposalItem): Record<string, unknown> {
-	const brief: Record<string, unknown> = {
-		prompt: item.brief?.prompt,
-		negative_prompt: item.brief?.negative_prompt,
-		aspect_ratio: item.brief?.aspect_ratio,
-		candidate_count: item.brief?.candidate_count,
-	};
+  const brief: Record<string, unknown> = {
+    prompt: item.brief?.prompt,
+    negative_prompt: item.brief?.negative_prompt,
+    aspect_ratio: item.brief?.aspect_ratio,
+    candidate_count: item.brief?.candidate_count,
+    // 重跑時優先沿用作者上一次送出的參數，而不是退回 Agent 原始 brief。
+    ...item.job_inputs,
+  };
   return Object.fromEntries(spec.fields.flatMap((field) => {
-    const value = brief?.[field.key] ?? field.default;
+    const value = fitJobValue(field, brief[field.key]) ?? field.default;
     return value === undefined ? [] : [[field.key, value]];
   }));
 }
@@ -44,7 +63,8 @@ export function MediaJobForm({ spec, values, disabled, onChange }: {
           type={field.kind === "number" ? "number" : "text"}
           helperText={field.description}
           slotProps={field.kind === "number" ? { htmlInput: { min: field.min, max: field.max, step: field.step } } : undefined}
-          onChange={(event) => update(field.key, field.kind === "number" ? Number(event.target.value) : event.target.value)}
+          // 數字欄清空時送 undefined 而不是 Number("") 的 0，讓後端套用預設值（例如 seed 留空＝隨機）。
+          onChange={(event) => update(field.key, field.kind !== "number" ? event.target.value : event.target.value === "" ? undefined : Number(event.target.value))}
         >
           {field.kind === "select" && field.options?.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
         </TextField>
