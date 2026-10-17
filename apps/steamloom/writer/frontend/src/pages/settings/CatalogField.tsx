@@ -3,19 +3,9 @@ import { Box, Button, CircularProgress, IconButton, Paper, Stack, TextField, Too
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { backend, errorMessage, type CatalogItem, type WorkerAdapter } from "@writer/lib/backend.ts";
+import { parseCatalogValue } from "@writer/pages/settings/workerValidation.ts";
 
 type SettingField = WorkerAdapter["fields"][number];
-
-// parseCatalogValue 讀取 settings 裡的清單 JSON；空字串或格式錯誤都當空清單（後端 Save 會再驗證）。
-export function parseCatalogValue(value: string | undefined): CatalogItem[] {
-  if (!value?.trim()) return [];
-  try {
-    const items = JSON.parse(value);
-    return Array.isArray(items) ? items : [];
-  } catch {
-    return [];
-  }
-}
 
 // CatalogField 是「常用清單」設定欄位（kind === "catalog"）：貼網址交給後端 adapter 解析成一項（ID＋預設名稱），
 // 名稱可直接改；field.item_weight 時每項另有 0～1 權重。整份清單以 JSON 字串存回 settings。

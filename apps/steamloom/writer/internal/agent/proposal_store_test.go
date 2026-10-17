@@ -261,7 +261,7 @@ func TestApproveProposalPersistsUserDecisionAndClearsPendingState(t *testing.T) 
 		t.Fatal(err)
 	}
 	decision := chat.Messages[len(chat.Messages)-1]
-	if decision.Type != EventProposalApproved || decision.Role != "user" || !strings.Contains(decision.Text, "你已同意套用 1 項變更：設定〈許芷瑄〉") {
+	if decision.Type != EventProposalApproved || decision.Role != "system" || decision.Text != "已核准套用：設定〈許芷瑄〉" {
 		t.Fatalf("approval was not persisted as a user decision: %#v", decision)
 	}
 	threads, err := ProjectThreads("project")
@@ -320,5 +320,21 @@ func TestSaveProposalKeepsReviewedFieldsSeparateFromOperationAudit(t *testing.T)
 	}
 	if proposal.Items[0].Title != "作者看到的標題" || proposal.Items[0].Content != "作者看到的正文" {
 		t.Fatalf("reviewed fields were not preserved independently: %#v", proposal.Items[0])
+	}
+}
+
+// 舊紀錄的「你已…」決策文字在讀取時轉成狀態句，並改以 system 置中顯示。
+func TestNormalizeEventTurnsLegacyDecisionIntoStatus(t *testing.T) {
+	cases := map[string]string{
+		"你已同意執行 1 項變更：媒體生成〈許芷瑄 立繪〉":    "已核准執行：媒體生成〈許芷瑄 立繪〉",
+		"你已同意套用 2 項變更：故事〈A〉、設定〈B〉":     "已核准套用 2 項：故事〈A〉、設定〈B〉",
+		"你已否決 1 項變更：圖片〈C〉":             "已否決：圖片〈C〉",
+		"你已確認內容成功套用；Writer 沒有再次送出寫入請求": "已確認內容成功套用；Writer 沒有再次送出寫入請求",
+	}
+	for legacy, want := range cases {
+		line, ok := normalizeEvent(ChatLine{Type: EventProposalApproved, Role: "user", Text: legacy})
+		if !ok || line.Role != "system" || line.Text != want {
+			t.Fatalf("normalize %q = %#v, want %q", legacy, line, want)
+		}
 	}
 }
