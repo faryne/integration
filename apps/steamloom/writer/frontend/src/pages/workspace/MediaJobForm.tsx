@@ -1,4 +1,4 @@
-import { FormControlLabel, MenuItem, Stack, Switch, TextField, Typography } from "@mui/material";
+import { Box, Chip, FormControlLabel, MenuItem, Stack, Switch, TextField, Typography } from "@mui/material";
 import type { AgentProposal, AgentProposalItem, WorkerJobSpec } from "@writer/lib/backend.ts";
 
 // canRetryMedia：生成失敗的媒體需求可以調整參數重跑；ProposalCard 與 ReviewDialog 共用同一判斷。
@@ -11,6 +11,11 @@ type JobField = WorkerJobSpec["fields"][number];
 function fitJobValue(field: JobField, value: unknown): unknown {
   if (value === undefined || value === null || value === "") return undefined;
   if (field.kind === "select") return field.options?.some((option) => option.value === String(value)) ? String(value) : undefined;
+  if (field.kind === "multiselect") {
+    // 只保留仍在選項裡的值（例如常用 LoRA 被移除後重跑），並截到 Max 上限
+    const picked = (Array.isArray(value) ? value : []).map(String).filter((item) => field.options?.some((option) => option.value === item));
+    return picked.length ? picked.slice(0, field.max ?? picked.length) : undefined;
+  }
   if (field.kind === "number") {
     const number = Number(value);
     return Number.isFinite(number) && (field.min == null || number >= field.min) && (field.max == null || number <= field.max) ? number : undefined;
@@ -46,7 +51,9 @@ export function MediaJobForm({ spec, values, disabled, onChange }: {
   return (
     <Stack spacing={2}>
       <Typography fontWeight={700}>{spec.worker_name}</Typography>
-      {spec.fields.map((field) => field.kind === "boolean" ? (
+      {spec.fields.map((field) => field.kind === "multiselect" ? (
+        <MultiSelectChips key={field.key} field={field} value={Array.isArray(values[field.key]) ? (values[field.key] as string[]) : []} disabled={disabled} onChange={(next) => update(field.key, next.length ? next : undefined)} />
+      ) : field.kind === "boolean" ? (
         <FormControlLabel
           key={field.key}
           control={<Switch checked={Boolean(values[field.key])} disabled={disabled} onChange={(event) => update(field.key, event.target.checked)} />}
@@ -72,5 +79,32 @@ export function MediaJobForm({ spec, values, disabled, onChange }: {
         </TextField>
       ))}
     </Stack>
+  );
+}
+
+// MultiSelectChips 以可點選的 Chip 呈現多選欄位；達到 field.max 時未選的項目停用。
+function MultiSelectChips({ field, value, disabled, onChange }: { field: JobField; value: string[]; disabled: boolean; onChange: (value: string[]) => void }) {
+  const full = field.max != null && value.length >= field.max;
+  const toggle = (option: string) => onChange(value.includes(option) ? value.filter((item) => item !== option) : [...value, option]);
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary">{field.label}{field.max != null ? ` (${value.length}/${field.max})` : ""}</Typography>
+      <Stack direction="row" flexWrap="wrap" gap={0.75} sx={{ mt: 0.5 }}>
+        {field.options?.map((option) => {
+          const selected = value.includes(option.value);
+          return (
+            <Chip
+              key={option.value}
+              label={option.label}
+              color={selected ? "primary" : "default"}
+              variant={selected ? "filled" : "outlined"}
+              disabled={disabled || (full && !selected)}
+              onClick={() => toggle(option.value)}
+            />
+          );
+        })}
+      </Stack>
+      {field.description && <Typography variant="caption" color="text.secondary">{field.description}</Typography>}
+    </Box>
   );
 }

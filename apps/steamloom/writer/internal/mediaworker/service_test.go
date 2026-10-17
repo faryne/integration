@@ -184,3 +184,40 @@ func TestSaveRequiresSecretAndValidURL(t *testing.T) {
 		t.Fatal("invalid endpoint should fail")
 	}
 }
+
+// 常用清單 Save 驗證：名稱必填、ID 不可重複、權重 0～1。
+func TestSaveValidatesCatalogSettings(t *testing.T) {
+	registry, err := NewRegistry(NewPixAIAdapter(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewService(registry, filepath.Join(t.TempDir(), "workers.json"), &memoryVault{values: map[string]map[string]string{}})
+	save := func(loras string) error {
+		_, err := service.Save(SaveInput{AdapterID: "pixai", Name: "PixAI", Secrets: map[string]string{"api_key": "k"}, Settings: map[string]string{pixaiFavoriteLoRA: loras}})
+		return err
+	}
+	if err := save(`[{"id":"1","name":"A","weight":0.5}]`); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []string{`[{"id":"1","name":"","weight":1}]`, `[{"id":"1","name":"A","weight":1},{"id":"1","name":"B","weight":1}]`, `[{"id":"1","name":"A","weight":1.5}]`, `not json`} {
+		if err := save(bad); err == nil {
+			t.Fatalf("catalog %s should fail", bad)
+		}
+	}
+}
+
+// 多選欄位：只接受選項、不可重複、不超過 Max。
+func TestMultiselectJobField(t *testing.T) {
+	fields := []JobField{{Key: "loras", Label: "LoRA", Kind: "multiselect", Max: number(2), Options: []JobOption{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}, {Value: "c", Label: "C"}}}}
+	if got, err := validateJobInput(fields, map[string]any{"loras": []any{"a", "b"}}); err != nil || len(got["loras"].([]string)) != 2 {
+		t.Fatalf("valid selection = %#v, %v", got, err)
+	}
+	if got, err := validateJobInput(fields, map[string]any{"loras": []any{}}); err != nil || got["loras"] != nil {
+		t.Fatalf("empty selection should be omitted: %#v, %v", got, err)
+	}
+	for _, bad := range [][]any{{"a", "b", "c"}, {"a", "a"}, {"z"}} {
+		if _, err := validateJobInput(fields, map[string]any{"loras": bad}); err == nil {
+			t.Fatalf("selection %v should fail", bad)
+		}
+	}
+}

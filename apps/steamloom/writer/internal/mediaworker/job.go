@@ -8,7 +8,8 @@ import (
 	"strings"
 )
 
-var supportedJobFieldKinds = map[string]bool{"text": true, "textarea": true, "select": true, "number": true, "boolean": true}
+// multiselect 的值是 []string，Max 代表最多可選幾項（例如 PixAI LoRA 上限 5）。
+var supportedJobFieldKinds = map[string]bool{"text": true, "textarea": true, "select": true, "multiselect": true, "number": true, "boolean": true}
 
 func validateJobSchema(fields []JobField) error {
 	seen := make(map[string]bool, len(fields))
@@ -17,7 +18,7 @@ func validateJobSchema(fields []JobField) error {
 			return errors.New("Worker 提供的 Job schema 不正確")
 		}
 		seen[field.Key] = true
-		if field.Kind == "select" && len(field.Options) == 0 {
+		if (field.Kind == "select" || field.Kind == "multiselect") && len(field.Options) == 0 {
 			return fmt.Errorf("%s 沒有可用選項", field.Label)
 		}
 		if field.Default != nil {
@@ -38,7 +39,7 @@ func validateJobInput(fields []JobField, input map[string]any) (map[string]any, 
 	for _, field := range fields {
 		known[field.Key] = true
 		value, exists := input[field.Key]
-		if !exists || value == nil || (field.Kind != "boolean" && strings.TrimSpace(fmt.Sprint(value)) == "") {
+		if !exists || value == nil || emptyJobValue(field, value) {
 			value, exists = field.Default, field.Default != nil
 		}
 		if !exists {
@@ -85,6 +86,8 @@ func normalizeJobValue(field JobField, value any) (any, error) {
 			return nil, errors.New("超出允許範圍")
 		}
 		return number, nil
+	case "multiselect":
+		return multiselectValue(field, value)
 	case "boolean":
 		boolean, ok := value.(bool)
 		if !ok {
@@ -122,4 +125,49 @@ func numberValue(value any) (float64, error) {
 	default:
 		return 0, errors.New("必須是數字")
 	}
+}
+
+// emptyJobValue 判斷作者沒填：布林永遠算有填；多選是空陣列；其他是空字串。
+func emptyJobValue(field JobField, value any) bool {
+	switch field.Kind {
+	case "boolean":
+		return false
+	case "multiselect":
+		// []any{} 與 []string{} 印出來都是 "[]"
+		return fmt.Sprint(value) == "[]"
+	default:
+		return strings.TrimSpace(fmt.Sprint(value)) == ""
+	}
+}
+
+// multiselectValue 接受前端傳來的 []any 或 Go 端的 []string，逐項檢查是否為可用選項、不重複、不超過 Max。
+func multiselectValue(field JobField, value any) ([]string, error) {
+	var raw []any
+	switch value := value.(type) {
+	case []any:
+		raw = value
+	case []string:
+		for _, item := range value {
+			raw = append(raw, item)
+		}
+	default:
+		return nil, errors.New("必須是選項清單")
+	}
+	result := make([]string, 0, len(raw))
+	seen := make(map[string]bool, len(raw))
+	for _, item := range raw {
+		text, ok := item.(string)
+		if !ok || !optionExists(field.Options, text) || seen[text] {
+			return nil, errors.New("包含不可用或重複的選項")
+		}
+		seen[text] = true
+		result = append(result, text)
+	}
+	if field.Max != nil && float64(len(result)) > *field.Max {
+		return nil, fmt.Errorf("最多只能選 %d 項", int(*field.Max))
+	}
+	if field.Required && len(result) == 0 {
+		return nil, errors.New("至少要選一項")
+	}
+	return result, nil
 }

@@ -41,13 +41,14 @@ var pixaiImageTypes = map[string]string{"image/png": ".png", "image/jpeg": ".jpg
 type pixaiAdapter struct {
 	client       *http.Client
 	baseURL      string
+	webURL       string
 	pollInterval time.Duration
 }
 
 // NewPixAIAdapter 串接 PixAI REST API（v2 建立工作、v1 輪詢 task）；API key 只存在 OS Keychain。
 func NewPixAIAdapter(client *http.Client) Adapter {
 	// PixAI 文件要求輪詢間隔不得短於 1.5 秒。
-	return pixaiAdapter{client: client, baseURL: pixaiBaseURL, pollInterval: 2 * time.Second}
+	return pixaiAdapter{client: client, baseURL: pixaiBaseURL, webURL: pixaiWebURL, pollInterval: 2 * time.Second}
 }
 
 func (pixaiAdapter) Descriptor() AdapterDescriptor {
@@ -55,13 +56,15 @@ func (pixaiAdapter) Descriptor() AdapterDescriptor {
 		ID: "pixai", Name: "PixAI", Description: "使用 PixAI API 生成動漫風格插圖（會消耗 PixAI 額度）", MediaTypes: []string{"image"},
 		Fields: []SettingField{
 			{Key: "api_key", Label: "API Key", Kind: "password", Required: true, Secret: true},
-			{Key: "model_version_id", Label: "自訂模型 Version ID", Kind: "text", Placeholder: "選填；pixai.art/model/<id>/<versionId> 的最後一段"},
+			// 常用清單：貼 pixai.art 模型網址加入，由 ResolveCatalogItem 解析版本與名稱（pixai_catalog.go）。
+			{Key: pixaiFavoriteModel, Label: "常用模型", Kind: "catalog", Placeholder: "貼上 PixAI 模型網址"},
+			{Key: pixaiFavoriteLoRA, Label: "常用 LoRA", Kind: "catalog", Placeholder: "貼上 PixAI LoRA 網址", ItemWeight: true},
 		},
 	}
 }
 
 // Discover 以查詢不存在的 task 驗證 API key：有效 key 回 404、無效 key 回 401，不會送出生成工作或扣額度。
-func (a pixaiAdapter) Discover(ctx context.Context, _, secrets map[string]string) (Discovery, error) {
+func (a pixaiAdapter) Discover(ctx context.Context, settings, secrets map[string]string) (Discovery, error) {
 	key := strings.TrimSpace(secrets["api_key"])
 	if key == "" {
 		return Discovery{}, errors.New("請先填入 PixAI API Key")
@@ -78,27 +81,42 @@ func (a pixaiAdapter) Discover(ctx context.Context, _, secrets map[string]string
 	default:
 		return Discovery{}, pixaiError(status, body)
 	}
-	return Discovery{Capabilities: []string{"text_to_image", "batch_candidates"}, Message: "PixAI API Key 驗證成功"}, nil
+	capabilities := []string{"text_to_image", "batch_candidates"}
+	if len(pixaiFavorites(settings, pixaiFavoriteLoRA)) > 0 {
+		capabilities = append(capabilities, "lora")
+	}
+	return Discovery{Capabilities: capabilities, Message: "PixAI API Key 驗證成功"}, nil
 }
 
-// JobFields 的模型選單會把設定中的自訂 modelVersionId 補在最前面並設為預設。
+// JobFields 的模型選單是「常用模型＋官方推薦」（去重，第一個為預設）；有常用 LoRA 才出現 LoRA 多選。
 func (pixaiAdapter) JobFields(settings map[string]string) []JobField {
-	models := append([]JobOption{}, pixaiModels...)
-	defaultModel := pixaiDefaultModel
-	if custom := strings.TrimSpace(settings["model_version_id"]); custom != "" {
-		defaultModel = custom
-		if !optionExists(models, custom) {
-			models = append([]JobOption{{Value: custom, Label: "自訂模型 " + custom}}, models...)
+	models := []JobOption{}
+	for _, item := range pixaiFavorites(settings, pixaiFavoriteModel) {
+		models = append(models, JobOption{Value: item.ID, Label: item.Name})
+	}
+	for _, option := range pixaiModels {
+		if !optionExists(models, option.Value) {
+			models = append(models, option)
 		}
+	}
+	loras := []JobOption{}
+	for _, item := range pixaiFavorites(settings, pixaiFavoriteLoRA) {
+		loras = append(loras, JobOption{Value: item.ID, Label: fmt.Sprintf("%s · %g", item.Name, item.Weight)})
 	}
 	ratios := []JobOption{}
 	for _, ratio := range []string{"1:1", "2:3", "3:2", "3:4", "4:3", "3:5", "5:3", "9:16", "16:9", "1:3", "3:1"} {
 		ratios = append(ratios, JobOption{Value: ratio, Label: ratio})
 	}
-	return []JobField{
+	fields := []JobField{
 		{Key: "prompt", Label: "Prompt", Kind: "textarea", Required: true},
 		{Key: "negative_prompt", Label: "Negative prompt", Kind: "textarea"},
-		{Key: "model_version_id", Label: "模型", Kind: "select", Required: true, Default: defaultModel, Options: models},
+		{Key: "model_version_id", Label: "模型", Kind: "select", Required: true, Default: models[0].Value, Options: models},
+	}
+	if len(loras) > 0 {
+		// PixAI 一次最多 5 個 LoRA；權重沿用常用清單的設定。
+		fields = append(fields, JobField{Key: "loras", Label: "LoRA", Kind: "multiselect", Max: number(5), Options: loras})
+	}
+	return append(fields, []JobField{
 		{Key: "aspect_ratio", Label: "長寬比", Kind: "select", Default: "1:1", Options: ratios},
 		{Key: "size", Label: "解析度", Kind: "select", Default: "1k", Options: []JobOption{{Value: "1k", Label: "1k（約 1MP）"}, {Value: "1.5k", Label: "1.5k（最長邊 1536px）"}}},
 		// 空字串 option 讓作者能退回「不指定」；validateJobInput 會把空值視為未填。
@@ -107,7 +125,7 @@ func (pixaiAdapter) JobFields(settings map[string]string) []JobField {
 		{Key: "candidate_count", Label: "候選張數", Kind: "select", Default: "1", Options: []JobOption{{Value: "1", Label: "1"}, {Value: "4", Label: "4"}}},
 		{Key: "seed", Label: "Seed", Kind: "number", Description: "留空代表隨機", Min: number(0), Max: number(2147483647), Step: number(1)},
 		{Key: "prompt_helper", Label: "PixAI Prompt 自動強化", Kind: "boolean", Default: true},
-	}
+	}...)
 }
 
 type pixaiTask struct {
@@ -121,7 +139,7 @@ type pixaiTask struct {
 }
 
 // Generate 建立 PixAI task、輪詢到結束後立即下載；PixAI 產物不會永久保存，所以不能只留 URL。
-func (a pixaiAdapter) Generate(ctx context.Context, _ map[string]string, secrets map[string]string, inputs map[string]any, root string) (GenerateResult, error) {
+func (a pixaiAdapter) Generate(ctx context.Context, settings, secrets map[string]string, inputs map[string]any, root string) (GenerateResult, error) {
 	key := strings.TrimSpace(secrets["api_key"])
 	if key == "" {
 		return GenerateResult{}, errors.New("PixAI API Key 已不存在，請到設定頁重新填寫")
@@ -141,6 +159,17 @@ func (a pixaiAdapter) Generate(ctx context.Context, _ map[string]string, secrets
 	}
 	if helper, ok := inputs["prompt_helper"].(bool); ok && !helper {
 		request["promptHelper"] = "disable"
+	}
+	if selected, ok := inputs["loras"].([]string); ok && len(selected) > 0 {
+		weights := map[string]float64{}
+		for _, item := range pixaiFavorites(settings, pixaiFavoriteLoRA) {
+			weights[item.ID] = item.Weight
+		}
+		loras := make([]map[string]any, 0, len(selected))
+		for _, id := range selected {
+			loras = append(loras, map[string]any{"modelId": id, "weight": weights[id]})
+		}
+		request["loras"] = loras
 	}
 	task, err := a.task(ctx, http.MethodPost, "/v2/image/create", key, request, http.StatusCreated)
 	if err != nil {

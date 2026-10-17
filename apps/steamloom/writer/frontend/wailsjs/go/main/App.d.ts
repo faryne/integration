@@ -3,9 +3,9 @@
 import {agent} from '../models';
 import {api} from '../models';
 import {updater} from '../models';
+import {mediaworker} from '../models';
 import {skillupdate} from '../models';
 import {main} from '../models';
-import {mediaworker} from '../models';
 
 export function Agents():Promise<Array<agent.Installed>>;
 
@@ -41,9 +41,9 @@ export function CheckForUpdate():Promise<updater.Info>;
 
 export function CodexModels():Promise<Array<agent.CodexModel>>;
 
-export function ConfirmProposalApplied(arg1:string,arg2:string,arg3:string,arg4:string):Promise<agent.Proposal>;
-
 export function CompatibleMediaWorkers(arg1:string):Promise<Array<mediaworker.WorkerOption>>;
+
+export function ConfirmProposalApplied(arg1:string,arg2:string,arg3:string,arg4:string):Promise<agent.Proposal>;
 
 export function Create(arg1:string,arg2:api.CreateRequest):Promise<api.Created>;
 
@@ -98,6 +98,8 @@ export function ProposalAssetPreview(arg1:string,arg2:string,arg3:string,arg4:st
 export function ProposalInvalidOutput(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
 
 export function Reorder(arg1:string,arg2:string,arg3:Array<string>):Promise<void>;
+
+export function ResolveWorkerCatalogItem(arg1:string,arg2:string,arg3:string):Promise<mediaworker.CatalogItem>;
 
 export function SaveDocument(arg1:string,arg2:string,arg3:string,arg4:api.SaveInput):Promise<api.SaveResult>;
 

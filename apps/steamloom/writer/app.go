@@ -146,6 +146,11 @@ func (a *App) DeleteWorker(id string) error { return a.workers.Delete(id) }
 // WorkerJobSpec 提供動態 job 表單；只包含 discovery schema，不含連線設定與密鑰。
 func (a *App) WorkerJobSpec(id string) (*mediaworker.JobSpec, error) { return a.workers.JobSpec(id) }
 
+// ResolveWorkerCatalogItem 讓 Worker 設定頁把貼上的網址解析成常用清單的一項（例如 PixAI 模型／LoRA）。
+func (a *App) ResolveWorkerCatalogItem(adapterID, fieldKey, rawURL string) (*mediaworker.CatalogItem, error) {
+	return a.workers.ResolveCatalogItem(a.ctx, adapterID, fieldKey, rawURL)
+}
+
 // CompatibleMediaWorkers 列出與 Agent 推薦項目相容的可用 Worker，最終由作者選擇。
 func (a *App) CompatibleMediaWorkers(recommendedID string) ([]mediaworker.WorkerOption, error) {
 	return a.workers.CompatibleWorkers(recommendedID)

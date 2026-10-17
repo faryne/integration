@@ -47,6 +47,9 @@ export namespace agent {
 	    references?: PromptReference[];
 	    model?: string;
 	    reasoning_effort?: string;
+	    worker_id?: string;
+	    provider_job_ids?: string[];
+	    provider_models?: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new ChatLine(source);
@@ -70,6 +73,9 @@ export namespace agent {
 	        this.references = this.convertValues(source["references"], PromptReference);
 	        this.model = source["model"];
 	        this.reasoning_effort = source["reasoning_effort"];
+	        this.worker_id = source["worker_id"];
+	        this.provider_job_ids = source["provider_job_ids"];
+	        this.provider_models = source["provider_models"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -1296,23 +1302,6 @@ export namespace main {
 }
 
 export namespace mediaworker {
-
-	export class WorkerOption {
-	    worker_id: string;
-	    name: string;
-	    recommended: boolean;
-
-	    static createFrom(source: any = {}) {
-	        return new WorkerOption(source);
-	    }
-
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.worker_id = source["worker_id"];
-	        this.name = source["name"];
-	        this.recommended = source["recommended"];
-	    }
-	}
 	
 	export class SettingField {
 	    key: string;
@@ -1322,6 +1311,7 @@ export namespace mediaworker {
 	    secret: boolean;
 	    placeholder?: string;
 	    default?: string;
+	    item_weight?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new SettingField(source);
@@ -1336,6 +1326,7 @@ export namespace mediaworker {
 	        this.secret = source["secret"];
 	        this.placeholder = source["placeholder"];
 	        this.default = source["default"];
+	        this.item_weight = source["item_weight"];
 	    }
 	}
 	export class AdapterDescriptor {
@@ -1375,6 +1366,22 @@ export namespace mediaworker {
 		    }
 		    return a;
 		}
+	}
+	export class CatalogItem {
+	    id: string;
+	    name: string;
+	    weight: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CatalogItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.weight = source["weight"];
+	    }
 	}
 	export class JobOption {
 	    value: string;
@@ -1528,6 +1535,22 @@ export namespace mediaworker {
 	        this.last_checked_at = source["last_checked_at"];
 	    }
 	}
+	export class WorkerOption {
+	    worker_id: string;
+	    name: string;
+	    recommended: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new WorkerOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.worker_id = source["worker_id"];
+	        this.name = source["name"];
+	        this.recommended = source["recommended"];
+	    }
+	}
 
 }
 
@@ -1568,3 +1591,4 @@ export namespace updater {
 	}
 
 }
+
