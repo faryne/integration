@@ -18,6 +18,8 @@ type SettingField struct {
 	Secret      bool   `json:"secret"`
 	Placeholder string `json:"placeholder,omitempty"`
 	Default     string `json:"default,omitempty"`
+	// ItemWeight 只用於 Kind "catalog"：清單每一項另外帶 0～1 的權重（例如 LoRA）。
+	ItemWeight bool `json:"item_weight,omitempty"`
 }
 
 // AdapterDescriptor 是 Registry 對 UI 公開的 adapter 能力與設定 schema。

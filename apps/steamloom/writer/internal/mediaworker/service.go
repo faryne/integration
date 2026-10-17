@@ -174,6 +174,11 @@ func (s *Service) Save(input SaveInput) (*Worker, error) {
 				return nil, fmt.Errorf("%s：%w", field.Label, err)
 			}
 		}
+		if field.Kind == "catalog" {
+			if err := validateCatalog(field, input.Settings[field.Key]); err != nil {
+				return nil, err
+			}
+		}
 	}
 	workers, err := s.store.load()
 	if err != nil {

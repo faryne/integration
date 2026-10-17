@@ -33,6 +33,7 @@ export type MediaWorker = mediaworker.Worker;
 export type WorkerSaveInput = mediaworker.SaveInput;
 export type WorkerJobSpec = mediaworker.JobSpec;
 export type MediaWorkerOption = mediaworker.WorkerOption;
+export type CatalogItem = mediaworker.CatalogItem;
 // 對應 internal/api 的 UncategorizedAssets：資產列表「未分類」的篩選值
 export const UNCATEGORIZED_ASSETS = "__uncategorized__";
 // 對應 internal/api 的 DocumentKind

@@ -70,12 +70,12 @@ export function CodexModels() {
   return window['go']['main']['App']['CodexModels']();
 }
 
-export function ConfirmProposalApplied(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['ConfirmProposalApplied'](arg1, arg2, arg3, arg4);
-}
-
 export function CompatibleMediaWorkers(arg1) {
   return window['go']['main']['App']['CompatibleMediaWorkers'](arg1);
+}
+
+export function ConfirmProposalApplied(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['ConfirmProposalApplied'](arg1, arg2, arg3, arg4);
 }
 
 export function Create(arg1, arg2) {
@@ -184,6 +184,10 @@ export function ProposalInvalidOutput(arg1, arg2, arg3, arg4) {
 
 export function Reorder(arg1, arg2, arg3) {
   return window['go']['main']['App']['Reorder'](arg1, arg2, arg3);
+}
+
+export function ResolveWorkerCatalogItem(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ResolveWorkerCatalogItem'](arg1, arg2, arg3);
 }
 
 export function SaveDocument(arg1, arg2, arg3, arg4) {

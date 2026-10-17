@@ -1,4 +1,5 @@
 import type { MediaWorker, WorkerAdapter, WorkerSaveInput } from "@writer/lib/backend.ts";
+import { parseCatalogValue } from "@writer/pages/settings/CatalogField.tsx";
 
 // workerInputErrors 依 adapter 宣告的欄位 schema 驗證設定表單，回傳「欄位 key → i18n 錯誤 key」。
 // 名稱用保留 key "name"；secret 欄位在已存密鑰且沒勾選清除時視為已填（留白代表保留原值）。
@@ -9,7 +10,11 @@ export function workerInputErrors(adapter: WorkerAdapter, input: WorkerSaveInput
   for (const field of adapter.fields) {
     const value = (field.secret ? input.secrets[field.key] : input.settings[field.key])?.trim() ?? "";
     const stored = field.secret && Boolean(worker?.has_secrets[field.key]) && !input.clear_secrets.includes(field.key);
-    if (field.required && !value && !stored) errors[field.key] = "settings.workers.required";
+    if (field.kind === "catalog") {
+      // 常用清單：每項名稱必填；有權重的欄位權重要在 0～1
+      const invalid = parseCatalogValue(input.settings[field.key]).some((item) => !item.name?.trim() || (field.item_weight && !(item.weight >= 0 && item.weight <= 1)));
+      if (invalid) errors[field.key] = "settings.workers.catalogInvalid";
+    } else if (field.required && !value && !stored) errors[field.key] = "settings.workers.required";
     else if (field.kind === "url" && value && !validHTTPURL(value)) errors[field.key] = "settings.workers.invalidUrl";
   }
   return errors;

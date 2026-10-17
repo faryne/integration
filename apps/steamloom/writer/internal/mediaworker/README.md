@@ -10,6 +10,12 @@
 4. Writer 依 `JobFields` render 表單並驗證作者輸入，作者確認後才呼叫 `Generate()`。
 5. `Generate()` 只能把產物寫入 Writer 傳入的 `outputDir`，回傳的 `LocalPath` 必須位於該目錄。Writer 會把結果 staging 成 `asset.upload` proposal，再讓作者選擇要上傳的成果。
 
+## 常用清單與多選欄位
+
+- 設定欄位 `Kind: "catalog"`：作者貼網址加入的常用清單，以 JSON（`[{id,name,weight}]`）存在 settings；`ItemWeight` 時每項帶 0～1 權重。adapter 實作 `CatalogResolver` 把網址解析成一項，Save 時框架會驗證名稱必填、ID 不重複、權重範圍。
+- Job 欄位 `Kind: "multiselect"`：值是 `[]string`，`Max` 為最多可選幾項。
+- PixAI（`pixai_catalog.go`）從公開模型頁的 React Router turbo-stream 資料讀取標題、類型與最新可用版本；這是 PixAI 網站內部格式，讀不到時網址有版本仍可加入（預設名稱），沒有版本才擋下。
+
 目前 `asset.upload` 只接受 JPEG、PNG、WebP、GIF；音訊與影片要先擴充 SteamLoom asset contract，不能只在 adapter 宣告 media type。
 
 `mockAdapter` 是最小可執行參考：它不呼叫外部服務，會產生 deterministic PNG，供完整 lifecycle 驗證。

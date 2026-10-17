@@ -7,6 +7,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { MediaWorker, WorkerAdapter, WorkerSaveInput } from "@writer/lib/backend.ts";
+import { CatalogField } from "@writer/pages/settings/CatalogField.tsx";
 import { workerInputErrors } from "@writer/pages/settings/workerValidation.ts";
 
 const blankInput = (adapter: WorkerAdapter, worker?: MediaWorker): WorkerSaveInput => ({
@@ -62,7 +63,7 @@ export function WorkerDetail({ adapter, worker, busy, onSave, onTest, onDelete }
         <TextField label={t("settings.workers.name")} value={input.name} required error={Boolean(fieldError("name"))} helperText={fieldError("name")} onBlur={() => touch("name")} onChange={(event) => setInput({ ...input, name: event.target.value })} />
         <TextField label={t("settings.workers.adapter")} value={adapter.name} disabled />
         <Typography fontWeight={600} sx={{ pt: 1 }}>{t("settings.workers.connection")}</Typography>
-        {adapter.fields.map((field) => (
+        {adapter.fields.filter((field) => field.kind !== "catalog").map((field) => (
           <Box key={field.key}>
             <TextField
               fullWidth
@@ -85,6 +86,23 @@ export function WorkerDetail({ adapter, worker, busy, onSave, onTest, onDelete }
             )}
           </Box>
         ))}
+
+        {/* 常用清單（例如 PixAI 模型／LoRA）獨立一區，放在連線設定之後 */}
+        {adapter.fields.some((field) => field.kind === "catalog") && (
+          <>
+            <Typography fontWeight={600} sx={{ pt: 1 }}>{t("settings.workers.favorites")}</Typography>
+            {adapter.fields.filter((field) => field.kind === "catalog").map((field) => (
+              <CatalogField
+                key={field.key}
+                adapterID={adapter.id}
+                field={field}
+                value={input.settings[field.key]}
+                error={errors[field.key] ? t(errors[field.key]) : undefined}
+                onChange={(value) => updateSetting(field.key, value, false)}
+              />
+            ))}
+          </>
+        )}
 
         <Box>
           <Typography fontWeight={600} sx={{ mb: 1 }}>{t("settings.workers.capabilities")}</Typography>
