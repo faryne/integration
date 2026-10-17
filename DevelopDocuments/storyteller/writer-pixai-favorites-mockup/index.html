@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PixAI 常用清單 Mockup</title>
+<style>
+  :root { color-scheme: dark; font-family: Inter, "Noto Sans TC", system-ui, sans-serif; --bg:#080c14; --surface:#0e1420; --surface-2:#151c28; --line:#2c384d; --line-soft:#202a3b; --text:#e7edf7; --muted:#8f9bb0; --blue:#79a9ff; --red:#ff7373; --green:#61d49a; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-width:1080px; background:var(--bg); color:var(--text); font-size:14px; }
+  button, input, select { font:inherit; color:inherit; }
+  .topbar { height:52px; display:flex; align-items:center; padding:0 20px; border-bottom:1px solid var(--line-soft); background:#0b1019; gap:8px; }
+  .topbar .spacer { flex:1; }
+  .switch-view { display:flex; gap:6px; }
+  .switch-view button { padding:5px 12px; border:1px solid var(--line); border-radius:6px; background:transparent; cursor:pointer; }
+  .switch-view button.active { background:#26334a; border-color:#3b4d6b; }
+  .crumbs { height:38px; display:flex; align-items:center; gap:8px; padding:0 22px; border-bottom:1px solid var(--line-soft); color:var(--muted); font-size:12px; }
+  .crumbs strong { color:var(--blue); font-weight:500; }
+  .shell { height:calc(100vh - 90px); display:grid; grid-template-columns:220px 280px minmax(0,1fr); }
+  .nav { padding:8px; border-right:1px solid var(--line); }
+  .nav div { padding:8px 12px; border-radius:6px; background:#26334a; }
+  .list { border-right:1px solid var(--line); }
+  .list header { display:flex; justify-content:space-between; padding:12px 16px; font-weight:600; }
+  .list header span { color:var(--blue); font-weight:500; font-size:13px; }
+  .list .row { padding:10px 16px; border-top:1px solid var(--line-soft); background:#1a2333; display:flex; justify-content:space-between; }
+  .chip { font-size:11px; padding:1px 8px; border:1px solid var(--green); color:var(--green); border-radius:10px; }
+  .detail { overflow:auto; padding:24px; max-width:860px; }
+  h2 { margin:0; font-size:19px; font-weight:600; }
+  .muted { color:var(--muted); font-size:13px; }
+  h3 { margin:26px 0 10px; font-size:15px; }
+  .field { border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin-bottom:12px; background:var(--surface); }
+  .field label { display:block; font-size:11px; color:var(--muted); }
+  .block { border:1px solid var(--line); border-radius:8px; background:var(--surface); margin-bottom:16px; }
+  .block-head { padding:12px 14px; border-bottom:1px solid var(--line-soft); font-weight:600; display:flex; justify-content:space-between; align-items:center; }
+  .block-head small { color:var(--muted); font-weight:400; }
+  .adder { display:flex; gap:8px; padding:12px 14px; }
+  .adder input { flex:1; padding:8px 10px; border:1px solid var(--line); border-radius:6px; background:var(--bg); }
+  .adder input.error { border-color:var(--red); }
+  .adder button, .primary { padding:8px 14px; border:0; border-radius:6px; background:#3b5998; cursor:pointer; white-space:nowrap; }
+  .adder button:disabled { opacity:.5; cursor:default; }
+  .err { color:var(--red); font-size:12px; padding:0 14px 10px; }
+  .item { display:grid; grid-template-columns:minmax(0,1fr) 150px 110px 32px; gap:10px; align-items:center; padding:8px 14px; border-top:1px solid var(--line-soft); }
+  .item.model { grid-template-columns:minmax(0,1fr) 150px 32px; }
+  .item input { width:100%; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); }
+  .item .id { color:var(--muted); font-size:12px; font-family:ui-monospace, monospace; overflow:hidden; text-overflow:ellipsis; }
+  .item .del { border:0; background:none; color:var(--red); cursor:pointer; font-size:16px; }
+  .item.loading input { color:var(--muted); font-style:italic; }
+  .empty { padding:10px 14px 14px; color:var(--muted); font-size:13px; }
+  .actions { display:flex; gap:10px; margin-top:20px; }
+  .note { margin-top:28px; padding:14px; border:1px dashed var(--line); border-radius:8px; color:var(--muted); font-size:12.5px; line-height:1.7; }
+  .note b { color:var(--text); }
+  /* 生圖表單 */
+  .dialog { margin:32px auto; width:620px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); }
+  .dialog header { padding:16px 20px; border-bottom:1px solid var(--line); font-weight:600; }
+  .dialog .body { padding:18px 20px; display:grid; gap:14px; }
+  .dialog footer { padding:12px 20px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:10px; }
+  .select { border:1px solid var(--line); border-radius:6px; padding:8px 10px; background:var(--surface); }
+  .select label { display:block; font-size:11px; color:var(--muted); margin-bottom:4px; }
+  .select select { width:100%; background:transparent; border:0; }
+  .multi { display:flex; flex-wrap:wrap; gap:6px; }
+  .multi button { padding:4px 10px; border:1px solid var(--line); border-radius:14px; background:transparent; cursor:pointer; font-size:13px; }
+  .multi button.on { background:#26334a; border-color:var(--blue); color:#dfe9ff; }
+  .multi button:disabled { opacity:.4; cursor:default; }
+  .ghost { padding:8px 14px; border:0; background:none; cursor:pointer; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <strong>SteamLoom</strong><span class="muted">Writer · mockup</span>
+  <div class="spacer"></div>
+  <div class="switch-view">
+    <button data-view="settings" class="active">① Worker 設定頁</button>
+    <button data-view="job">② 生圖表單</button>
+  </div>
+</div>
+
+<section id="view-settings">
+  <div class="crumbs">我的專案 / 應用程式設定 / <strong>媒體 Worker</strong></div>
+  <div class="shell">
+    <div class="nav"><div>▣ 媒體 Worker</div></div>
+    <div class="list">
+      <header>媒體 Worker <span>＋ 新增 Worker</span></header>
+      <div class="row">PixAI <span class="chip">連線正常</span></div>
+    </div>
+    <div class="detail">
+      <h2>PixAI</h2>
+      <div class="muted">使用 PixAI API 生成動漫風格插圖（會消耗 PixAI 額度）</div>
+      <h3>連線設定</h3>
+      <div class="field"><label>API Key *</label><span class="muted">已安全儲存；留白即保留原值</span></div>
+
+      <h3>常用清單</h3>
+      <div class="block" id="models">
+        <div class="block-head">常用模型 <small>生圖表單的「模型」選單會列出這些</small></div>
+        <div class="adder"><input placeholder="貼上 PixAI 模型網址"><button disabled>加入</button></div>
+        <div class="err" hidden></div>
+        <div class="items"></div>
+      </div>
+      <div class="block" id="loras">
+        <div class="block-head">常用 LoRA <small>生圖時最多可選 5 個</small></div>
+        <div class="adder"><input placeholder="貼上 PixAI LoRA 網址"><button disabled>加入</button></div>
+        <div class="err" hidden></div>
+        <div class="items"></div>
+      </div>
+
+      <div class="actions"><button class="primary">儲存設定</button><button class="ghost">測試連線</button></div>
+
+      <div class="note">
+        <b>Mockup 說明（實作時不會出現這段）</b><br>
+        ・貼上網址後按「加入」（或 Enter）：解析 <code>pixai.art/model/&lt;modelId&gt;/&lt;versionId&gt;</code>，存 versionId。<br>
+        ・<b>名稱</b>：加入時 Writer 背景讀取 PixAI 公開模型頁的標題自動填入（例如「Haruka v2」），讀不到就先填「模型 ＋ ID 末 6 碼」；名稱一律可以直接改。<br>
+        ・網址沒有版本段、格式不對、或已在清單中，會在輸入框下方顯示錯誤，不加入。<br>
+        ・LoRA 的權重（0～1，預設 1）在這裡設定，生圖時直接套用。<br>
+        ・清單隨「儲存設定」一起存；原本的「自訂模型 Version ID」欄位由常用模型取代。<br>
+        ・試試貼：<code>https://pixai.art/model/1861558737426484240/1861558740588989558</code>、<code>https://pixai.art/model/123</code>（缺版本）。
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="view-job" hidden>
+  <div class="dialog">
+    <header>媒體生成需求：角色設定圖</header>
+    <div class="body">
+      <div class="field"><label>Prompt *</label>1girl, silver hair, maid outfit, standing, garden</div>
+      <div class="select"><label>模型 *</label>
+        <select id="job-model"></select>
+      </div>
+      <div class="select"><label>LoRA（最多 5 個，權重依常用清單設定）</label>
+        <div class="multi" id="job-loras"></div>
+      </div>
+      <div class="select"><label>長寬比</label><select><option>1:1</option><option>2:3</option><option>9:16</option></select></div>
+      <div class="muted">（其餘欄位：解析度、Tsubaki 模式、候選張數、Seed、Prompt 自動強化，與現在相同）</div>
+    </div>
+    <footer><button class="ghost">稍後</button><button class="ghost" style="color:var(--red)">否決</button><button class="primary">確認並開始生成</button></footer>
+  </div>
+</section>
+
+<script>
+// mockup 用的假資料與互動；名稱讀取以延遲模擬。
+const state = {
+  models: [{ id: "1861558740588989558", name: "Haruka v2" }],
+  loras: [{ id: "1744880666293972790", name: "Maid Outfit Style", weight: 0.7 }],
+};
+const fakeNames = { "1861558740588989558": "Haruka v2", "1954632828118619567": "Hoshino v2", "1983308862240288769": "Tsubaki.2" };
+const official = [["1983308862240288769", "Tsubaki.2"], ["1861558740588989558", "Haruka v2"], ["1954632828118619567", "Hoshino v2"]];
+
+function render(kind) {
+  const block = document.getElementById(kind);
+  const list = state[kind];
+  const items = block.querySelector(".items");
+  items.innerHTML = list.length ? "" : `<div class="empty">${kind === "models" ? "還沒有常用模型" : "還沒有常用 LoRA"}</div>`;
+  list.forEach((entry, index) => {
+    const row = document.createElement("div");
+    row.className = "item" + (kind === "models" ? " model" : "") + (entry.loading ? " loading" : "");
+    row.innerHTML = `<input value="${entry.loading ? "讀取名稱中…" : entry.name}" ${entry.loading ? "disabled" : ""}>
+      <span class="id" title="${entry.id}">${entry.id}</span>
+      ${kind === "loras" ? `<input type="number" min="0" max="1" step="0.05" value="${entry.weight}" title="權重">` : ""}
+      <button class="del" title="移除">✕</button>`;
+    row.querySelector("input").oninput = (e) => { entry.name = e.target.value; renderJob(); };
+    row.querySelector(".del").onclick = () => { list.splice(index, 1); render(kind); renderJob(); };
+    items.appendChild(row);
+  });
+}
+
+function setupAdder(kind) {
+  const block = document.getElementById(kind);
+  const input = block.querySelector(".adder input");
+  const button = block.querySelector(".adder button");
+  const err = block.querySelector(".err");
+  const showErr = (msg) => { err.textContent = msg; err.hidden = !msg; input.classList.toggle("error", !!msg); };
+  input.oninput = () => { button.disabled = !input.value.trim(); showErr(""); };
+  const add = () => {
+    const match = input.value.trim().match(/pixai\.art\/(?:[a-z-]+\/)?model\/(\d+)(?:\/(\d+))?/i);
+    if (!match) return showErr("請貼上 pixai.art 的模型網址");
+    if (!match[2]) return showErr("網址缺少版本：請在 PixAI 模型頁點選要用的版本後再複製網址");
+    if (state[kind].some((e) => e.id === match[2])) return showErr("這個版本已經在清單中");
+    const entry = { id: match[2], name: "", weight: 1, loading: true };
+    state[kind].push(entry);
+    input.value = ""; button.disabled = true;
+    render(kind);
+    setTimeout(() => { entry.loading = false; entry.name = fakeNames[match[2]] || `${kind === "models" ? "模型" : "LoRA"} ${match[2].slice(-6)}`; render(kind); renderJob(); }, 700);
+  };
+  button.onclick = add;
+  input.onkeydown = (e) => { if (e.key === "Enter" && input.value.trim()) add(); };
+}
+
+function renderJob() {
+  const select = document.getElementById("job-model");
+  const seen = new Set();
+  const options = [...state.models.map((m) => [m.id, `${m.name}（常用）`]), ...official].filter(([id]) => !seen.has(id) && seen.add(id));
+  select.innerHTML = options.map(([id, name]) => `<option value="${id}">${name}</option>`).join("");
+  const box = document.getElementById("job-loras");
+  const picked = new Set([...box.querySelectorAll(".on")].map((b) => b.dataset.id));
+  box.innerHTML = state.loras.length ? "" : `<span class="muted">尚未設定常用 LoRA</span>`;
+  state.loras.forEach((l) => {
+    const b = document.createElement("button");
+    b.dataset.id = l.id; b.textContent = `${l.name} · ${l.weight}`;
+    if (picked.has(l.id)) b.classList.add("on");
+    b.onclick = () => { b.classList.toggle("on"); limit(); };
+    box.appendChild(b);
+  });
+  limit();
+}
+function limit() {
+  const box = document.getElementById("job-loras");
+  const count = box.querySelectorAll(".on").length;
+  box.querySelectorAll("button").forEach((b) => { b.disabled = count >= 5 && !b.classList.contains("on"); });
+}
+
+document.querySelectorAll(".switch-view button").forEach((b) => b.onclick = () => {
+  document.querySelectorAll(".switch-view button").forEach((x) => x.classList.toggle("active", x === b));
+  document.getElementById("view-settings").hidden = b.dataset.view !== "settings";
+  document.getElementById("view-job").hidden = b.dataset.view !== "job";
+});
+["models", "loras"].forEach((kind) => { render(kind); setupAdder(kind); });
+renderJob();
+</script>
+</body>
+</html>
