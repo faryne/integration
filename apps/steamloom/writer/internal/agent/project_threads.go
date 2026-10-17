@@ -53,16 +53,21 @@ func threadTaskState(path string, thread Thread) (string, string, error) {
 	}
 	states := map[string]string{}
 	order := []string{}
+	positions := map[string]int{}
+	latestDurablePosition := -1
 	lastState, lastID := thread.LastTaskState, thread.ActiveTaskID
 	for _, event := range events {
 		if event.TaskID == "" {
 			continue
 		}
+		position, exists := positions[event.TaskID]
+		if !exists {
+			position = len(order)
+			positions[event.TaskID] = position
+			order = append(order, event.TaskID)
+		}
 		switch event.Type {
 		case EventTaskQueued:
-			if _, exists := states[event.TaskID]; !exists {
-				order = append(order, event.TaskID)
-			}
 			states[event.TaskID] = TaskQueued
 		case EventTaskStarted:
 			states[event.TaskID] = TaskRunning
@@ -79,9 +84,6 @@ func threadTaskState(path string, thread Thread) (string, string, error) {
 		case EventProposalRejected:
 			states[event.TaskID], lastState, lastID = TaskRejected, TaskRejected, event.TaskID
 		case EventApplyQueued:
-			if _, exists := states[event.TaskID]; !exists {
-				order = append(order, event.TaskID)
-			}
 			states[event.TaskID], lastState, lastID = TaskQueued, TaskQueued, event.TaskID
 		case EventApplyStarted:
 			states[event.TaskID], lastState, lastID = TaskApplying, TaskApplying, event.TaskID
@@ -96,14 +98,19 @@ func threadTaskState(path string, thread Thread) (string, string, error) {
 		case EventApplyVerified:
 			states[event.TaskID], lastState, lastID = TaskApplied, TaskApplied, event.TaskID
 		}
+		switch states[event.TaskID] {
+		case TaskCompleted, TaskFailed, TaskCanceled, TaskAwaitingConfirmation, TaskApproved, TaskRejected, TaskApplied, TaskConflict, TaskVerificationRequired:
+			latestDurablePosition = max(latestDurablePosition, position)
+		}
 	}
+	// 較新 task 已留下可持久化結果後，舊版缺少 terminal event 的孤兒 task 不得永久蓋掉 rail 狀態。
 	for _, id := range order {
-		if states[id] == TaskRunning {
+		if positions[id] > latestDurablePosition && states[id] == TaskRunning {
 			return TaskRunning, id, nil
 		}
 	}
 	for _, id := range order {
-		if states[id] == TaskQueued {
+		if positions[id] > latestDurablePosition && states[id] == TaskQueued {
 			return TaskQueued, id, nil
 		}
 	}
