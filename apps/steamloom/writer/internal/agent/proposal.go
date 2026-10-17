@@ -401,8 +401,21 @@ func canonicalArguments(input map[string]any) (map[string]any, error) {
 }
 
 func setProposalHashes(proposal *Proposal) error {
+	return setProposalHashesWithLegacyArtifacts(proposal, false)
+}
+
+// setProposalHashesWithLegacyArtifacts 的 legacy 模式只用於驗證 0.3.9-alpha 已落盤的提案。
+// 當時空 artifacts 在計算 hash 時是 []，但因 omitempty 未寫入檔案，重讀後會變成 nil。
+func setProposalHashesWithLegacyArtifacts(proposal *Proposal, legacy bool) error {
 	for index := range proposal.Items {
 		item := &proposal.Items[index]
+		artifacts := item.Artifacts
+		if len(artifacts) == 0 {
+			artifacts = nil
+			if legacy {
+				artifacts = []ProposalArtifact{}
+			}
+		}
 		fingerprint := struct {
 			ProposalType, Kind, TargetID, BaseVersionID, Title, Summary, ContentType, Content, MarkerID, AfterMarkerID string
 			Base                                                                                                       *ProposalSnapshot
@@ -414,7 +427,7 @@ func setProposalHashes(proposal *Proposal) error {
 			WorkerID, RecommendedWorkerID string         `json:",omitempty"`
 			Brief                         *MediaBrief    `json:",omitempty"`
 			JobInputs                     map[string]any `json:",omitempty"`
-		}{item.ProposalType, item.Kind, item.TargetID, item.BaseVersionID, item.Title, item.Summary, item.ContentType, item.Content, item.MarkerID, item.AfterMarkerID, item.Base, item.Operations, item.FileName, item.MIMEType, item.FileSHA256, item.AltText, item.CollectionID, item.Artifacts, item.Edits, item.WorkerID, item.RecommendedWorkerID, item.Brief, item.JobInputs}
+		}{item.ProposalType, item.Kind, item.TargetID, item.BaseVersionID, item.Title, item.Summary, item.ContentType, item.Content, item.MarkerID, item.AfterMarkerID, item.Base, item.Operations, item.FileName, item.MIMEType, item.FileSHA256, item.AltText, item.CollectionID, artifacts, item.Edits, item.WorkerID, item.RecommendedWorkerID, item.Brief, item.JobInputs}
 		hash, err := hashJSON(fingerprint)
 		if err != nil {
 			return err
@@ -442,15 +455,34 @@ func verifyProposalHashes(proposal Proposal) error {
 	if err := setProposalHashes(&proposal); err != nil {
 		return err
 	}
+	if proposalHashesMatch(proposal, wantBatch, wantItems) {
+		return nil
+	}
+
+	// 只接受空 slice 與 nil 這個語意相同的舊格式差異；內容或其他欄位有變仍會拒絕。
+	if err := setProposalHashesWithLegacyArtifacts(&proposal, true); err != nil {
+		return err
+	}
+	if proposalHashesMatch(proposal, wantBatch, wantItems) {
+		return nil
+	}
 	if proposal.ContentHash != wantBatch {
 		return errors.New("提案內容已在確認前被修改")
 	}
+	return errors.New("提案項目已在確認前被修改")
+}
+
+// proposalHashesMatch 同時比對批次與每一項 hash，避免只靠批次結果放過遭修改的項目。
+func proposalHashesMatch(proposal Proposal, wantBatch string, wantItems []string) bool {
+	if proposal.ContentHash != wantBatch || len(proposal.Items) != len(wantItems) {
+		return false
+	}
 	for index := range proposal.Items {
 		if proposal.Items[index].ContentHash != wantItems[index] {
-			return errors.New("提案項目已在確認前被修改")
+			return false
 		}
 	}
-	return nil
+	return true
 }
 
 func hashJSON(value any) (string, error) {

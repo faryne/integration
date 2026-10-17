@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -124,5 +125,46 @@ func TestProposalHashIgnoresEmptyEditsForExistingProposals(t *testing.T) {
 	}
 	if proposal.Items[0].ContentHash != legacy {
 		t.Fatalf("hash changed for proposals without edits: %s != %s", proposal.Items[0].ContentHash, legacy)
+	}
+}
+
+// 文字提案沒有 artifacts 時，落盤前後仍必須得到相同 hash。
+func TestProposalHashSurvivesEmptyArtifactsRoundTrip(t *testing.T) {
+	answer := "改好了，尚未寫入。\n" + proposalEnvelopeStart + "\n" +
+		`{"items":[{"proposal_type":"document.patch","kind":"lore","target_id":"lore-1","base_version_id":42,"base":{"title":"角色 A","content":"舊內容"},"edits":[{"find":"舊內容","replace":"新內容"}]}]}` +
+		"\n" + proposalEnvelopeEnd
+	_, items, err := parseProposalEnvelope(answer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposal := Proposal{Items: items}
+	if err := setProposalHashes(&proposal); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(proposal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stored Proposal
+	if err := json.Unmarshal(raw, &stored); err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyProposalHashes(stored); err != nil {
+		t.Fatalf("empty artifacts changed the proposal hash after round-trip: %v", err)
+	}
+}
+
+// 0.3.9-alpha 的 [] 舊 hash 可相容，但內容真的被改動時仍須拒絕。
+func TestProposalHashAcceptsLegacyEmptyArtifactsOnly(t *testing.T) {
+	proposal := Proposal{Items: []ProposalItem{{ProposalType: ProposalTypeDocumentReplace, Kind: ProposalKindLore, TargetID: "lore-1", Content: "內容"}}}
+	if err := setProposalHashesWithLegacyArtifacts(&proposal, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyProposalHashes(proposal); err != nil {
+		t.Fatalf("0.3.9-alpha proposal was rejected: %v", err)
+	}
+	proposal.Items[0].Content = "遭到修改"
+	if err := verifyProposalHashes(proposal); err == nil {
+		t.Fatal("tampered legacy proposal was accepted")
 	}
 }
