@@ -106,12 +106,13 @@
 
       <div class="note">
         <b>Mockup 說明（實作時不會出現這段）</b><br>
-        ・貼上網址後按「加入」（或 Enter）：解析 <code>pixai.art/model/&lt;modelId&gt;/&lt;versionId&gt;</code>，存 versionId。<br>
-        ・<b>名稱</b>：加入時 Writer 背景讀取 PixAI 公開模型頁的標題自動填入（例如「Haruka v2」），讀不到就先填「模型 ＋ ID 末 6 碼」；名稱一律可以直接改。<br>
-        ・網址沒有版本段、格式不對、或已在清單中，會在輸入框下方顯示錯誤，不加入。<br>
+        ・貼上網址後按「加入」（或 Enter）。網址有版本段（<code>/model/&lt;modelId&gt;/&lt;versionId&gt;</code>）就用該版本；<b>沒有版本段</b>（單一版本的模型頁）則由 Writer 讀取 PixAI 公開模型頁，取「最新可用版本」。<br>
+        ・<b>名稱</b>：同樣從公開模型頁取模型標題自動填入；讀不到時先填「模型／LoRA ＋ ID 末 6 碼」。名稱一律可以直接改。<br>
+        ・<b>類型檢查</b>：頁面資料能分辨主模型與 LoRA，貼錯區塊會擋下並提示。<br>
+        ・格式不對、已在清單中、或沒版本段且讀不到頁面資料，會在輸入框下方顯示錯誤，不加入。<br>
         ・LoRA 的權重（0～1，預設 1）在這裡設定，生圖時直接套用。<br>
         ・清單隨「儲存設定」一起存；原本的「自訂模型 Version ID」欄位由常用模型取代。<br>
-        ・試試貼：<code>https://pixai.art/model/1861558737426484240/1861558740588989558</code>、<code>https://pixai.art/model/123</code>（缺版本）。
+        ・試試貼：<code>https://pixai.art/zh/model/1648918125777240131</code>（無版本段，會解析成 Moonbeam v1.0）、<code>https://pixai.art/model/999</code>（無版本段且讀不到頁面）。
       </div>
     </div>
   </div>
@@ -140,6 +141,11 @@
 const state = {
   models: [{ id: "1861558740588989558", name: "Haruka v2" }],
   loras: [{ id: "1744880666293972790", name: "Maid Outfit Style", weight: 0.7 }],
+};
+// 模擬「讀取公開模型頁」的結果：modelId → { 最新版本, 標題, 類型 }
+const fakePages = {
+  "1648918125777240131": { latest: "1648918127446573124", title: "Moonbeam", lora: false },
+  "1861558737426484240": { latest: "1861558740588989558", title: "Haruka v2", lora: false },
 };
 const fakeNames = { "1861558740588989558": "Haruka v2", "1954632828118619567": "Hoshino v2", "1983308862240288769": "Tsubaki.2" };
 const official = [["1983308862240288769", "Tsubaki.2"], ["1861558740588989558", "Haruka v2"], ["1954632828118619567", "Hoshino v2"]];
@@ -172,13 +178,16 @@ function setupAdder(kind) {
   const add = () => {
     const match = input.value.trim().match(/pixai\.art\/(?:[a-z-]+\/)?model\/(\d+)(?:\/(\d+))?/i);
     if (!match) return showErr("請貼上 pixai.art 的模型網址");
-    if (!match[2]) return showErr("網址缺少版本：請在 PixAI 模型頁點選要用的版本後再複製網址");
-    if (state[kind].some((e) => e.id === match[2])) return showErr("這個版本已經在清單中");
-    const entry = { id: match[2], name: "", weight: 1, loading: true };
+    const page = fakePages[match[1]];
+    if (page && page.lora !== (kind === "loras")) return showErr(kind === "loras" ? "這是主模型，請貼到「常用模型」" : "這是 LoRA，請貼到「常用 LoRA」");
+    const versionID = match[2] || page?.latest;
+    if (!versionID) return showErr("無法從這個頁面取得版本，請改貼有版本的網址");
+    if (state[kind].some((e) => e.id === versionID)) return showErr("這個版本已經在清單中");
+    const entry = { id: versionID, name: "", weight: 1, loading: true };
     state[kind].push(entry);
     input.value = ""; button.disabled = true;
     render(kind);
-    setTimeout(() => { entry.loading = false; entry.name = fakeNames[match[2]] || `${kind === "models" ? "模型" : "LoRA"} ${match[2].slice(-6)}`; render(kind); renderJob(); }, 700);
+    setTimeout(() => { entry.loading = false; entry.name = page?.title || fakeNames[versionID] || `${kind === "models" ? "模型" : "LoRA"} ${versionID.slice(-6)}`; render(kind); renderJob(); }, 700);
   };
   button.onclick = add;
   input.onkeydown = (e) => { if (e.key === "Enter" && input.value.trim()) add(); };
