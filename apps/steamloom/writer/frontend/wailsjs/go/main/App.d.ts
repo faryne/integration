@@ -63,6 +63,8 @@ export function Document(arg1:string,arg2:string,arg3:string):Promise<api.Docume
 
 export function EnsureSkill(arg1:string):Promise<skillupdate.Result>;
 
+export function ExportProjectBackup(arg1:string,arg2:boolean):Promise<string>;
+
 export function ImagePages(arg1:string,arg2:string):Promise<Array<api.ImagePage>>;
 
 export function InstallUpdate():Promise<void>;

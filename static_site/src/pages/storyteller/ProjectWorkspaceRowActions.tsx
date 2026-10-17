@@ -1,6 +1,7 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import DriveFileMoveOutlinedIcon from "@mui/icons-material/DriveFileMoveOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PublicIcon from "@mui/icons-material/Public";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import {
@@ -51,6 +52,7 @@ export function WorkspaceRowActionMenu({
   onToggleStatus,
   onMove,
   onDelete,
+  onOpenOnWeb,
 }: {
   anchorEl: HTMLElement | null;
   moveLabel: string;
@@ -61,6 +63,8 @@ export function WorkspaceRowActionMenu({
   onToggleStatus?: () => void;
   onMove: () => void;
   onDelete: () => void;
+  // 只有不在網站裡的宿主（SteamLoom Writer）會傳：用瀏覽器打開這篇；網站本身不需要
+  onOpenOnWeb?: () => void;
 }) {
   const isPublic = status === "completed";
   return (
@@ -70,6 +74,15 @@ export function WorkspaceRowActionMenu({
       onClose={onClose}
       slotProps={{ paper: { sx: { minWidth: 190 } } }}
     >
+      {onOpenOnWeb && [
+        <MenuItem key="open-on-web" onClick={onOpenOnWeb}>
+          <ListItemIcon>
+            <OpenInNewIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>在網站上開啟</ListItemText>
+        </MenuItem>,
+        <Divider key="open-on-web-divider" />,
+      ]}
       {status && onToggleStatus && (
         <MenuItem disabled={disabled} onClick={onToggleStatus}>
           <ListItemIcon>

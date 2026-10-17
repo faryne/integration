@@ -6,6 +6,8 @@ import { useTranslation } from "react-i18next";
 import { useSnack } from "@writer/components/SnackProvider.tsx";
 import { backend, errorMessage, isNotLoggedIn, type WorkspaceGroup } from "@writer/lib/backend.ts";
 import { SessionExpiredContext } from "@writer/lib/useBackendData.ts";
+import { documentWebPath, openOnWeb } from "@writer/lib/webLinks.ts";
+import { useWorkspaceProject } from "@writer/pages/workspace/WorkspaceProjectContext.ts";
 
 // ⋮ 選單操作的對象：group_id 是所在冊／設定集的 public_id（空字串＝未分冊／未歸類）
 export type RowActionTarget = { kind: string; public_id: string; title: string; content_type: string; status?: string; group_id: string };
@@ -31,6 +33,7 @@ export function useDocumentRowActions({
   const { t } = useTranslation();
   const { showError, showSuccess } = useSnack();
   const onSessionExpired = useContext(SessionExpiredContext);
+  const workspaceProject = useWorkspaceProject();
   const [menu, setMenu] = useState<Anchored | null>(null);
   const [moving, setMoving] = useState<Anchored | null>(null);
   const [deleting, setDeleting] = useState<RowActionTarget | null>(null);
@@ -80,6 +83,16 @@ export function useDocumentRowActions({
           setDeleting(menu?.target ?? null);
           closeMenu();
         }}
+        onOpenOnWeb={
+          workspaceProject
+            ? () => {
+                if (!menu) return;
+                const path = documentWebPath(workspaceProject, menu.target);
+                closeMenu();
+                openOnWeb(path).catch((err) => showError(errorMessage(err)));
+              }
+            : undefined
+        }
       />
       <MoveMenu
         anchorEl={moving?.anchorEl ?? null}

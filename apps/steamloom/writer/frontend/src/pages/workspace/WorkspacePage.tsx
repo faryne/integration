@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import { AppBreadcrumbs, type Crumb } from "@writer/components/AppBreadcrumbs.tsx";
 import { backend, errorMessage, UNCATEGORIZED_ASSETS, type Asset, type DocumentItem, type Profile, type Project, type Workspace } from "@writer/lib/backend.ts";
 import { invalidateEditorAssets, invalidateEditorLores, writerEditorData } from "@writer/lib/editorData.ts";
-import { readLastDocument, saveLastDocument } from "@writer/lib/lastDocument.ts";
+import { readLastDocument, readRecentDocuments, rememberDocument } from "@writer/lib/recentDocuments.ts";
 import { useBackendData } from "@writer/lib/useBackendData.ts";
 import { ChatPanel } from "@writer/pages/workspace/ChatPanel.tsx";
 import { EditorPanel } from "@writer/pages/workspace/EditorPanel.tsx";
@@ -23,6 +23,7 @@ import { WorkspaceSidebar, WorkspaceSidebarRail } from "@writer/pages/workspace/
 import { UnsavedChangesDialog } from "@writer/pages/workspace/UnsavedChangesDialog.tsx";
 import { findGroup, groupTargets, isSameDocument, workspaceDocuments } from "@writer/pages/workspace/workspaceTree.ts";
 import type { PromptReference } from "@writer/pages/workspace/promptReferences.ts";
+import { WorkspaceProjectContext } from "@writer/pages/workspace/WorkspaceProjectContext.ts";
 
 // 還沒載入前給 hook 用的空工作台（hook 必須無條件呼叫）
 const emptyWorkspace: Workspace = { volumes: [], ungrouped_stories: [], lore_collections: [], uncategorized_lores: [], asset_collections: [] };
@@ -52,7 +53,7 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
   }, [project.public_id, showError]);
   // 打開專案時回到上次編輯的文件；剛建立的專案要直接開新增故事，就停在 AI 助理
   const [selected, setSelectedState] = useState<DocumentItem | null>(() => (initialCreate ? null : readLastDocument(project.public_id)));
-  useEffect(() => saveLastDocument(project.public_id, selected), [project.public_id, selected]);
+  useEffect(() => rememberDocument(project.public_id, selected), [project.public_id, selected]);
   // 只在第一次載入工作台時檢查「記住的那篇」是否還在（被刪除或移出專案就退回 AI 助理）；
   // 之後不再檢查，免得剛新增、工作台還沒重抓到的文件被誤判成不存在。
   const restored = useRef(selected);
@@ -170,7 +171,8 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
   ];
 
   return (
-    <>
+    // 讓側邊列與列表的 ⋮ 選單拿得到目前專案（組「在網站上開啟」網址）
+    <WorkspaceProjectContext.Provider value={project}>
       <AppBreadcrumbs items={crumbs} />
       {workspace === null ? (
         <CircularProgress size={24} sx={{ m: 4 }} />
@@ -286,6 +288,11 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
         projectName={project.name}
         projectPublicId={project.public_id}
         onOpenResult={(result, beforeNavigate) => void openSearchResult(result, beforeNavigate)}
+        // 最近開啟：略過正在編輯的那篇，以及已不在工作台裡的文件（被刪除、移出專案）
+        recentItems={readRecentDocuments(project.public_id)
+          .filter((item) => !(selected && isSameDocument(item, selected)))
+          .filter((item) => !workspace || workspaceDocuments(workspace, item.kind).some((each) => isSameDocument(each, item)))
+          .map((item) => ({ kind: item.kind as "story" | "lore", public_id: item.public_id, title: item.title, content_type: item.content_type === "image" ? "image" : "text", context: "", preview: "", location: "", updated_at: "" }))}
       />
       <UnsavedChangesDialog
         open={pending !== null}
@@ -295,6 +302,6 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
           setPending(null);
         }}
       />
-    </>
+    </WorkspaceProjectContext.Provider>
   );
 }

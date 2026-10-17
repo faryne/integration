@@ -1073,6 +1073,7 @@ export namespace api {
 	    slug: string;
 	    rating: string;
 	    tags: string[];
+	    share_token: string;
 	    cover_url: string;
 	    story_count: number;
 	    word_count: number;
@@ -1091,6 +1092,7 @@ export namespace api {
 	        this.slug = source["slug"];
 	        this.rating = source["rating"];
 	        this.tags = source["tags"];
+	        this.share_token = source["share_token"];
 	        this.cover_url = source["cover_url"];
 	        this.story_count = source["story_count"];
 	        this.word_count = source["word_count"];

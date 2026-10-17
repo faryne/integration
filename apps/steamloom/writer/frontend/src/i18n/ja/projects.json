@@ -10,5 +10,14 @@
     "private": "非公開",
     "unlisted": "共有",
     "public": "公開"
+  },
+  "openOnWeb": "サイトで開く",
+  "backup": {
+    "menu": "バックアップをエクスポート",
+    "title": "「{{name}}」のバックアップをエクスポート",
+    "includeImages": "画像作品の画像を含める",
+    "export": "エクスポート",
+    "cancel": "キャンセル",
+    "done": "{{path}} にエクスポートしました"
   }
 }

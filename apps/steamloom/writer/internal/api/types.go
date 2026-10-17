@@ -23,12 +23,14 @@ type Project struct {
 	Description string `json:"description"`
 	Visibility  string `json:"visibility"`
 	// Slug／Rating／Tags：專案選單切換公開狀態是整包 PUT，沒帶回這些欄位會被清空
-	Slug       string   `json:"slug"`
-	Rating     string   `json:"rating"`
-	Tags       []string `json:"tags"`
-	CoverURL   string   `json:"cover_url"`
-	StoryCount int      `json:"story_count"`
-	WordCount  uint     `json:"word_count"`
+	Slug   string   `json:"slug"`
+	Rating string   `json:"rating"`
+	Tags   []string `json:"tags"`
+	// ShareToken：分享中（unlisted）專案的閱讀頁網址 work/share/:token，「在網站上開啟」用
+	ShareToken string `json:"share_token"`
+	CoverURL   string `json:"cover_url"`
+	StoryCount int    `json:"story_count"`
+	WordCount  uint   `json:"word_count"`
 	// UpdatedAt 維持後端給的 RFC 3339 字串，前端自己格式化
 	UpdatedAt string `json:"updated_at"`
 }

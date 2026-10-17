@@ -56,6 +56,8 @@ interface WorkspaceSearchProps {
     result: StorytellerWorkspaceSearchResult,
     beforeNavigate: () => void,
   ) => void;
+  // 沒輸入關鍵字時列出的「最近開啟」；宿主（SteamLoom Writer）自己記錄，網站沒傳就維持原本的說明文字。
+  recentItems?: StorytellerWorkspaceSearchResult[];
 }
 
 const searchFilters: Array<{ value: WorkspaceSearchFilter; label: string }> = [
@@ -87,6 +89,7 @@ export function WorkspaceSearch({
   projectName,
   projectPublicId,
   onOpenResult,
+  recentItems,
 }: WorkspaceSearchProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -297,7 +300,32 @@ export function WorkspaceSearch({
           </Stack>
           <Divider />
 
-          {!debouncedKeyword ? (
+          {!debouncedKeyword && recentItems?.length ? (
+            <Box sx={{ pt: 1.5 }}>
+              <Typography variant="caption" color="text.secondary">
+                最近開啟
+              </Typography>
+              <List dense disablePadding>
+                {recentItems.map((item) => (
+                  <ListItemButton
+                    key={`${item.kind}:${item.public_id}`}
+                    // 不經過關鍵字搜尋，不寫入搜尋紀錄
+                    onClick={() => onOpenResult(item, closeSearch)}
+                    sx={{ borderRadius: 1 }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 34 }}>
+                      {resultIcons[item.kind]}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={item.title}
+                      secondary={resultLabels[item.kind]}
+                      slotProps={{ primary: { noWrap: true } }}
+                    />
+                  </ListItemButton>
+                ))}
+              </List>
+            </Box>
+          ) : !debouncedKeyword ? (
             <Typography variant="body2" color="text.secondary" sx={{ pt: 2 }}>
               搜尋範圍只包含目前專案，不會混入其他公開作品。
             </Typography>
