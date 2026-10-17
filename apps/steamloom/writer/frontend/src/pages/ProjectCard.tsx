@@ -1,14 +1,17 @@
 import { Box, Card, CardActionArea, Chip, Stack, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { Project } from "@writer/lib/backend.ts";
 import { dateTimeFormat } from "@writer/lib/format.ts";
 
 // 專案卡片：版型比照網站工作台；沒有封面時用菱形織框當佔位圖。
-export function ProjectCard({ project, onOpen }: { project: Project; onOpen: () => void }) {
+// action 放右上角（專案選單），在 CardActionArea 之外，點它不會進入專案。
+export function ProjectCard({ project, onOpen, action }: { project: Project; onOpen: () => void; action?: ReactNode }) {
   const { t } = useTranslation();
   return (
-    <Card variant="outlined" sx={{ "&:hover": { borderColor: "primary.main" } }}>
+    <Card variant="outlined" sx={{ position: "relative", "&:hover": { borderColor: "primary.main" } }}>
+      {action && <Box sx={{ position: "absolute", top: 6, right: 6, zIndex: 1, bgcolor: "background.paper", borderRadius: "50%", opacity: 0.9 }}>{action}</Box>}
       <CardActionArea onClick={onOpen} sx={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "stretch" }}>
         <Box
           sx={(theme) => ({

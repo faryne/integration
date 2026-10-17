@@ -107,6 +107,8 @@ export function SaveWorker(arg1:mediaworker.SaveInput):Promise<mediaworker.Worke
 
 export function SetUnsaved(arg1:boolean):Promise<void>;
 
+export function SiteOrigin():Promise<string>;
+
 export function StartTask(arg1:string,arg2:agent.Request):Promise<agent.Task>;
 
 export function TestWorker(arg1:string):Promise<mediaworker.Worker>;
@@ -116,6 +118,8 @@ export function UpdateAsset(arg1:string,arg2:string,arg3:api.AssetInput):Promise
 export function UpdateAssetCollection(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
 export function UploadAssets(arg1:string,arg2:string):Promise<api.UploadResult>;
+
+export function UploadImageAsset(arg1:string):Promise<main.UploadedImage>;
 
 export function UploadLocalImages(arg1:string,arg2:Array<string>):Promise<Record<string, string>>;
 

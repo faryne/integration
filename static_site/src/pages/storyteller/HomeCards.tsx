@@ -1,32 +1,18 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import LockIcon from "@mui/icons-material/Lock";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
-import PeopleIcon from "@mui/icons-material/People";
-import PublicIcon from "@mui/icons-material/Public";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import {
   Box,
   Button,
   Chip,
-  Divider,
   Grid,
-  IconButton,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
   Paper,
   Stack,
   Typography,
 } from "@mui/material";
 import { useState } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import {
-  useDeleteStorytellerAgent,
-  useDeleteStorytellerProject,
-  useSaveStorytellerProject,
-} from "@/apis/storyteller.ts";
+import { useDeleteStorytellerAgent } from "@/apis/storyteller.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
@@ -38,6 +24,7 @@ import { storytellerMascotSrc } from "@/helpers/storytellerMascot.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useStorytellerAppearance } from "@/layouts/storytellerAppearanceMode.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
+import { StorytellerProjectMenuButton } from "@/pages/storyteller/StorytellerProjectMenuButton.tsx";
 import { loadStorytellerProjectWorkspace } from "@/pages/storyteller/storytellerRoutePreload.ts";
 import type {
   StorytellerAgent,
@@ -68,55 +55,6 @@ function agentPromptPlainTextSummary(prompt: string) {
 export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
   const { appearance } = useStorytellerAppearance();
   const navigate = useNavigate();
-  const deleteProject = useDeleteStorytellerProject();
-  const [deleteTarget, setDeleteTarget] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
-  const [projectMenu, setProjectMenu] = useState<{
-    anchorEl: HTMLElement;
-    project: StorytellerProject;
-  } | null>(null);
-  const saveProject = useSaveStorytellerProject();
-  const [visibilitySnack, setVisibilitySnack] = useState<{
-    message: string;
-    severity: "success" | "error";
-  }>({ message: "", severity: "success" });
-
-  function handleVisibilityChange(
-    project: StorytellerProject,
-    visibility: StorytellerProject["visibility"] | null,
-  ) {
-    if (!visibility || visibility === project.visibility) {
-      return;
-    }
-    saveProject.mutate(
-      {
-        publicId: project.public_id,
-        input: {
-          name: project.name,
-          slug: project.slug,
-          description: project.description,
-          visibility,
-          rating: project.rating,
-          tags: project.tags ?? [],
-        },
-      },
-      {
-        onSuccess: () =>
-          setVisibilitySnack({
-            message: `專案已設為${visibilityLabel[visibility]}。`,
-            severity: "success",
-          }),
-        onError: () =>
-          setVisibilitySnack({
-            message: "專案公開狀態更新失敗，請重試。",
-            severity: "error",
-          }),
-      },
-    );
-  }
-
   const visibilityLabel = STORYTELLER_VISIBILITY_LABELS;
 
   return (
@@ -148,17 +86,8 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                       variant="outlined"
                       label={visibilityLabel[project.visibility]}
                     />
-                    <IconButton
-                      aria-label={`${project.name}專案操作`}
-                      onClick={(event) =>
-                        setProjectMenu({
-                          anchorEl: event.currentTarget,
-                          project,
-                        })
-                      }
-                    >
-                      <MoreVertIcon fontSize="small" />
-                    </IconButton>
+                    {/* 公開狀態／編輯／刪除選單與 SteamLoom Writer 共用 */}
+                    <StorytellerProjectMenuButton project={project} />
                   </Stack>
                 }
                 onClick={() =>
@@ -169,117 +98,6 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
           ))}
         </Grid>
       )}
-      <Menu
-        anchorEl={projectMenu?.anchorEl ?? null}
-        open={Boolean(projectMenu)}
-        onClose={() => setProjectMenu(null)}
-        slotProps={{ paper: { sx: { minWidth: 210 } } }}
-      >
-        <MenuItem
-          selected={projectMenu?.project.visibility === "private"}
-          disabled={saveProject.isPending}
-          onClick={() => {
-            if (projectMenu)
-              handleVisibilityChange(projectMenu.project, "private");
-            setProjectMenu(null);
-          }}
-        >
-          <ListItemIcon>
-            <LockIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>設為私密</ListItemText>
-        </MenuItem>
-        <MenuItem
-          selected={projectMenu?.project.visibility === "unlisted"}
-          disabled={saveProject.isPending}
-          onClick={() => {
-            if (projectMenu)
-              handleVisibilityChange(projectMenu.project, "unlisted");
-            setProjectMenu(null);
-          }}
-        >
-          <ListItemIcon>
-            <PeopleIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>設為分享</ListItemText>
-        </MenuItem>
-        <MenuItem
-          selected={projectMenu?.project.visibility === "public"}
-          disabled={saveProject.isPending}
-          onClick={() => {
-            if (projectMenu)
-              handleVisibilityChange(projectMenu.project, "public");
-            setProjectMenu(null);
-          }}
-        >
-          <ListItemIcon>
-            <PublicIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>設為公開</ListItemText>
-        </MenuItem>
-        <Divider />
-        <MenuItem
-          component={RouterLink}
-          to={
-            projectMenu
-              ? steamloomPath(
-                  `my/workspace/${projectMenu.project.public_id}/edit`,
-                )
-              : "#"
-          }
-          onClick={() => setProjectMenu(null)}
-        >
-          <ListItemIcon>
-            <EditIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>編輯專案</ListItemText>
-        </MenuItem>
-        <MenuItem
-          sx={{ color: "error.main" }}
-          onClick={() => {
-            if (projectMenu) {
-              setDeleteTarget({
-                id: projectMenu.project.public_id,
-                name: projectMenu.project.name,
-              });
-            }
-            setProjectMenu(null);
-          }}
-        >
-          <ListItemIcon sx={{ color: "inherit" }}>
-            <DeleteIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>刪除專案</ListItemText>
-        </MenuItem>
-      </Menu>
-      {deleteTarget && (
-        <StorytellerConfirmNameDialog
-          open
-          title="刪除專案"
-          description="刪除後會移除專案與底下故事資料。請輸入專案名稱確認。"
-          confirmName={deleteTarget.name}
-          confirmLabel="刪除專案"
-          loading={deleteProject.isPending}
-          onClose={() => setDeleteTarget(null)}
-          onConfirm={() => {
-            deleteProject.mutate(deleteTarget.id, {
-              onSuccess: () => setDeleteTarget(null),
-            });
-          }}
-        />
-      )}
-      <CustomSnackbar
-        open={Boolean(visibilitySnack.message)}
-        message={visibilitySnack.message}
-        severity={visibilitySnack.severity}
-        onClose={() => setVisibilitySnack((prev) => ({ ...prev, message: "" }))}
-      />
-      <CustomSnackbar
-        open={deleteProject.isError}
-        message="刪除專案失敗，請確認登入狀態後再試一次。"
-        severity="error"
-        onClose={() => deleteProject.reset()}
-      />
     </>
   );
 }

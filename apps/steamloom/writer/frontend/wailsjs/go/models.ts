@@ -1070,6 +1070,9 @@ export namespace api {
 	    name: string;
 	    description: string;
 	    visibility: string;
+	    slug: string;
+	    rating: string;
+	    tags: string[];
 	    cover_url: string;
 	    story_count: number;
 	    word_count: number;
@@ -1085,6 +1088,9 @@ export namespace api {
 	        this.name = source["name"];
 	        this.description = source["description"];
 	        this.visibility = source["visibility"];
+	        this.slug = source["slug"];
+	        this.rating = source["rating"];
+	        this.tags = source["tags"];
 	        this.cover_url = source["cover_url"];
 	        this.story_count = source["story_count"];
 	        this.word_count = source["word_count"];
@@ -1297,6 +1303,24 @@ export namespace main {
 		    }
 		    return a;
 		}
+	}
+	export class UploadedImage {
+	    public_id: string;
+	    preview_url: string;
+	    title: string;
+	    original_filename: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UploadedImage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.public_id = source["public_id"];
+	        this.preview_url = source["preview_url"];
+	        this.title = source["title"];
+	        this.original_filename = source["original_filename"];
+	    }
 	}
 
 }

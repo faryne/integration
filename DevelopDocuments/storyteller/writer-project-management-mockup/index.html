@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Writer 專案管理 Mockup</title>
+<style>
+  :root { color-scheme: dark; font-family: Inter, "Noto Sans TC", system-ui, sans-serif; --bg:#080c14; --surface:#0e1420; --surface-2:#151c28; --line:#2c384d; --line-soft:#202a3b; --text:#e7edf7; --muted:#8f9bb0; --blue:#79a9ff; --red:#ff7373; --amber:#f4bd62; --green:#61d49a; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-width:1000px; background:var(--bg); color:var(--text); font-size:14px; }
+  button, input, select, textarea { font:inherit; color:inherit; }
+  .switcher { display:flex; gap:6px; flex-wrap:wrap; padding:8px 20px; background:#05080e; border-bottom:1px solid var(--line-soft); font-size:12px; }
+  .switcher span { color:var(--muted); align-self:center; margin-right:6px; }
+  .switcher button { padding:4px 10px; border:1px solid var(--line); border-radius:6px; background:transparent; cursor:pointer; }
+  .switcher button.active { background:#26334a; border-color:#3b4d6b; }
+  .topbar { height:52px; display:flex; align-items:center; padding:0 20px; border-bottom:1px solid var(--line-soft); gap:8px; }
+  .topbar .spacer { flex:1; }
+  .badge { padding:1px 7px; border:1px solid var(--line); border-radius:10px; font-size:10px; color:var(--muted); }
+  .avatar { width:28px; height:28px; border-radius:50%; background:#5a4a7a; }
+  .crumbs { height:44px; display:flex; align-items:center; gap:8px; padding:0 18px; border-bottom:1px solid var(--line-soft); color:var(--muted); }
+  .crumbs a { color:var(--muted); cursor:pointer; text-decoration:none; } .crumbs a:hover { text-decoration:underline; }
+  .crumbs strong { color:var(--blue); font-weight:500; }
+  main { padding:22px 28px; }
+  .page-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  h1 { margin:0; font-size:18px; font-weight:600; }
+  .primary { padding:8px 16px; border:0; border-radius:6px; background:#3b5998; cursor:pointer; }
+  .primary:disabled { opacity:.45; cursor:default; }
+  .ghost { padding:8px 14px; border:0; background:none; cursor:pointer; color:var(--muted); }
+  .danger { padding:8px 16px; border:0; border-radius:6px; background:#a83a3a; cursor:pointer; }
+  .danger:disabled { opacity:.4; cursor:default; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:18px; }
+  .card { position:relative; border:1px solid var(--line); border-radius:8px; background:var(--surface); overflow:hidden; }
+  .card .cover { height:120px; display:grid; place-items:center; background:radial-gradient(circle, #79a9ff2e, transparent 60%), var(--bg); }
+  .card .cover i { width:56px; height:56px; border:1.5px solid var(--blue); transform:rotate(45deg); opacity:.7; }
+  .card .body { padding:14px 16px; }
+  .card h3 { margin:0 0 4px; font-size:17px; }
+  .card .meta { display:flex; gap:10px; align-items:center; color:var(--muted); font-size:12px; margin-top:10px; }
+  .chip { padding:1px 8px; border:1px solid var(--line); border-radius:10px; font-size:11px; }
+  .more { position:absolute; top:8px; right:8px; width:30px; height:30px; border:0; border-radius:50%; background:#0008; cursor:pointer; font-size:16px; }
+  .menu { position:absolute; top:42px; right:8px; z-index:5; min-width:170px; padding:6px 0; border:1px solid var(--line); border-radius:8px; background:var(--surface-2); box-shadow:0 8px 24px #0008; }
+  .menu div { padding:8px 14px; cursor:pointer; } .menu div:hover { background:#26334a; }
+  .menu hr { border:0; border-top:1px solid var(--line-soft); margin:4px 0; }
+  .menu .red { color:var(--red); }
+  .empty { margin-top:60px; display:grid; justify-items:center; gap:14px; color:var(--muted); }
+  .empty i { width:64px; height:64px; border:1.5px solid var(--line); transform:rotate(45deg); }
+  .form { max-width:760px; }
+  .tabs { display:flex; gap:4px; border-bottom:1px solid var(--line); margin-bottom:18px; }
+  .tabs button { padding:8px 14px; border:0; background:none; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; }
+  .tabs button.on { color:var(--blue); border-bottom-color:var(--blue); }
+  .field { margin-bottom:14px; }
+  .field label { display:block; font-size:12px; color:var(--muted); margin-bottom:4px; }
+  .field input, .field select, .field textarea { width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:6px; background:var(--surface); }
+  .field input:disabled { color:var(--muted); }
+  .field small { display:block; margin-top:4px; color:var(--muted); font-size:12px; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .alert { padding:10px 14px; border-radius:6px; margin-bottom:16px; font-size:13px; }
+  .alert.warn { border:1px solid #6b5426; background:#2a2312; color:var(--amber); }
+  .actions { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
+  .cover-box { display:grid; grid-template-columns:260px 1fr; gap:18px; align-items:start; }
+  .cover-preview { height:150px; border:1px dashed var(--line); border-radius:8px; display:grid; place-items:center; color:var(--muted); background:var(--surface); }
+  .cover-btns { display:flex; gap:8px; flex-wrap:wrap; }
+  .outline { padding:7px 12px; border:1px solid var(--line); border-radius:6px; background:transparent; cursor:pointer; }
+  .scrim { position:fixed; inset:0; background:#000a; display:grid; place-items:center; z-index:10; }
+  .dialog { width:460px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); }
+  .dialog header { padding:16px 20px 8px; font-weight:600; font-size:16px; }
+  .dialog .content { padding:4px 20px 12px; color:var(--muted); line-height:1.6; }
+  .dialog footer { padding:10px 16px 14px; display:flex; justify-content:flex-end; gap:8px; }
+  .mascot { display:flex; gap:12px; align-items:flex-start; }
+  .mascot .face { flex:none; width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg,#7a5ea8,#3b5998); }
+  .eyebrow { color:var(--green); font-size:12px; margin-bottom:2px; }
+  .newcard { margin-top:10px; padding:10px 12px; border-left:3px solid var(--green); background:#ffffff08; border-radius:4px; }
+  .snack { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); padding:10px 16px; border-radius:6px; background:#4a1f1f; border:1px solid #7a3030; color:#ffd0d0; z-index:20; }
+  .note { margin-top:36px; padding:14px; border:1px dashed var(--line); border-radius:8px; color:var(--muted); font-size:12.5px; line-height:1.75; max-width:900px; }
+  .note b { color:var(--text); }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<div class="switcher"><span>Mockup 畫面：</span>
+  <button data-view="list" class="active">① 我的專案</button>
+  <button data-view="empty">② 沒有專案</button>
+  <button data-view="create">③ 建立專案</button>
+  <button data-view="limit">③-b 達上限</button>
+  <button data-view="created">④ 建立成功</button>
+  <button data-view="edit">⑤ 編輯專案</button>
+  <button data-view="delete">⑥ 刪除確認</button>
+  <button data-view="error">⑦ 失敗提示</button>
+</div>
+<div class="topbar"><strong>SteamLoom</strong><span class="badge">Writer</span><div class="spacer"></div><span class="muted" style="color:var(--muted)">Faryne</span><div class="avatar"></div></div>
+<div class="crumbs" id="crumbs"></div>
+
+<main>
+  <!-- ① ② 我的專案 -->
+  <section id="v-list">
+    <div class="page-head"><h1>我的專案</h1><button class="primary" data-go="create">＋ 建立專案</button></div>
+    <div class="grid" id="cards"></div>
+  </section>
+  <section id="v-empty" hidden>
+    <div class="page-head"><h1>我的專案</h1></div>
+    <div class="empty"><i></i><div>還沒有專案</div><button class="primary" data-go="create">＋ 建立專案</button></div>
+  </section>
+
+  <!-- ③ ⑤ 建立／編輯（沿用網站 NewProject.tsx） -->
+  <section id="v-form" class="form" hidden>
+    <div class="page-head"><h1 id="form-title">建立專案</h1></div>
+    <div class="alert warn" id="limit-alert" hidden>已達可建立的專案數量上限（3 個），請刪除舊專案後再建立新的。</div>
+    <div class="tabs" id="tabs"><button class="on" data-tab="main">主要設定</button><button data-tab="cover" id="cover-tab" hidden>封面圖設定</button></div>
+    <div id="tab-main">
+      <div class="field"><label>專案名稱 *</label><input id="f-name" value=""></div>
+      <div class="field"><label>專案網址</label><input id="f-slug" disabled><small id="slug-help">預設使用專案名稱產生，建立後可以修改。</small></div>
+      <div class="field"><label>專案描述</label><textarea rows="3" id="f-desc"></textarea></div>
+      <div class="row">
+        <div class="field"><label>閱讀狀態</label><select><option>完全不公開</option><option>與親友分享</option><option>已公開</option></select></div>
+        <div class="field"><label>分級</label><select><option>普通級</option><option>輔導級</option><option>限制級</option></select></div>
+      </div>
+      <div class="field"><label>標籤</label><input placeholder="輸入後按 Enter 加入"></div>
+    </div>
+    <div id="tab-cover" hidden>
+      <div class="cover-box">
+        <div class="cover-preview">目前沒有封面</div>
+        <div>
+          <div class="cover-btns"><button class="outline">從專案資產選擇</button><button class="outline">上傳圖片</button></div>
+          <div class="muted" style="color:var(--muted);font-size:12px;margin-top:10px">版面與焦點設定同網站</div>
+        </div>
+      </div>
+    </div>
+    <div class="actions"><button class="ghost" data-go="list">取消</button><button class="primary" id="submit">建立專案</button></div>
+  </section>
+</main>
+
+<!-- ④ 建立成功（沿用網站梭梭對話框） -->
+<div class="scrim" id="d-created" hidden><div class="dialog">
+  <header><div class="mascot"><div class="face"></div><div><div class="eyebrow">專案已建立</div>「月光下的約定」已經準備好了</div></div></header>
+  <div class="content">基本設定都已經建好。你可以直接建立第一篇故事，也可以先回專案首頁整理設定。
+    <div class="newcard"><div style="font-size:12px">新專案</div><b style="color:var(--text)">月光下的約定</b><div style="font-size:12px">私人 · 普通級</div></div>
+  </div>
+  <footer><button class="ghost" data-close>回專案首頁</button><button class="primary" data-close>建立第一篇故事</button></footer>
+</div></div>
+
+<!-- ⑥ 刪除確認（沿用網站 StorytellerConfirmNameDialog） -->
+<div class="scrim" id="d-delete" hidden><div class="dialog">
+  <header>刪除專案</header>
+  <div class="content">刪除後會移除專案與底下故事資料。請輸入專案名稱確認。
+    <div class="field" style="margin-top:12px"><label>專案名稱</label><input id="del-input" placeholder="禁斷姐弟/兄妹戀"></div>
+  </div>
+  <footer><button class="ghost" data-close>取消</button><button class="danger" id="del-btn" disabled data-close>刪除專案</button></footer>
+</div></div>
+
+<div class="snack" id="snack" hidden>刪除專案失敗，請確認登入狀態後再試一次。</div>
+
+<div class="note" style="margin:0 28px 28px">
+  <b>Mockup 說明（實作時不會出現）</b><br>
+  ・入口：「我的專案」標題列與空狀態的「建立專案」；卡片右上「⋯」選單放公開狀態切換、編輯、刪除（與網站首頁卡片同一組選項）。<br>
+  ・建立／編輯表單直接沿用網站 <code>NewProject.tsx</code>（主要設定＋封面圖設定、變更網址確認、達上限警告），Writer 只換掉「存完要去哪」與麵包屑。<br>
+  ・封面「上傳圖片」在 Writer 改走原生選檔＋Go 上傳（網站的 S3 直傳無法經 Writer 轉發），其他封面操作不變。<br>
+  ・刪除用網站同一個「輸入專案名稱確認」對話框，後端 soft delete。<br>
+  ・建立成功後：「建立第一篇故事」直接進工作台並開新故事，「回專案首頁」進工作台。
+</div>
+
+<script>
+// mockup 用的假資料與畫面切換
+const projects = [
+  { name: "禁斷姐弟/兄妹戀", desc: "", stories: 8, words: "70,147", vis: "公開", updated: "2026/7/24" },
+  { name: "飛機杯少女", desc: "故事以三個飛機杯少女爭奪男主的寵愛…", stories: 11, words: "133,288", vis: "公開", updated: "2026/9/17" },
+  { name: "生殖烏托邦", desc: "", stories: 2, words: "8,872", vis: "分享", updated: "2026/7/30" },
+];
+const crumbs = { list: [["我的專案"]], empty: [["我的專案"]], create: [["我的專案", "list"], ["建立專案"]], limit: [["我的專案", "list"], ["建立專案"]], edit: [["我的專案", "list"], ["禁斷姐弟/兄妹戀"], ["編輯專案"]] };
+let current = "list";
+
+function renderCards() {
+  const box = document.getElementById("cards");
+  box.innerHTML = "";
+  projects.forEach((p, i) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `<div class="cover"><i></i></div><button class="more" title="更多">⋯</button>
+      <div class="body"><h3>${p.name}</h3><div style="color:var(--muted);font-size:13px;min-height:18px">${p.desc}</div>
+      <div class="meta"><span>${p.stories} 篇故事</span><span>${p.words} 字</span><span class="chip">${p.vis}</span></div>
+      <div style="color:var(--muted);font-size:12px;margin-top:6px">更新於 ${p.updated}</div></div>`;
+    card.querySelector(".more").onclick = (e) => { e.stopPropagation(); toggleMenu(card); };
+    box.appendChild(card);
+    if (i === 0 && current === "list") toggleMenu(card);
+  });
+}
+function toggleMenu(card) {
+  document.querySelectorAll(".menu").forEach((m) => m.remove());
+  const menu = document.createElement("div");
+  menu.className = "menu";
+  menu.innerHTML = `<div>設為私密</div><div>設為分享</div><div>設為公開</div><hr><div data-go="edit">編輯專案</div><div class="red" data-go="delete">刪除專案</div>`;
+  menu.querySelectorAll("[data-go]").forEach((el) => el.onclick = () => show(el.dataset.go));
+  card.appendChild(menu);
+}
+document.addEventListener("click", () => document.querySelectorAll(".menu").forEach((m) => m.remove()));
+
+function show(view) {
+  current = view;
+  document.querySelectorAll(".switcher button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
+  const formView = ["create", "limit", "edit"].includes(view);
+  document.getElementById("v-list").hidden = !["list", "delete", "error"].includes(view);
+  document.getElementById("v-empty").hidden = view !== "empty";
+  document.getElementById("v-form").hidden = !formView;
+  document.getElementById("d-created").hidden = view !== "created";
+  document.getElementById("d-delete").hidden = view !== "delete";
+  document.getElementById("snack").hidden = view !== "error";
+  if (view === "created") document.getElementById("v-form").hidden = false;
+  const edit = view === "edit";
+  document.getElementById("form-title").textContent = edit ? "編輯專案" : "建立專案";
+  document.getElementById("submit").textContent = edit ? "儲存變更" : "建立專案";
+  document.getElementById("submit").disabled = view === "limit";
+  document.getElementById("limit-alert").hidden = view !== "limit";
+  document.getElementById("cover-tab").hidden = !edit;
+  document.getElementById("f-name").value = edit ? "禁斷姐弟/兄妹戀" : view === "created" ? "月光下的約定" : "";
+  document.getElementById("f-slug").value = edit ? "forbidden-siblings" : "";
+  document.getElementById("f-slug").disabled = !edit;
+  document.getElementById("slug-help").textContent = edit ? "變更後，公開頁面顯示與分享用的網址會跟著改變。" : "預設使用專案名稱產生，建立後可以修改。";
+  setTab("main");
+  const c = crumbs[view] || crumbs.list;
+  document.getElementById("crumbs").innerHTML = c.map(([label, go], i) => i === c.length - 1 ? `<strong>${label}</strong>` : `<a data-go="${go || ""}">${label}</a>`).join(" / ");
+  document.querySelectorAll("#crumbs a[data-go]").forEach((a) => a.dataset.go && (a.onclick = () => show(a.dataset.go)));
+  if (!document.getElementById("v-list").hidden) renderCards();
+}
+function setTab(tab) {
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
+  document.getElementById("tab-main").hidden = tab !== "main";
+  document.getElementById("tab-cover").hidden = tab !== "cover";
+}
+document.querySelectorAll("#tabs button").forEach((b) => b.onclick = () => setTab(b.dataset.tab));
+document.querySelectorAll(".switcher button").forEach((b) => b.onclick = () => show(b.dataset.view));
+document.querySelectorAll("[data-go]").forEach((el) => el.onclick = (e) => { e.stopPropagation(); show(el.dataset.go); });
+document.querySelectorAll("[data-close]").forEach((el) => el.onclick = () => show("list"));
+document.getElementById("submit").onclick = () => show(current === "edit" ? "list" : "created");
+document.getElementById("f-name").oninput = (e) => { if (current !== "edit") document.getElementById("f-slug").value = e.target.value.trim().toLowerCase().replace(/\s+/g, "-"); };
+document.getElementById("del-input").oninput = (e) => { document.getElementById("del-btn").disabled = e.target.value !== "禁斷姐弟/兄妹戀"; };
+show("list");
+</script>
+</body>
+</html>

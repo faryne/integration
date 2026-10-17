@@ -27,7 +27,10 @@ import {
 } from "@/data/storyteller.ts";
 import { WorkLandingHero } from "@/pages/storyteller/ReaderWorkLanding.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
-import type { EditorPickerAsset } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
+import {
+  type EditorPickerAsset,
+  useEditorData,
+} from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 
 type CoverLayout = "split" | "immersive";
 type CoverFocalPoint = { x: number; y: number };
@@ -228,6 +231,9 @@ export function StorytellerProjectCoverEditor({
 }: StorytellerProjectCoverEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadAssets = useUploadStorytellerAssets(projectPublicId);
+  const { pickAndUploadImage } = useEditorData();
+  const [hostUploading, setHostUploading] = useState(false);
+  const uploading = uploadAssets.isPending || hostUploading;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
   const maxMB = Math.floor(STORYTELLER_IMAGE_PAGE_MAX_BYTES / 1024 / 1024);
@@ -236,6 +242,22 @@ export function StorytellerProjectCoverEditor({
   function handleSelect(asset: EditorPickerAsset) {
     onChange(asset.public_id, asset.preview_url);
     setPickerOpen(false);
+  }
+
+  // 宿主（Writer）提供的上傳：格式與大小由宿主檢查，這裡只處理結果
+  async function handleHostUpload() {
+    if (!pickAndUploadImage) return;
+    setHostUploading(true);
+    try {
+      const asset = await pickAndUploadImage(projectPublicId);
+      if (!asset) return;
+      onChange(asset.public_id, asset.preview_url);
+      onNotify("已上傳並設為封面，請記得儲存專案。", "success");
+    } catch (error) {
+      onNotify(errorMessage(error, "上傳封面失敗，請重試。"), "error");
+    } finally {
+      setHostUploading(false);
+    }
   }
 
   async function handleUpload(files: FileList | null) {
@@ -332,10 +354,14 @@ export function StorytellerProjectCoverEditor({
           size="small"
           variant="outlined"
           startIcon={<UploadFileIcon />}
-          disabled={uploadAssets.isPending}
-          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          onClick={() =>
+            pickAndUploadImage
+              ? void handleHostUpload()
+              : fileInputRef.current?.click()
+          }
         >
-          {uploadAssets.isPending ? "上傳中" : "上傳圖片"}
+          {uploading ? "上傳中" : "上傳圖片"}
         </Button>
         {hasCover && (
           <Button

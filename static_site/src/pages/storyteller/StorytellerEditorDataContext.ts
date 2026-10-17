@@ -46,6 +46,11 @@ export interface StorytellerEditorData {
   };
   // 資產選擇對話框沒有資產時的「去上傳」動作；沒有提供就不顯示
   assetUploadAction?: (projectPublicId: string) => ReactNode;
+  // 宿主自己的「選一張圖並上傳成資產」（Writer：原生選檔＋Go 上傳，因為 S3 直傳無法經 Writer 轉發）。
+  // 回傳 null 代表作者取消選檔；沒有提供時，封面編輯器維持網站的 <input type="file"> 上傳。
+  pickAndUploadImage?: (
+    projectPublicId: string,
+  ) => Promise<EditorPickerAsset | null>;
 }
 
 // 沒有 provider（例如 wysiwyg-demo、單元測試）時當作沒有資料：設定清單不載入、圖片只用節點上的 src

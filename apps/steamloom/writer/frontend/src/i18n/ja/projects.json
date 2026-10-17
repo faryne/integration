@@ -1,6 +1,8 @@
 {
   "title": "プロジェクト",
   "empty": "プロジェクトはまだありません",
+  "create": "プロジェクトを作成",
+  "edit": "プロジェクトを編集",
   "storyCount": "物語 {{count}} 本",
   "wordCount": "{{words}} 字",
   "updatedAt": "{{date}} に更新",

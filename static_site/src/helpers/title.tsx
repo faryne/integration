@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { createContext, useContext, useEffect } from "react";
 
 import { isSteamLoomSite, STEAMLOOM_PATH_PREFIX } from "@/helpers/steamloom.ts";
 
@@ -206,8 +206,14 @@ function setJsonLd(id: string, data: Record<string, unknown>) {
   element.textContent = JSON.stringify(data);
 }
 
+// 網站頁面嵌在非網站宿主（SteamLoom Writer 桌面版）時設為 true：
+// 不改 document.title（會變成視窗標題）與 SEO meta。網站本身不提供，維持預設 false。
+export const SeoDisabledContext = createContext(false);
+
 export function useSeo(page: string, options: SeoOptions = {}) {
+  const disabled = useContext(SeoDisabledContext);
   useEffect(() => {
+    if (disabled) return;
     const currentSiteName = getRouteSiteName();
     const steamloom = currentSiteName === steamloomSiteName;
     const title = getFullTitleForSite(page, currentSiteName);
@@ -251,6 +257,7 @@ export function useSeo(page: string, options: SeoOptions = {}) {
       inLanguage: "zh-Hant-TW",
     });
   }, [
+    disabled,
     page,
     options.description,
     options.image,
