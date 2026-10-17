@@ -70,6 +70,66 @@ func (s *Service) AgentCapabilities() ([]AgentCapability, error) {
 	return result, nil
 }
 
+// CompatibleWorkers 以 Agent 推薦項目的媒體類型與能力取交集，讓作者選擇真正執行者。
+func (s *Service) CompatibleWorkers(recommendedID string) ([]WorkerOption, error) {
+	capabilities, err := s.AgentCapabilities()
+	if err != nil {
+		return nil, err
+	}
+	var recommended *AgentCapability
+	for index := range capabilities {
+		if capabilities[index].WorkerID == recommendedID {
+			recommended = &capabilities[index]
+			break
+		}
+	}
+	if recommended == nil {
+		return nil, errors.New("Agent 推薦的 Worker 目前無法使用")
+	}
+	requiredCapability := textGenerationCapability(recommended.Capabilities)
+	if requiredCapability == "" {
+		return nil, errors.New("Agent 推薦的 Worker 不支援文字生成媒體")
+	}
+	result := make([]WorkerOption, 0, len(capabilities))
+	for _, candidate := range capabilities {
+		if stringSetsOverlap(recommended.MediaTypes, candidate.MediaTypes) && containsString(candidate.Capabilities, requiredCapability) {
+			result = append(result, WorkerOption{WorkerID: candidate.WorkerID, Name: candidate.Name, Recommended: candidate.WorkerID == recommendedID})
+		}
+	}
+	return result, nil
+}
+
+func textGenerationCapability(values []string) string {
+	for _, value := range values {
+		if strings.HasPrefix(value, "text_to_") {
+			return value
+		}
+	}
+	return ""
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
+}
+
+func stringSetsOverlap(left, right []string) bool {
+	values := make(map[string]bool, len(left))
+	for _, value := range left {
+		values[value] = true
+	}
+	for _, value := range right {
+		if values[value] {
+			return true
+		}
+	}
+	return false
+}
+
 // Workers 列出裝置上的全域設定，密鑰只回傳是否存在。
 func (s *Service) Workers() ([]Worker, error) {
 	s.mu.Lock()

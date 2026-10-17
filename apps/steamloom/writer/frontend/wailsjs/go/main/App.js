@@ -74,12 +74,16 @@ export function ConfirmProposalApplied(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['ConfirmProposalApplied'](arg1, arg2, arg3, arg4);
 }
 
+export function CompatibleMediaWorkers(arg1) {
+  return window['go']['main']['App']['CompatibleMediaWorkers'](arg1);
+}
+
 export function Create(arg1, arg2) {
   return window['go']['main']['App']['Create'](arg1, arg2);
 }
 
-export function DecideMediaProposal(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['DecideMediaProposal'](arg1, arg2, arg3, arg4, arg5);
+export function DecideMediaProposal(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['DecideMediaProposal'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function DecideProposal(arg1, arg2, arg3, arg4, arg5, arg6) {

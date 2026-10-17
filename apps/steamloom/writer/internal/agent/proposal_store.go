@@ -154,7 +154,7 @@ func sortedKeys(values map[string]bool) []string {
 }
 
 // ConfigureMediaProposal 保存作者在動態表單確認過的輸入，並重算授權用 hash。
-func ConfigureMediaProposal(agentID, projectID, threadID, proposalID string, inputs map[string]any) (Proposal, error) {
+func ConfigureMediaProposal(agentID, projectID, threadID, proposalID, workerID string, inputs map[string]any) (Proposal, error) {
 	chatMu.Lock()
 	defer chatMu.Unlock()
 	if !validThread(threadID) || !validThread(proposalID) {
@@ -182,7 +182,7 @@ func ConfigureMediaProposal(agentID, projectID, threadID, proposalID string, inp
 	if _, decided := decisions[proposalID]; decided {
 		return Proposal{}, errors.New("這批提案已經完成決策")
 	}
-	proposal.Items[0].JobInputs = inputs
+	proposal.Items[0].WorkerID, proposal.Items[0].JobInputs = workerID, inputs
 	if err := setProposalHashes(&proposal); err != nil {
 		return Proposal{}, err
 	}
@@ -194,7 +194,7 @@ func ConfigureMediaProposal(agentID, projectID, threadID, proposalID string, inp
 
 // RetryMediaProposal 讓生成失敗的媒體提案換上新參數、回到 approved，再由 TaskManager 重新排入背景佇列。
 // 沿用原本的核准事件：作者按「重新生成」本身就是對新參數的確認。
-func RetryMediaProposal(agentID, projectID, threadID, proposalID string, inputs map[string]any) (Proposal, error) {
+func RetryMediaProposal(agentID, projectID, threadID, proposalID, workerID string, inputs map[string]any) (Proposal, error) {
 	chatMu.Lock()
 	defer chatMu.Unlock()
 	dir, _, _, proposal, path, err := loadProposalForApply(agentID, projectID, threadID, proposalID)
@@ -205,7 +205,7 @@ func RetryMediaProposal(agentID, projectID, threadID, proposalID string, inputs 
 	if !proposal.IsMediaBrief() || proposal.Status != ProposalApplyFailed || !found || lifecycle.status != ProposalApplyFailed {
 		return Proposal{}, errors.New("只有生成失敗的媒體需求可以重新生成")
 	}
-	proposal.Items[0].JobInputs, proposal.Status, proposal.AppliedAt = inputs, ProposalApproved, ""
+	proposal.Items[0].WorkerID, proposal.Items[0].JobInputs, proposal.Status, proposal.AppliedAt = workerID, inputs, ProposalApproved, ""
 	if err := setProposalHashes(&proposal); err != nil {
 		return Proposal{}, err
 	}

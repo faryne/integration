@@ -37,6 +37,13 @@ type AgentCapability struct {
 	Capabilities []string `json:"capabilities"`
 }
 
+// WorkerOption 是提案視窗可顯示的安全選項；不暴露 endpoint、設定或密鑰。
+type WorkerOption struct {
+	WorkerID    string `json:"worker_id"`
+	Name        string `json:"name"`
+	Recommended bool   `json:"recommended"`
+}
+
 type JobOption struct {
 	Value string `json:"value"`
 	Label string `json:"label"`

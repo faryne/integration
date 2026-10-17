@@ -436,6 +436,7 @@ export namespace agent {
 	    marker_id?: string;
 	    after_marker_id?: string;
 	    worker_id?: string;
+	    recommended_worker_id?: string;
 	    brief?: MediaBrief;
 	    job_inputs?: Record<string, any>;
 	    artifacts?: ProposalArtifact[];
@@ -469,6 +470,7 @@ export namespace agent {
 	        this.marker_id = source["marker_id"];
 	        this.after_marker_id = source["after_marker_id"];
 	        this.worker_id = source["worker_id"];
+	        this.recommended_worker_id = source["recommended_worker_id"];
 	        this.brief = this.convertValues(source["brief"], MediaBrief);
 	        this.job_inputs = source["job_inputs"];
 	        this.artifacts = this.convertValues(source["artifacts"], ProposalArtifact);
@@ -1294,6 +1296,23 @@ export namespace main {
 }
 
 export namespace mediaworker {
+
+	export class WorkerOption {
+	    worker_id: string;
+	    name: string;
+	    recommended: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new WorkerOption(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.worker_id = source["worker_id"];
+	        this.name = source["name"];
+	        this.recommended = source["recommended"];
+	    }
+	}
 	
 	export class SettingField {
 	    key: string;
@@ -1549,4 +1568,3 @@ export namespace updater {
 	}
 
 }
-

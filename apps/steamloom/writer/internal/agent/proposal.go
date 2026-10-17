@@ -172,11 +172,13 @@ type ProposalItem struct {
 	MarkerID      string              `json:"marker_id,omitempty"`
 	AfterMarkerID string              `json:"after_marker_id,omitempty"`
 	WorkerID      string              `json:"worker_id,omitempty"`
-	Brief         *MediaBrief         `json:"brief,omitempty"`
-	JobInputs     map[string]any      `json:"job_inputs,omitempty"`
-	Artifacts     []ProposalArtifact  `json:"artifacts,omitempty"`
-	Edits         []ProposalEdit      `json:"edits,omitempty"`
-	ContentHash   string              `json:"content_hash"`
+	// RecommendedWorkerID 保存 Agent 原始建議；WorkerID 在作者確認後改為實際執行者。
+	RecommendedWorkerID string             `json:"recommended_worker_id,omitempty"`
+	Brief               *MediaBrief        `json:"brief,omitempty"`
+	JobInputs           map[string]any     `json:"job_inputs,omitempty"`
+	Artifacts           []ProposalArtifact `json:"artifacts,omitempty"`
+	Edits               []ProposalEdit     `json:"edits,omitempty"`
+	ContentHash         string             `json:"content_hash"`
 }
 
 func prepareProposal(agentID, projectID, threadID, taskID string, items []ProposalItem) (Proposal, error) {
@@ -254,6 +256,9 @@ func normalizeProposalItem(item *ProposalItem, projectID string) error {
 		item.Kind = ProposalKindMedia
 		if item.WorkerID == "" {
 			return errors.New("媒體生成需求缺少 worker_id")
+		}
+		if item.RecommendedWorkerID == "" {
+			item.RecommendedWorkerID = item.WorkerID
 		}
 		if item.Brief == nil || strings.TrimSpace(item.Brief.Prompt) == "" {
 			return errors.New("媒體生成需求缺少 brief.prompt")
@@ -405,11 +410,11 @@ func setProposalHashes(proposal *Proposal) error {
 			FileName, MIMEType, FileSHA256, AltText, CollectionID                                                      string
 			Artifacts                                                                                                  []ProposalArtifact
 			// omitempty 讓沒有 edits 的既有提案 hash 維持不變。
-			Edits     []ProposalEdit `json:",omitempty"`
-			WorkerID  string         `json:",omitempty"`
-			Brief     *MediaBrief    `json:",omitempty"`
-			JobInputs map[string]any `json:",omitempty"`
-		}{item.ProposalType, item.Kind, item.TargetID, item.BaseVersionID, item.Title, item.Summary, item.ContentType, item.Content, item.MarkerID, item.AfterMarkerID, item.Base, item.Operations, item.FileName, item.MIMEType, item.FileSHA256, item.AltText, item.CollectionID, item.Artifacts, item.Edits, item.WorkerID, item.Brief, item.JobInputs}
+			Edits                         []ProposalEdit `json:",omitempty"`
+			WorkerID, RecommendedWorkerID string         `json:",omitempty"`
+			Brief                         *MediaBrief    `json:",omitempty"`
+			JobInputs                     map[string]any `json:",omitempty"`
+		}{item.ProposalType, item.Kind, item.TargetID, item.BaseVersionID, item.Title, item.Summary, item.ContentType, item.Content, item.MarkerID, item.AfterMarkerID, item.Base, item.Operations, item.FileName, item.MIMEType, item.FileSHA256, item.AltText, item.CollectionID, item.Artifacts, item.Edits, item.WorkerID, item.RecommendedWorkerID, item.Brief, item.JobInputs}
 		hash, err := hashJSON(fingerprint)
 		if err != nil {
 			return err

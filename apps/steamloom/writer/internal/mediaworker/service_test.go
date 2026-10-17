@@ -123,6 +123,43 @@ func TestAgentCapabilitiesOnlyIncludeEnabledOnlineWorkers(t *testing.T) {
 	}
 }
 
+func TestCompatibleWorkersKeepsRecommendationAndMatchingCapabilities(t *testing.T) {
+	registry, err := NewRegistry(NewMockAdapter())
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewService(registry, filepath.Join(t.TempDir(), "workers.json"), &memoryVault{values: map[string]map[string]string{}})
+	first, err := service.Save(SaveInput{AdapterID: "mock-image", Name: "PixAI", Enabled: true, Settings: map[string]string{"scenario": "success"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := service.Save(SaveInput{AdapterID: "mock-image", Name: "ComfyUI", Enabled: true, Settings: map[string]string{"scenario": "success"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, worker := range []Worker{*first, *second} {
+		if _, err := service.Test(context.Background(), worker.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	options, err := service.CompatibleWorkers(first.ID)
+	if err != nil || len(options) != 2 {
+		t.Fatalf("options = %#v, err = %v", options, err)
+	}
+	recommended := 0
+	for _, option := range options {
+		if option.Recommended {
+			recommended++
+			if option.WorkerID != first.ID {
+				t.Fatalf("wrong recommendation: %#v", option)
+			}
+		}
+	}
+	if recommended != 1 {
+		t.Fatalf("recommended options = %d: %#v", recommended, options)
+	}
+}
+
 // 必填 secret：第一次存要有值；之後留白代表沿用；勾選清除又沒填新值就擋下。
 func TestSaveRequiresSecretAndValidURL(t *testing.T) {
 	registry, err := NewRegistry(NewPixAIAdapter(nil), NewComfyUIAdapter(nil))

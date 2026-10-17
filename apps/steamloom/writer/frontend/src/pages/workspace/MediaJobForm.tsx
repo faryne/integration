@@ -18,7 +18,7 @@ function fitJobValue(field: JobField, value: unknown): unknown {
   return field.kind === "boolean" ? (typeof value === "boolean" ? value : undefined) : String(value);
 }
 
-export function initialMediaJobInputs(spec: WorkerJobSpec, item: AgentProposalItem): Record<string, unknown> {
+export function initialMediaJobInputs(spec: WorkerJobSpec, item: AgentProposalItem, current: Record<string, unknown> = {}): Record<string, unknown> {
   const brief: Record<string, unknown> = {
     prompt: item.brief?.prompt,
     negative_prompt: item.brief?.negative_prompt,
@@ -26,6 +26,8 @@ export function initialMediaJobInputs(spec: WorkerJobSpec, item: AgentProposalIt
     candidate_count: item.brief?.candidate_count,
     // 重跑時優先沿用作者上一次送出的參數，而不是退回 Agent 原始 brief。
     ...item.job_inputs,
+    // 切換 Worker 時保留 prompt 等兩邊 schema 都接受的當前輸入。
+    ...current,
   };
   return Object.fromEntries(spec.fields.flatMap((field) => {
     const value = fitJobValue(field, brief[field.key]) ?? field.default;

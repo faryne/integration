@@ -9,8 +9,10 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  MenuItem,
   Paper,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
@@ -18,7 +20,7 @@ import { useTranslation } from "react-i18next";
 import { StorytellerVersionCompareDialog, type StorytellerVersionCompareEntry } from "@steamloom-web/pages/storyteller/StorytellerVersionCompareDialog.tsx";
 import { stripMarkerForDiffContent } from "@steamloom-web/pages/storyteller/wysiwygCore/parser.ts";
 import { useSnack } from "@writer/components/SnackProvider.tsx";
-import { backend, errorMessage, type AgentProposal, type AgentProposalItem, type Document, type WorkerJobSpec } from "@writer/lib/backend.ts";
+import { backend, errorMessage, type AgentProposal, type AgentProposalItem, type Document, type MediaWorkerOption, type WorkerJobSpec } from "@writer/lib/backend.ts";
 import { formatBytes } from "@writer/lib/format.ts";
 import { canRetryMedia, initialMediaJobInputs, MediaJobForm } from "@writer/pages/workspace/MediaJobForm.tsx";
 import { ProposalArtifactGallery } from "@writer/pages/workspace/ProposalArtifactGallery.tsx";
@@ -49,7 +51,7 @@ export function ProposalReviewDialog({
   deciding: boolean;
   onClose: () => void;
   onDecision: (decision: "approve" | "reject") => void;
-  onMediaDecision: (inputs: Record<string, unknown>) => void;
+  onMediaDecision: (workerID: string, inputs: Record<string, unknown>) => void;
   onArtifactSelectionChange: (ids: string[]) => void;
 }) {
   const { t } = useTranslation();
@@ -60,6 +62,8 @@ export function ProposalReviewDialog({
   const [loadError, setLoadError] = useState("");
   const [jobSpec, setJobSpec] = useState<WorkerJobSpec | null>(null);
   const [jobInputs, setJobInputs] = useState<Record<string, unknown>>({});
+  const [workerOptions, setWorkerOptions] = useState<MediaWorkerOption[]>([]);
+  const [selectedWorkerID, setSelectedWorkerID] = useState("");
   const open = Boolean(proposal && item);
 
   useEffect(() => {
@@ -69,10 +73,18 @@ export function ProposalReviewDialog({
     setLoadError("");
     setJobSpec(null);
     setJobInputs({});
+    setWorkerOptions([]);
+    setSelectedWorkerID("");
     if (!proposal || !item) return;
-    const request = proposalType(item) === "media.brief" && item.worker_id
-      ? backend.WorkerJobSpec(item.worker_id).then((spec) => {
+    const recommendedWorkerID = item.recommended_worker_id || item.worker_id;
+    const request = proposalType(item) === "media.brief" && recommendedWorkerID
+      ? backend.CompatibleMediaWorkers(recommendedWorkerID).then(async (options) => {
+        if (!options.length) throw new Error(t("workspace.chat.proposal.noCompatibleWorker"));
+        const workerID = options.some((option) => option.worker_id === item.worker_id) ? item.worker_id! : options[0].worker_id;
+        const spec = await backend.WorkerJobSpec(workerID);
         if (!canceled) {
+          setWorkerOptions(options);
+          setSelectedWorkerID(workerID);
           setJobSpec(spec);
           setJobInputs(initialMediaJobInputs(spec, item));
         }
@@ -92,7 +104,25 @@ export function ProposalReviewDialog({
       if (!canceled) setLoading(false);
     });
     return () => { canceled = true; };
-  }, [agentID, item, projectID, proposal, showError, threadID]);
+  }, [agentID, item, projectID, proposal, showError, t, threadID]);
+
+  const selectWorker = async (workerID: string) => {
+    if (!item || workerID === selectedWorkerID) return;
+    setSelectedWorkerID(workerID);
+    setLoading(true);
+    setLoadError("");
+    try {
+      const spec = await backend.WorkerJobSpec(workerID);
+      setJobSpec(spec);
+      setJobInputs(initialMediaJobInputs(spec, item, jobInputs));
+    } catch (err) {
+      const message = errorMessage(err);
+      setLoadError(message);
+      showError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const versions = useMemo(() => buildVersions(proposal, item, document, t), [document, item, proposal, t]);
   const type = proposalType(item);
@@ -138,6 +168,9 @@ export function ProposalReviewDialog({
             <Alert severity="info">{t("workspace.chat.proposal.mediaBriefNotice", { worker: jobSpec.worker_name })}</Alert>
             {item.summary && <Metadata label={t("workspace.chat.proposal.summary")} value={item.summary} />}
             {item.brief?.notes && <Metadata label={t("workspace.chat.proposal.mediaNotes")} value={item.brief.notes} />}
+            <TextField select label={t("workspace.chat.proposal.executionWorker")} value={selectedWorkerID} disabled={deciding} onChange={(event) => void selectWorker(event.target.value)}>
+              {workerOptions.map((option) => <MenuItem key={option.worker_id} value={option.worker_id}>{option.name}{option.recommended ? ` ${t("workspace.chat.proposal.agentRecommended")}` : ""}</MenuItem>)}
+            </TextField>
             <MediaJobForm spec={jobSpec} values={jobInputs} disabled={proposal?.status !== "awaiting_confirmation" && !mediaRetry} onChange={setJobInputs} />
           </Stack>
         )}
@@ -180,11 +213,11 @@ export function ProposalReviewDialog({
       <DialogActions>{mediaRetry ? (
         <>
           <Button disabled={deciding} onClick={onClose}>{t("workspace.chat.proposal.close")}</Button>
-          <Button variant="contained" disabled={deciding || !jobSpec} onClick={() => onMediaDecision(jobInputs)}>
+          <Button variant="contained" disabled={deciding || !jobSpec || !selectedWorkerID} onClick={() => onMediaDecision(selectedWorkerID, jobInputs)}>
             {deciding ? <CircularProgress size={16} color="inherit" /> : t("workspace.chat.proposal.regenerate")}
           </Button>
         </>
-      ) : <ProposalActions proposal={proposal} selectedCount={selectedCount} deciding={deciding} stale={stale} selectionMissing={itemSelected && artifactsRequired && selectedArtifactIDs.length === 0} approveLabel={mediaBrief ? t("workspace.chat.proposal.generate") : undefined} onClose={onClose} onDecision={(decision) => decision === "approve" && mediaBrief ? onMediaDecision(jobInputs) : onDecision(decision)} />}</DialogActions>
+      ) : <ProposalActions proposal={proposal} selectedCount={selectedCount} deciding={deciding} stale={stale} selectionMissing={itemSelected && artifactsRequired && selectedArtifactIDs.length === 0} approveLabel={mediaBrief ? t("workspace.chat.proposal.generate") : undefined} onClose={onClose} onDecision={(decision) => decision === "approve" && mediaBrief ? onMediaDecision(selectedWorkerID, jobInputs) : onDecision(decision)} />}</DialogActions>
     </Dialog>
   );
 }

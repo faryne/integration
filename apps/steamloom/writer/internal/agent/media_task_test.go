@@ -20,8 +20,12 @@ func TestMediaBriefRunsInBackgroundAndCanRetry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ConfigureMediaProposal("codex", "project", page.CurrentID, proposal.ID, map[string]any{"mode": "pro"}); err != nil {
+	if _, err := ConfigureMediaProposal("codex", "project", page.CurrentID, proposal.ID, "worker-2", map[string]any{"mode": "pro"}); err != nil {
 		t.Fatal(err)
+	}
+	proposal, err = ProposalByID("codex", "project", page.CurrentID, proposal.ID)
+	if err != nil || proposal.Items[0].WorkerID != "worker-2" || proposal.Items[0].RecommendedWorkerID != "worker-1" {
+		t.Fatalf("worker selection was not persisted: %#v, err = %v", proposal.Items[0], err)
 	}
 	if proposal, err = DecideProposal("codex", "project", page.CurrentID, proposal.ID, ProposalDecisionApprove); err != nil {
 		t.Fatal(err)
@@ -57,7 +61,7 @@ func TestMediaBriefRunsInBackgroundAndCanRetry(t *testing.T) {
 		t.Fatalf("failed proposal = %#v, err = %v", failed, err)
 	}
 
-	retried, err := RetryMediaProposal("codex", "project", page.CurrentID, proposal.ID, map[string]any{"mode": "standard"})
+	retried, err := RetryMediaProposal("codex", "project", page.CurrentID, proposal.ID, "worker-1", map[string]any{"mode": "standard"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +74,7 @@ func TestMediaBriefRunsInBackgroundAndCanRetry(t *testing.T) {
 	if err != nil || applied.Status != ProposalApplied || applied.Items[0].JobInputs["mode"] != "standard" {
 		t.Fatalf("retried proposal = %#v, err = %v", applied, err)
 	}
-	if _, err := RetryMediaProposal("codex", "project", page.CurrentID, proposal.ID, nil); err == nil {
+	if _, err := RetryMediaProposal("codex", "project", page.CurrentID, proposal.ID, "worker-1", nil); err == nil {
 		t.Fatal("applied media proposal must not be retried")
 	}
 }

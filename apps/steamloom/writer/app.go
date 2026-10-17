@@ -146,6 +146,11 @@ func (a *App) DeleteWorker(id string) error { return a.workers.Delete(id) }
 // WorkerJobSpec 提供動態 job 表單；只包含 discovery schema，不含連線設定與密鑰。
 func (a *App) WorkerJobSpec(id string) (*mediaworker.JobSpec, error) { return a.workers.JobSpec(id) }
 
+// CompatibleMediaWorkers 列出與 Agent 推薦項目相容的可用 Worker，最終由作者選擇。
+func (a *App) CompatibleMediaWorkers(recommendedID string) ([]mediaworker.WorkerOption, error) {
+	return a.workers.CompatibleWorkers(recommendedID)
+}
+
 // CodexModels 由本機 Codex app-server 取得 model 與各自支援的 reasoning effort。
 func (a *App) CodexModels() ([]agent.CodexModel, error) { return agent.CodexModels(a.ctx) }
 
@@ -316,7 +321,7 @@ func (a *App) DecideProposal(agentID, projectID, threadID, proposalID, decision 
 
 // DecideMediaProposal 先以 Worker schema 驗證作者調整的參數，再沿用一般 proposal apply lifecycle；
 // 生成失敗過的提案走重跑路徑，換上新參數後重新排入背景佇列。
-func (a *App) DecideMediaProposal(agentID, projectID, threadID, proposalID string, inputs map[string]any) (*agent.Proposal, error) {
+func (a *App) DecideMediaProposal(agentID, projectID, threadID, proposalID, workerID string, inputs map[string]any) (*agent.Proposal, error) {
 	proposal, err := agent.ProposalByID(agentID, projectID, threadID, proposalID)
 	if err != nil {
 		return nil, err
@@ -324,12 +329,31 @@ func (a *App) DecideMediaProposal(agentID, projectID, threadID, proposalID strin
 	if !proposal.IsMediaBrief() {
 		return nil, errors.New("這批提案不是媒體生成需求")
 	}
-	validated, err := a.workers.ValidateJob(proposal.Items[0].WorkerID, inputs)
+	item := proposal.Items[0]
+	recommendedID := item.RecommendedWorkerID
+	if recommendedID == "" {
+		recommendedID = item.WorkerID
+	}
+	choices, err := a.workers.CompatibleWorkers(recommendedID)
+	if err != nil {
+		return nil, err
+	}
+	allowed := false
+	for _, choice := range choices {
+		if choice.WorkerID == workerID {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		return nil, errors.New("選擇的 Worker 無法處理這份媒體需求")
+	}
+	validated, err := a.workers.ValidateJob(workerID, inputs)
 	if err != nil {
 		return nil, err
 	}
 	if proposal.Status == agent.ProposalApplyFailed {
-		retried, err := agent.RetryMediaProposal(agentID, projectID, threadID, proposalID, validated)
+		retried, err := agent.RetryMediaProposal(agentID, projectID, threadID, proposalID, workerID, validated)
 		if err != nil {
 			return nil, err
 		}
@@ -338,7 +362,7 @@ func (a *App) DecideMediaProposal(agentID, projectID, threadID, proposalID strin
 		}
 		return &retried, nil
 	}
-	configured, err := agent.ConfigureMediaProposal(agentID, projectID, threadID, proposalID, validated)
+	configured, err := agent.ConfigureMediaProposal(agentID, projectID, threadID, proposalID, workerID, validated)
 	if err != nil {
 		return nil, err
 	}
