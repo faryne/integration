@@ -13,8 +13,7 @@ import { WebApiProvider } from "@writer/lib/webApi.tsx";
 import { LoadErrorPage } from "@writer/pages/LoadErrorPage.tsx";
 import { LoginPage } from "@writer/pages/LoginPage.tsx";
 import { ProjectsPage } from "@writer/pages/ProjectsPage.tsx";
-import { SettingsHome, type SettingsSection } from "@writer/pages/settings/SettingsHome.tsx";
-import { WorkerSettingsPage } from "@writer/pages/settings/WorkerSettingsPage.tsx";
+import { defaultSettingsSection, SettingsPage, type SettingsSection } from "@writer/pages/settings/SettingsPage.tsx";
 import { WorkspacePage } from "@writer/pages/workspace/WorkspacePage.tsx";
 
 // 外觀先固定 nocturne（網站預設的深色），之後要切換再接網站的 appearance 設定
@@ -42,8 +41,8 @@ function Shell() {
   const [openProject, setOpenProject] = useState<Project | null>(null);
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
-  // 設定頁：null＝沒開；"home"＝設定首頁（分類列表）；其餘為各分類頁。入口在作業系統選單列的「設定…」。
-  const [settings, setSettings] = useState<"home" | SettingsSection | null>(null);
+  // 設定頁目前的分類；null＝沒開。入口在作業系統選單列的「設定…」。
+  const [settings, setSettings] = useState<SettingsSection | null>(null);
   const [appVersion, setAppVersion] = useState("dev");
 
   // 啟動時與授權完成後共用：只有 not_logged_in 才回登入頁，其他錯誤（離線、站台錯誤）給重試
@@ -80,7 +79,7 @@ function Shell() {
   useEffect(() => {
     backend.AppVersion().then(setAppVersion).catch((err) => showError(errorMessage(err)));
     const offAbout = EventsOn("app:show-about", () => setAboutOpen(true));
-    const offSettings = EventsOn("app:show-settings", () => setSettings("home"));
+    const offSettings = EventsOn("app:show-settings", () => setSettings((current) => current ?? defaultSettingsSection));
     return () => {
       offAbout();
       offSettings();
@@ -125,10 +124,8 @@ function Shell() {
           <LoadErrorPage onRetry={loadProfile} onLogout={logout} />
         ) : (
           <WebApiProvider onExpired={handleSessionExpired}>
-            {settings === "home" ? (
-              <SettingsHome rootLabel={openProject?.name ?? t("projects.title")} onBack={() => setSettings(null)} onOpen={setSettings} />
-            ) : settings === "workers" ? (
-              <WorkerSettingsPage rootLabel={openProject?.name ?? t("projects.title")} onBack={() => setSettings(null)} onSettingsHome={() => setSettings("home")} />
+            {settings ? (
+              <SettingsPage rootLabel={openProject?.name ?? t("projects.title")} section={settings} onSection={setSettings} onBack={() => setSettings(null)} />
             ) : openProject ? (
               <WorkspacePage key={openProject.public_id} project={openProject} profile={profile} onBack={() => setOpenProject(null)} />
             ) : (

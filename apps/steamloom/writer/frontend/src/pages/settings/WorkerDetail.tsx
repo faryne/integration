@@ -48,11 +48,11 @@ export function WorkerDetail({ adapter, worker, busy, onSave, onTest, onDelete }
   return (
     <Box sx={{ flex: 1, overflow: "auto", p: 3, maxWidth: 820 }}>
       <Stack direction="row" alignItems="flex-start" justifyContent="space-between" sx={{ mb: 3 }}>
-        <Box>
+        <Box sx={{ minWidth: 0 }}>
           <Typography variant="h5" sx={{ fontSize: 19 }}>{input.name || adapter.name}</Typography>
           <Typography color="text.secondary" variant="body2">{adapter.description}</Typography>
         </Box>
-        <FormControlLabel control={<Switch checked={input.enabled} onChange={(_, enabled) => setInput({ ...input, enabled })} />} label={t("settings.workers.enabled")} />
+        <FormControlLabel sx={{ flex: "none", ml: 2, mr: 0, whiteSpace: "nowrap" }} control={<Switch checked={input.enabled} onChange={(_, enabled) => setInput({ ...input, enabled })} />} label={t("settings.workers.enabled")} />
       </Stack>
 
       {worker?.status === "error" && <Alert severity="error" sx={{ mb: 2 }}>{worker.status_message}</Alert>}

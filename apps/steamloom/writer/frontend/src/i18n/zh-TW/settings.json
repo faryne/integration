@@ -1,11 +1,10 @@
 {
   "title": "應用程式設定",
-  "backToList": "回到列表",
   "workers": {
     "title": "媒體 Worker",
-    "subtitle": "管理這台裝置可供所有專案使用的媒體服務。Agent 只能得知能力，不會取得連線資訊或密鑰。",
     "add": "新增 Worker",
-    "empty": "尚未設定 Worker",
+    "empty": "開始建立 Worker",
+    "selectHint": "點擊左側的 Worker 開始編輯",
     "required": "此欄位必填",
     "invalidUrl": "請輸入有效的 http/https 位址",
     "enabled": "啟用",

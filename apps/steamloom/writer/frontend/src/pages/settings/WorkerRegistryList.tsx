@@ -19,9 +19,7 @@ export function WorkerRegistryList({ workers, selectedID, onSelect, onAdd }: {
         <Typography fontWeight={600}>{t("settings.workers.title")}</Typography>
         <Button size="small" startIcon={<AddIcon />} onClick={onAdd}>{t("settings.workers.add")}</Button>
       </Stack>
-      {!workers.length ? (
-        <Typography color="text.secondary" variant="body2" sx={{ px: 2, py: 1 }}>{t("settings.workers.empty")}</Typography>
-      ) : (
+      {workers.length > 0 && (
         <List disablePadding sx={{ overflow: "auto" }}>
           {workers.map((worker) => (
             <ListItemButton key={worker.id} selected={worker.id === selectedID} onClick={() => onSelect(worker.id)} sx={{ borderTop: 1, borderColor: "divider", py: 1.25 }}>
