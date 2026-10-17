@@ -78,12 +78,12 @@ export function Create(arg1, arg2) {
   return window['go']['main']['App']['Create'](arg1, arg2);
 }
 
-export function DecideProposal(arg1, arg2, arg3, arg4, arg5, arg6) {
-  return window['go']['main']['App']['DecideProposal'](arg1, arg2, arg3, arg4, arg5, arg6);
-}
-
 export function DecideMediaProposal(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['DecideMediaProposal'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function DecideProposal(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['DecideProposal'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function DeleteAsset(arg1, arg2) {
@@ -96,6 +96,10 @@ export function DeleteAssetCollection(arg1, arg2) {
 
 export function DeleteDocument(arg1, arg2, arg3) {
   return window['go']['main']['App']['DeleteDocument'](arg1, arg2, arg3);
+}
+
+export function DeleteWorker(arg1) {
+  return window['go']['main']['App']['DeleteWorker'](arg1);
 }
 
 export function Document(arg1, arg2, arg3) {
@@ -150,30 +154,6 @@ export function MoveStory(arg1, arg2, arg3) {
   return window['go']['main']['App']['MoveStory'](arg1, arg2, arg3);
 }
 
-export function WorkerAdapters() {
-  return window['go']['main']['App']['WorkerAdapters']();
-}
-
-export function WorkerJobSpec(arg1) {
-  return window['go']['main']['App']['WorkerJobSpec'](arg1);
-}
-
-export function Workers() {
-  return window['go']['main']['App']['Workers']();
-}
-
-export function SaveWorker(arg1) {
-  return window['go']['main']['App']['SaveWorker'](arg1);
-}
-
-export function TestWorker(arg1) {
-  return window['go']['main']['App']['TestWorker'](arg1);
-}
-
-export function DeleteWorker(arg1) {
-  return window['go']['main']['App']['DeleteWorker'](arg1);
-}
-
 export function PatchDocument(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['PatchDocument'](arg1, arg2, arg3, arg4);
 }
@@ -206,12 +186,20 @@ export function SaveDocument(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['SaveDocument'](arg1, arg2, arg3, arg4);
 }
 
+export function SaveWorker(arg1) {
+  return window['go']['main']['App']['SaveWorker'](arg1);
+}
+
 export function SetUnsaved(arg1) {
   return window['go']['main']['App']['SetUnsaved'](arg1);
 }
 
 export function StartTask(arg1, arg2) {
   return window['go']['main']['App']['StartTask'](arg1, arg2);
+}
+
+export function TestWorker(arg1) {
+  return window['go']['main']['App']['TestWorker'](arg1);
 }
 
 export function UpdateAsset(arg1, arg2, arg3) {
@@ -236,6 +224,18 @@ export function VersionDetail(arg1, arg2, arg3, arg4) {
 
 export function Versions(arg1, arg2, arg3) {
   return window['go']['main']['App']['Versions'](arg1, arg2, arg3);
+}
+
+export function WorkerAdapters() {
+  return window['go']['main']['App']['WorkerAdapters']();
+}
+
+export function WorkerJobSpec(arg1) {
+  return window['go']['main']['App']['WorkerJobSpec'](arg1);
+}
+
+export function Workers() {
+  return window['go']['main']['App']['Workers']();
 }
 
 export function Workspace(arg1) {

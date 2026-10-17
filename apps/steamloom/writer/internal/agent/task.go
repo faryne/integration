@@ -47,6 +47,8 @@ type Task struct {
 	ReasoningEffort string `json:"reasoning_effort,omitempty"`
 	// Slow 表示已超過 TaskTimeouts.Slow 仍未完成；只供畫面提示，不改變 State。
 	Slow bool `json:"slow,omitempty"`
+	// Background 是媒體 Worker 生成：走獨立佇列，不擋同一 thread 的對話，也不佔用 thread 的 ActiveTaskID。
+	Background bool `json:"background,omitempty"`
 }
 
 // TaskTimeouts 是單一 task 的等待上限，從開始執行起算（不含排隊），提案自動修正那一輪共用同一個計時。
@@ -170,13 +172,20 @@ func (m *TaskManager) Apply(proposal Proposal) (Task, error) {
 	if err != nil {
 		return Task{}, err
 	}
-	task := Task{ID: id, AgentID: proposal.AgentID, ProjectID: proposal.ProjectID, ThreadID: proposal.ThreadID, Prompt: "執行已核准提案", State: TaskQueued, CreatedAt: now()}
+	task := Task{ID: id, AgentID: proposal.AgentID, ProjectID: proposal.ProjectID, ThreadID: proposal.ThreadID, Prompt: "執行已核准提案", State: TaskQueued, CreatedAt: now(), Background: proposal.IsMediaBrief()}
+	if task.Background {
+		task.Prompt = "媒體 Worker 生成"
+	}
 	proposal, err = recordApplyQueued(task.AgentID, task.ProjectID, task.ThreadID, proposal.ID, task.ID)
 	if err != nil {
 		return Task{}, err
 	}
 	managed := &managedTask{task: task, req: Request{ThreadID: proposal.ThreadID, ProjectID: proposal.ProjectID, Prompt: task.Prompt}, applyProposal: &proposal}
 	key := taskQueueKey(task)
+	if task.Background {
+		// 每個媒體提案自成一條佇列，Worker 等待期間作者仍可在同一 thread 繼續對話。
+		key += "/media/" + proposal.ID
+	}
 	m.mu.Lock()
 	m.tasks[id] = managed
 	queue := m.queues[key]
@@ -398,7 +407,7 @@ func (m *TaskManager) runApply(ctx context.Context, managed *managedTask) {
 				}
 				m.emit(TaskEvent{Type: EventApplyItemStarted, Task: task, Proposal: &proposal})
 				_, err = m.apply(ctx, proposal, item)
-				if ctx.Err() != nil {
+				if ctx.Err() != nil && (err == nil || !task.Background) {
 					err = ctx.Err()
 				}
 				if err != nil {
@@ -422,7 +431,8 @@ func (m *TaskManager) runApply(ctx context.Context, managed *managedTask) {
 	conflicted := errors.Is(err, ErrApplyConflict)
 	if err != nil {
 		detail := err.Error()
-		if contextErr != nil {
+		// 媒體 Worker 停止時保留 adapter 訊息，作者才知道外部服務可能仍會完成並扣額度。
+		if contextErr != nil && !task.Background {
 			detail = "工作已停止"
 		}
 		var failed Proposal

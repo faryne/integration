@@ -54,6 +54,11 @@ type Proposal struct {
 	Items               []ProposalItem `json:"items"`
 }
 
+// IsMediaBrief 判斷是否為單項媒體生成需求；這類提案在背景佇列執行，失敗後可調整參數重跑。
+func (p Proposal) IsMediaBrief() bool {
+	return len(p.Items) == 1 && p.Items[0].ProposalType == ProposalTypeMediaBrief
+}
+
 // ApplyItems 回傳作者核准的項目；舊版 proposal 沒有 selection 時維持整批套用相容性。
 func (p Proposal) ApplyItems() []ProposalItem {
 	if len(p.SelectedItemIDs) == 0 {

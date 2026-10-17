@@ -58,11 +58,10 @@ func TestPixAIDiscoverAndGenerate(t *testing.T) {
 	if _, err := adapter.Discover(context.Background(), nil, map[string]string{"api_key": "bad"}); err == nil {
 		t.Fatal("invalid key should fail discovery")
 	}
-	discovery, err := adapter.Discover(context.Background(), map[string]string{"model_version_id": "custom-1"}, map[string]string{"api_key": "good-key"})
-	if err != nil {
+	if _, err := adapter.Discover(context.Background(), nil, map[string]string{"api_key": "good-key"}); err != nil {
 		t.Fatal(err)
 	}
-	inputs, err := validateJobInput(discovery.JobFields, map[string]any{"prompt": "藍髮少女", "candidate_count": "4", "seed": 7.0, "prompt_helper": false, "mode": ""})
+	inputs, err := validateJobInput(adapter.JobFields(map[string]string{"model_version_id": "custom-1"}), map[string]any{"prompt": "藍髮少女", "candidate_count": "4", "seed": 7.0, "prompt_helper": false, "mode": ""})
 	if err != nil {
 		t.Fatal(err)
 	}

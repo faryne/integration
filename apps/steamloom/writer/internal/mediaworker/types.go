@@ -110,7 +110,6 @@ type SaveInput struct {
 type Discovery struct {
 	Capabilities []string
 	Message      string
-	JobFields    []JobField
 }
 
 type storedFile struct {
@@ -126,6 +125,5 @@ type storedWorker struct {
 	Status        string            `json:"status"`
 	StatusMessage string            `json:"status_message,omitempty"`
 	Capabilities  []string          `json:"capabilities,omitempty"`
-	JobFields     []JobField        `json:"job_fields,omitempty"`
 	LastCheckedAt time.Time         `json:"last_checked_at,omitempty"`
 }

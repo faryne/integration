@@ -314,18 +314,29 @@ func (a *App) DecideProposal(agentID, projectID, threadID, proposalID, decision 
 	return &decided, nil
 }
 
-// DecideMediaProposal 先以 Worker schema 驗證作者調整的參數，再沿用一般 proposal apply lifecycle。
+// DecideMediaProposal 先以 Worker schema 驗證作者調整的參數，再沿用一般 proposal apply lifecycle；
+// 生成失敗過的提案走重跑路徑，換上新參數後重新排入背景佇列。
 func (a *App) DecideMediaProposal(agentID, projectID, threadID, proposalID string, inputs map[string]any) (*agent.Proposal, error) {
 	proposal, err := agent.ProposalByID(agentID, projectID, threadID, proposalID)
 	if err != nil {
 		return nil, err
 	}
-	if len(proposal.Items) != 1 || proposal.Items[0].ProposalType != agent.ProposalTypeMediaBrief {
+	if !proposal.IsMediaBrief() {
 		return nil, errors.New("這批提案不是媒體生成需求")
 	}
 	validated, err := a.workers.ValidateJob(proposal.Items[0].WorkerID, inputs)
 	if err != nil {
 		return nil, err
+	}
+	if proposal.Status == agent.ProposalApplyFailed {
+		retried, err := agent.RetryMediaProposal(agentID, projectID, threadID, proposalID, validated)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := a.tasks.Apply(retried); err != nil {
+			return nil, err
+		}
+		return &retried, nil
 	}
 	configured, err := agent.ConfigureMediaProposal(agentID, projectID, threadID, proposalID, validated)
 	if err != nil {

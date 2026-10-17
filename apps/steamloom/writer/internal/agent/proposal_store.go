@@ -140,7 +140,7 @@ func ConfigureMediaProposal(agentID, projectID, threadID, proposalID string, inp
 	if err != nil {
 		return Proposal{}, err
 	}
-	if proposal.Status != ProposalAwaitingConfirmation || len(proposal.Items) != 1 || proposal.Items[0].ProposalType != ProposalTypeMediaBrief {
+	if proposal.Status != ProposalAwaitingConfirmation || !proposal.IsMediaBrief() {
 		return Proposal{}, errors.New("這批提案不是可設定的媒體生成需求")
 	}
 	decisions, err := proposalDecisions(filepath.Join(dir, threadID+".jsonl"))
@@ -151,6 +151,29 @@ func ConfigureMediaProposal(agentID, projectID, threadID, proposalID string, inp
 		return Proposal{}, errors.New("這批提案已經完成決策")
 	}
 	proposal.Items[0].JobInputs = inputs
+	if err := setProposalHashes(&proposal); err != nil {
+		return Proposal{}, err
+	}
+	if err := writeProposal(path, proposal); err != nil {
+		return Proposal{}, err
+	}
+	return proposal, nil
+}
+
+// RetryMediaProposal 讓生成失敗的媒體提案換上新參數、回到 approved，再由 TaskManager 重新排入背景佇列。
+// 沿用原本的核准事件：作者按「重新生成」本身就是對新參數的確認。
+func RetryMediaProposal(agentID, projectID, threadID, proposalID string, inputs map[string]any) (Proposal, error) {
+	chatMu.Lock()
+	defer chatMu.Unlock()
+	dir, _, _, proposal, path, err := loadProposalForApply(agentID, projectID, threadID, proposalID)
+	if err != nil {
+		return Proposal{}, err
+	}
+	lifecycle, found := proposalApplyLifecycle(filepath.Join(dir, threadID+".jsonl"), proposal.ID)
+	if !proposal.IsMediaBrief() || proposal.Status != ProposalApplyFailed || !found || lifecycle.status != ProposalApplyFailed {
+		return Proposal{}, errors.New("只有生成失敗的媒體需求可以重新生成")
+	}
+	proposal.Items[0].JobInputs, proposal.Status, proposal.AppliedAt = inputs, ProposalApproved, ""
 	if err := setProposalHashes(&proposal); err != nil {
 		return Proposal{}, err
 	}
@@ -512,7 +535,7 @@ func proposalDecisionText(proposal Proposal, decision string) string {
 	action := "同意套用"
 	if decision == ProposalDecisionReject {
 		action = "否決"
-	} else if len(proposalItems) == 1 && proposalItems[0].ProposalType == ProposalTypeMediaBrief {
+	} else if proposal.IsMediaBrief() {
 		action = "同意執行"
 	}
 	return fmt.Sprintf("你已%s %d 項變更：%s", action, len(items), strings.Join(items, "、"))

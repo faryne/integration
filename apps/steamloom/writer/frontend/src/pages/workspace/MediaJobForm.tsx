@@ -1,5 +1,8 @@
 import { FormControlLabel, MenuItem, Stack, Switch, TextField, Typography } from "@mui/material";
-import type { AgentProposalItem, WorkerJobSpec } from "@writer/lib/backend.ts";
+import type { AgentProposal, AgentProposalItem, WorkerJobSpec } from "@writer/lib/backend.ts";
+
+// canRetryMedia：生成失敗的媒體需求可以調整參數重跑；ProposalCard 與 ReviewDialog 共用同一判斷。
+export const canRetryMedia = (proposal: AgentProposal) => proposal.status === "apply_failed" && proposal.items.length === 1 && proposal.items[0].proposal_type === "media.brief";
 
 type JobField = WorkerJobSpec["fields"][number];
 
@@ -21,6 +24,8 @@ export function initialMediaJobInputs(spec: WorkerJobSpec, item: AgentProposalIt
     negative_prompt: item.brief?.negative_prompt,
     aspect_ratio: item.brief?.aspect_ratio,
     candidate_count: item.brief?.candidate_count,
+    // 重跑時優先沿用作者上一次送出的參數，而不是退回 Agent 原始 brief。
+    ...item.job_inputs,
   };
   return Object.fromEntries(spec.fields.flatMap((field) => {
     const value = fitJobValue(field, brief[field.key]) ?? field.default;

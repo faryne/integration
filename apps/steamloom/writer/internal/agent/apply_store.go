@@ -23,7 +23,8 @@ func recordApplyQueued(agentID, projectID, threadID, proposalID, taskID string) 
 	if err := appendLines(filepath.Join(dir, threadID+".jsonl"), []ChatLine{event}); err != nil {
 		return Proposal{}, err
 	}
-	thread.UpdatedAt, thread.LastTaskState, thread.ActiveTaskID = event.CreatedAt, TaskQueued, taskID
+	thread.UpdatedAt = event.CreatedAt
+	claimThread(&thread, taskID, TaskQueued)
 	idx.Threads = upsertFront(idx.Threads, thread)
 	if err := saveIndex(dir, idx); err != nil {
 		return Proposal{}, err
@@ -57,7 +58,8 @@ func recordApplyStarted(agentID, projectID, threadID, proposalID, taskID string)
 	if err := writeProposal(path, proposal); err != nil {
 		return Proposal{}, err
 	}
-	thread.UpdatedAt, thread.LastTaskState, thread.ActiveTaskID = now(), TaskApplying, taskID
+	thread.UpdatedAt = now()
+	claimThread(&thread, taskID, TaskApplying)
 	idx.Threads = upsertFront(idx.Threads, thread)
 	if err := saveIndex(dir, idx); err != nil {
 		return Proposal{}, err
@@ -239,8 +241,8 @@ func recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, propos
 	if err := writeProposal(path, proposal); err != nil {
 		return Proposal{}, err
 	}
-	thread.UpdatedAt, thread.LastTaskState, thread.ActiveTaskID = now(), taskState, ""
-	if eventType == EventApplyCompleted && hasAwaitingProposal(dir, threadID, proposalID) {
+	thread.UpdatedAt = now()
+	if releaseThread(&thread, taskID, taskState) && eventType == EventApplyCompleted && hasAwaitingProposal(dir, threadID, proposalID) {
 		thread.LastTaskState = TaskAwaitingConfirmation
 	}
 	idx.Threads = upsertFront(idx.Threads, thread)
@@ -248,6 +250,22 @@ func recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, propos
 		return Proposal{}, err
 	}
 	return proposal, nil
+}
+
+// claimThread 只在 thread 沒有其他進行中工作時登記；背景媒體生成會和對話 task 同時跑，不能互相覆寫。
+func claimThread(thread *Thread, taskID, state string) {
+	if thread.ActiveTaskID == "" || thread.ActiveTaskID == taskID {
+		thread.LastTaskState, thread.ActiveTaskID = state, taskID
+	}
+}
+
+// releaseThread 只釋放自己登記的 ActiveTaskID；thread 正被另一個 task 使用時回傳 false、不動狀態。
+func releaseThread(thread *Thread, taskID, state string) bool {
+	if thread.ActiveTaskID != "" && thread.ActiveTaskID != taskID {
+		return false
+	}
+	thread.LastTaskState, thread.ActiveTaskID = state, ""
+	return true
 }
 
 func hasAwaitingProposal(dir, threadID, excludeID string) bool {

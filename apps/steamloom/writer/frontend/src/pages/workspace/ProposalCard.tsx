@@ -3,6 +3,7 @@ import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, Dial
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentProposal, AgentProposalItem } from "@writer/lib/backend.ts";
+import { canRetryMedia } from "@writer/pages/workspace/MediaJobForm.tsx";
 
 export function ProposalCard({ proposal, confirming, onConfirmApplied, onReview }: { proposal: AgentProposal; confirming: boolean; onConfirmApplied: () => void; onReview: (item: AgentProposalItem, selectedIDs: string[]) => void }) {
   const { t } = useTranslation();
@@ -45,7 +46,7 @@ export function ProposalCard({ proposal, confirming, onConfirmApplied, onReview 
             {pending && <Checkbox size="small" checked={selected.has(item.id)} onChange={() => toggle(item.id)} inputProps={{ "aria-label": t("workspace.chat.proposal.selectItem", { title: item.title || item.file_name || "" }) }} />}
             <Chip size="small" variant="outlined" label={t(`workspace.chat.proposal.types.${item.proposal_type || (item.kind === "asset" ? "asset.upload" : item.target_id ? "document.replace" : "document.create")}`)} />
             <Typography noWrap sx={{ flex: 1, minWidth: 0, fontSize: 13 }}>{item.title || item.file_name || t("workspace.chat.proposal.untitled")}</Typography>
-            <Button size="small" onClick={() => onReview(item, selectedIDs)}>{t(pending ? "workspace.chat.proposal.review" : "workspace.chat.proposal.view")}</Button>
+            <Button size="small" onClick={() => onReview(item, selectedIDs)}>{t(pending ? "workspace.chat.proposal.review" : canRetryMedia(proposal) ? "workspace.chat.proposal.regenerate" : "workspace.chat.proposal.view")}</Button>
           </Stack>
         ))}
       </Stack>

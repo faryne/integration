@@ -123,11 +123,3 @@ func numberValue(value any) (float64, error) {
 		return 0, errors.New("必須是數字")
 	}
 }
-
-func cloneJobFields(fields []JobField) []JobField {
-	result := append([]JobField{}, fields...)
-	for index := range result {
-		result[index].Options = append([]JobOption{}, result[index].Options...)
-	}
-	return result
-}

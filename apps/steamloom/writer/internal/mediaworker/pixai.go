@@ -61,7 +61,7 @@ func (pixaiAdapter) Descriptor() AdapterDescriptor {
 }
 
 // Discover 以查詢不存在的 task 驗證 API key：有效 key 回 404、無效 key 回 401，不會送出生成工作或扣額度。
-func (a pixaiAdapter) Discover(ctx context.Context, settings, secrets map[string]string) (Discovery, error) {
+func (a pixaiAdapter) Discover(ctx context.Context, _, secrets map[string]string) (Discovery, error) {
 	key := strings.TrimSpace(secrets["api_key"])
 	if key == "" {
 		return Discovery{}, errors.New("請先填入 PixAI API Key")
@@ -78,10 +78,11 @@ func (a pixaiAdapter) Discover(ctx context.Context, settings, secrets map[string
 	default:
 		return Discovery{}, pixaiError(status, body)
 	}
-	return Discovery{Capabilities: []string{"text_to_image", "batch_candidates"}, Message: "PixAI API Key 驗證成功", JobFields: pixaiJobFields(settings)}, nil
+	return Discovery{Capabilities: []string{"text_to_image", "batch_candidates"}, Message: "PixAI API Key 驗證成功"}, nil
 }
 
-func pixaiJobFields(settings map[string]string) []JobField {
+// JobFields 的模型選單會把設定中的自訂 modelVersionId 補在最前面並設為預設。
+func (pixaiAdapter) JobFields(settings map[string]string) []JobField {
 	models := append([]JobOption{}, pixaiModels...)
 	defaultModel := pixaiDefaultModel
 	if custom := strings.TrimSpace(settings["model_version_id"]); custom != "" {

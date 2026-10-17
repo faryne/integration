@@ -239,6 +239,26 @@ export namespace agent {
 	        this.command = source["command"];
 	    }
 	}
+	export class MediaBrief {
+	    prompt: string;
+	    negative_prompt?: string;
+	    aspect_ratio?: string;
+	    candidate_count?: number;
+	    notes?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MediaBrief(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.prompt = source["prompt"];
+	        this.negative_prompt = source["negative_prompt"];
+	        this.aspect_ratio = source["aspect_ratio"];
+	        this.candidate_count = source["candidate_count"];
+	        this.notes = source["notes"];
+	    }
+	}
 	export class OlderMessages {
 	    messages: ChatLine[];
 	    start: number;
@@ -392,23 +412,6 @@ export namespace agent {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.tool = source["tool"];
 	        this.arguments = source["arguments"];
-	    }
-	}
-	export class MediaBrief {
-	    prompt: string;
-	    negative_prompt?: string;
-	    aspect_ratio?: string;
-	    candidate_count?: number;
-	    notes?: string;
-
-	    static createFrom(source: any = {}) { return new MediaBrief(source); }
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.prompt = source["prompt"];
-	        this.negative_prompt = source["negative_prompt"];
-	        this.aspect_ratio = source["aspect_ratio"];
-	        this.candidate_count = source["candidate_count"];
-	        this.notes = source["notes"];
 	    }
 	}
 	export class ProposalItem {
@@ -618,6 +621,7 @@ export namespace agent {
 	    model?: string;
 	    reasoning_effort?: string;
 	    slow?: boolean;
+	    background?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Task(source);
@@ -642,6 +646,7 @@ export namespace agent {
 	        this.model = source["model"];
 	        this.reasoning_effort = source["reasoning_effort"];
 	        this.slow = source["slow"];
+	        this.background = source["background"];
 	    }
 	}
 
@@ -1235,148 +1240,6 @@ export namespace api {
 
 }
 
-export namespace mediaworker {
-	export class JobOption {
-	    value: string;
-	    label: string;
-	    static createFrom(source: any = {}) { return new JobOption(source); }
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.value = source["value"];
-	        this.label = source["label"];
-	    }
-	}
-	export class JobField {
-	    key: string;
-	    label: string;
-	    kind: string;
-	    description?: string;
-	    required: boolean;
-	    default?: any;
-	    min?: number;
-	    max?: number;
-	    step?: number;
-	    options?: JobOption[];
-	    static createFrom(source: any = {}) { return new JobField(source); }
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.key = source["key"];
-	        this.label = source["label"];
-	        this.kind = source["kind"];
-	        this.description = source["description"];
-	        this.required = source["required"];
-	        this.default = source["default"];
-	        this.min = source["min"];
-	        this.max = source["max"];
-	        this.step = source["step"];
-	        this.options = source["options"]?.map((item: any) => new JobOption(item));
-	    }
-	}
-	export class JobSpec {
-	    worker_id: string;
-	    worker_name: string;
-	    fields: JobField[];
-	    static createFrom(source: any = {}) { return new JobSpec(source); }
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.worker_id = source["worker_id"];
-	        this.worker_name = source["worker_name"];
-	        this.fields = source["fields"]?.map((item: any) => new JobField(item)) ?? [];
-	    }
-	}
-
-	export class SettingField {
-	    key: string;
-	    label: string;
-	    kind: string;
-	    required: boolean;
-	    secret: boolean;
-	    placeholder?: string;
-	    default?: string;
-
-	    static createFrom(source: any = {}) { return new SettingField(source); }
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.key = source["key"];
-	        this.label = source["label"];
-	        this.kind = source["kind"];
-	        this.required = source["required"];
-	        this.secret = source["secret"];
-	        this.placeholder = source["placeholder"];
-	        this.default = source["default"];
-	    }
-	}
-	export class AdapterDescriptor {
-	    id: string;
-	    name: string;
-	    description: string;
-	    media_types: string[];
-	    fields: SettingField[];
-
-	    static createFrom(source: any = {}) { return new AdapterDescriptor(source); }
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.name = source["name"];
-	        this.description = source["description"];
-	        this.media_types = source["media_types"];
-	        this.fields = this.convertValues(source["fields"], SettingField);
-	    }
-		convertValues(a: any, classs: any): any {
-		    if (!a) return a;
-		    return a.slice && a.map ? a.map((elem: any) => this.convertValues(elem, classs)) : new classs(a);
-		}
-	}
-	export class Worker {
-	    id: string;
-	    adapter_id: string;
-	    name: string;
-	    enabled: boolean;
-	    settings: Record<string, string>;
-	    has_secrets: Record<string, boolean>;
-	    status: string;
-	    status_message?: string;
-	    capabilities: string[];
-	    last_checked_at?: string;
-
-	    static createFrom(source: any = {}) { return new Worker(source); }
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.adapter_id = source["adapter_id"];
-	        this.name = source["name"];
-	        this.enabled = source["enabled"];
-	        this.settings = source["settings"];
-	        this.has_secrets = source["has_secrets"];
-	        this.status = source["status"];
-	        this.status_message = source["status_message"];
-	        this.capabilities = source["capabilities"];
-	        this.last_checked_at = source["last_checked_at"];
-	    }
-	}
-	export class SaveInput {
-	    id: string;
-	    adapter_id: string;
-	    name: string;
-	    enabled: boolean;
-	    settings: Record<string, string>;
-	    secrets: Record<string, string>;
-	    clear_secrets: string[];
-
-	    static createFrom(source: any = {}) { return new SaveInput(source); }
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.adapter_id = source["adapter_id"];
-	        this.name = source["name"];
-	        this.enabled = source["enabled"];
-	        this.settings = source["settings"];
-	        this.secrets = source["secrets"];
-	        this.clear_secrets = source["clear_secrets"];
-	    }
-	}
-}
-
 export namespace main {
 	
 	export class LocalImage {
@@ -1430,6 +1293,225 @@ export namespace main {
 
 }
 
+export namespace mediaworker {
+	
+	export class SettingField {
+	    key: string;
+	    label: string;
+	    kind: string;
+	    required: boolean;
+	    secret: boolean;
+	    placeholder?: string;
+	    default?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SettingField(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.label = source["label"];
+	        this.kind = source["kind"];
+	        this.required = source["required"];
+	        this.secret = source["secret"];
+	        this.placeholder = source["placeholder"];
+	        this.default = source["default"];
+	    }
+	}
+	export class AdapterDescriptor {
+	    id: string;
+	    name: string;
+	    description: string;
+	    media_types: string[];
+	    fields: SettingField[];
+	
+	    static createFrom(source: any = {}) {
+	        return new AdapterDescriptor(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.media_types = source["media_types"];
+	        this.fields = this.convertValues(source["fields"], SettingField);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class JobOption {
+	    value: string;
+	    label: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new JobOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.value = source["value"];
+	        this.label = source["label"];
+	    }
+	}
+	export class JobField {
+	    key: string;
+	    label: string;
+	    kind: string;
+	    description?: string;
+	    required: boolean;
+	    default?: any;
+	    min?: number;
+	    max?: number;
+	    step?: number;
+	    options?: JobOption[];
+	
+	    static createFrom(source: any = {}) {
+	        return new JobField(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.label = source["label"];
+	        this.kind = source["kind"];
+	        this.description = source["description"];
+	        this.required = source["required"];
+	        this.default = source["default"];
+	        this.min = source["min"];
+	        this.max = source["max"];
+	        this.step = source["step"];
+	        this.options = this.convertValues(source["options"], JobOption);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class JobSpec {
+	    worker_id: string;
+	    worker_name: string;
+	    fields: JobField[];
+	
+	    static createFrom(source: any = {}) {
+	        return new JobSpec(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.worker_id = source["worker_id"];
+	        this.worker_name = source["worker_name"];
+	        this.fields = this.convertValues(source["fields"], JobField);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SaveInput {
+	    id: string;
+	    adapter_id: string;
+	    name: string;
+	    enabled: boolean;
+	    settings: Record<string, string>;
+	    secrets: Record<string, string>;
+	    clear_secrets: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SaveInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.adapter_id = source["adapter_id"];
+	        this.name = source["name"];
+	        this.enabled = source["enabled"];
+	        this.settings = source["settings"];
+	        this.secrets = source["secrets"];
+	        this.clear_secrets = source["clear_secrets"];
+	    }
+	}
+	
+	export class Worker {
+	    id: string;
+	    adapter_id: string;
+	    name: string;
+	    enabled: boolean;
+	    settings: Record<string, string>;
+	    has_secrets: Record<string, boolean>;
+	    status: string;
+	    status_message?: string;
+	    capabilities: string[];
+	    last_checked_at?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Worker(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.adapter_id = source["adapter_id"];
+	        this.name = source["name"];
+	        this.enabled = source["enabled"];
+	        this.settings = source["settings"];
+	        this.has_secrets = source["has_secrets"];
+	        this.status = source["status"];
+	        this.status_message = source["status_message"];
+	        this.capabilities = source["capabilities"];
+	        this.last_checked_at = source["last_checked_at"];
+	    }
+	}
+
+}
+
 export namespace skillupdate {
 	
 	export class Result {
@@ -1467,3 +1549,4 @@ export namespace updater {
 	}
 
 }
+
