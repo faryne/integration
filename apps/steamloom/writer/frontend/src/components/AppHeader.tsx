@@ -1,14 +1,12 @@
 import { SteamLoomMark } from "@steamloom-web/components/storyteller/SteamLoomMark.tsx";
 import LogoutIcon from "@mui/icons-material/Logout";
-import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
-import { Avatar, Box, ButtonBase, IconButton, ListItemIcon, Menu, MenuItem, Stack, Tooltip, Typography } from "@mui/material";
+import { Avatar, Box, ButtonBase, ListItemIcon, Menu, MenuItem, Stack, Typography } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Profile } from "@writer/lib/backend.ts";
 
-// 頂部列：左邊品牌標誌，右邊是裝置層級設定入口與登入後的作者帳號。
-// 設定直接放工具列，不藏在大頭貼選單裡；目前在設定頁時按鈕呈現選取狀態。
-export function AppHeader({ profile, settingsActive, onSettings, onLogout }: { profile: Profile | null; settingsActive: boolean; onSettings: () => void; onLogout: () => void }) {
+// 頂部列：左邊品牌標誌，右邊登入後的作者帳號。應用程式設定的入口在作業系統選單列（menu.go），不放在這裡。
+export function AppHeader({ profile, onLogout }: { profile: Profile | null; onLogout: () => void }) {
   const { t } = useTranslation();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   return (
@@ -30,11 +28,6 @@ export function AppHeader({ profile, settingsActive, onSettings, onLogout }: { p
       <Box sx={{ flex: 1 }} />
       {profile && (
         <>
-          <Tooltip title={t("settings.title")}>
-            <IconButton aria-label={t("settings.title")} color={settingsActive ? "primary" : "default"} onClick={onSettings} sx={{ mr: 0.75 }}>
-              <SettingsOutlinedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
           <ButtonBase onClick={(e) => setAnchor(e.currentTarget)} sx={{ gap: 1, borderRadius: 1, px: 1, py: 0.5 }}>
             <Typography variant="body2" color="text.secondary">
               {profile.pen_name}

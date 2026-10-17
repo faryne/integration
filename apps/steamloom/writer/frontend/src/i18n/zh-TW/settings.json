@@ -1,5 +1,6 @@
 {
   "title": "應用程式設定",
+  "backToList": "回到列表",
   "workers": {
     "title": "媒體 Worker",
     "subtitle": "管理這台裝置可供所有專案使用的媒體服務。Agent 只能得知能力，不會取得連線資訊或密鑰。",

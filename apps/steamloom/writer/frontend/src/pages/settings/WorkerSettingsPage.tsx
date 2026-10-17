@@ -1,4 +1,5 @@
 import AddIcon from "@mui/icons-material/Add";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from "@mui/material";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,7 +10,8 @@ import { AddWorkerDialog } from "@writer/pages/settings/AddWorkerDialog.tsx";
 import { WorkerDetail } from "@writer/pages/settings/WorkerDetail.tsx";
 import { WorkerRegistryList } from "@writer/pages/settings/WorkerRegistryList.tsx";
 
-export function WorkerSettingsPage({ rootLabel, onBack }: { rootLabel: string; onBack: () => void }) {
+// onBack 離開設定回到原本頁面；onSettingsHome 回到設定首頁的分類列表。
+export function WorkerSettingsPage({ rootLabel, onBack, onSettingsHome }: { rootLabel: string; onBack: () => void; onSettingsHome: () => void }) {
   const { t } = useTranslation();
   const { showError, showSuccess, showWarning } = useSnack();
   const [adapters, setAdapters] = useState<WorkerAdapter[] | null>(null);
@@ -76,8 +78,9 @@ export function WorkerSettingsPage({ rootLabel, onBack }: { rootLabel: string; o
 
   return (
     <>
-      <AppBreadcrumbs items={[{ label: rootLabel, onClick: onBack }, { label: t("settings.title") }, { label: t("settings.workers.title") }]} />
-      <Box sx={{ px: 3, pt: 2.5, pb: 2 }}>
+      <AppBreadcrumbs items={[{ label: rootLabel, onClick: onBack }, { label: t("settings.title"), onClick: onSettingsHome }, { label: t("settings.workers.title") }]} />
+      <Box sx={{ px: 3, pt: 1.5, pb: 2 }}>
+        <Button size="small" startIcon={<ArrowBackIcon />} onClick={onSettingsHome} sx={{ ml: -1, mb: 0.5 }}>{t("settings.backToList")}</Button>
         <Typography variant="h5" sx={{ fontSize: 19 }}>{t("settings.workers.title")}</Typography>
         <Typography color="text.secondary" variant="body2">{t("settings.workers.subtitle")}</Typography>
       </Box>
