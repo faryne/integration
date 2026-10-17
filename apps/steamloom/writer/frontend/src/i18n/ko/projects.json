@@ -1,6 +1,8 @@
 {
   "title": "내 프로젝트",
   "empty": "프로젝트가 없습니다",
+  "create": "프로젝트 만들기",
+  "edit": "프로젝트 편집",
   "storyCount": "이야기 {{count}}편",
   "wordCount": "{{words}}자",
   "updatedAt": "{{date}}에 업데이트",

@@ -1,6 +1,6 @@
 # SteamLoom Writer：建立／編輯／刪除專案
 
-> 狀態：規格草稿，待確認後實作。Mockup：`writer-project-management-mockup/index.html`
+> 狀態：已實作（2026-10-17）。Mockup：`writer-project-management-mockup/index.html`
 
 ## 結論
 
@@ -38,6 +38,17 @@ Writer 直接沿用網站的專案表單與刪除確認，**不另刻 UI**：
 4. **Writer 頁面**：`App.tsx` 新增 `projectForm: { mode: "create" } | { mode: "edit", id }` 狀態；表單頁麵包屑「我的專案 / 建立專案」或「我的專案 / 〈專案名〉/ 編輯專案」。存檔成功、刪除成功後重抓 `backend.Projects()`。
 5. 建立成功的「建立第一篇故事」→ 開啟該專案工作台並觸發新增故事；「回專案首頁」→ 開啟工作台。
 
+## 實作補充
+
+規格外、實作時才發現要處理的：
+
+- **選單會清空 slug／分級／標籤**：切換公開狀態是整包 PUT，Writer 的 `api.Project` 原本沒有這三個欄位。已補進 Go `Project`，共用選單的型別也縮成只要求真正用到的欄位（`StorytellerProjectMenuTarget`）。
+- **網站頁面會改 Writer 視窗標題**：`useTitle`／`useSeo` 直接寫 `document.title` 與 SEO meta。`title.tsx` 新增 `SeoDisabledContext`，Writer 的 `WebApiProvider` 一律設為停用。
+- **外觀 context 缺失會整頁空白**：`StorytellerLoading`、梭梭插圖需要 `useStorytellerAppearance`。`WebApiProvider` 提供固定 nocturne 的 context。
+- **公開網址預覽多帶 `/storyteller`**：`steamloomPath` 只看目前視窗網域，在 Writer 會判斷錯。新增 `steamloomUrlForOrigin(origin, path)`，NewProject 有 `publicOrigin` 時改用它；origin 由 Go `SiteOrigin()`（＝`STEAMLOOM_ISSUER`）提供。
+- **封面上傳**：Go 新增 `UploadImageAsset(project)`（原生選檔、上傳、回傳資產），經 `StorytellerEditorData.pickAndUploadImage` 注入封面編輯器。
+- **CI**：Writer 新用到的 9 個 static_site 檔案補進 `.github/workflows/steamloom-writer.yml` 的 paths（清單由 Writer 實際建置的模組圖比對得出）。
+
 ## 影響檔案
 
 - 網站（共用）：`static_site/src/pages/storyteller/NewProject.tsx`、`StorytellerProjectCoverEditor.tsx`、`StorytellerEditorDataContext.ts`、`HomeCards.tsx`、新增共用的專案選單元件
@@ -61,7 +72,7 @@ Writer 直接沿用網站的專案表單與刪除確認，**不另刻 UI**：
 | 網路錯誤、儲存／刪除失敗 | SNACK 提示，表單內容保留 |
 | 封面上傳失敗或取消選檔 | 取消不提示；失敗用封面編輯器既有的 snack |
 | 在網站上同時刪掉專案 | Writer 重新整理列表時消失；正在編輯會在儲存時收到 404 錯誤提示 |
-| 刪除的專案在 Writer 有本機 AI 對話紀錄 | 保留在本機不動（soft delete 可由站方復原）；見待確認 #2 |
+| 刪除的專案在 Writer 有本機 AI 對話紀錄 | 保留在本機不動（soft delete 可由站方復原） |
 
 ## 不做
 
@@ -69,7 +80,7 @@ Writer 直接沿用網站的專案表單與刪除確認，**不另刻 UI**：
 - 工作台內的「專案設定」入口（先只放在我的專案）。
 - 專案復原（soft delete 的還原目前只有站方後台）。
 
-## 待確認
+## 已確認（2026-10-17）
 
-1. 工作台裡要不要也放「專案設定」入口？（網站工作台有內嵌編輯）——草稿先不放。
-2. 刪除專案時，要不要一併清掉 Writer 本機該專案的 AI 對話紀錄？——草稿先保留。
+1. 工作台**不放**「專案設定」入口，只放在我的專案。
+2. 刪除專案時**保留** Writer 本機該專案的 AI 對話紀錄（soft delete 可由站方復原）。

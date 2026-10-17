@@ -202,6 +202,10 @@ export function SetUnsaved(arg1) {
   return window['go']['main']['App']['SetUnsaved'](arg1);
 }
 
+export function SiteOrigin() {
+  return window['go']['main']['App']['SiteOrigin']();
+}
+
 export function StartTask(arg1, arg2) {
   return window['go']['main']['App']['StartTask'](arg1, arg2);
 }
@@ -220,6 +224,10 @@ export function UpdateAssetCollection(arg1, arg2, arg3, arg4) {
 
 export function UploadAssets(arg1, arg2) {
   return window['go']['main']['App']['UploadAssets'](arg1, arg2);
+}
+
+export function UploadImageAsset(arg1) {
+  return window['go']['main']['App']['UploadImageAsset'](arg1);
 }
 
 export function UploadLocalImages(arg1, arg2) {

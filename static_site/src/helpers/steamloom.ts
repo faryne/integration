@@ -4,18 +4,33 @@
 
 export const STEAMLOOM_PATH_PREFIX = "/storyteller";
 
+const steamloomHosts = [
+  "steamloom.works",
+  "www.steamloom.works",
+  "steamloom-web.web.app",
+  "steamloom-web.firebaseapp.com",
+  "site.steamloom.works",
+];
+
 export function isSteamLoomSite() {
   if (typeof window === "undefined") {
     return false;
   }
 
-  return [
-    "steamloom.works",
-    "www.steamloom.works",
-    "steamloom-web.web.app",
-    "steamloom-web.firebaseapp.com",
-    "site.steamloom.works",
-  ].includes(window.location.hostname);
+  return steamloomHosts.includes(window.location.hostname);
+}
+
+// 依指定 origin 組完整網址：steamloom.works 網域不帶 /storyteller 前綴，其他網域（faryne.dev、本機）要帶。
+// 給不在網站底下的宿主（SteamLoom Writer）用；steamloomPath 只看目前視窗網域，在 Writer 裡會判斷錯。
+export function steamloomUrlForOrigin(origin: string, path: string) {
+  let host = "";
+  try {
+    host = new URL(origin).hostname;
+  } catch {
+    // origin 格式不對時當成非 SteamLoom 網域
+  }
+  const normalizedPath = `/${path.replace(/^\/+/, "")}`;
+  return `${origin}${steamloomHosts.includes(host) ? "" : STEAMLOOM_PATH_PREFIX}${normalizedPath}`;
 }
 
 export function steamloomPath(path = "") {

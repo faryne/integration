@@ -38,11 +38,13 @@ type App struct {
 	// recovery 只在每個專案首次開啟時執行，避免一般列表刷新把正在等待 REST API 的 apply 誤判為中斷。
 	recoveryMu        sync.Mutex
 	recoveredProjects map[string]bool
+	// siteOrigin 是 SteamLoom 網站 origin（正式版 https://steamloom.works），給專案表單組公開網址預覽
+	siteOrigin string
 }
 
 func NewApp() *App {
 	cfg := config.Load()
-	app := &App{recoveredProjects: map[string]bool{}}
+	app := &App{recoveredProjects: map[string]bool{}, siteOrigin: cfg.Issuer}
 	app.session = auth.New(cfg, tokenstore.New(cfg.Issuer), func(url string) {
 		// 授權網址也印到 log，瀏覽器沒有自動打開時可以手動複製
 		log.Printf("open authorize url: %s", url)
@@ -421,6 +423,9 @@ func (a *App) CheckForUpdate() (*appupdate.Info, error) { return a.updater.Check
 
 // AppVersion 讓 About 顯示 release workflow 透過 ldflags 寫入的實際版號。
 func (a *App) AppVersion() string { return version }
+
+// SiteOrigin 回傳網站 origin；Writer 不在網站底下，前端的 window.location.origin 不能拿來組公開網址。
+func (a *App) SiteOrigin() string { return a.siteOrigin }
 
 // InstallUpdate 驗證並替換 app；macOS helper 會在舊程序退出後接手重啟。
 func (a *App) InstallUpdate() error {

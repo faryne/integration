@@ -33,7 +33,11 @@ import {
   storytellerProjectRatingLabel,
   storytellerReaderPath,
 } from "@/data/storyteller.ts";
-import { steamloomPath } from "@/helpers/steamloom.ts";
+import {
+  STEAMLOOM_PATH_PREFIX,
+  steamloomPath,
+  steamloomUrlForOrigin,
+} from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { StorytellerProjectCoverEditor } from "@/pages/storyteller/StorytellerProjectCoverEditor.tsx";
@@ -82,12 +86,29 @@ function errorMessage(error: unknown, fallback: string) {
 
 export interface StorytellerNewProjectProps {
   embedded?: boolean;
+  // 以下給不走網站路由的宿主（SteamLoom Writer）用；都沒傳時維持網站原本的網址導向。
+  // projectId 取代網址參數 id（有值＝編輯模式）。
+  projectId?: string;
+  // 公開網址預覽用的網站 origin；Writer 不在 steamloom.works 底下，window.location.origin 不對。
+  publicOrigin?: string;
+  // 建立成功對話框的兩個按鈕：next 為 "story"（建立第一篇故事）或 "home"（回專案首頁）。
+  onCreated?: (projectId: string, next: "story" | "home") => void;
+  // 編輯儲存成功、提示訊息關閉後呼叫。
+  onSaved?: (projectId: string) => void;
+  // 「返回列表」按鈕；沒傳時連回網站的我的專案。
+  onCancel?: () => void;
 }
 
 export default function StorytellerNewProject({
   embedded = false,
+  projectId,
+  publicOrigin,
+  onCreated,
+  onSaved,
+  onCancel,
 }: StorytellerNewProjectProps = {}) {
-  const { id } = useParams();
+  const { id: routeId } = useParams();
+  const id = projectId ?? routeId;
   const navigate = useNavigate();
   const { session, loading: authLoading, login, submitting } = useAuth();
   const saveProject = useSaveStorytellerProject();
@@ -230,7 +251,9 @@ export default function StorytellerNewProject({
   }
 
   function handleStartFirstStory() {
-    if (createdProjectId) {
+    if (createdProjectId && onCreated) {
+      onCreated(createdProjectId, "story");
+    } else if (createdProjectId) {
       navigate(
         steamloomPath(
           embedded
@@ -243,7 +266,9 @@ export default function StorytellerNewProject({
   }
 
   function handleGoToProjectHome() {
-    if (createdProjectId) {
+    if (createdProjectId && onCreated) {
+      onCreated(createdProjectId, "home");
+    } else if (createdProjectId) {
       navigate(
         steamloomPath(
           embedded
@@ -275,12 +300,15 @@ export default function StorytellerNewProject({
             return;
           }
           if (isEditing) {
+            // 宿主自己處理存完去哪時，暫存專案 ID，提示訊息關閉後交給 onSaved
             setEditSuccessTarget(
-              steamloomPath(
-                embedded
-                  ? `my/workspace/${project.public_id}`
-                  : `my/project/${project.public_id}`,
-              ),
+              onSaved
+                ? project.public_id
+                : steamloomPath(
+                    embedded
+                      ? `my/workspace/${project.public_id}`
+                      : `my/project/${project.public_id}`,
+                  ),
             );
             return;
           }
@@ -308,7 +336,17 @@ export default function StorytellerNewProject({
     performSave();
   }
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  // sitePath 是 steamloomPath／storytellerReaderPath 的結果。網站直接接在目前網域後；
+  // 有 publicOrigin（Writer）時，steamloomPath 會因為不在網站網域而多帶 /storyteller，先拿掉再依該 origin 重組。
+  function publicUrl(sitePath: string) {
+    if (!publicOrigin) {
+      return `${typeof window !== "undefined" ? window.location.origin : ""}${sitePath}`;
+    }
+    const relative = sitePath.startsWith(STEAMLOOM_PATH_PREFIX)
+      ? sitePath.slice(STEAMLOOM_PATH_PREFIX.length)
+      : sitePath;
+    return steamloomUrlForOrigin(publicOrigin, relative);
+  }
   let urlPreview: string | null = null;
   if (isEditing && editingProject) {
     if (input.visibility === "public") {
@@ -316,16 +354,16 @@ export default function StorytellerNewProject({
         ...editingProject,
         slug: input.slug.trim(),
       });
-      urlPreview = `${origin}${readerPath}`;
+      urlPreview = publicUrl(readerPath);
     } else if (input.visibility === "unlisted") {
       urlPreview =
         editingProject.visibility === "unlisted" && editingProject.share_token
-          ? `${origin}${steamloomPath(`work/share/${editingProject.share_token}`)}`
+          ? publicUrl(steamloomPath(`work/share/${editingProject.share_token}`))
           : "儲存後系統會建立新的分享網址，可到專案頁面查看。";
     }
   } else if (!isEditing) {
     if (input.visibility === "public") {
-      urlPreview = `建立後網址大致會是：${origin}${steamloomPath(`work/（系統代碼）-${projectNameToSlug(input.name)}`)}`;
+      urlPreview = `建立後網址大致會是：${publicUrl(steamloomPath(`work/（系統代碼）-${projectNameToSlug(input.name)}`))}`;
     } else if (input.visibility === "unlisted") {
       urlPreview = "建立後系統會自動產生一組專屬的分享網址。";
     }
@@ -657,9 +695,15 @@ export default function StorytellerNewProject({
             )}
           </Grid>
           <Stack direction="row" spacing={1} justifyContent="flex-end">
-            <Button href={steamloomPath("my/projects")} variant="text">
-              返回列表
-            </Button>
+            {onCancel ? (
+              <Button onClick={onCancel} variant="text">
+                返回列表
+              </Button>
+            ) : (
+              <Button href={steamloomPath("my/projects")} variant="text">
+                返回列表
+              </Button>
+            )}
             <Button
               type="submit"
               variant="contained"
@@ -689,7 +733,9 @@ export default function StorytellerNewProject({
         severity="success"
         autoHideDuration={1200}
         onClose={() => {
-          if (editSuccessTarget) {
+          if (editSuccessTarget && onSaved) {
+            onSaved(editSuccessTarget);
+          } else if (editSuccessTarget) {
             navigate(editSuccessTarget);
           }
           setEditSuccessTarget(null);

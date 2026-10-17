@@ -88,6 +88,16 @@ on:
       - 'static_site/src/pages/storyteller/StorytellerEditorOutlinePanel.tsx'
       - 'static_site/src/pages/storyteller/StorytellerEditorOutlineToggle.tsx'
       - 'static_site/src/pages/storyteller/useStorytellerEditorOutline.ts'
+      # 專案管理（建立／編輯／刪除）沿用網站的表單、封面編輯器與專案選單
+      - 'static_site/src/components/common/CustomLoginRequiredState.tsx'
+      - 'static_site/src/helpers/storytellerCover.ts'
+      - 'static_site/src/helpers/title.tsx'
+      - 'static_site/src/pages/ErrorPage.tsx'
+      - 'static_site/src/pages/storyteller/NewProject.tsx'
+      - 'static_site/src/pages/storyteller/ReaderWorkLanding.tsx'
+      - 'static_site/src/pages/storyteller/StorytellerProjectCoverEditor.tsx'
+      - 'static_site/src/pages/storyteller/StorytellerProjectMenuButton.tsx'
+      - 'static_site/src/pages/storyteller/StorytellerShell.tsx'
       - '.github/workflows/steamloom-writer.yml'
   pull_request:
     paths: *writer-paths

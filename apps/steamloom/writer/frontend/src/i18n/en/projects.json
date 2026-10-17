@@ -1,6 +1,8 @@
 {
   "title": "My projects",
   "empty": "No projects yet",
+  "create": "Create project",
+  "edit": "Edit project",
   "storyCount": "{{count}} stories",
   "wordCount": "{{words}} words",
   "updatedAt": "Updated {{date}}",

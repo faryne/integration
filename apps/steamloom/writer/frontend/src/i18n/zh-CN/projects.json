@@ -1,6 +1,8 @@
 {
   "title": "我的项目",
   "empty": "还没有项目",
+  "create": "建立项目",
+  "edit": "编辑项目",
   "storyCount": "{{count}} 篇故事",
   "wordCount": "{{words}} 字",
   "updatedAt": "更新于 {{date}}",

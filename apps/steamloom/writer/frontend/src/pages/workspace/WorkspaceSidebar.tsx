@@ -36,6 +36,8 @@ type Props = {
   // ⋮ 選單改了狀態／移動／刪除後重抓；刪掉的若是正在編輯的那篇，外層要離開編輯頁
   onChanged: () => void;
   onDeleted: (target: RowActionTarget) => void;
+  // 掛載時直接打開的建立對話框（剛建立專案後的「建立第一篇故事」）
+  initialCreate?: string;
 };
 
 // 各區塊「建立」選單的項目，比照網站
@@ -45,11 +47,11 @@ const assetKinds = ["asset-collection", "asset-upload"];
 
 // 專案工作台側邊列：最上方是 AI 助理，下面是作品與冊、設定集、資產集，最後是梭梭的記憶（記憶管理頁）。
 // 「作品與冊」「設定集」可以切換排序模式（上移／下移）；平常滑過文件會出現 ⋮，跟「全部作品／全部設定」列表同一份選單。
-export function WorkspaceSidebar({ project, workspace, selected, onSelect, onAssistant, listSection, assetCollection, onList, editing, onCreated, onChanged, onDeleted }: Props) {
+export function WorkspaceSidebar({ project, workspace, selected, onSelect, onAssistant, listSection, assetCollection, onList, editing, onCreated, onChanged, onDeleted, initialCreate }: Props) {
   const { t } = useTranslation();
   const [sortingStories, setSortingStories] = useState(false);
   const [sortingLores, setSortingLores] = useState(false);
-  const [creating, setCreating] = useState<string | null>(null);
+  const [creating, setCreating] = useState<string | null>(initialCreate ?? null);
   const [uploading, setUploading] = useState(false);
   // 「上傳資產」不是建立對話框，另外開上傳對話框
   const onCreate = (kind: string) => (kind === "asset-upload" ? setUploading(true) : setCreating(kind));

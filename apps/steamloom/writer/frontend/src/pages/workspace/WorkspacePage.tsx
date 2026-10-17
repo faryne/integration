@@ -26,7 +26,8 @@ const emptyWorkspace: Workspace = { volumes: [], ungrouped_stories: [], lore_col
 // 進專案先看 AI 助理。點側邊列的故事或設定換成編輯／歷史，點「全部作品／全部設定／全部資產」或資產集看列表，
 // 資產列表點卡片看資產詳細；點「梭梭的記憶」看記憶管理；再點「AI 助理」回來。
 // 編輯中的文件有未存檔內容時，換文件、看列表、回 AI 助理、離開專案都要先確認。
-export function WorkspacePage({ project, profile, onBack }: { project: Project; profile: Profile | null; onBack: () => void }) {
+// initialCreate：剛建立的專案選了「建立第一篇故事」，進來就打開側邊列的新增故事對話框
+export function WorkspacePage({ project, profile, initialCreate, onBack }: { project: Project; profile: Profile | null; initialCreate?: "story"; onBack: () => void }) {
   const { t } = useTranslation();
   const { showError } = useSnack();
   const loaded = useBackendData(() => backend.Workspace(project.public_id), [project.public_id]);
@@ -140,6 +141,7 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
               ) : (
                 <WorkspaceSidebar
                   project={project.public_id}
+                  initialCreate={initialCreate}
                   workspace={workspace}
                   selected={selected}
                   onSelect={setSelected}

@@ -1,5 +1,7 @@
 import { AuthContext, type AuthContextValue } from "@/components/auth/AuthContext.ts";
 import { apiBase } from "@/apis/storyteller/shared.ts";
+import { SeoDisabledContext } from "@/helpers/title.tsx";
+import { StorytellerAppearanceContext } from "@/layouts/storytellerAppearanceMode.tsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import axios, { AxiosError, AxiosHeaders, type AxiosAdapter, type AxiosResponse } from "axios";
 import { useEffect, useState, type ReactNode } from "react";
@@ -71,6 +73,10 @@ const writerAuth: AuthContextValue = {
   logout: async () => undefined,
 };
 
+// Writer 外觀固定 nocturne（見 App.tsx）；網站元件（例如 StorytellerLoading、梭梭插圖）要讀外觀，
+// 不提供會直接丟錯讓整頁空白。Writer 不讓作者切換外觀，setAppearance 不做事。
+const writerAppearance = { appearance: "nocturne" as const, setAppearance: () => undefined };
+
 // 包住要用網站 API hook 的區塊：react-query、假 session，與網站頁面用到 useSearchParams 等 router hook 時需要的 MemoryRouter
 // 只在已登入時掛載：登出就整個卸載，react-query 快取跟著丟掉
 export function WebApiProvider({ onExpired, children }: { onExpired: () => void; children: ReactNode }) {
@@ -87,7 +93,12 @@ export function WebApiProvider({ onExpired, children }: { onExpired: () => void;
   return (
     <QueryClientProvider client={queryClient}>
       <AuthContext.Provider value={writerAuth}>
-        <MemoryRouter>{children}</MemoryRouter>
+        {/* 網站頁面的 useTitle／useSeo 會改 document.title（＝Writer 視窗標題），在 Writer 裡一律停用 */}
+        <SeoDisabledContext.Provider value={true}>
+          <StorytellerAppearanceContext.Provider value={writerAppearance}>
+            <MemoryRouter>{children}</MemoryRouter>
+          </StorytellerAppearanceContext.Provider>
+        </SeoDisabledContext.Provider>
       </AuthContext.Provider>
     </QueryClientProvider>
   );

@@ -12,6 +12,7 @@ import { SessionExpiredContext } from "@writer/lib/useBackendData.ts";
 import { WebApiProvider } from "@writer/lib/webApi.tsx";
 import { LoadErrorPage } from "@writer/pages/LoadErrorPage.tsx";
 import { LoginPage } from "@writer/pages/LoginPage.tsx";
+import { ProjectFormPage } from "@writer/pages/ProjectFormPage.tsx";
 import { ProjectsPage } from "@writer/pages/ProjectsPage.tsx";
 import { defaultSettingsSection, SettingsPage, type SettingsSection } from "@writer/pages/settings/SettingsPage.tsx";
 import { WorkspacePage } from "@writer/pages/workspace/WorkspacePage.tsx";
@@ -39,6 +40,10 @@ function Shell() {
   const [profile, setProfile] = useState<Profile | null | "error" | undefined>(undefined);
   // 目前打開的專案；null 時顯示專案列表
   const [openProject, setOpenProject] = useState<Project | null>(null);
+  // 建立／編輯專案表單：null＝沒開；project 為 null＝建立模式
+  const [projectForm, setProjectForm] = useState<{ project: Project | null } | null>(null);
+  // 建立成功後選「建立第一篇故事」：打開工作台時直接跳出新增故事
+  const [initialCreate, setInitialCreate] = useState<"story" | undefined>();
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
   // 設定頁目前的分類；null＝沒開。入口在作業系統選單列的「設定…」。
@@ -90,9 +95,23 @@ function Shell() {
   const handleSessionExpired = useCallback(() => {
     setProfile(null);
     setOpenProject(null);
+    setProjectForm(null);
     setSettings(null);
     showError(t("auth.sessionExpired"));
   }, [showError, t]);
+
+  // 建立成功後重抓專案列表拿到完整的 Project，再打開它的工作台
+  const openCreatedProject = async (id: string, next: "story" | "home") => {
+    try {
+      const created = (await backend.Projects()).find((project) => project.public_id === id);
+      setProjectForm(null);
+      if (!created) return;
+      setInitialCreate(next === "story" ? "story" : undefined);
+      setOpenProject(created);
+    } catch (err) {
+      showError(errorMessage(err));
+    }
+  };
 
   const logout = () =>
     backend
@@ -101,6 +120,7 @@ function Shell() {
       .finally(() => {
         setProfile(null);
         setOpenProject(null);
+        setProjectForm(null);
         setSettings(null);
       });
 
@@ -126,10 +146,12 @@ function Shell() {
           <WebApiProvider onExpired={handleSessionExpired}>
             {settings ? (
               <SettingsPage rootLabel={openProject?.name ?? t("projects.title")} section={settings} onSection={setSettings} onBack={() => setSettings(null)} />
+            ) : projectForm ? (
+              <ProjectFormPage project={projectForm.project} onBack={() => setProjectForm(null)} onCreated={(id, next) => void openCreatedProject(id, next)} />
             ) : openProject ? (
-              <WorkspacePage key={openProject.public_id} project={openProject} profile={profile} onBack={() => setOpenProject(null)} />
+              <WorkspacePage key={openProject.public_id} project={openProject} profile={profile} initialCreate={initialCreate} onBack={() => setOpenProject(null)} />
             ) : (
-              <ProjectsPage onOpen={setOpenProject} />
+              <ProjectsPage onOpen={(project) => { setInitialCreate(undefined); setOpenProject(project); }} onCreate={() => setProjectForm({ project: null })} onEdit={(project) => setProjectForm({ project })} />
             )}
           </WebApiProvider>
         )}
