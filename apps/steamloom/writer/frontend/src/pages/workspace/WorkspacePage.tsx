@@ -1,12 +1,16 @@
 import { StorytellerEditorDataContext } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 import { StorytellerMemoryManagerPage } from "@/pages/storyteller/StorytellerMemoryManagerPage.tsx";
 import { WorkspaceSidebarToggle } from "@/pages/storyteller/WorkspaceSidebarChrome.tsx";
+import { WorkspaceSearch } from "@/pages/storyteller/WorkspaceSearch.tsx";
+import { useWorkspaceSearchLauncher } from "@/pages/storyteller/useWorkspaceSearchLauncher.ts";
+import type { StorytellerWorkspaceSearchResult } from "@/types/storyteller.ts";
 import { Box, CircularProgress } from "@mui/material";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AppBreadcrumbs, type Crumb } from "@writer/components/AppBreadcrumbs.tsx";
 import { backend, errorMessage, UNCATEGORIZED_ASSETS, type Asset, type DocumentItem, type Profile, type Project, type Workspace } from "@writer/lib/backend.ts";
 import { invalidateEditorAssets, invalidateEditorLores, writerEditorData } from "@writer/lib/editorData.ts";
+import { readLastDocument, saveLastDocument } from "@writer/lib/lastDocument.ts";
 import { useBackendData } from "@writer/lib/useBackendData.ts";
 import { ChatPanel } from "@writer/pages/workspace/ChatPanel.tsx";
 import { EditorPanel } from "@writer/pages/workspace/EditorPanel.tsx";
@@ -46,7 +50,20 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
       .then(setRefreshed)
       .catch((err) => showError(errorMessage(err)));
   }, [project.public_id, showError]);
-  const [selected, setSelectedState] = useState<DocumentItem | null>(null);
+  // 打開專案時回到上次編輯的文件；剛建立的專案要直接開新增故事，就停在 AI 助理
+  const [selected, setSelectedState] = useState<DocumentItem | null>(() => (initialCreate ? null : readLastDocument(project.public_id)));
+  useEffect(() => saveLastDocument(project.public_id, selected), [project.public_id, selected]);
+  // 只在第一次載入工作台時檢查「記住的那篇」是否還在（被刪除或移出專案就退回 AI 助理）；
+  // 之後不再檢查，免得剛新增、工作台還沒重抓到的文件被誤判成不存在。
+  const restored = useRef(selected);
+  useEffect(() => {
+    const item = restored.current;
+    if (!workspace || !item) return;
+    restored.current = null;
+    if (!workspaceDocuments(workspace, item.kind).some((each) => isSameDocument(each, item))) {
+      setSelectedState((current) => (current && isSameDocument(current, item) ? null : current));
+    }
+  }, [workspace]);
   const [listSection, setListSection] = useState<ListSection | null>(null);
   // 資產列表的篩選（空字串＝全部、UNCATEGORIZED_ASSETS＝未分類、其他＝資產集）與打開的資產詳細
   const [assetCollection, setAssetCollection] = useState("");
@@ -80,6 +97,32 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
     setWorkspace: setRefreshed,
     reload,
   });
+
+  // 專案搜尋：網站同一個對話框與 ⌘K／Ctrl+K；點結果比照網站打開對應的文件、資產或記憶頁
+  const workspaceSearch = useWorkspaceSearchLauncher();
+  const openSearchResult = async (result: StorytellerWorkspaceSearchResult, beforeNavigate: () => void) => {
+    if (result.kind === "story" || result.kind === "lore") {
+      beforeNavigate();
+      return setSelected({ kind: result.kind, public_id: result.public_id, title: result.title, content_type: result.content_type ?? "text" });
+    }
+    let asset: Asset | undefined;
+    if (result.kind === "asset") {
+      // 搜尋結果只有 ID，資產詳細頁要完整資料：用標題在同一資產集查回來
+      try {
+        const page = await backend.Assets(project.public_id, result.collection_id ?? "", result.title, 1, 50);
+        asset = page.assets?.find((item) => item.public_id === result.public_id);
+      } catch (err) {
+        showError(errorMessage(err));
+      }
+    }
+    beforeNavigate();
+    guard(() => {
+      setSelectedState(null);
+      setListSection(result.kind === "memory" ? "memories" : "assets");
+      setAssetCollection(result.kind === "asset" ? (result.collection_id ?? "") : "");
+      setOpenedAsset(asset ?? null);
+    });
+  };
 
   // 編輯器選取內容後切到 AI 助理；若目前有未存檔變更，沿用既有離開確認。
   const askAI = (reference: PromptReference) => guard(() => {
@@ -137,11 +180,12 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
             {/* 收合按鈕浮貼在側邊列與內容的交界，外層不能 overflow: hidden（捲軸在側邊列自己那層） */}
             <Box sx={{ position: "relative", flex: "none", display: "flex" }}>
               {sidebarCollapsed ? (
-                <WorkspaceSidebarRail selected={selected} listSection={listSection} onAssistant={() => setSelected(null)} onList={openList} />
+                <WorkspaceSidebarRail selected={selected} listSection={listSection} onAssistant={() => setSelected(null)} onList={openList} onSearch={workspaceSearch.openSearch} />
               ) : (
                 <WorkspaceSidebar
                   project={project.public_id}
                   initialCreate={initialCreate}
+                  onSearch={workspaceSearch.openSearch}
                   workspace={workspace}
                   selected={selected}
                   onSelect={setSelected}
@@ -234,6 +278,15 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
           </Box>
         )
       )}
+      <WorkspaceSearch
+        key={workspaceSearch.seq}
+        open={workspaceSearch.open}
+        initialKeyword={workspaceSearch.keyword}
+        onClose={workspaceSearch.closeSearch}
+        projectName={project.name}
+        projectPublicId={project.public_id}
+        onOpenResult={(result, beforeNavigate) => void openSearchResult(result, beforeNavigate)}
+      />
       <UnsavedChangesDialog
         open={pending !== null}
         onCancel={() => setPending(null)}

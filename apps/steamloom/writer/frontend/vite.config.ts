@@ -4,7 +4,7 @@ import { defineConfig, normalizePath, type Plugin } from "vite";
 
 // 網站前端（static_site）的原始碼；Writer 直接 import 共用的元件（主題、編輯器、版本比對…），不另外複製一份。
 // "@/" 留給 static_site（網站檔案內部本來就用 "@/"，不用改寫），Writer 自己的程式用 "@writer/"。
-// 新增共用檔案時，要同步補進 .github/workflows/steamloom-writer.yml 的 paths，否則改那個檔案不會觸發 Writer 編譯。
+// CI（.github/workflows/steamloom-writer.yml）以整個 static_site/src 觸發 Writer 編譯，新增共用檔案不用另外登記。
 const webSrc = path.resolve(__dirname, "../../../../static_site/src");
 const writerSrc = path.resolve(__dirname, "./src");
 // Vite 給的 importer 一律是正斜線路徑（Windows 也是 D:/a/...），path.resolve 在 Windows 卻是反斜線，
