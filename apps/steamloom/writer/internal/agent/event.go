@@ -51,6 +51,9 @@ type ChatLine struct {
 	References      []PromptReference `json:"references,omitempty"`
 	Model           string            `json:"model,omitempty"`
 	ReasoningEffort string            `json:"reasoning_effort,omitempty"`
+	WorkerID        string            `json:"worker_id,omitempty"`
+	ProviderJobIDs  []string          `json:"provider_job_ids,omitempty"`
+	ProviderModels  []string          `json:"provider_models,omitempty"`
 }
 
 func messageEvent(role, text string) ChatLine {

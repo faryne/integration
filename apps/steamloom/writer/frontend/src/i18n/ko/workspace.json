@@ -200,6 +200,8 @@
       "imageStoryNotWritten": "이미지 작품 페이지 제안입니다. 승인 후 선택한 이미지를 업로드하고 작품을 생성하거나 업데이트합니다.",
       "previewUnavailable": "미리 볼 수 없음",
       "selectArtifact": "미디어 결과 {{index}} 선택",
+      "candidateResult": "후보 결과 {{index}}",
+      "closePreview": "이미지 미리보기 닫기",
       "page": "{{index}}페이지",
       "existingAsset": "기존 SteamLoom 자산",
       "chapterBase": "기준 챕터",

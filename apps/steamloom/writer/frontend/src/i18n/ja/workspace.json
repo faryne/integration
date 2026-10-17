@@ -200,6 +200,8 @@
       "imageStoryNotWritten": "画像作品のページ提案です。承認後に選択画像をアップロードし、作品を作成または更新します。",
       "previewUnavailable": "プレビューできません",
       "selectArtifact": "メディア成果 {{index}} を選択",
+      "candidateResult": "候補結果 {{index}}",
+      "closePreview": "画像プレビューを閉じる",
       "page": "{{index}} ページ",
       "existingAsset": "既存の SteamLoom アセット",
       "chapterBase": "基準の章",

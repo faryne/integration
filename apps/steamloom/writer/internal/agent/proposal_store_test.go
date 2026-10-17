@@ -217,7 +217,7 @@ func TestSaveGeneratedProposalPreservesWorkerAndStagesArtifacts(t *testing.T) {
 	taskID, _ := newThreadID()
 	proposal, err := SaveGeneratedProposal("codex", "project", page.CurrentID, taskID, root, "Mock Image Worker", []ProposalItem{{
 		ProposalType: ProposalTypeAssetUpload, Kind: ProposalKindAsset, Title: "角色圖",
-		Artifacts: []ProposalArtifact{{ProviderID: "worker-1", LocalPath: source, FileName: "candidate.png", MIMEType: "image/png", DefaultSelected: true}},
+		Artifacts: []ProposalArtifact{{ProviderID: "worker-1", ProviderJobID: "job-1", Model: "model-1", LocalPath: source, FileName: "candidate.png", MIMEType: "image/png", DefaultSelected: true}},
 	}})
 	if err != nil {
 		t.Fatal(err)
@@ -232,6 +232,10 @@ func TestSaveGeneratedProposalPreservesWorkerAndStagesArtifacts(t *testing.T) {
 	}
 	if !strings.Contains(page.Messages[len(page.Messages)-1].Text, "Mock Image Worker 已產生 1 項媒體成果") {
 		t.Fatalf("generated proposal event missing: %#v", page.Messages)
+	}
+	event := page.Messages[len(page.Messages)-1]
+	if event.WorkerID != "worker-1" || len(event.ProviderJobIDs) != 1 || event.ProviderJobIDs[0] != "job-1" || len(event.ProviderModels) != 1 || event.ProviderModels[0] != "model-1" {
+		t.Fatalf("generated proposal audit missing from JSONL: %#v", event)
 	}
 }
 

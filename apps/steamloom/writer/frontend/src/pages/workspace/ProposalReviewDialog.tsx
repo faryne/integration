@@ -19,6 +19,7 @@ import { StorytellerVersionCompareDialog, type StorytellerVersionCompareEntry } 
 import { stripMarkerForDiffContent } from "@steamloom-web/pages/storyteller/wysiwygCore/parser.ts";
 import { useSnack } from "@writer/components/SnackProvider.tsx";
 import { backend, errorMessage, type AgentProposal, type AgentProposalItem, type Document, type WorkerJobSpec } from "@writer/lib/backend.ts";
+import { formatBytes } from "@writer/lib/format.ts";
 import { canRetryMedia, initialMediaJobInputs, MediaJobForm } from "@writer/pages/workspace/MediaJobForm.tsx";
 import { ProposalArtifactGallery } from "@writer/pages/workspace/ProposalArtifactGallery.tsx";
 
@@ -249,11 +250,4 @@ function proposalType(item: AgentProposalItem | null) {
 
 function Metadata({ label, value }: { label: string; value: string }) {
   return <Stack direction={{ xs: "column", sm: "row" }} spacing={1}><Typography color="text.secondary" sx={{ minWidth: 110, fontSize: 13 }}>{label}</Typography><Typography sx={{ fontSize: 13, overflowWrap: "anywhere" }}>{value}</Typography></Stack>;
-}
-
-function formatBytes(value?: number) {
-  if (value === undefined) return "—";
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KiB`;
-  return `${(value / 1024 / 1024).toFixed(1)} MiB`;
 }

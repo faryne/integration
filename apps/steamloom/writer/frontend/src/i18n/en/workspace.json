@@ -196,6 +196,8 @@
       "imageStoryNotWritten": "These are proposed image-story pages. Selected images will be uploaded and the story created or updated after approval.",
       "previewUnavailable": "Preview unavailable",
       "selectArtifact": "Select media result {{index}}",
+      "candidateResult": "Candidate result {{index}}",
+      "closePreview": "Close image preview",
       "page": "Page {{index}}",
       "existingAsset": "Existing SteamLoom asset",
       "chapterBase": "Base chapter",

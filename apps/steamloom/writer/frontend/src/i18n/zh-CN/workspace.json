@@ -200,6 +200,8 @@
       "imageStoryNotWritten": "这是图像作品页面提案，批准后才会上传所选图片并建立或更新作品。",
       "previewUnavailable": "无法预览",
       "selectArtifact": "选择第 {{index}} 个媒体成果",
+      "candidateResult": "候选结果 {{index}}",
+      "closePreview": "关闭图片预览",
       "page": "第 {{index}} 页",
       "existingAsset": "现有 SteamLoom 资产",
       "chapterBase": "基准章节",

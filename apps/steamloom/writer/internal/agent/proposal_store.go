@@ -99,6 +99,10 @@ func saveProposal(agentID, projectID, threadID, taskID, assetRoot string, reply 
 	}
 	event := taskEvent(EventProposalReady, taskID, readyText)
 	event.ProposalID = proposal.ID
+	if readyText != "" {
+		// Worker 細節只留在 append-only JSONL 供稽核，不在候選卡片暴露內部 ID。
+		event.WorkerID, event.ProviderJobIDs, event.ProviderModels = generatedProposalAudit(proposal)
+	}
 	events := make([]ChatLine, 0, 3)
 	if reply.Text != "" {
 		events = append(events, messageEvent("assistant", reply.Text), taskEvent(EventTaskCompleted, taskID, "Agent 已完成工作"))
@@ -119,6 +123,34 @@ func saveProposal(agentID, projectID, threadID, taskID, assetRoot string, reply 
 		return Proposal{}, err
 	}
 	return proposal, nil
+}
+
+func generatedProposalAudit(proposal Proposal) (string, []string, []string) {
+	workerIDs, jobIDs, models := map[string]bool{}, map[string]bool{}, map[string]bool{}
+	for _, item := range proposal.Items {
+		for _, artifact := range item.Artifacts {
+			if artifact.ProviderID != "" {
+				workerIDs[artifact.ProviderID] = true
+			}
+			if artifact.ProviderJobID != "" {
+				jobIDs[artifact.ProviderJobID] = true
+			}
+			if artifact.Model != "" {
+				models[artifact.Model] = true
+			}
+		}
+	}
+	workers := sortedKeys(workerIDs)
+	return strings.Join(workers, ","), sortedKeys(jobIDs), sortedKeys(models)
+}
+
+func sortedKeys(values map[string]bool) []string {
+	result := make([]string, 0, len(values))
+	for value := range values {
+		result = append(result, value)
+	}
+	sort.Strings(result)
+	return result
 }
 
 // ConfigureMediaProposal 保存作者在動態表單確認過的輸入，並重算授權用 hash。

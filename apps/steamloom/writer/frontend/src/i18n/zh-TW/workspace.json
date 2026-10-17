@@ -196,6 +196,8 @@
       "imageStoryNotWritten": "這是圖像作品的頁面提案，核准後才會上傳選取圖片並建立或更新作品。",
       "previewUnavailable": "無法預覽",
       "selectArtifact": "選取第 {{index}} 份媒體成果",
+      "candidateResult": "候選結果 {{index}}",
+      "closePreview": "關閉圖片預覽",
       "page": "第 {{index}} 頁",
       "existingAsset": "既有 SteamLoom 資產",
       "chapterBase": "基準章節",
