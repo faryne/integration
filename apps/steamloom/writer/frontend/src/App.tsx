@@ -107,7 +107,7 @@ function Shell() {
   return (
     <SessionExpiredContext.Provider value={handleSessionExpired}>
       <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-        <AppHeader profile={typeof profile === "object" ? profile : null} onSettings={() => setSettingsOpen(true)} onLogout={logout} />
+        <AppHeader profile={typeof profile === "object" ? profile : null} settingsActive={settingsOpen} onSettings={() => setSettingsOpen(true)} onLogout={logout} />
         {profile === undefined ? (
           <Box sx={{ flex: 1, display: "grid", placeItems: "center" }}>
             <CircularProgress size={24} />

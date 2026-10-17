@@ -91,7 +91,6 @@ export function WorkerSettingsPage({ rootLabel, onBack }: { rootLabel: string; o
           ) : (
             <Stack sx={{ flex: 1 }} alignItems="center" justifyContent="center" gap={1.5}>
               <Typography variant="h6">{t("settings.workers.empty")}</Typography>
-              <Typography color="text.secondary">{t("settings.workers.emptyHint")}</Typography>
               <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddOpen(true)}>{t("settings.workers.add")}</Button>
             </Stack>
           )}

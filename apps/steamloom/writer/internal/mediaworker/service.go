@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -108,6 +109,11 @@ func (s *Service) Save(input SaveInput) (*Worker, error) {
 		if field.Required && !field.Secret && strings.TrimSpace(input.Settings[field.Key]) == "" {
 			return nil, errors.New(field.Label + "不能留白")
 		}
+		if value := strings.TrimSpace(input.Settings[field.Key]); field.Kind == "url" && value != "" {
+			if _, err := endpoint(value); err != nil {
+				return nil, fmt.Errorf("%s：%w", field.Label, err)
+			}
+		}
 	}
 	workers, err := s.store.load()
 	if err != nil {
@@ -133,6 +139,12 @@ func (s *Service) Save(input SaveInput) (*Worker, error) {
 	}
 	for _, key := range input.ClearSecrets {
 		delete(secrets, key)
+	}
+	// 必填 secret 要看合併後結果：留白代表沿用已存值，只有勾選清除且沒填新值才算缺。
+	for _, field := range adapter.Descriptor().Fields {
+		if field.Required && field.Secret && secrets[field.Key] == "" {
+			return nil, errors.New(field.Label + "不能留白")
+		}
 	}
 	if err := s.vault.save(input.ID, secrets); err != nil {
 		return nil, err

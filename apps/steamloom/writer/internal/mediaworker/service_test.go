@@ -122,3 +122,28 @@ func TestAgentCapabilitiesOnlyIncludeEnabledOnlineWorkers(t *testing.T) {
 		t.Fatalf("agent capabilities = %#v", capabilities)
 	}
 }
+
+// 必填 secret：第一次存要有值；之後留白代表沿用；勾選清除又沒填新值就擋下。
+func TestSaveRequiresSecretAndValidURL(t *testing.T) {
+	registry, err := NewRegistry(NewPixAIAdapter(nil), NewComfyUIAdapter(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewService(registry, filepath.Join(t.TempDir(), "workers.json"), &memoryVault{values: map[string]map[string]string{}})
+	if _, err := service.Save(SaveInput{AdapterID: "pixai", Name: "PixAI"}); err == nil {
+		t.Fatal("missing API key should fail")
+	}
+	worker, err := service.Save(SaveInput{AdapterID: "pixai", Name: "PixAI", Secrets: map[string]string{"api_key": "k"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Save(SaveInput{ID: worker.ID, AdapterID: "pixai", Name: "PixAI 2"}); err != nil {
+		t.Fatalf("blank secret should keep the stored key: %v", err)
+	}
+	if _, err := service.Save(SaveInput{ID: worker.ID, AdapterID: "pixai", Name: "PixAI", ClearSecrets: []string{"api_key"}}); err == nil {
+		t.Fatal("clearing a required secret should fail")
+	}
+	if _, err := service.Save(SaveInput{AdapterID: "comfyui", Name: "Comfy", Settings: map[string]string{"endpoint": "localhost:8188"}}); err == nil {
+		t.Fatal("invalid endpoint should fail")
+	}
+}
