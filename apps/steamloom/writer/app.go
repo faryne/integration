@@ -38,13 +38,14 @@ type App struct {
 	// recovery 只在每個專案首次開啟時執行，避免一般列表刷新把正在等待 REST API 的 apply 誤判為中斷。
 	recoveryMu        sync.Mutex
 	recoveredProjects map[string]bool
-	// siteOrigin 是 SteamLoom 網站 origin（正式版 https://steamloom.works），給專案表單組公開網址預覽
+	// siteOrigin 是 SteamLoom 網站前端的 origin（正式版 https://steamloom.works、本機 http://localhost:5174），
+	// 給「在網站上開啟」與專案表單的公開網址預覽用
 	siteOrigin string
 }
 
 func NewApp() *App {
 	cfg := config.Load()
-	app := &App{recoveredProjects: map[string]bool{}, siteOrigin: cfg.Issuer}
+	app := &App{recoveredProjects: map[string]bool{}, siteOrigin: cfg.WebURL}
 	app.session = auth.New(cfg, tokenstore.New(cfg.Issuer), func(url string) {
 		// 授權網址也印到 log，瀏覽器沒有自動打開時可以手動複製
 		log.Printf("open authorize url: %s", url)

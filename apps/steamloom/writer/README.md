@@ -22,6 +22,7 @@ wails dev
 | `STEAMLOOM_API_BASE` | REST API 前綴 | `http://localhost:8080` |
 | `STEAMLOOM_AUTHORIZE_URL` | 授權頁 | `http://localhost:5174/storyteller/oauth/authorize` |
 | `STEAMLOOM_SKILL_URL` | AI 助理安裝／更新 Skill 的來源 | `http://localhost:8080/storyteller-mcp/skill.md` |
+| `STEAMLOOM_WEB_URL` | 網站前端（「在網站上開啟」、公開網址預覽）；沒設定時取授權頁的 origin | `http://localhost:5174`（可省略） |
 
 ```bash
 STEAMLOOM_ISSUER=http://localhost:8080 STEAMLOOM_API_BASE=http://localhost:8080 \
