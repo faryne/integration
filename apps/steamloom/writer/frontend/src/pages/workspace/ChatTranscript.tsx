@@ -1,6 +1,7 @@
 import type { AgentProposal, AgentProposalItem, Workspace } from "@writer/lib/backend.ts";
 import { useTranslation } from "react-i18next";
 import { ChatMessage } from "@writer/pages/workspace/ChatMessage.tsx";
+import { DecisionStatusLine } from "@writer/pages/workspace/DecisionStatusLine.tsx";
 import { ProposalCard } from "@writer/pages/workspace/ProposalCard.tsx";
 import { TaskActivityCard } from "@writer/pages/workspace/TaskActivityCard.tsx";
 import { activityEventTypes, knownPersistedEvent } from "@writer/pages/workspace/chatEventRegistry.ts";
@@ -38,6 +39,7 @@ export function ChatTranscript({ agentID, messages, start, proposals, workspace,
     }
     const proposal = message.type === "proposal.ready" ? proposals?.find((item) => item.id === message.proposal_id) : undefined;
     if (proposal) return <ProposalCard key={key} proposal={proposal} confirming={confirmingProposalID === proposal.id} onConfirmApplied={() => onConfirmApplied(proposal)} onReview={(item, selectedItemIDs) => onReview(proposal, item, selectedItemIDs)} />;
+    if (message.type === "proposal.approved" || message.type === "proposal.rejected") return <DecisionStatusLine key={key} message={message} />;
     if (!knownPersistedEvent(message.type)) return <ChatMessage key={key} message={{ ...message, role: "system", text: `${t("workspace.chat.activity.unknown", { type: message.type || "—" })}${message.text ? `\n${message.text}` : ""}` }} />;
     const quotable = (message.role === "user" || message.role === "assistant") && message.text.trim() !== "";
     return <ChatMessage key={key} message={message} onQuote={quotable ? () => onQuote(message, message.event_id ?? `legacy:${start + index}`) : undefined} />;

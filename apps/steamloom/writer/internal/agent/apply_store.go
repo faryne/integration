@@ -192,7 +192,7 @@ func ConfirmProposalApplied(agentID, projectID, threadID, proposalID string) (Pr
 	if proposal.Status != ProposalVerificationRequired || !found || lifecycle.status != ProposalVerificationRequired {
 		return Proposal{}, errors.New("這批提案目前不需要確認套用結果")
 	}
-	event := taskEvent(EventApplyVerified, lifecycle.taskID, "你已確認內容成功套用；Writer 沒有再次送出寫入請求")
+	event := taskEvent(EventApplyVerified, lifecycle.taskID, "已確認內容成功套用；Writer 沒有再次送出寫入請求")
 	event.ProposalID, event.ContentHash = proposal.ID, proposal.ContentHash
 	if err := appendLines(filepath.Join(dir, threadID+".jsonl"), []ChatLine{event}); err != nil {
 		return Proposal{}, err

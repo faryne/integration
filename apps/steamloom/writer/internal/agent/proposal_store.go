@@ -9,7 +9,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -564,13 +566,38 @@ func proposalDecisionText(proposal Proposal, decision string) string {
 			items = append(items, kind)
 		}
 	}
-	action := "同意套用"
+	action := "已核准套用"
 	if decision == ProposalDecisionReject {
-		action = "否決"
+		action = "已否決"
 	} else if proposal.IsMediaBrief() {
-		action = "同意執行"
+		action = "已核准執行"
 	}
-	return fmt.Sprintf("你已%s %d 項變更：%s", action, len(items), strings.Join(items, "、"))
+	return decisionStatusText(action, len(items), strings.Join(items, "、"))
+}
+
+// decisionStatusText 把決策寫成狀態句（不是作者的發言）；多項時才標數量。
+func decisionStatusText(action string, count int, items string) string {
+	if count > 1 {
+		return fmt.Sprintf("%s %d 項：%s", action, count, items)
+	}
+	return action + "：" + items
+}
+
+// legacyDecision 對應舊版「你已同意套用 1 項變更：…」這類以作者口吻寫進紀錄的決策文字。
+var legacyDecision = regexp.MustCompile(`^你已(同意套用|同意執行|否決) (\d+) 項變更：(.*)$`)
+
+// statusDecisionText 在讀取時把舊紀錄轉成狀態句，不改寫 append-only 的 jsonl。
+func statusDecisionText(text string) string {
+	if match := legacyDecision.FindStringSubmatch(text); match != nil {
+		count, _ := strconv.Atoi(match[2])
+		action := map[string]string{"同意套用": "已核准套用", "同意執行": "已核准執行", "否決": "已否決"}[match[1]]
+		return decisionStatusText(action, count, match[3])
+	}
+	// 其他舊句型（例如「你已確認內容成功套用」）只拿掉「你」，保留「已…」
+	if strings.HasPrefix(text, "你已") {
+		return strings.TrimPrefix(text, "你")
+	}
+	return text
 }
 
 func writeProposal(path string, proposal Proposal) error {

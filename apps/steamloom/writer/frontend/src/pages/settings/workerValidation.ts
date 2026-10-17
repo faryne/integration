@@ -1,5 +1,16 @@
-import type { MediaWorker, WorkerAdapter, WorkerSaveInput } from "@writer/lib/backend.ts";
-import { parseCatalogValue } from "@writer/pages/settings/CatalogField.tsx";
+import type { CatalogItem, MediaWorker, WorkerAdapter, WorkerSaveInput } from "@writer/lib/backend.ts";
+
+// 放在非元件檔：與 CatalogField 元件同檔匯出會讓 Vite Fast Refresh 失效。
+// parseCatalogValue 讀取 settings 裡的清單 JSON；空字串或格式錯誤都當空清單（後端 Save 會再驗證）。
+export function parseCatalogValue(value: string | undefined): CatalogItem[] {
+  if (!value?.trim()) return [];
+  try {
+    const items = JSON.parse(value);
+    return Array.isArray(items) ? items : [];
+  } catch {
+    return [];
+  }
+}
 
 // workerInputErrors 依 adapter 宣告的欄位 schema 驗證設定表單，回傳「欄位 key → i18n 錯誤 key」。
 // 名稱用保留 key "name"；secret 欄位在已存密鑰且沒勾選清除時視為已填（留白代表保留原值）。

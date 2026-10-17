@@ -80,9 +80,11 @@ func normalizeEvent(line ChatLine) (ChatLine, bool) {
 		return line, true
 	}
 	switch line.Type {
-	case EventMessageUser, EventProposalApproved, EventProposalRejected, EventApplyVerified:
-		// 提案決策是使用者動作，在對話中保留成右側的決策紀錄。
+	case EventMessageUser:
 		line.Role = "user"
+	case EventProposalApproved, EventProposalRejected, EventApplyVerified:
+		// 決策與確認是「狀態」而不是作者說的話：以 system 置中顯示，舊紀錄的「你已…」口吻在讀取時轉成狀態句。
+		line.Role, line.Text = "system", statusDecisionText(line.Text)
 	case EventMessageAssistant, EventMessagePartial:
 		line.Role = "assistant"
 	default:
