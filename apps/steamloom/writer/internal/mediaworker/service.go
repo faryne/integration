@@ -29,7 +29,8 @@ func NewDefault() *Service {
 		dir = "."
 	}
 	client := &http.Client{Timeout: 10 * time.Second}
-	registry, err := NewRegistry(NewComfyUIAdapter(client), NewCompatibleAdapter(client), NewMockAdapter())
+	// PixAI 需要下載整張成圖，10 秒上限對 1.5k PNG 太緊，另用較寬的 client。
+	registry, err := NewRegistry(NewComfyUIAdapter(client), NewCompatibleAdapter(client), NewPixAIAdapter(&http.Client{Timeout: time.Minute}), NewMockAdapter())
 	if err != nil {
 		panic(err)
 	}
