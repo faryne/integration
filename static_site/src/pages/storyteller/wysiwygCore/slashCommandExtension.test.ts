@@ -29,6 +29,7 @@ function createStubContext(): WysiwygCommandContext {
     openAssetPicker: () => {},
     openAI: () => {},
     exportMarkdown: () => {},
+    openFindReplace: () => {},
   };
 }
 

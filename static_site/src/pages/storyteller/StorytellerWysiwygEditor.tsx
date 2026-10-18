@@ -87,6 +87,9 @@ import {
 } from "@/pages/storyteller/StorytellerEditorCaretFocus.tsx";
 import { CaretFocus } from "@/pages/storyteller/wysiwygCore/caretFocus.ts";
 import { useLoreLinkStatusSx } from "@/pages/storyteller/storytellerLoreLinkCheck.ts";
+import { usePrimaryShortcut } from "@/helpers/shortcut.ts";
+import { StorytellerFindBar } from "@/pages/storyteller/StorytellerFindBar.tsx";
+import { getFindState } from "@/pages/storyteller/wysiwygCore/findReplace.ts";
 import {
   CommentRefCard,
   type CommentRefCardState,
@@ -147,6 +150,18 @@ const COMMENT_COLOR_LABELS: Record<CommentColorValue, string> = {
 // 軟體的螢光筆註解視覺；每種顏色各自一個 class（見 inlineCommentMark.ts 的 renderHTML
 // 怎麼決定套用哪個 class），而不是用 inline style，這樣才能繼續透過 sx 主題化、深色模式
 // 等既有機制。
+// 尋找／取代的符合處（decoration，見 wysiwygCore/findReplace.ts）：目前這個用實色
+const FIND_HIGHLIGHT_SX = {
+  "& .wysiwyg-find-hit": {
+    backgroundColor: "rgba(244, 189, 98, 0.3)",
+    borderRadius: "2px",
+  },
+  "& .wysiwyg-find-hit-current": {
+    backgroundColor: "rgb(244, 189, 98)",
+    color: "#1a1300",
+  },
+} as const;
+
 const COMMENT_HIGHLIGHT_SX = {
   ...Object.fromEntries(
     COMMENT_COLOR_VALUES.map((color) => [
@@ -847,6 +862,23 @@ export const StorytellerWysiwygEditor = forwardRef<
     [bookmarkedIds],
   );
 
+  // 尋找／取代浮動列；key 每次開啟遞增，有選取文字時帶進搜尋框，沒有就沿用目前的查詢
+  const [findBar, setFindBar] = useState<{ key: number; query: string } | null>(
+    null,
+  );
+  const openFindReplace = () => {
+    if (!editor) return;
+    const { from, to, empty } = editor.state.selection;
+    const selected = empty ? "" : editor.state.doc.textBetween(from, to, " ");
+    const query =
+      selected && selected.length <= 100
+        ? selected
+        : getFindState(editor).query;
+    setFindBar((current) => ({ key: (current?.key ?? 0) + 1, query }));
+  };
+  // 編輯頁裡 ⌘F／Ctrl+F 開自己的尋找（Writer 的 webview 沒有原生尋找；網站等於取代瀏覽器的頁面尋找）
+  usePrimaryShortcut("f", openFindReplace);
+
   if (!editor || !editorState) {
     return null;
   }
@@ -1197,6 +1229,7 @@ export const StorytellerWysiwygEditor = forwardRef<
     openAssetPicker: () => onRequestInsertAsset?.(),
     openAI: handleRequestAI,
     exportMarkdown: handleExportMarkdown,
+    openFindReplace,
   };
   slashCommandContextStore.set(commandContext);
 
@@ -1261,6 +1294,7 @@ export const StorytellerWysiwygEditor = forwardRef<
             sx={[
               HEADING_TYPOGRAPHY_SX,
               COMMENT_HIGHLIGHT_SX,
+              FIND_HIGHLIGHT_SX,
               INLINE_COLOR_SX,
               loreLinkStatusSx,
               FOOTNOTE_HIGHLIGHT_SX,
@@ -1326,6 +1360,14 @@ export const StorytellerWysiwygEditor = forwardRef<
           scrollRef={scrollRef}
           memoryKey={caretMemoryKey}
         />
+        {findBar && (
+          <StorytellerFindBar
+            key={findBar.key}
+            editor={editor}
+            initialQuery={findBar.query}
+            onClose={() => setFindBar(null)}
+          />
+        )}
       </Box>
 
       {toolbarPlacement === "bottom" && (
@@ -1364,6 +1406,7 @@ export const StorytellerWysiwygEditor = forwardRef<
               : undefined
         }
         onToggleWritingBookmark={() => handleToggleWritingBookmark()}
+        onFindSelection={openFindReplace}
       />
 
       <Dialog

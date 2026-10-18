@@ -38,6 +38,7 @@ function createStubContext(): WysiwygCommandContext {
     openAssetPicker: () => {},
     openAI: () => {},
     exportMarkdown: () => {},
+    openFindReplace: () => {},
   };
 }
 
@@ -196,6 +197,7 @@ describe("WYSIWYG_COMMANDS", () => {
         "insert-code-block",
         "insert-table",
         "insert-image",
+        "find-replace",
         "ask-ai",
       ]);
       expect(ids).toEqual(

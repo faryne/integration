@@ -11,6 +11,7 @@ import { InlineComment } from "./inlineCommentMark";
 import { InlineFootnote } from "./inlineFootnoteMark";
 import { InlineAssistantAnchor } from "./inlineAssistantAnchor";
 import { InlineLink } from "./inlineLinkMark";
+import { FindReplace } from "./findReplace";
 import {
   CustomBold,
   CustomCode,
@@ -77,6 +78,7 @@ export function createWysiwygCoreExtensions(
       defaultAlignment: DEFAULT_ALIGNMENT,
     }),
     EmptyParagraphPlaceholder,
+    FindReplace,
     ...(options.slashCommand === false
       ? []
       : [SlashCommand.configure(options.slashCommand)]),
