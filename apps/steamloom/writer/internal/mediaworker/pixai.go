@@ -6,13 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"image"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
 	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -34,9 +29,6 @@ var pixaiModels = []JobOption{
 	{Value: "1861558740588989558", Label: "Haruka v2"},
 	{Value: "1954632828118619567", Label: "Hoshino v2"},
 }
-
-// pixaiImageTypes 對齊 asset.upload 可接受的格式；其他格式直接視為失敗，避免進 staging 才被拒。
-var pixaiImageTypes = map[string]string{"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp", "image/gif": ".gif"}
 
 type pixaiAdapter struct {
 	client       *http.Client
@@ -253,38 +245,7 @@ func (a pixaiAdapter) call(ctx context.Context, method, path, key string, payloa
 
 // download 不帶 API key：mediaUrls 是 CDN 位址，避免把 token 送到第三方主機。
 func (a pixaiAdapter) download(ctx context.Context, mediaURL, pathWithoutExt string) (GeneratedArtifact, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, mediaURL, nil)
-	if err != nil {
-		return GeneratedArtifact{}, err
-	}
-	response, err := a.client.Do(req)
-	if err != nil {
-		return GeneratedArtifact{}, err
-	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusOK {
-		return GeneratedArtifact{}, fmt.Errorf("HTTP %d", response.StatusCode)
-	}
-	raw, err := io.ReadAll(io.LimitReader(response.Body, pixaiMaxDownload+1))
-	if err != nil {
-		return GeneratedArtifact{}, err
-	}
-	if len(raw) > pixaiMaxDownload {
-		return GeneratedArtifact{}, errors.New("圖片超過 30MB")
-	}
-	// 以內容判斷格式，不信任 CDN 的 Content-Type。
-	mimeType := http.DetectContentType(raw)
-	extension, ok := pixaiImageTypes[mimeType]
-	if !ok {
-		return GeneratedArtifact{}, fmt.Errorf("不支援的圖片格式 %s", mimeType)
-	}
-	path := pathWithoutExt + extension
-	if err := os.WriteFile(path, raw, 0o600); err != nil {
-		return GeneratedArtifact{}, err
-	}
-	// WebP 沒有註冊 decoder，尺寸留 0 不影響上傳。
-	config, _, _ := image.DecodeConfig(bytes.NewReader(raw))
-	return GeneratedArtifact{LocalPath: path, FileName: filepath.Base(path), MIMEType: mimeType, Width: config.Width, Height: config.Height}, nil
+	return downloadImage(ctx, a.client, mediaURL, pathWithoutExt, pixaiMaxDownload)
 }
 
 // pixaiError 只取 PixAI 的 message 欄位（格式 {"message","code"}），避免把整段 body 塞進對話紀錄。

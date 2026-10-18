@@ -139,6 +139,11 @@ func TestDefaultAdaptersHideUnverifiedWorkersOutsideDev(t *testing.T) {
 	if _, ok := dev.Get("comfyui"); !ok {
 		t.Fatal("dev registry should contain ComfyUI")
 	}
+	if adapter, ok := dev.Get("fal"); !ok {
+		t.Fatal("dev registry should contain fal")
+	} else if _, ok := adapter.(Generator); !ok {
+		t.Fatal("fal should execute media jobs")
+	}
 	if adapter, ok := dev.Get("stable-diffusion-webui"); !ok {
 		t.Fatal("dev registry should contain Stable Diffusion WebUI")
 	} else if _, ok := adapter.(Generator); !ok {

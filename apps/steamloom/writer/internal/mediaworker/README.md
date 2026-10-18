@@ -20,6 +20,8 @@
 
 `pixai.go` 是第一個串接外部 API 的 Generator 參考：`Discover()` 以查詢不存在的 task 驗證 key（有效 key 回 404、無效回 401），不送生成工作；`Generate()` 自帶 10 分鐘等待上限，完成後立即下載（PixAI 產物不會永久保存），下載 CDN 時不帶 API key。
 
+`fal.go` 使用 fal Queue API 的 submit → status → result contract；第一版只開放 schema 已固定的 FLUX.1 [dev]，不接受任意 endpoint、model ID 或 JSON。使用者中斷時會 best-effort 取消遠端 request，成功結果同樣立即下載，且 CDN 請求不帶 API key。未來增加 fal 模型時，應先為該模型建立明確的 profile 與輸入 schema，不可把 provider 原始參數直接交給 Agent。尚未以實例驗證，目前只在 `version == "dev"` 註冊。
+
 `stable_diffusion_webui.go` 共用 AUTOMATIC1111／Forge 的 `sdapi/v1` contract，支援 API Auth、Checkpoint override、常用 txt2img 參數與最多四張候選結果。ComfyUI 與 Stable Diffusion WebUI 尚未經實例驗證，只在 `version == "dev"` 的本機開發版註冊；release 設定頁與 Agent capability summary 都不會看到它們。
 
 ## 已知 Bug 記錄

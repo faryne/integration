@@ -37,10 +37,12 @@ func NewDefault(dev bool) *Service {
 }
 
 func defaultAdapters(dev bool) []Adapter {
-	// PixAI 需要下載整張成圖，10 秒上限對 1.5k PNG 太緊，另用較寬的 client。
-	adapters := []Adapter{NewPixAIAdapter(&http.Client{Timeout: time.Minute})}
+	// Cloud Worker 需要下載整張成圖，10 秒上限對高解析圖片太緊，另用較寬的 client。
+	cloudClient := &http.Client{Timeout: time.Minute}
+	adapters := []Adapter{NewPixAIAdapter(cloudClient)}
 	if dev {
 		adapters = append(adapters,
+			NewFalAdapter(cloudClient),
 			NewComfyUIAdapter(&http.Client{Timeout: 10 * time.Second}),
 			NewStableDiffusionWebUIAdapter(&http.Client{Timeout: 10 * time.Minute}),
 		)
