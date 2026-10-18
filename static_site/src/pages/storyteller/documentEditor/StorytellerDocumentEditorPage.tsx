@@ -31,7 +31,7 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
-import { registerWorkspaceLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
+import { useDocumentEditingLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
 import { useWorkspaceEditorBack } from "@/pages/storyteller/WorkspaceEditorBackContext.ts";
 import type {
   StorytellerAgent,
@@ -431,12 +431,8 @@ function DocumentEditorBody({
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, []);
-  useEffect(() => {
-    if (!embedded) return;
-    return registerWorkspaceLeaveGuard(() =>
-      editingRef.current.hasUnsavedChanges(),
-    );
-  }, [embedded]);
+  // 工作台內嵌時登記離開確認（含「存檔並繼續」）；獨立頁面沒有側邊欄可攔
+  useDocumentEditingLeaveGuard(editing, embedded);
 
   const pageTitle = isNew
     ? `建立${NAME[kind]}`

@@ -310,7 +310,7 @@ export default function StorytellerImageEpisodeEditor({
     if (!embedded) {
       return;
     }
-    return registerWorkspaceLeaveGuard(hasUnsavedEpisodeChanges);
+    return registerWorkspaceLeaveGuard(hasUnsavedEpisodeChanges, handleSubmit);
   }, [
     embedded,
     phase,
@@ -591,7 +591,8 @@ export default function StorytellerImageEpisodeEditor({
     );
   }
 
-  async function handleSubmit() {
+  // 回傳是否存檔成功：未存檔確認的「存檔並繼續」要據此決定能不能離開
+  async function handleSubmit(): Promise<boolean> {
     if (
       !project ||
       !title.trim() ||
@@ -599,7 +600,7 @@ export default function StorytellerImageEpisodeEditor({
       phase === "uploading" ||
       saveSuccessTarget
     ) {
-      return;
+      return false;
     }
     setPhase("uploading");
     setUploadError(null);
@@ -696,12 +697,14 @@ export default function StorytellerImageEpisodeEditor({
         selectedProfileIds,
       );
       // 要先讓成功訊息真的顯示，再跳轉；新建話仍會換成正式 public_id，避免重複建立。
+      return true;
     } catch (error) {
       setPhase("error");
       setUploadError(
         error instanceof Error ? error.message : "上傳失敗，請重試。",
       );
       setSaveErrorSnackOpen(true);
+      return false;
     }
   }
 

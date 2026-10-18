@@ -366,12 +366,6 @@
       "lore": "剛剛存檔完成後才發現這篇設定在中途被更新過，已經接在最新版本後面存成新版了。",
       "viewHistory": "查看編輯歷史"
     },
-    "unsaved": {
-      "title": "有未存檔的修改",
-      "cancel": "繼續編輯",
-      "discard": "放棄修改",
-      "save": "存檔並繼續"
-    },
     "self": "本人（{{penName}}）",
     "selfOnly": "本人",
     "attributeFailed": "屬性更新失敗，請重試：",

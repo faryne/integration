@@ -279,12 +279,6 @@
       "lore": "This lore entry was updated elsewhere while you were editing. Your changes were saved as a new version after the latest one.",
       "viewHistory": "View history"
     },
-    "unsaved": {
-      "title": "You have unsaved changes",
-      "cancel": "Keep editing",
-      "discard": "Discard",
-      "save": "Save and continue"
-    },
     "self": "Me ({{penName}})",
     "selfOnly": "Me",
     "attributeFailed": "Couldn't update this setting, please try again: ",

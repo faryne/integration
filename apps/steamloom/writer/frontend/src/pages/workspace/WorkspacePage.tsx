@@ -1,6 +1,8 @@
+import { StorytellerUnsavedChangesDialog } from "@/components/storyteller/StorytellerUnsavedChangesDialog.tsx";
 import { StorytellerEditorDataContext } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 import { StorytellerMemoryManagerPage } from "@/pages/storyteller/StorytellerMemoryManagerPage.tsx";
 import { WorkspaceSidebarToggle } from "@/pages/storyteller/WorkspaceSidebarChrome.tsx";
+import { canSaveWorkspaceBeforeLeave, hasUnsavedWorkspaceChanges, saveWorkspaceBeforeLeave } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
 import { WorkspaceSearch } from "@/pages/storyteller/WorkspaceSearch.tsx";
 import { useWorkspaceSearchLauncher } from "@/pages/storyteller/useWorkspaceSearchLauncher.ts";
 import type { StorytellerWorkspaceSearchResult } from "@/types/storyteller.ts";
@@ -20,10 +22,8 @@ import { useSnack } from "@writer/components/SnackProvider.tsx";
 import { useWorkspaceEditing } from "@writer/pages/workspace/useWorkspaceEditing.ts";
 import type { RowActionTarget } from "@writer/pages/workspace/useDocumentRowActions.tsx";
 import { WorkspaceSidebar, WorkspaceSidebarRail } from "@writer/pages/workspace/WorkspaceSidebar.tsx";
-import { UnsavedChangesDialog } from "@writer/pages/workspace/UnsavedChangesDialog.tsx";
 import { findGroup, groupTargets, isSameDocument, workspaceDocuments } from "@writer/pages/workspace/workspaceTree.ts";
 import type { PromptReference } from "@writer/pages/workspace/promptReferences.ts";
-import type { SaveForLeave } from "@writer/pages/workspace/useRegisterSave.ts";
 import { WorkspaceProjectContext } from "@writer/pages/workspace/WorkspaceProjectContext.ts";
 
 // 還沒載入前給 hook 用的空工作台（hook 必須無條件呼叫）
@@ -71,17 +71,14 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
   const [assetCollection, setAssetCollection] = useState("");
   const [openedAsset, setOpenedAsset] = useState<Asset | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [dirty, setDirty] = useState(false);
   const [assistantReference, setAssistantReference] = useState<PromptReference | null>(null);
-  // 等待確認「放棄未存檔內容」的動作
+  // 離開編輯中的文件前先確認：跟網站工作台同一套規則（WorkspaceLeaveGuard）與同一個對話框
   const [pending, setPending] = useState<(() => void) | null>(null);
-  const guard = (action: () => void) => (dirty ? setPending(() => action) : action());
-  // 編輯中那篇登記的存檔函式（未存檔確認的「存檔並繼續」用）
-  const saveForLeave = useRef<SaveForLeave | null>(null);
+  const guard = (action: () => void) => (hasUnsavedWorkspaceChanges() ? setPending(() => action) : action());
   const saveAndContinue = async () => {
     const action = pending;
     // 存檔失敗或版本衝突：關掉對話框留在編輯頁，讓作者看到錯誤或衝突提示
-    const saved = (await saveForLeave.current?.()) ?? false;
+    const saved = await saveWorkspaceBeforeLeave();
     setPending(null);
     if (saved) action?.();
   };
@@ -236,8 +233,6 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
                     groupTargets={groupTargets(workspace, selected.kind, t(selected.kind === "story" ? "workspace.ungroupedStories" : "workspace.uncategorizedLores"))}
                     profile={profile}
                     dependencyOptions={dependencyOptions}
-                    onDirtyChange={setDirty}
-                    onRegisterSave={(save) => (saveForLeave.current = save)}
                     onSaved={reload}
                     onAskAI={askAI}
                   />
@@ -305,14 +300,14 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
           .filter((item) => !workspace || workspaceDocuments(workspace, item.kind).some((each) => isSameDocument(each, item)))
           .map((item) => ({ kind: item.kind as "story" | "lore", public_id: item.public_id, title: item.title, content_type: item.content_type === "image" ? "image" : "text", context: "", preview: "", location: "", updated_at: "" }))}
       />
-      <UnsavedChangesDialog
+      <StorytellerUnsavedChangesDialog
         open={pending !== null}
-        onSave={saveAndContinue}
-        onCancel={() => setPending(null)}
-        onDiscard={() => {
+        onContinueEditing={() => setPending(null)}
+        onDiscardChanges={() => {
           pending?.();
           setPending(null);
         }}
+        onSaveAndContinue={canSaveWorkspaceBeforeLeave() ? saveAndContinue : undefined}
       />
     </WorkspaceProjectContext.Provider>
   );

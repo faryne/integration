@@ -283,12 +283,6 @@
       "lore": "刚刚保存完成后才发现这篇设定在中途被更新过，已经接在最新版本后面保存为新版本。",
       "viewHistory": "查看编辑历史"
     },
-    "unsaved": {
-      "title": "有未保存的修改",
-      "cancel": "继续编辑",
-      "discard": "放弃修改",
-      "save": "保存并继续"
-    },
     "self": "本人（{{penName}}）",
     "selfOnly": "本人",
     "attributeFailed": "属性更新失败，请重试：",
