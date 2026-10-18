@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>參考面板 Mockup</title>
+<style>
+  :root { color-scheme: dark; font-family: Inter, "Noto Sans TC", system-ui, sans-serif; --bg:#080c14; --surface:#0e1420; --surface-2:#151c28; --surface-3:#1d2635; --line:#2c384d; --line-soft:#202a3b; --text:#e7edf7; --muted:#8f9bb0; --blue:#79a9ff; --green:#61d49a; --amber:#f4bd62; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-width:1180px; height:100vh; display:flex; flex-direction:column; background:var(--bg); color:var(--text); font-size:14px; }
+  button, input { font:inherit; color:inherit; }
+  .switcher { display:flex; gap:6px; flex-wrap:wrap; padding:8px 16px; background:#05080e; border-bottom:1px solid var(--line-soft); font-size:12px; }
+  .switcher span { color:var(--muted); align-self:center; margin-right:4px; }
+  .switcher button { padding:4px 10px; border:1px solid var(--line); border-radius:6px; background:transparent; cursor:pointer; }
+  .switcher button.active { background:#26334a; border-color:#3b4d6b; }
+  .crumbs { height:40px; flex:none; display:flex; align-items:center; gap:8px; padding:0 16px; border-bottom:1px solid var(--line-soft); color:var(--muted); font-size:13px; }
+  .crumbs b { color:var(--blue); font-weight:500; }
+  .shell { flex:1; min-height:0; display:flex; }
+  .sidebar { width:220px; flex:none; border-right:1px solid var(--line); padding:8px; font-size:13px; color:#b8c2d3; overflow:auto; }
+  .sidebar .search { border:1px solid var(--line); border-radius:6px; padding:6px 8px; color:var(--muted); margin-bottom:8px; }
+  .sidebar div.row { padding:5px 8px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sidebar div.row.sel { background:#26334a; color:#fff; }
+  .sidebar .sec { margin:10px 0 4px; font-size:12px; color:var(--muted); }
+  .editor { flex:1; min-width:0; display:flex; flex-direction:column; position:relative; }
+  .tabs-top { display:flex; gap:16px; padding:10px 24px 0; border-bottom:1px solid var(--line-soft); font-size:13px; }
+  .tabs-top span { padding-bottom:8px; } .tabs-top span.on { border-bottom:2px solid var(--blue); }
+  .doc { flex:1; overflow:auto; padding:18px 32px 24px; }
+  .doc h1 { margin:0 0 8px; font-size:26px; }
+  .meta { color:var(--muted); font-size:12px; margin-bottom:18px; }
+  .doc h3 { margin:18px 0 8px; font-size:16px; border-left:3px solid var(--blue); padding-left:8px; }
+  .doc p { line-height:1.9; color:#d6dde9; margin:0 0 12px; }
+  .lore { color:var(--amber); text-decoration:underline dotted; text-underline-offset:3px; cursor:pointer; position:relative; }
+  .toolbar { height:44px; flex:none; border-top:1px solid var(--line-soft); display:flex; align-items:center; gap:4px; padding:0 12px; color:var(--muted); }
+  .toolbar .sp { flex:1; }
+  .tb { width:30px; height:30px; border:0; border-radius:6px; background:transparent; cursor:pointer; color:var(--muted); font-size:15px; }
+  .tb.on, .tb:hover { background:#26334a; color:#dfe9ff; }
+  .tb-label { padding:0 10px; width:auto; font-size:12.5px; }
+  .save { padding:5px 12px; border-radius:6px; background:#3b5998; color:#fff; font-size:12.5px; }
+  /* 設定連結浮動卡 */
+  .peek { position:absolute; z-index:5; width:300px; border:1px solid var(--line); border-radius:8px; background:var(--surface-2); box-shadow:0 10px 30px #000a; padding:12px 14px; }
+  .peek h4 { margin:0 0 4px; font-size:14px; }
+  .peek .kind { font-size:11px; color:var(--muted); }
+  .peek p { margin:8px 0 10px; font-size:12.5px; color:#c3cbd9; line-height:1.6; }
+  .peek .acts { display:flex; gap:8px; justify-content:flex-end; }
+  .btn { padding:5px 10px; border:1px solid var(--line); border-radius:6px; background:transparent; cursor:pointer; font-size:12.5px; }
+  .btn.primary { background:#3b5998; border-color:#3b5998; }
+  /* 參考面板 */
+  .ref { width:380px; flex:none; border-left:1px solid var(--line); background:var(--surface); display:flex; flex-direction:column; position:relative; }
+  .ref .resize { position:absolute; left:-3px; top:0; bottom:0; width:6px; cursor:col-resize; }
+  .ref .head { display:flex; align-items:center; border-bottom:1px solid var(--line-soft); }
+  .ref .rtabs { flex:1; display:flex; min-width:0; }
+  .ref .rtab { display:flex; align-items:center; gap:6px; max-width:150px; padding:9px 10px; border-right:1px solid var(--line-soft); font-size:12.5px; color:var(--muted); cursor:pointer; white-space:nowrap; }
+  .ref .rtab.on { color:var(--text); background:var(--surface-2); box-shadow:inset 0 -2px 0 var(--blue); }
+  .ref .rtab .t { overflow:hidden; text-overflow:ellipsis; }
+  .ref .rtab .x { opacity:.6; } .ref .rtab .x:hover { opacity:1; }
+  .ref .add { padding:0 10px; color:var(--muted); cursor:pointer; font-size:16px; }
+  .ref .collapse { padding:0 10px; color:var(--muted); cursor:pointer; }
+  .ref .body { flex:1; overflow:auto; padding:16px 18px; }
+  .ref .body h2 { margin:0 0 4px; font-size:18px; }
+  .ref .ver { font-size:11.5px; color:var(--muted); margin-bottom:14px; }
+  .ref .body p { font-size:13px; line-height:1.8; color:#cdd5e2; margin:0 0 10px; }
+  .ref .body h4 { margin:14px 0 6px; font-size:13.5px; color:#dfe7f5; }
+  .ref .foot { border-top:1px solid var(--line-soft); padding:8px 12px; display:flex; gap:8px; justify-content:flex-end; }
+  .rail { width:36px; flex:none; border-left:1px solid var(--line); display:flex; flex-direction:column; align-items:center; padding-top:10px; gap:8px; color:var(--muted); cursor:pointer; }
+  .rail .count { font-size:11px; background:#26334a; border-radius:8px; padding:1px 6px; color:#dfe9ff; }
+  .rail .vt { writing-mode:vertical-rl; font-size:12px; letter-spacing:2px; }
+  /* 挑選器 */
+  .scrim { position:fixed; inset:0; background:#0009; display:flex; justify-content:center; align-items:flex-start; padding-top:90px; z-index:10; }
+  .picker { width:560px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); }
+  .picker .ph { padding:14px 16px 6px; font-weight:600; }
+  .picker input { width:calc(100% - 32px); margin:6px 16px 10px; padding:9px 11px; border:1px solid var(--blue); border-radius:6px; background:var(--bg); }
+  .picker .grp { padding:6px 16px 2px; font-size:11.5px; color:var(--muted); }
+  .picker .it { display:flex; gap:10px; align-items:center; padding:8px 16px; cursor:pointer; font-size:13px; }
+  .picker .it:hover { background:#26334a; }
+  .picker .it small { color:var(--muted); margin-left:auto; }
+  .note { flex:none; padding:10px 16px; border-top:1px dashed var(--line); color:var(--muted); font-size:12px; line-height:1.7; background:#05080e; max-height:150px; overflow:auto; }
+  .note b { color:var(--text); }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<div class="switcher"><span>情境：</span>
+  <button data-v="none" class="active">① 現在（沒有面板）</button>
+  <button data-v="peek">② 點設定連結</button>
+  <button data-v="panel">③ 參考面板（設定）</button>
+  <button data-v="tabs">④ 多個參考（設定＋故事）</button>
+  <button data-v="picker">⑤ 用工具列「參考」挑選</button>
+  <button data-v="rail">⑥ 面板收合</button>
+</div>
+<div class="crumbs">我的專案 / 禁斷姐弟／兄妹戀 / <b>[N] 第十一話　溫的</b></div>
+<div class="shell">
+  <div class="sidebar">
+    <div class="search">搜尋此專案……　⌘K</div>
+    <div class="row">AI 助理</div>
+    <div class="sec">作品與冊</div>
+    <div class="row">[N] 第九話　水族館</div>
+    <div class="row">[N] 第十話　雨夜</div>
+    <div class="row sel">[N] 第十一話　溫的</div>
+    <div class="sec">設定集</div>
+    <div class="row">角色 / 許芷瑄</div>
+    <div class="row">角色 / 許宥辰</div>
+    <div class="row">世界觀 / 舊公寓</div>
+  </div>
+
+  <div class="editor">
+    <div class="tabs-top"><span class="on">編輯</span><span>編輯歷史</span></div>
+    <div class="doc">
+      <h1>[N] 第十一話　溫的</h1>
+      <div class="meta">狀態 草稿　·　冊 未分冊　·　署名 本人</div>
+      <h3>第一幕</h3>
+      <p>回到<span class="lore" data-lore="apartment">舊公寓</span>的時候已經過了十一點。走廊的燈還是只亮一半，<span class="lore" data-lore="zhixuan">芷瑄</span>把鑰匙插進門鎖，轉了兩次才轉開。</p>
+      <p>「你又沒關暖氣。」她回頭看了<span class="lore" data-lore="youchen">宥辰</span>一眼，語氣裡聽不出是抱怨還是鬆了一口氣。屋子裡是溫的，跟外面的雨夜像兩個世界。</p>
+      <p>他把傘靠在門邊，想起上一話在水族館前沒說完的那句話，喉嚨有點乾。</p>
+      <div class="peek" id="peek" hidden>
+        <div class="kind">設定 · 角色</div>
+        <h4>許芷瑄</h4>
+        <p>二十二歲，大學四年級。外表冷淡、話少，生氣時習慣把頭髮往耳後撥。對宥辰的照顧總是用抱怨包裝……</p>
+        <div class="acts"><button class="btn" data-go="none">關閉</button><button class="btn primary" data-go="panel">在參考面板開啟</button></div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <button class="tb" title="大綱">☰</button>
+      <button class="tb" title="書籤">🔖</button>
+      <span class="sp"></span>
+      <button class="tb" title="插入圖片">🖼</button>
+      <button class="tb tb-label" id="ref-btn" title="參考（⌘⇧R）">📑 參考</button>
+      <button class="tb" title="字體">Tt</button>
+      <button class="tb" title="匯出">⤓</button>
+      <span class="save">存檔 ⌘S</span>
+    </div>
+  </div>
+
+  <div class="ref" id="ref" hidden>
+    <div class="resize" title="拖曳調整寬度"></div>
+    <div class="head">
+      <div class="rtabs" id="rtabs"></div>
+      <span class="add" title="加入參考" data-go="picker">＋</span>
+      <span class="collapse" title="收合" data-go="rail">⇥</span>
+    </div>
+    <div class="body" id="ref-body"></div>
+    <div class="foot"><button class="btn" id="open-edit">開啟編輯</button></div>
+  </div>
+  <div class="rail" id="rail" hidden data-go="tabs" title="展開參考面板"><span>📑</span><span class="count">2</span><span class="vt">參考</span></div>
+</div>
+
+<div class="scrim" id="picker" hidden>
+  <div class="picker">
+    <div class="ph">加入參考</div>
+    <input placeholder="搜尋故事或設定……" value="">
+    <div class="grp">最近開啟</div>
+    <div class="it" data-add="ep10">📄 [N] 第十話　雨夜 <small>作品</small></div>
+    <div class="it" data-add="ep9">📄 [N] 第九話　水族館 <small>作品</small></div>
+    <div class="grp">設定</div>
+    <div class="it" data-add="zhixuan">📘 許芷瑄 <small>設定 · 角色</small></div>
+    <div class="it" data-add="youchen">📘 許宥辰 <small>設定 · 角色</small></div>
+    <div class="it" data-add="apartment">📘 舊公寓 <small>設定 · 世界觀</small></div>
+  </div>
+</div>
+
+<div class="note">
+  <b>Mockup 說明（實作時不會出現）</b>
+  <b>是什麼：</b>編輯區右側的「唯讀」參考面板，邊寫邊看設定或其他篇故事；編輯中的文件只有一篇，不是多分頁編輯。
+  <b>怎麼打開：</b>(a) 點內文裡的設定連結 → 浮動卡顯示摘要，可「在參考面板開啟」；(b) 下方工具列「參考」按鈕（或 ⌘⇧R）→ 挑選器（搜尋＋最近開啟）；(c) 面板上的「＋」。
+  <b>規則：</b>顯示「已存檔版本」並標註時間（跟 AI 助理一樣不讀編輯中的內容）；最多 3 個分頁，再加會換掉最舊的；面板寬度可拖曳、可收合成右側窄條；每個專案記住開著哪些參考；「開啟編輯」＝切換到那一篇（有未存檔會走「存檔並繼續」確認）。
+  <b>共用：</b>做在共用編輯器 documentEditor 裡，網站工作台與 Writer 同一套。
+</div>
+
+<script>
+// mockup 用的假資料與情境切換
+const docs = {
+  zhixuan: { title: "許芷瑄", kind: "設定 · 角色", ver: "已存檔版本 · 2026/10/16 22:41", body: "<p>二十二歲，大學四年級，主修日文。外表冷淡、話少，生氣時習慣把頭髮往耳後撥。</p><h4>個性</h4><p>對宥辰的照顧總是用抱怨包裝；真正在意的事反而不會說出口。</p><h4>口頭禪</h4><p>「你又……」開頭的句子，多半是在擔心。</p><h4>與第十話的連結</h4><p>雨夜那晚沒有回訊息，是本話開場氣氛的伏筆。</p>" },
+  youchen: { title: "許宥辰", kind: "設定 · 角色", ver: "已存檔版本 · 2026/10/12 18:05", body: "<p>二十歲，大學二年級。習慣把重要的話留到最後才說，常常因此錯過時機。</p>" },
+  apartment: { title: "舊公寓", kind: "設定 · 世界觀", ver: "已存檔版本 · 2026/09/30 11:20", body: "<p>五樓無電梯，走廊的燈有一半是壞的。暖氣是老式電暖器，開關在玄關旁。</p>" },
+  ep10: { title: "[N] 第十話　雨夜", kind: "作品", ver: "已存檔版本 · 2026/10/15 23:58", body: "<h4>第三幕</h4><p>……水族館的燈一盞一盞暗下來，他終於開口，卻被她手機的震動聲打斷。「我先回去了。」她沒有看他。</p><p>雨從那時候開始下。</p>" },
+  ep9: { title: "[N] 第九話　水族館", kind: "作品", ver: "已存檔版本 · 2026/10/10 21:12", body: "<p>（第九話內容）</p>" },
+};
+let open = ["zhixuan"], active = "zhixuan";
+
+function renderRef() {
+  const tabs = document.getElementById("rtabs");
+  tabs.innerHTML = "";
+  open.forEach((id) => {
+    const tab = document.createElement("div");
+    tab.className = "rtab" + (id === active ? " on" : "");
+    tab.innerHTML = `<span>${docs[id].kind.startsWith("作品") ? "📄" : "📘"}</span><span class="t">${docs[id].title}</span><span class="x">✕</span>`;
+    tab.onclick = (e) => { if (e.target.classList.contains("x")) { open = open.filter((x) => x !== id); if (active === id) active = open[0]; if (!open.length) return show("none"); } else active = id; renderRef(); };
+    tabs.appendChild(tab);
+  });
+  const d = docs[active];
+  document.getElementById("ref-body").innerHTML = `<div class="ver">${d.kind}　·　${d.ver}</div><h2>${d.title}</h2>${d.body}`;
+  document.querySelector(".rail .count").textContent = open.length;
+}
+function addRef(id) {
+  if (!open.includes(id)) { open.push(id); if (open.length > 3) open.shift(); }
+  active = id;
+}
+function show(v) {
+  document.querySelectorAll(".switcher button").forEach((b) => b.classList.toggle("active", b.dataset.v === v));
+  if (v === "panel") { open = ["zhixuan"]; active = "zhixuan"; }
+  if (v === "tabs") { if (open.length < 2) { open = ["zhixuan", "ep10"]; active = "ep10"; } }
+  document.getElementById("peek").hidden = v !== "peek";
+  document.getElementById("ref").hidden = !["panel", "tabs", "picker"].includes(v);
+  document.getElementById("rail").hidden = v !== "rail";
+  document.getElementById("picker").hidden = v !== "picker";
+  document.getElementById("ref-btn").classList.toggle("on", ["panel", "tabs", "picker"].includes(v));
+  if (v === "peek") {
+    const link = document.querySelector('.lore[data-lore="zhixuan"]');
+    const peek = document.getElementById("peek");
+    peek.style.left = link.offsetLeft + "px";
+    peek.style.top = link.offsetTop + 26 + "px";
+  }
+  renderRef();
+}
+document.querySelectorAll(".switcher button").forEach((b) => (b.onclick = () => show(b.dataset.v)));
+document.querySelectorAll("[data-go]").forEach((el) => (el.onclick = (e) => { e.stopPropagation(); show(el.dataset.go); }));
+document.querySelectorAll(".lore").forEach((el) => (el.onclick = () => { if (el.dataset.lore === "zhixuan") return show("peek"); addRef(el.dataset.lore); show("tabs"); }));
+document.querySelectorAll("[data-add]").forEach((el) => (el.onclick = () => { addRef(el.dataset.add); show("tabs"); }));
+document.getElementById("ref-btn").onclick = () => show(document.getElementById("ref").hidden ? "picker" : "none");
+document.getElementById("open-edit").onclick = () => alert("切換到「" + docs[active].title + "」編輯（目前這篇有未存檔時，會先跳「存檔並繼續」確認）");
+document.getElementById("picker").onclick = (e) => { if (e.target.id === "picker") show(open.length ? "tabs" : "none"); };
+show("none");
+</script>
+</body>
+</html>
