@@ -284,9 +284,10 @@
       "viewHistory": "查看编辑历史"
     },
     "unsaved": {
-      "title": "放弃未保存的修改？",
+      "title": "有未保存的修改",
       "cancel": "继续编辑",
-      "discard": "放弃修改"
+      "discard": "放弃修改",
+      "save": "保存并继续"
     },
     "self": "本人（{{penName}}）",
     "selfOnly": "本人",

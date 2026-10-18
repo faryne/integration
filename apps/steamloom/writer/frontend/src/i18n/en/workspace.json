@@ -280,9 +280,10 @@
       "viewHistory": "View history"
     },
     "unsaved": {
-      "title": "Discard unsaved changes?",
+      "title": "You have unsaved changes",
       "cancel": "Keep editing",
-      "discard": "Discard"
+      "discard": "Discard",
+      "save": "Save and continue"
     },
     "self": "Me ({{penName}})",
     "selfOnly": "Me",

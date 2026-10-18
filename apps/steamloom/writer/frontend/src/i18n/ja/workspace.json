@@ -284,9 +284,10 @@
       "viewHistory": "編集履歴を見る"
     },
     "unsaved": {
-      "title": "未保存の変更を破棄しますか？",
+      "title": "未保存の変更があります",
       "cancel": "編集を続ける",
-      "discard": "破棄する"
+      "discard": "破棄する",
+      "save": "保存して続ける"
     },
     "self": "本人（{{penName}}）",
     "selfOnly": "本人",

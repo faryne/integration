@@ -23,6 +23,7 @@ import { WorkspaceSidebar, WorkspaceSidebarRail } from "@writer/pages/workspace/
 import { UnsavedChangesDialog } from "@writer/pages/workspace/UnsavedChangesDialog.tsx";
 import { findGroup, groupTargets, isSameDocument, workspaceDocuments } from "@writer/pages/workspace/workspaceTree.ts";
 import type { PromptReference } from "@writer/pages/workspace/promptReferences.ts";
+import type { SaveForLeave } from "@writer/pages/workspace/useRegisterSave.ts";
 import { WorkspaceProjectContext } from "@writer/pages/workspace/WorkspaceProjectContext.ts";
 
 // 還沒載入前給 hook 用的空工作台（hook 必須無條件呼叫）
@@ -75,6 +76,15 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
   // 等待確認「放棄未存檔內容」的動作
   const [pending, setPending] = useState<(() => void) | null>(null);
   const guard = (action: () => void) => (dirty ? setPending(() => action) : action());
+  // 編輯中那篇登記的存檔函式（未存檔確認的「存檔並繼續」用）
+  const saveForLeave = useRef<SaveForLeave | null>(null);
+  const saveAndContinue = async () => {
+    const action = pending;
+    // 存檔失敗或版本衝突：關掉對話框留在編輯頁，讓作者看到錯誤或衝突提示
+    const saved = (await saveForLeave.current?.()) ?? false;
+    setPending(null);
+    if (saved) action?.();
+  };
   // 主畫面一次只顯示一種：文件、列表，或都沒有時的 AI 助理
   const setSelected = (item: DocumentItem | null) => {
     // 再點一次正在編輯的同一篇不算離開
@@ -227,6 +237,7 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
                     profile={profile}
                     dependencyOptions={dependencyOptions}
                     onDirtyChange={setDirty}
+                    onRegisterSave={(save) => (saveForLeave.current = save)}
                     onSaved={reload}
                     onAskAI={askAI}
                   />
@@ -296,6 +307,7 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
       />
       <UnsavedChangesDialog
         open={pending !== null}
+        onSave={saveAndContinue}
         onCancel={() => setPending(null)}
         onDiscard={() => {
           pending?.();

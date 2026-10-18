@@ -367,9 +367,10 @@
       "viewHistory": "查看編輯歷史"
     },
     "unsaved": {
-      "title": "放棄未存檔的修改？",
+      "title": "有未存檔的修改",
       "cancel": "繼續編輯",
-      "discard": "放棄修改"
+      "discard": "放棄修改",
+      "save": "存檔並繼續"
     },
     "self": "本人（{{penName}}）",
     "selfOnly": "本人",

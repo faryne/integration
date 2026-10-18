@@ -14,6 +14,7 @@ import { backend, errorMessage, type Document } from "@writer/lib/backend.ts";
 import { goDocumentAdapter, toEditingDocument, useWriterDocumentLabels, useWriterEditingMessages, useWriterNotify } from "@writer/lib/documentEditing.ts";
 import { useBackendData } from "@writer/lib/useBackendData.ts";
 import type { EditorPanelProps } from "@writer/pages/workspace/EditorPanel.tsx";
+import { useRegisterSave } from "@writer/pages/workspace/useRegisterSave.ts";
 
 // 圖像作品的一頁：已存在的頁面有 key／assetPublicId；剛選的本機圖只有 localToken（按存檔才上傳，跟網站一樣）
 type Page = { id: string; key?: string; assetPublicId?: string; localToken?: string; previewUrl: string; description: string };
@@ -39,7 +40,7 @@ const serialize = (pages: Page[]) =>
 // 圖像作品編輯頁，比照網站 ImageEpisodeEditor 的 embedded 版面：上方標題（右側存檔）、屬性、描述，
 // 下方頁面清單（共用 ImageEpisodePageList）。跟網站一樣沒有自動存檔；
 // 頁面清單沒載入成功時不給存（不然會把原本的頁面蓋成空的）。
-export function ImageDocumentEditor({ project, item, doc, groupId, groupTargets, profile, onDirtyChange, onSaved }: EditorPanelProps & { doc: Document }) {
+export function ImageDocumentEditor({ project, item, doc, groupId, groupTargets, profile, onDirtyChange, onRegisterSave, onSaved }: EditorPanelProps & { doc: Document }) {
   const { t } = useTranslation();
   const { showError } = useSnack();
   const loaded = useBackendData(() => backend.ImagePages(project, item.public_id), [project, item.public_id]);
@@ -76,6 +77,7 @@ export function ImageDocumentEditor({ project, item, doc, groupId, groupTargets,
   const labels = useWriterDocumentLabels("story", "image");
   const { draft, setContent, saving } = editing;
   const save = () => editing.save("manual");
+  useRegisterSave(onRegisterSave, save);
   // 有未存檔內容時讓外層（換文件／離開專案）與 Go 端（關閉視窗）先問；離開這篇時清掉
   useEffect(() => {
     onDirtyChange(editing.dirty);
