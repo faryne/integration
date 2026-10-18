@@ -23,19 +23,29 @@ type Service struct {
 	vault    secretVault
 }
 
-// NewDefault 建立桌面應用程式用的預設 Registry 與全域設定儲存位置。
-func NewDefault() *Service {
+// NewDefault 建立桌面應用程式用的預設 Registry 與全域設定儲存位置；未完成實機驗證的 adapter 只在 dev 版註冊。
+func NewDefault(dev bool) *Service {
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		dir = "."
 	}
-	client := &http.Client{Timeout: 10 * time.Second}
-	// PixAI 需要下載整張成圖，10 秒上限對 1.5k PNG 太緊，另用較寬的 client。
-	registry, err := NewRegistry(NewComfyUIAdapter(client), NewPixAIAdapter(&http.Client{Timeout: time.Minute}))
+	registry, err := NewRegistry(defaultAdapters(dev)...)
 	if err != nil {
 		panic(err)
 	}
 	return NewService(registry, filepath.Join(dir, "SteamLoom Writer", "workers.json"), keyringVault{})
+}
+
+func defaultAdapters(dev bool) []Adapter {
+	// PixAI 需要下載整張成圖，10 秒上限對 1.5k PNG 太緊，另用較寬的 client。
+	adapters := []Adapter{NewPixAIAdapter(&http.Client{Timeout: time.Minute})}
+	if dev {
+		adapters = append(adapters,
+			NewComfyUIAdapter(&http.Client{Timeout: 10 * time.Second}),
+			NewStableDiffusionWebUIAdapter(&http.Client{Timeout: 10 * time.Minute}),
+		)
+	}
+	return adapters
 }
 
 // NewService 可注入 store 與 vault，讓 adapter 與持久化行為可以獨立測試。

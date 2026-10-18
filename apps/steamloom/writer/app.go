@@ -53,7 +53,7 @@ func NewApp() *App {
 	})
 	app.api = api.New(cfg.APIBase, app.session)
 	app.skill = skillupdate.New(cfg.SkillURL)
-	app.workers = mediaworker.NewDefault()
+	app.workers = mediaworker.NewDefault(version == "dev")
 	var err error
 	app.updater, err = appupdate.New(version)
 	if err != nil {

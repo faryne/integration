@@ -20,6 +20,8 @@
 
 `pixai.go` 是第一個串接外部 API 的 Generator 參考：`Discover()` 以查詢不存在的 task 驗證 key（有效 key 回 404、無效回 401），不送生成工作；`Generate()` 自帶 10 分鐘等待上限，完成後立即下載（PixAI 產物不會永久保存），下載 CDN 時不帶 API key。
 
+`stable_diffusion_webui.go` 共用 AUTOMATIC1111／Forge 的 `sdapi/v1` contract，支援 API Auth、Checkpoint override、常用 txt2img 參數與最多四張候選結果。ComfyUI 與 Stable Diffusion WebUI 尚未經實例驗證，只在 `version == "dev"` 的本機開發版註冊；release 設定頁與 Agent capability summary 都不會看到它們。
+
 ## 已知 Bug 記錄
 
 | 現象 | Root cause | 解法 | 狀態 |

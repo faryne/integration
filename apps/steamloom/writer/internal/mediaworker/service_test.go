@@ -124,6 +124,28 @@ func TestWorkersHideRemovedAdapters(t *testing.T) {
 	}
 }
 
+func TestDefaultAdaptersHideUnverifiedWorkersOutsideDev(t *testing.T) {
+	release, err := NewRegistry(defaultAdapters(false)...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if adapters := release.List(); len(adapters) != 1 || adapters[0].ID != "pixai" {
+		t.Fatalf("release adapters = %#v", adapters)
+	}
+	dev, err := NewRegistry(defaultAdapters(true)...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := dev.Get("comfyui"); !ok {
+		t.Fatal("dev registry should contain ComfyUI")
+	}
+	if adapter, ok := dev.Get("stable-diffusion-webui"); !ok {
+		t.Fatal("dev registry should contain Stable Diffusion WebUI")
+	} else if _, ok := adapter.(Generator); !ok {
+		t.Fatal("Stable Diffusion WebUI should execute media jobs")
+	}
+}
+
 func TestAgentCapabilitiesOnlyIncludeEnabledOnlineWorkers(t *testing.T) {
 	registry, err := NewRegistry(fakeAdapter{})
 	if err != nil {
