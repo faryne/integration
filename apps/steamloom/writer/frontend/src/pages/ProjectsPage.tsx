@@ -1,11 +1,16 @@
 import AddIcon from "@mui/icons-material/Add";
+import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { StorytellerProjectMenuButton, type StorytellerProjectMenuTarget } from "@/pages/storyteller/StorytellerProjectMenuButton.tsx";
 import { Box, Button, CircularProgress, Stack, Typography } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AppBreadcrumbs } from "@writer/components/AppBreadcrumbs.tsx";
-import { backend, type Project } from "@writer/lib/backend.ts";
+import { useSnack } from "@writer/components/SnackProvider.tsx";
+import { backend, errorMessage, type Project } from "@writer/lib/backend.ts";
 import { useBackendData } from "@writer/lib/useBackendData.ts";
+import { openOnWeb, projectWebPath } from "@writer/lib/webLinks.ts";
+import { ExportBackupDialog } from "@writer/pages/ExportBackupDialog.tsx";
 import { ProjectCard } from "@writer/pages/ProjectCard.tsx";
 
 // Go 回傳的 visibility／rating 是 string；選單沿用網站型別，這裡收窄
@@ -18,6 +23,13 @@ export function ProjectsPage({ onOpen, onCreate, onEdit }: { onOpen: (project: P
   const [revision, setRevision] = useState(0);
   const projects = useBackendData(() => backend.Projects(), [revision]);
   const reload = () => setRevision((value) => value + 1);
+  const { showError } = useSnack();
+  const [exporting, setExporting] = useState<Project | null>(null);
+  // 卡片 ⋯ 選單裡 Writer 專屬的項目（網站上本來就在網站，不需要這兩個）
+  const extraItems = (project: Project) => [
+    { key: "web", label: t("projects.openOnWeb"), icon: <OpenInNewIcon fontSize="small" />, onClick: () => openOnWeb(projectWebPath(project)).catch((err) => showError(errorMessage(err))) },
+    { key: "backup", label: t("projects.backup.menu"), icon: <ArchiveOutlinedIcon fontSize="small" />, onClick: () => setExporting(project) },
+  ];
   const createButton = (
     <Button variant="contained" startIcon={<AddIcon />} onClick={onCreate}>
       {t("projects.create")}
@@ -49,12 +61,13 @@ export function ProjectsPage({ onOpen, onCreate, onEdit }: { onOpen: (project: P
                 key={project.public_id}
                 project={project}
                 onOpen={() => onOpen(project)}
-                action={<StorytellerProjectMenuButton project={menuTarget(project)} onEdit={() => onEdit(project)} onChanged={reload} />}
+                action={<StorytellerProjectMenuButton project={menuTarget(project)} onEdit={() => onEdit(project)} onChanged={reload} extraItems={extraItems(project)} />}
               />
             ))}
           </Box>
         )}
       </Box>
+      {exporting && <ExportBackupDialog project={exporting} onClose={() => setExporting(null)} />}
     </>
   );
 }

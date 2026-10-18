@@ -1,11 +1,13 @@
 import { WorkspaceRowActionButton } from "@/pages/storyteller/ProjectWorkspaceRowActions.tsx";
 import { WorkspaceRailButton } from "@/pages/storyteller/WorkspaceSidebarChrome.tsx";
+import { WorkspaceSearchField } from "@/pages/storyteller/WorkspaceSearchField.tsx";
 import AllInboxIcon from "@mui/icons-material/AllInbox";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import ChatIcon from "@mui/icons-material/Chat";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import FolderIcon from "@mui/icons-material/Folder";
 import PsychologyAltOutlinedIcon from "@mui/icons-material/PsychologyAltOutlined";
+import SearchIcon from "@mui/icons-material/Search";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { Box, Divider, Stack } from "@mui/material";
 import { useState } from "react";
@@ -38,6 +40,8 @@ type Props = {
   onDeleted: (target: RowActionTarget) => void;
   // 掛載時直接打開的建立對話框（剛建立專案後的「建立第一篇故事」）
   initialCreate?: string;
+  // 側邊列頂端的專案搜尋（比照網站），送出後由外層打開搜尋對話框
+  onSearch: (keyword: string) => void;
 };
 
 // 各區塊「建立」選單的項目，比照網站
@@ -47,7 +51,7 @@ const assetKinds = ["asset-collection", "asset-upload"];
 
 // 專案工作台側邊列：最上方是 AI 助理，下面是作品與冊、設定集、資產集，最後是梭梭的記憶（記憶管理頁）。
 // 「作品與冊」「設定集」可以切換排序模式（上移／下移）；平常滑過文件會出現 ⋮，跟「全部作品／全部設定」列表同一份選單。
-export function WorkspaceSidebar({ project, workspace, selected, onSelect, onAssistant, listSection, assetCollection, onList, editing, onCreated, onChanged, onDeleted, initialCreate }: Props) {
+export function WorkspaceSidebar({ project, workspace, selected, onSelect, onAssistant, listSection, assetCollection, onList, editing, onCreated, onChanged, onDeleted, initialCreate, onSearch }: Props) {
   const { t } = useTranslation();
   const [sortingStories, setSortingStories] = useState(false);
   const [sortingLores, setSortingLores] = useState(false);
@@ -90,6 +94,10 @@ export function WorkspaceSidebar({ project, workspace, selected, onSelect, onAss
 
   return (
     <Box component="nav" sx={{ width: 248, flex: "none", borderRight: 1, borderColor: "divider", overflow: "auto", py: 0.5 }}>
+      {/* 比照網站：側邊列頂端的專案搜尋，Enter 後開搜尋對話框（⌘K／Ctrl+K 也能開） */}
+      <Box sx={{ pb: 0.5 }}>
+        <WorkspaceSearchField onSubmit={onSearch} />
+      </Box>
       <NavRow icon={<ChatIcon />} label={t("workspace.assistant")} selected={selected === null && listSection === null} onClick={onAssistant} />
       <Divider />
       <SidebarSection
@@ -198,7 +206,8 @@ export function WorkspaceSidebarRail({
   listSection,
   onAssistant,
   onList,
-}: Pick<Props, "selected" | "listSection" | "onAssistant" | "onList">) {
+  onSearch,
+}: Pick<Props, "selected" | "listSection" | "onAssistant" | "onList" | "onSearch">) {
   const { t } = useTranslation();
   // 編輯中的文件也算在它那一區
   const current = listSection ?? (selected?.kind === "story" ? "stories" : selected?.kind === "lore" ? "lores" : null);
@@ -210,6 +219,7 @@ export function WorkspaceSidebarRail({
   ];
   return (
     <Stack component="nav" alignItems="center" spacing={0.5} sx={{ width: 52, flex: "none", borderRight: 1, borderColor: "divider", pt: 5.5 }}>
+      <WorkspaceRailButton icon={<SearchIcon />} label={t("workspace.search")} selected={false} onClick={() => onSearch("")} />
       <WorkspaceRailButton icon={<ChatIcon />} label={t("workspace.assistant")} selected={current === null} onClick={onAssistant} />
       {sections.map(({ section, icon }) => (
         <WorkspaceRailButton key={section} icon={icon} label={t(`workspace.all.${section}`)} selected={current === section} onClick={() => onList(section)} />

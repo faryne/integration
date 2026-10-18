@@ -10,5 +10,14 @@
     "private": "Private",
     "unlisted": "Shared",
     "public": "Public"
+  },
+  "openOnWeb": "Open on the website",
+  "backup": {
+    "menu": "Export backup",
+    "title": "Export backup of \"{{name}}\"",
+    "includeImages": "Include image story pictures",
+    "export": "Export",
+    "cancel": "Cancel",
+    "done": "Exported to {{path}}"
   }
 }

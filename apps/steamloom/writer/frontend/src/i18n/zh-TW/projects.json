@@ -10,5 +10,14 @@
     "private": "私密",
     "unlisted": "分享",
     "public": "公開"
+  },
+  "openOnWeb": "在網站上開啟",
+  "backup": {
+    "menu": "匯出備份",
+    "title": "匯出「{{name}}」備份",
+    "includeImages": "包含圖像作品的圖片",
+    "export": "匯出",
+    "cancel": "取消",
+    "done": "已匯出到 {{path}}"
   }
 }

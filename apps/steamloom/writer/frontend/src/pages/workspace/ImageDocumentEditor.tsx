@@ -5,6 +5,7 @@ import { ImageEpisodePageList } from "@/pages/storyteller/ImageEpisodePageList.t
 import { StorytellerAssetDropzone } from "@/pages/storyteller/StorytellerAssetDropzone.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
 import type { EditorPickerAsset } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
+import { useDocumentEditingLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import { Alert, Box, Button, CircularProgress, LinearProgress, Stack } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -39,7 +40,7 @@ const serialize = (pages: Page[]) =>
 // 圖像作品編輯頁，比照網站 ImageEpisodeEditor 的 embedded 版面：上方標題（右側存檔）、屬性、描述，
 // 下方頁面清單（共用 ImageEpisodePageList）。跟網站一樣沒有自動存檔；
 // 頁面清單沒載入成功時不給存（不然會把原本的頁面蓋成空的）。
-export function ImageDocumentEditor({ project, item, doc, groupId, groupTargets, profile, onDirtyChange, onSaved }: EditorPanelProps & { doc: Document }) {
+export function ImageDocumentEditor({ project, item, doc, groupId, groupTargets, profile, onSaved }: EditorPanelProps & { doc: Document }) {
   const { t } = useTranslation();
   const { showError } = useSnack();
   const loaded = useBackendData(() => backend.ImagePages(project, item.public_id), [project, item.public_id]);
@@ -76,18 +77,13 @@ export function ImageDocumentEditor({ project, item, doc, groupId, groupTargets,
   const labels = useWriterDocumentLabels("story", "image");
   const { draft, setContent, saving } = editing;
   const save = () => editing.save("manual");
-  // 有未存檔內容時讓外層（換文件／離開專案）與 Go 端（關閉視窗）先問；離開這篇時清掉
+  // 換文件／離開專案前的未存檔確認（含「存檔並繼續」）跟網站工作台同一套登記
+  useDocumentEditingLeaveGuard(editing);
+  // 關閉視窗前的確認在 Go 端：回報有沒有未存檔內容，離開這篇時清掉
   useEffect(() => {
-    onDirtyChange(editing.dirty);
     void backend.SetUnsaved(editing.dirty);
   }, [editing.dirty]);
-  useEffect(
-    () => () => {
-      onDirtyChange(false);
-      void backend.SetUnsaved(false);
-    },
-    [],
-  );
+  useEffect(() => () => void backend.SetUnsaved(false), []);
 
   useEffect(() => {
     if (loaded) setPages(loaded.map((page) => ({ id: page.id, key: page.key || undefined, assetPublicId: page.asset_public_id || undefined, previewUrl: page.image_url, description: page.description })));

@@ -10,5 +10,14 @@
     "private": "비공개",
     "unlisted": "공유",
     "public": "공개"
+  },
+  "openOnWeb": "웹사이트에서 열기",
+  "backup": {
+    "menu": "백업 내보내기",
+    "title": "\"{{name}}\" 백업 내보내기",
+    "includeImages": "이미지 작품의 이미지 포함",
+    "export": "내보내기",
+    "cancel": "취소",
+    "done": "{{path}}에 내보냈습니다"
   }
 }

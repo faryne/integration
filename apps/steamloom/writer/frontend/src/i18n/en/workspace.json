@@ -1,5 +1,6 @@
 {
   "assistant": "AI assistant",
+  "search": "Search this project",
   "sections": {
     "stories": "Stories and volumes",
     "lores": "Lore collections",
@@ -277,11 +278,6 @@
       "story": "This story was updated elsewhere while you were editing. Your changes were saved as a new version after the latest one.",
       "lore": "This lore entry was updated elsewhere while you were editing. Your changes were saved as a new version after the latest one.",
       "viewHistory": "View history"
-    },
-    "unsaved": {
-      "title": "Discard unsaved changes?",
-      "cancel": "Keep editing",
-      "discard": "Discard"
     },
     "self": "Me ({{penName}})",
     "selfOnly": "Me",

@@ -63,7 +63,11 @@ import {
   WorkspaceCentered,
   WorkspaceChrome,
 } from "./WorkspaceChrome.tsx";
-import { hasUnsavedWorkspaceChanges } from "./WorkspaceLeaveGuard.ts";
+import {
+  canSaveWorkspaceBeforeLeave,
+  hasUnsavedWorkspaceChanges,
+  saveWorkspaceBeforeLeave,
+} from "./WorkspaceLeaveGuard.ts";
 import { WorkspaceSearch } from "./WorkspaceSearch.tsx";
 import { useWorkspaceSearchLauncher } from "./useWorkspaceSearchLauncher.ts";
 
@@ -92,6 +96,14 @@ export default function StorytellerProjectWorkspacePreview() {
   const [pendingNavigation, setPendingNavigation] = useState<
     (() => void) | null
   >(null);
+
+  // 「存檔並繼續」：存檔成功且沒有版本衝突才執行原本的動作；失敗或衝突就關掉對話框留在編輯頁
+  async function saveAndNavigate() {
+    const action = pendingNavigation;
+    const saved = await saveWorkspaceBeforeLeave();
+    setPendingNavigation(null);
+    if (saved) action?.();
+  }
 
   function guardedNavigate(action: () => void) {
     if (hasUnsavedWorkspaceChanges()) {
@@ -799,6 +811,9 @@ export default function StorytellerProjectWorkspacePreview() {
           pendingNavigation?.();
           setPendingNavigation(null);
         }}
+        onSaveAndContinue={
+          canSaveWorkspaceBeforeLeave() ? saveAndNavigate : undefined
+        }
       />
     </WorkspaceChrome>
   );

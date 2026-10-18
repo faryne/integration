@@ -114,6 +114,10 @@ export function EnsureSkill(arg1) {
   return window['go']['main']['App']['EnsureSkill'](arg1);
 }
 
+export function ExportProjectBackup(arg1, arg2) {
+  return window['go']['main']['App']['ExportProjectBackup'](arg1, arg2);
+}
+
 export function ImagePages(arg1, arg2) {
   return window['go']['main']['App']['ImagePages'](arg1, arg2);
 }

@@ -12,7 +12,7 @@ import {
   Menu,
   MenuItem,
 } from "@mui/material";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
   useDeleteStorytellerProject,
@@ -54,10 +54,18 @@ export function StorytellerProjectMenuButton({
   project,
   onEdit,
   onChanged,
+  extraItems,
 }: {
   project: StorytellerProjectMenuTarget;
   onEdit?: () => void;
   onChanged?: () => void;
+  // 宿主（SteamLoom Writer）額外的項目，例如「在網站上開啟」「匯出備份」；放在選單最上方
+  extraItems?: {
+    key: string;
+    label: string;
+    icon: ReactNode;
+    onClick: () => void;
+  }[];
 }) {
   const saveProject = useSaveStorytellerProject();
   const deleteProject = useDeleteStorytellerProject();
@@ -121,6 +129,23 @@ export function StorytellerProjectMenuButton({
         onClick={(event) => event.stopPropagation()}
         slotProps={{ paper: { sx: { minWidth: 210 } } }}
       >
+        {extraItems?.length
+          ? [
+              ...extraItems.map((item) => (
+                <MenuItem
+                  key={item.key}
+                  onClick={() => {
+                    close();
+                    item.onClick();
+                  }}
+                >
+                  <ListItemIcon>{item.icon}</ListItemIcon>
+                  <ListItemText>{item.label}</ListItemText>
+                </MenuItem>
+              )),
+              <Divider key="extra-divider" />,
+            ]
+          : null}
         {visibilityItems.map((item) => (
           <MenuItem
             key={item.value}

@@ -1,4 +1,5 @@
 import type { DocumentDependencyOption } from "@/pages/storyteller/documentEditor/DocumentEditorHeader.tsx";
+import { useDocumentEditingLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
 import { SteamLoomDocumentEditor } from "@/pages/storyteller/documentEditor/SteamLoomDocumentEditor.tsx";
 import { initialAutoSaveMinutes } from "@/pages/storyteller/documentEditor/autoSaveMinutes.ts";
 import { useDocumentEditing, type DocumentKind } from "@/pages/storyteller/documentEditor/useDocumentEditing.ts";
@@ -23,8 +24,6 @@ export type EditorPanelProps = {
   profile: Profile | null;
   // 設定的「需先讀過」可選的故事與其他設定
   dependencyOptions: DocumentDependencyOption[];
-  // 有沒有未存檔內容，外層據此在換文件、離開專案前先問
-  onDirtyChange: (dirty: boolean) => void;
   onSaved: () => void;
   onAskAI: (reference: PromptReference) => void;
 };
@@ -40,7 +39,7 @@ export function EditorPanel(props: EditorPanelProps) {
 
 // 文字作品：跟網站同一個編輯頁（SteamLoomDocumentEditor：編輯／編輯歷史分頁、頁首、所見即所得編輯器、大綱與書籤、插入資產）。
 // 存檔走網站的 API（經 ApiProxy），Writer 只負責：視窗重新取得焦點時重新載入、工作台樹的狀態同步、關閉視窗前確認、問 AI。
-function TextDocumentEditor({ project, item, doc: initialDoc, groupId, groupTargets, status, profile, dependencyOptions, onDirtyChange, onSaved, onAskAI }: EditorPanelProps & { doc: Document }) {
+function TextDocumentEditor({ project, item, doc: initialDoc, groupId, groupTargets, status, profile, dependencyOptions, onSaved, onAskAI }: EditorPanelProps & { doc: Document }) {
   const kind = item.kind as DocumentKind;
   const [doc, setDoc] = useState(initialDoc);
   const [autoSaveMinutes, setAutoSaveMinutes] = useState(() => initialAutoSaveMinutes(profile));
@@ -81,19 +80,14 @@ function TextDocumentEditor({ project, item, doc: initialDoc, groupId, groupTarg
     return () => window.removeEventListener("focus", onFocus);
   }, [project, item.kind, item.public_id]);
 
-  // 有未存檔內容時讓外層（換文件／離開專案）與 Go 端（關閉視窗）先問；離開這篇時清掉
+  // 換文件／離開專案前的未存檔確認（含「存檔並繼續」）跟網站工作台同一套登記
+  useDocumentEditingLeaveGuard(editing);
+  // 關閉視窗前的確認在 Go 端：回報有沒有未存檔內容，離開這篇時清掉
   const dirty = editing.dirty;
   useEffect(() => {
-    onDirtyChange(dirty);
     void backend.SetUnsaved(dirty);
   }, [dirty]);
-  useEffect(
-    () => () => {
-      onDirtyChange(false);
-      void backend.SetUnsaved(false);
-    },
-    [],
-  );
+  useEffect(() => () => void backend.SetUnsaved(false), []);
 
   return (
     <SteamLoomDocumentEditor
