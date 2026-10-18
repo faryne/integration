@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>參考面板 Mockup</title>
+<title>註解參照 Mockup</title>
 <style>
-  :root { color-scheme: dark; font-family: Inter, "Noto Sans TC", system-ui, sans-serif; --bg:#080c14; --surface:#0e1420; --surface-2:#151c28; --surface-3:#1d2635; --line:#2c384d; --line-soft:#202a3b; --text:#e7edf7; --muted:#8f9bb0; --blue:#79a9ff; --green:#61d49a; --amber:#f4bd62; }
+  :root { color-scheme: dark; font-family: Inter, "Noto Sans TC", system-ui, sans-serif; --bg:#080c14; --surface:#0e1420; --surface-2:#151c28; --line:#2c384d; --line-soft:#202a3b; --text:#e7edf7; --muted:#8f9bb0; --blue:#79a9ff; --amber:#f4bd62; }
   * { box-sizing:border-box; }
-  body { margin:0; min-width:1180px; height:100vh; display:flex; flex-direction:column; background:var(--bg); color:var(--text); font-size:14px; }
-  button, input { font:inherit; color:inherit; }
+  body { margin:0; min-width:1100px; height:100vh; display:flex; flex-direction:column; background:var(--bg); color:var(--text); font-size:14px; }
+  button, input, textarea { font:inherit; color:inherit; }
   .switcher { display:flex; gap:6px; flex-wrap:wrap; padding:8px 16px; background:#05080e; border-bottom:1px solid var(--line-soft); font-size:12px; }
   .switcher span { color:var(--muted); align-self:center; margin-right:4px; }
   .switcher button { padding:4px 10px; border:1px solid var(--line); border-radius:6px; background:transparent; cursor:pointer; }
@@ -24,68 +24,78 @@
   .editor { flex:1; min-width:0; display:flex; flex-direction:column; position:relative; }
   .tabs-top { display:flex; gap:16px; padding:10px 24px 0; border-bottom:1px solid var(--line-soft); font-size:13px; }
   .tabs-top span { padding-bottom:8px; } .tabs-top span.on { border-bottom:2px solid var(--blue); }
-  .doc { flex:1; overflow:auto; padding:18px 32px 24px; }
+  .doc { flex:1; overflow:auto; padding:18px 32px 24px; position:relative; }
+  .doc .col { max-width:720px; position:relative; }
   .doc h1 { margin:0 0 8px; font-size:26px; }
   .meta { color:var(--muted); font-size:12px; margin-bottom:18px; }
   .doc h3 { margin:18px 0 8px; font-size:16px; border-left:3px solid var(--blue); padding-left:8px; }
   .doc p { line-height:1.9; color:#d6dde9; margin:0 0 12px; }
-  .lore { color:var(--amber); text-decoration:underline dotted; text-underline-offset:3px; cursor:pointer; position:relative; }
+  .lore { color:var(--amber); text-decoration:underline dotted; text-underline-offset:3px; cursor:pointer; }
+  /* 現有註解的螢光筆樣式（黃／藍） */
+  .cmt { background:#f4bd6226; border-bottom:2px solid #f4bd62; cursor:help; }
+  .cmt.blue { background:#79a9ff22; border-bottom-color:#79a9ff; }
+  .caret { display:inline-block; width:2px; height:1.1em; background:#fff; vertical-align:-2px; animation:blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
   .toolbar { height:44px; flex:none; border-top:1px solid var(--line-soft); display:flex; align-items:center; gap:4px; padding:0 12px; color:var(--muted); }
   .toolbar .sp { flex:1; }
-  .tb { width:30px; height:30px; border:0; border-radius:6px; background:transparent; cursor:pointer; color:var(--muted); font-size:15px; }
-  .tb.on, .tb:hover { background:#26334a; color:#dfe9ff; }
-  .tb-label { padding:0 10px; width:auto; font-size:12.5px; }
+  .tb { width:30px; height:30px; border:0; border-radius:6px; background:transparent; color:var(--muted); font-size:15px; }
   .save { padding:5px 12px; border-radius:6px; background:#3b5998; color:#fff; font-size:12.5px; }
-  /* 設定連結浮動卡 */
-  .peek { position:absolute; z-index:5; width:300px; border:1px solid var(--line); border-radius:8px; background:var(--surface-2); box-shadow:0 10px 30px #000a; padding:12px 14px; }
-  .peek h4 { margin:0 0 4px; font-size:14px; }
-  .peek .kind { font-size:11px; color:var(--muted); }
-  .peek p { margin:8px 0 10px; font-size:12.5px; color:#c3cbd9; line-height:1.6; }
-  .peek .acts { display:flex; gap:8px; justify-content:flex-end; }
   .btn { padding:5px 10px; border:1px solid var(--line); border-radius:6px; background:transparent; cursor:pointer; font-size:12.5px; }
   .btn.primary { background:#3b5998; border-color:#3b5998; }
-  /* 參考面板 */
-  .ref { width:380px; flex:none; border-left:1px solid var(--line); background:var(--surface); display:flex; flex-direction:column; position:relative; }
-  .ref .resize { position:absolute; left:-3px; top:0; bottom:0; width:6px; cursor:col-resize; }
-  .ref .head { display:flex; align-items:center; border-bottom:1px solid var(--line-soft); }
-  .ref .rtabs { flex:1; display:flex; min-width:0; }
-  .ref .rtab { display:flex; align-items:center; gap:6px; max-width:150px; padding:9px 10px; border-right:1px solid var(--line-soft); font-size:12.5px; color:var(--muted); cursor:pointer; white-space:nowrap; }
-  .ref .rtab.on { color:var(--text); background:var(--surface-2); box-shadow:inset 0 -2px 0 var(--blue); }
-  .ref .rtab .t { overflow:hidden; text-overflow:ellipsis; }
-  .ref .rtab .x { opacity:.6; } .ref .rtab .x:hover { opacity:1; }
-  .ref .add { padding:0 10px; color:var(--muted); cursor:pointer; font-size:16px; }
-  .ref .collapse { padding:0 10px; color:var(--muted); cursor:pointer; }
-  .ref .body { flex:1; overflow:auto; padding:16px 18px; }
-  .ref .body h2 { margin:0 0 4px; font-size:18px; }
-  .ref .ver { font-size:11.5px; color:var(--muted); margin-bottom:14px; }
-  .ref .body p { font-size:13px; line-height:1.8; color:#cdd5e2; margin:0 0 10px; }
-  .ref .body h4 { margin:14px 0 6px; font-size:13.5px; color:#dfe7f5; }
-  .ref .foot { border-top:1px solid var(--line-soft); padding:8px 12px; display:flex; gap:8px; justify-content:flex-end; }
-  .rail { width:36px; flex:none; border-left:1px solid var(--line); display:flex; flex-direction:column; align-items:center; padding-top:10px; gap:8px; color:var(--muted); cursor:pointer; }
-  .rail .count { font-size:11px; background:#26334a; border-radius:8px; padding:1px 6px; color:#dfe9ff; }
-  .rail .vt { writing-mode:vertical-rl; font-size:12px; letter-spacing:2px; }
-  /* 挑選器 */
-  .scrim { position:fixed; inset:0; background:#0009; display:flex; justify-content:center; align-items:flex-start; padding-top:90px; z-index:10; }
-  .picker { width:560px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); }
-  .picker .ph { padding:14px 16px 6px; font-weight:600; }
+  .btn.danger { color:#ff8a80; border-color:transparent; margin-right:auto; }
+  /* 註解 tooltip（現況是 pointer-events:none，夾參照後要能點） */
+  .tip { position:absolute; z-index:6; max-width:340px; background:#1b1f27; border:1px solid #333b48; border-radius:6px; box-shadow:0 10px 30px #000a; padding:10px 12px; }
+  .tip .txt { font-size:13px; line-height:1.6; }
+  .tip .hint { font-size:11.5px; color:#8a93a3; margin-top:6px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .chip { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border:1px solid var(--line); border-radius:999px; font-size:12px; background:#202a3b; cursor:pointer; }
+  .chip:hover { border-color:var(--blue); }
+  .chip .x { margin-left:2px; opacity:.6; }
+  /* 參照卡：浮在編輯區，不擋輸入、可拖曳、可捲動 */
+  .card { position:absolute; z-index:7; top:56px; right:20px; width:360px; max-height:calc(100% - 120px); display:flex; flex-direction:column; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); box-shadow:0 14px 40px #000c; }
+  .card .ch { display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid var(--line-soft); cursor:move; user-select:none; }
+  .card .ch b { font-size:14px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .card .ch .close { cursor:pointer; color:var(--muted); padding:0 4px; }
+  .card .cb { overflow:auto; padding:12px 16px; }
+  .card .ver { font-size:11.5px; color:var(--muted); margin-bottom:10px; }
+  .card .cb p { font-size:13px; line-height:1.8; color:#cdd5e2; margin:0 0 10px; }
+  .card .cb h4 { margin:12px 0 6px; font-size:13.5px; }
+  .card .switch { display:flex; gap:6px; flex-wrap:wrap; padding:8px 12px 0; }
+  .card .switch:empty { display:none; }
+  .card .switch .chip.on { border-color:var(--blue); color:#dfe9ff; }
+  .card .cf { border-top:1px solid var(--line-soft); padding:8px 12px; display:flex; justify-content:flex-end; gap:8px; }
+  /* 對話框 */
+  .scrim { position:fixed; inset:0; background:#0009; display:flex; justify-content:center; align-items:flex-start; padding-top:80px; z-index:10; }
+  .dlg { width:560px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); }
+  .dlg .dh { padding:16px 20px 4px; font-size:17px; font-weight:600; }
+  .dlg .dc { padding:8px 20px 4px; }
+  .dlg .snip { font-size:13px; color:var(--muted); margin-bottom:14px; }
+  .dlg textarea { width:100%; min-height:76px; padding:10px; border:1px solid var(--blue); border-radius:6px; background:var(--bg); resize:vertical; }
+  .dlg .lbl { font-size:12px; color:var(--muted); margin:14px 0 6px; }
+  .dots { display:flex; gap:8px; }
+  .dot { width:26px; height:26px; border-radius:50%; border:2px solid transparent; }
+  .dot.on { border-color:#fff; }
+  .dlg .da { display:flex; gap:8px; justify-content:flex-end; padding:14px 20px 16px; }
+  .addref { border-style:dashed; color:var(--muted); background:transparent; }
   .picker input { width:calc(100% - 32px); margin:6px 16px 10px; padding:9px 11px; border:1px solid var(--blue); border-radius:6px; background:var(--bg); }
   .picker .grp { padding:6px 16px 2px; font-size:11.5px; color:var(--muted); }
   .picker .it { display:flex; gap:10px; align-items:center; padding:8px 16px; cursor:pointer; font-size:13px; }
   .picker .it:hover { background:#26334a; }
   .picker .it small { color:var(--muted); margin-left:auto; }
-  .note { flex:none; padding:10px 16px; border-top:1px dashed var(--line); color:var(--muted); font-size:12px; line-height:1.7; background:#05080e; max-height:150px; overflow:auto; }
+  .picker .it.done { opacity:.45; }
+  .note { flex:none; padding:10px 16px; border-top:1px dashed var(--line); color:var(--muted); font-size:12px; line-height:1.7; background:#05080e; max-height:160px; overflow:auto; }
   .note b { color:var(--text); }
   [hidden] { display:none !important; }
 </style>
 </head>
 <body>
 <div class="switcher"><span>情境：</span>
-  <button data-v="none" class="active">① 現在（沒有面板）</button>
-  <button data-v="peek">② 點設定連結</button>
-  <button data-v="panel">③ 參考面板（設定）</button>
-  <button data-v="tabs">④ 多個參考（設定＋故事）</button>
-  <button data-v="picker">⑤ 用工具列「參考」挑選</button>
-  <button data-v="rail">⑥ 面板收合</button>
+  <button data-v="plain" class="active">① 現況：註解 hover</button>
+  <button data-v="hover">② 夾參照的註解 hover</button>
+  <button data-v="card">③ 點參照 → 參照卡（邊寫邊看）</button>
+  <button data-v="dialog">④ 加／編輯註解（多了參照）</button>
+  <button data-v="picker">⑤ 挑選參照</button>
+  <button data-v="lore">⑥ 點設定連結 → 同一張參照卡</button>
 </div>
 <div class="crumbs">我的專案 / 禁斷姐弟／兄妹戀 / <b>[N] 第十一話　溫的</b></div>
 <div class="shell">
@@ -104,18 +114,37 @@
 
   <div class="editor">
     <div class="tabs-top"><span class="on">編輯</span><span>編輯歷史</span></div>
-    <div class="doc">
-      <h1>[N] 第十一話　溫的</h1>
-      <div class="meta">狀態 草稿　·　冊 未分冊　·　署名 本人</div>
-      <h3>第一幕</h3>
-      <p>回到<span class="lore" data-lore="apartment">舊公寓</span>的時候已經過了十一點。走廊的燈還是只亮一半，<span class="lore" data-lore="zhixuan">芷瑄</span>把鑰匙插進門鎖，轉了兩次才轉開。</p>
-      <p>「你又沒關暖氣。」她回頭看了<span class="lore" data-lore="youchen">宥辰</span>一眼，語氣裡聽不出是抱怨還是鬆了一口氣。屋子裡是溫的，跟外面的雨夜像兩個世界。</p>
-      <p>他把傘靠在門邊，想起上一話在水族館前沒說完的那句話，喉嚨有點乾。</p>
-      <div class="peek" id="peek" hidden>
-        <div class="kind">設定 · 角色</div>
-        <h4>許芷瑄</h4>
-        <p>二十二歲，大學四年級。外表冷淡、話少，生氣時習慣把頭髮往耳後撥。對宥辰的照顧總是用抱怨包裝……</p>
-        <div class="acts"><button class="btn" data-go="none">關閉</button><button class="btn primary" data-go="panel">在參考面板開啟</button></div>
+    <div class="doc" id="doc">
+      <div class="col">
+        <h1>[N] 第十一話　溫的</h1>
+        <div class="meta">狀態 草稿　·　冊 未分冊　·　署名 本人</div>
+        <h3>第一幕</h3>
+        <p>回到<span class="lore" data-lore="apartment">舊公寓</span>的時候已經過了十一點。走廊的燈還是只亮一半，芷瑄把鑰匙插進門鎖，轉了兩次才轉開。</p>
+        <p>「你又沒關暖氣。」<span class="cmt" id="cmt-ref">她回頭看了宥辰一眼，語氣裡聽不出是抱怨還是鬆了一口氣</span>。屋子裡是溫的，跟外面的雨夜像兩個世界。</p>
+        <p><span class="cmt blue" id="cmt-plain">他把傘靠在門邊</span>，想起上一話在水族館前沒說完的那句話，喉嚨有點乾。<span class="caret" id="caret" hidden></span></p>
+
+        <!-- ① 現況 tooltip -->
+        <div class="tip" id="tip-plain" hidden>
+          <div class="txt">傘是第九話借的那把，之後要還。</div>
+          <div class="hint">右鍵，或選取文字後用格式列可編輯／移除註解</div>
+        </div>
+        <!-- ② 夾參照的 tooltip -->
+        <div class="tip" id="tip-ref" hidden>
+          <div class="txt">口氣對齊她的口頭禪；這句要接回第十話結尾她先走掉的那段。</div>
+          <div class="chips">
+            <span class="chip" data-open="zhixuan">📘 許芷瑄</span>
+            <span class="chip" data-open="ep10">📄 [N] 第十話　雨夜</span>
+          </div>
+          <div class="hint">右鍵，或選取文字後用格式列可編輯／移除註解</div>
+        </div>
+      </div>
+
+      <!-- ③⑥ 參照卡 -->
+      <div class="card" id="card" hidden>
+        <div class="ch" id="card-drag"><span>📌</span><b id="card-title"></b><span class="close" data-go="hover" title="關閉（Esc）">✕</span></div>
+        <div class="switch" id="card-switch"></div>
+        <div class="cb" id="card-body"></div>
+        <div class="cf"><button class="btn" id="open-edit">開啟編輯</button></div>
       </div>
     </div>
     <div class="toolbar">
@@ -123,30 +152,36 @@
       <button class="tb" title="書籤">🔖</button>
       <span class="sp"></span>
       <button class="tb" title="插入圖片">🖼</button>
-      <button class="tb tb-label" id="ref-btn" title="參考（⌘⇧R）">📑 參考</button>
       <button class="tb" title="字體">Tt</button>
       <button class="tb" title="匯出">⤓</button>
       <span class="save">存檔 ⌘S</span>
     </div>
   </div>
-
-  <div class="ref" id="ref" hidden>
-    <div class="resize" title="拖曳調整寬度"></div>
-    <div class="head">
-      <div class="rtabs" id="rtabs"></div>
-      <span class="add" title="加入參考" data-go="picker">＋</span>
-      <span class="collapse" title="收合" data-go="rail">⇥</span>
-    </div>
-    <div class="body" id="ref-body"></div>
-    <div class="foot"><button class="btn" id="open-edit">開啟編輯</button></div>
-  </div>
-  <div class="rail" id="rail" hidden data-go="tabs" title="展開參考面板"><span>📑</span><span class="count">2</span><span class="vt">參考</span></div>
 </div>
 
+<!-- ④ 註解對話框：既有的內容＋底色，中間多一個「參照」 -->
+<div class="scrim" id="dialog" hidden>
+  <div class="dlg">
+    <div class="dh">編輯註解</div>
+    <div class="dc">
+      <div class="snip">這則註解會掛在這段文字上：「她回頭看了宥辰一眼，語氣裡聽不出是抱怨還是…」</div>
+      <textarea>口氣對齊她的口頭禪；這句要接回第十話結尾她先走掉的那段。</textarea>
+      <div class="lbl">參照</div>
+      <div class="chips" id="dlg-chips"></div>
+      <div class="lbl">底色</div>
+      <div class="dots">
+        <span class="dot on" style="background:#f4bd62"></span><span class="dot" style="background:#ff8fb1"></span><span class="dot" style="background:#79a9ff"></span><span class="dot" style="background:#61d49a"></span><span class="dot" style="background:#b18cff"></span>
+      </div>
+    </div>
+    <div class="da"><button class="btn danger">移除註解</button><button class="btn" data-go="hover">取消</button><button class="btn primary" data-go="hover">更新註解</button></div>
+  </div>
+</div>
+
+<!-- ⑤ 挑選參照：跟 ⌘K 同一套搜尋，只列故事與設定 -->
 <div class="scrim" id="picker" hidden>
-  <div class="picker">
-    <div class="ph">加入參考</div>
-    <input placeholder="搜尋故事或設定……" value="">
+  <div class="dlg picker">
+    <div class="dh">加參照</div>
+    <input placeholder="搜尋故事或設定……">
     <div class="grp">最近開啟</div>
     <div class="it" data-add="ep10">📄 [N] 第十話　雨夜 <small>作品</small></div>
     <div class="it" data-add="ep9">📄 [N] 第九話　水族館 <small>作品</small></div>
@@ -154,71 +189,81 @@
     <div class="it" data-add="zhixuan">📘 許芷瑄 <small>設定 · 角色</small></div>
     <div class="it" data-add="youchen">📘 許宥辰 <small>設定 · 角色</small></div>
     <div class="it" data-add="apartment">📘 舊公寓 <small>設定 · 世界觀</small></div>
+    <div class="da"><button class="btn" data-go="dialog">返回</button></div>
   </div>
 </div>
 
 <div class="note">
   <b>Mockup 說明（實作時不會出現）</b>
-  <b>是什麼：</b>編輯區右側的「唯讀」參考面板，邊寫邊看設定或其他篇故事；編輯中的文件只有一篇，不是多分頁編輯。
-  <b>怎麼打開：</b>(a) 點內文裡的設定連結 → 浮動卡顯示摘要，可「在參考面板開啟」；(b) 下方工具列「參考」按鈕（或 ⌘⇧R）→ 挑選器（搜尋＋最近開啟）；(c) 面板上的「＋」。
-  <b>規則：</b>顯示「已存檔版本」並標註時間（跟 AI 助理一樣不讀編輯中的內容）；最多 3 個分頁，再加會換掉最舊的；面板寬度可拖曳、可收合成右側窄條；每個專案記住開著哪些參考；「開啟編輯」＝切換到那一篇（有未存檔會走「存檔並繼續」確認）。
-  <b>共用：</b>做在共用編輯器 documentEditor 裡，網站工作台與 Writer 同一套。
+  <b>做法：</b>不另做參考面板，擴充既有「註解」：註解除了文字，還能夾幾篇故事／設定當參照（存成註解 marker 的新屬性，閱讀頁照舊不顯示）。
+  <b>看：</b>hover 註解 → tooltip 多一排參照 chip（tooltip 要改成滑鼠移得進去、可以點）；點 chip → 參照卡釘在編輯區右上，可拖曳、可捲動，不搶游標，邊打字邊看；同一則註解的其他參照在卡片上方切換；Esc 或 ✕ 關閉。
+  <b>改：</b>註解對話框多一個「參照」區，「＋ 加參照」開挑選器（跟 ⌘K 同一套搜尋，只列故事與設定）；有參照時註解文字可以留空。
+  <b>順帶：</b>點內文的設定連結也開同一張參照卡，不用跳頁。卡片內容一律是「已存檔版本」並標時間；參照的那篇被刪掉時，chip 顯示「已刪除」。「開啟編輯」＝切到那一篇（有未存檔走「存檔並繼續」）。
+  <b>共用：</b>都在共用編輯器（wysiwygCore／StorytellerWysiwygEditor）裡，網站與 Writer 同一套。
 </div>
 
 <script>
 // mockup 用的假資料與情境切換
 const docs = {
-  zhixuan: { title: "許芷瑄", kind: "設定 · 角色", ver: "已存檔版本 · 2026/10/16 22:41", body: "<p>二十二歲，大學四年級，主修日文。外表冷淡、話少，生氣時習慣把頭髮往耳後撥。</p><h4>個性</h4><p>對宥辰的照顧總是用抱怨包裝；真正在意的事反而不會說出口。</p><h4>口頭禪</h4><p>「你又……」開頭的句子，多半是在擔心。</p><h4>與第十話的連結</h4><p>雨夜那晚沒有回訊息，是本話開場氣氛的伏筆。</p>" },
+  zhixuan: { title: "許芷瑄", kind: "設定 · 角色", ver: "已存檔版本 · 2026/10/16 22:41", body: "<p>二十二歲，大學四年級，主修日文。外表冷淡、話少，生氣時習慣把頭髮往耳後撥。</p><h4>個性</h4><p>對宥辰的照顧總是用抱怨包裝；真正在意的事反而不會說出口。</p><h4>口頭禪</h4><p>「你又……」開頭的句子，多半是在擔心。</p>" },
   youchen: { title: "許宥辰", kind: "設定 · 角色", ver: "已存檔版本 · 2026/10/12 18:05", body: "<p>二十歲，大學二年級。習慣把重要的話留到最後才說，常常因此錯過時機。</p>" },
   apartment: { title: "舊公寓", kind: "設定 · 世界觀", ver: "已存檔版本 · 2026/09/30 11:20", body: "<p>五樓無電梯，走廊的燈有一半是壞的。暖氣是老式電暖器，開關在玄關旁。</p>" },
   ep10: { title: "[N] 第十話　雨夜", kind: "作品", ver: "已存檔版本 · 2026/10/15 23:58", body: "<h4>第三幕</h4><p>……水族館的燈一盞一盞暗下來，他終於開口，卻被她手機的震動聲打斷。「我先回去了。」她沒有看他。</p><p>雨從那時候開始下。</p>" },
   ep9: { title: "[N] 第九話　水族館", kind: "作品", ver: "已存檔版本 · 2026/10/10 21:12", body: "<p>（第九話內容）</p>" },
 };
-let open = ["zhixuan"], active = "zhixuan";
+const icon = (id) => (docs[id].kind === "作品" ? "📄" : "📘");
+let refs = ["zhixuan", "ep10"], cardRefs = refs, active = "zhixuan";
+const $ = (id) => document.getElementById(id);
 
-function renderRef() {
-  const tabs = document.getElementById("rtabs");
-  tabs.innerHTML = "";
-  open.forEach((id) => {
-    const tab = document.createElement("div");
-    tab.className = "rtab" + (id === active ? " on" : "");
-    tab.innerHTML = `<span>${docs[id].kind.startsWith("作品") ? "📄" : "📘"}</span><span class="t">${docs[id].title}</span><span class="x">✕</span>`;
-    tab.onclick = (e) => { if (e.target.classList.contains("x")) { open = open.filter((x) => x !== id); if (active === id) active = open[0]; if (!open.length) return show("none"); } else active = id; renderRef(); };
-    tabs.appendChild(tab);
-  });
-  const d = docs[active];
-  document.getElementById("ref-body").innerHTML = `<div class="ver">${d.kind}　·　${d.ver}</div><h2>${d.title}</h2>${d.body}`;
-  document.querySelector(".rail .count").textContent = open.length;
+function place(tip, anchor) {
+  tip.style.left = anchor.offsetLeft + "px";
+  tip.style.top = anchor.offsetTop + anchor.offsetHeight + 6 + "px";
 }
-function addRef(id) {
-  if (!open.includes(id)) { open.push(id); if (open.length > 3) open.shift(); }
-  active = id;
+function renderCard() {
+  const d = docs[active];
+  $("card-title").textContent = d.title;
+  $("card-body").innerHTML = `<div class="ver">${d.kind}　·　${d.ver}</div>${d.body}`;
+  // 同一則註解夾了多篇參照時，在卡片上方切換
+  $("card-switch").innerHTML = cardRefs.length > 1 ? cardRefs.map((id) => `<span class="chip${id === active ? " on" : ""}" data-switch="${id}">${icon(id)} ${docs[id].title}</span>`).join("") : "";
+  $("card-switch").querySelectorAll("[data-switch]").forEach((el) => (el.onclick = () => { active = el.dataset.switch; renderCard(); }));
+}
+function renderDialogChips() {
+  $("dlg-chips").innerHTML = refs.map((id) => `<span class="chip">${icon(id)} ${docs[id].title}<span class="x" data-rm="${id}">✕</span></span>`).join("") + `<button class="chip addref">＋ 加參照</button>`;
+  $("dlg-chips").querySelectorAll("[data-rm]").forEach((el) => (el.onclick = () => { refs = refs.filter((x) => x !== el.dataset.rm); renderDialogChips(); }));
+  $("dlg-chips").querySelector(".addref").onclick = () => show("picker");
+  document.querySelectorAll("[data-add]").forEach((el) => el.classList.toggle("done", refs.includes(el.dataset.add)));
 }
 function show(v) {
   document.querySelectorAll(".switcher button").forEach((b) => b.classList.toggle("active", b.dataset.v === v));
-  if (v === "panel") { open = ["zhixuan"]; active = "zhixuan"; }
-  if (v === "tabs") { if (open.length < 2) { open = ["zhixuan", "ep10"]; active = "ep10"; } }
-  document.getElementById("peek").hidden = v !== "peek";
-  document.getElementById("ref").hidden = !["panel", "tabs", "picker"].includes(v);
-  document.getElementById("rail").hidden = v !== "rail";
-  document.getElementById("picker").hidden = v !== "picker";
-  document.getElementById("ref-btn").classList.toggle("on", ["panel", "tabs", "picker"].includes(v));
-  if (v === "peek") {
-    const link = document.querySelector('.lore[data-lore="zhixuan"]');
-    const peek = document.getElementById("peek");
-    peek.style.left = link.offsetLeft + "px";
-    peek.style.top = link.offsetTop + 26 + "px";
-  }
-  renderRef();
+  $("tip-plain").hidden = v !== "plain";
+  $("tip-ref").hidden = v !== "hover";
+  $("card").hidden = !["card", "lore"].includes(v);
+  $("caret").hidden = !["card", "lore"].includes(v);
+  $("dialog").hidden = v !== "dialog";
+  $("picker").hidden = v !== "picker";
+  if (v === "plain") place($("tip-plain"), $("cmt-plain"));
+  if (v === "hover") place($("tip-ref"), $("cmt-ref"));
+  if (v === "card") { cardRefs = refs.length ? refs : ["zhixuan"]; if (!cardRefs.includes(active)) active = cardRefs[0]; renderCard(); }
+  if (v === "lore") { cardRefs = ["apartment"]; active = "apartment"; renderCard(); }
+  if (v === "dialog" || v === "picker") renderDialogChips();
 }
 document.querySelectorAll(".switcher button").forEach((b) => (b.onclick = () => show(b.dataset.v)));
-document.querySelectorAll("[data-go]").forEach((el) => (el.onclick = (e) => { e.stopPropagation(); show(el.dataset.go); }));
-document.querySelectorAll(".lore").forEach((el) => (el.onclick = () => { if (el.dataset.lore === "zhixuan") return show("peek"); addRef(el.dataset.lore); show("tabs"); }));
-document.querySelectorAll("[data-add]").forEach((el) => (el.onclick = () => { addRef(el.dataset.add); show("tabs"); }));
-document.getElementById("ref-btn").onclick = () => show(document.getElementById("ref").hidden ? "picker" : "none");
-document.getElementById("open-edit").onclick = () => alert("切換到「" + docs[active].title + "」編輯（目前這篇有未存檔時，會先跳「存檔並繼續」確認）");
-document.getElementById("picker").onclick = (e) => { if (e.target.id === "picker") show(open.length ? "tabs" : "none"); };
-show("none");
+document.querySelectorAll("[data-go]").forEach((el) => (el.onclick = () => show(el.dataset.go)));
+document.querySelectorAll("[data-open]").forEach((el) => (el.onclick = () => { active = el.dataset.open; show("card"); }));
+document.querySelectorAll("[data-add]").forEach((el) => (el.onclick = () => { if (!refs.includes(el.dataset.add)) refs.push(el.dataset.add); show("dialog"); }));
+$("cmt-plain").onmouseenter = () => show("plain");
+$("cmt-ref").onmouseenter = () => show("hover");
+document.querySelector(".lore").onclick = () => show("lore");
+$("open-edit").onclick = () => alert("切換到「" + docs[active].title + "」編輯（目前這篇有未存檔時，會先跳「存檔並繼續」確認）");
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("card").hidden) show("hover"); });
+// 參照卡可拖曳
+$("card-drag").onmousedown = (e) => {
+  const card = $("card"), box = card.getBoundingClientRect(), dx = e.clientX - box.left, dy = e.clientY - box.top, parent = $("doc").getBoundingClientRect();
+  const move = (ev) => { card.style.right = "auto"; card.style.left = ev.clientX - parent.left - dx + "px"; card.style.top = ev.clientY - parent.top - dy + "px"; };
+  document.addEventListener("mousemove", move);
+  document.addEventListener("mouseup", () => document.removeEventListener("mousemove", move), { once: true });
+};
+show("plain");
 </script>
 </body>
 </html>
