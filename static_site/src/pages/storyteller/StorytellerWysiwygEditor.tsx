@@ -60,6 +60,7 @@ import {
   COMMENT_COLOR_VALUES,
   DEFAULT_COMMENT_COLOR,
   TEXT_COLOR_VALUES,
+  loreIdFromHref,
   type CommentColorValue,
 } from "./wysiwygCore/whitelist";
 import { createWysiwygCoreExtensions } from "./wysiwygCore/extensions";
@@ -86,12 +87,21 @@ import {
 } from "@/pages/storyteller/StorytellerEditorCaretFocus.tsx";
 import { CaretFocus } from "@/pages/storyteller/wysiwygCore/caretFocus.ts";
 import { useLoreLinkStatusSx } from "@/pages/storyteller/storytellerLoreLinkCheck.ts";
-
-interface HoveredComment {
-  text: string;
-  /** hover 當下該段落的 bounding rect（viewport 座標），用來把 tooltip 定位在段落正下方。 */
-  rect: DOMRect;
-}
+import {
+  CommentRefCard,
+  type CommentRefCardState,
+} from "@/pages/storyteller/commentReference/CommentRefCard.tsx";
+import { CommentRefsField } from "@/pages/storyteller/commentReference/CommentRefsField.tsx";
+import {
+  COMMENT_TOOLTIP_ATTR,
+  CommentTooltip,
+  type HoveredComment,
+} from "@/pages/storyteller/commentReference/CommentTooltip.tsx";
+import {
+  formatCommentRefs,
+  parseCommentRefs,
+  type CommentRef,
+} from "@/pages/storyteller/wysiwygCore/commentRefs.ts";
 
 interface HoveredFootnote {
   /** 這裡放的是還沒解析的腳注原文（含 **粗體** 等限縮語法），渲染時交給 renderFootnoteNote。 */
@@ -534,9 +544,18 @@ export const StorytellerWysiwygEditor = forwardRef<
     useState(false);
   const [pendingCommentColor, setPendingCommentColor] =
     useState<CommentColorValue>(DEFAULT_COMMENT_COLOR);
+  const [pendingCommentRefs, setPendingCommentRefs] = useState<CommentRef[]>(
+    [],
+  );
   const [hoveredComment, setHoveredComment] = useState<HoveredComment | null>(
     null,
   );
+  // 參照卡（註解參照或設定連結）；key 每次開啟遞增，讓卡片重新初始化
+  const [refCard, setRefCard] = useState<
+    (CommentRefCardState & { key: number }) | null
+  >(null);
+  const openRefCard = (refs: CommentRef[], active: number) =>
+    setRefCard((current) => ({ refs, active, key: (current?.key ?? 0) + 1 }));
   const [contextMenuPosition, setContextMenuPosition] =
     useState<ContextMenuPosition | null>(null);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
@@ -840,18 +859,28 @@ export const StorytellerWysiwygEditor = forwardRef<
     const attrs = editor.getAttributes("comment");
     const existingComment = attrs.comment as string | undefined;
     const existingColor = attrs.commentColor as CommentColorValue | undefined;
+    const existingRefs = parseCommentRefs(
+      attrs.commentRefs as string | undefined,
+    );
     const { from, to } = editor.state.selection;
-    setPendingHadExistingComment(Boolean(existingComment));
+    // 只有參照、沒有文字的註解也算既有註解
+    setPendingHadExistingComment(
+      Boolean(existingComment) || existingRefs.length > 0,
+    );
     setPendingSnippet(editor.state.doc.textBetween(from, to, " ").slice(0, 24));
     setCommentDraft(existingComment ?? "");
     setPendingCommentColor(existingColor ?? DEFAULT_COMMENT_COLOR);
+    setPendingCommentRefs(existingRefs);
     setCommentDialogOpen(true);
   };
+  // 有參照時註解文字可以留空
+  const canConfirmComment =
+    commentDraft.trim() !== "" || pendingCommentRefs.length > 0;
 
   // extendMarkRange 原因同連結/腳注：避免游標只是落在註解中間（沒有主動選取整段文字）時，
   // setComment 只套用到空選取範圍，等於沒改到既有註解。
   const handleConfirmComment = () => {
-    if (commentDraft.trim() === "") return;
+    if (!canConfirmComment) return;
     editor
       .chain()
       .focus()
@@ -859,6 +888,7 @@ export const StorytellerWysiwygEditor = forwardRef<
       .setComment({
         comment: commentDraft.trim(),
         commentColor: pendingCommentColor,
+        commentRefs: formatCommentRefs(pendingCommentRefs),
       })
       .run();
     setCommentDialogOpen(false);
@@ -940,10 +970,12 @@ export const StorytellerWysiwygEditor = forwardRef<
     const commentTarget = eventTarget.closest<HTMLElement>(
       ".wysiwyg-has-comment",
     );
-    const comment = commentTarget?.dataset.comment;
-    if (commentTarget && comment) {
+    const comment = commentTarget?.dataset.comment ?? "";
+    const commentRefs = commentTarget?.dataset.commentRefs ?? "";
+    if (commentTarget && (comment || commentRefs)) {
       setHoveredComment({
         text: comment,
+        refs: commentRefs,
         rect: commentTarget.getBoundingClientRect(),
       });
     }
@@ -971,9 +1003,24 @@ export const StorytellerWysiwygEditor = forwardRef<
     }
   };
 
+  // 點內文的設定連結：開參照卡看那則設定的已存檔版本，不跳頁；游標照常落在點的位置
+  const handleEditorClick = (event: MouseEvent<HTMLDivElement>) => {
+    const href = (event.target as HTMLElement)
+      .closest(".wysiwyg-link")
+      ?.getAttribute("href");
+    const loreId = href ? loreIdFromHref(href) : undefined;
+    if (loreId && projectPublicId) {
+      openRefCard([{ kind: "lore", publicId: loreId }], 0);
+    }
+  };
+
   const handleEditorMouseOut = (event: MouseEvent<HTMLDivElement>) => {
     const relatedTarget = event.relatedTarget as HTMLElement | null;
-    if (!relatedTarget?.closest(".wysiwyg-has-comment")) {
+    // 移進有參照的註解 tooltip（要點 chip）時不收掉，改由 tooltip 自己的 onMouseLeave 收
+    if (
+      !relatedTarget?.closest(".wysiwyg-has-comment") &&
+      !relatedTarget?.closest(`[${COMMENT_TOOLTIP_ATTR}]`)
+    ) {
       setHoveredComment(null);
     }
     if (!relatedTarget?.closest(".wysiwyg-has-footnote")) {
@@ -1252,6 +1299,7 @@ export const StorytellerWysiwygEditor = forwardRef<
             ]}
             onMouseOver={handleEditorMouseOver}
             onMouseOut={handleEditorMouseOut}
+            onClick={handleEditorClick}
             onContextMenu={handleEditorContextMenu}
           >
             <EditorContent editor={editor} />
@@ -1342,6 +1390,14 @@ export const StorytellerWysiwygEditor = forwardRef<
             value={commentDraft}
             onChange={(event) => setCommentDraft(event.target.value)}
           />
+          {/* 參照要查同專案的故事／設定，沒有專案（例如 wysiwyg-demo）就不開放 */}
+          {projectPublicId && (
+            <CommentRefsField
+              projectPublicId={projectPublicId}
+              refs={pendingCommentRefs}
+              onChange={setPendingCommentRefs}
+            />
+          )}
           <Typography
             variant="caption"
             color="text.secondary"
@@ -1390,7 +1446,7 @@ export const StorytellerWysiwygEditor = forwardRef<
           <Button
             variant="contained"
             onClick={handleConfirmComment}
-            disabled={commentDraft.trim() === ""}
+            disabled={!canConfirmComment}
           >
             {pendingHadExistingComment ? "更新註解" : "新增註解"}
           </Button>
@@ -1458,33 +1514,23 @@ export const StorytellerWysiwygEditor = forwardRef<
       </Dialog>
 
       {hoveredComment && (
-        <Box
-          sx={{
-            position: "fixed",
-            top: hoveredComment.rect.bottom + 6,
-            left: hoveredComment.rect.left,
-            zIndex: 9999,
-            maxWidth: 320,
-            pointerEvents: "none",
+        <CommentTooltip
+          hovered={hoveredComment}
+          projectPublicId={projectPublicId}
+          onOpenRefs={(refs, active) => {
+            setHoveredComment(null);
+            openRefCard(refs, active);
           }}
-        >
-          <Paper elevation={8} sx={{ p: 1.5, bgcolor: "grey.900" }}>
-            <Typography variant="body2" sx={{ color: "common.white" }}>
-              {hoveredComment.text}
-            </Typography>
-            <Typography
-              variant="caption"
-              sx={{ color: "grey.400", display: "block", mt: 0.5 }}
-            >
-              {/* 觸控/鍵盤操作者沒有右鍵，右鍵不是唯一入口（見已知 Bug 記錄第 9
-                  項：觸控裝置的右鍵事件已放行給原生長按選字，不會跳出我們的
-                  選單）——選取文字後叫出的格式列（bubble menu）「加註解」按鈕
-                  在選到既有註解時會變成「編輯註解」，對話框裡也有「移除註解」
-                  按鈕，不寫死成「右鍵」這一種說法。 */}
-              右鍵，或選取文字後用格式列可編輯／移除註解
-            </Typography>
-          </Paper>
-        </Box>
+          onLeave={() => setHoveredComment(null)}
+        />
+      )}
+      {refCard && (
+        <CommentRefCard
+          key={refCard.key}
+          projectPublicId={projectPublicId}
+          initial={refCard}
+          onClose={() => setRefCard(null)}
+        />
       )}
 
       {hoveredParagraph && onAddBookmark && onRemoveBookmark && (

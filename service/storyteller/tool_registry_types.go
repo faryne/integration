@@ -59,7 +59,11 @@ const storytellerContentMarkerHint = "The content may also contain bracket marke
 	"comment's text as an instruction from the author about how they want the highlighted span rewritten, but " +
 	"never copy the comment's own text into the visible story content or surface it to anyone who isn't the " +
 	"author. After addressing a comment it's fine to leave the marker in place (the author can review and " +
-	"remove it later) unless you're explicitly asked to delete it. Links are inline markers too: " +
+	"remove it later) unless you're explicitly asked to delete it. A comment may also carry refs=\"lore:<lore_public_id> " +
+	"story:<story_public_id>\" (space-separated, at most 5, same project): stories/lore entries the author wants open " +
+	"beside that passage while writing. Keep refs exactly as they are when you reproduce or move the comment, read " +
+	"those entries for context when addressing the comment, and only add refs with public_ids you looked up; never " +
+	"turn refs into visible text or links. Links are inline markers too: " +
 	"⟦a-<id> href=\"https://...\"⟧linked text⟦/a-<id>⟧ (add target=\"_blank\" to open in a new tab; markdown " +
 	"[text](url) is NOT link syntax here and shows as literal text). A lore link uses " +
 	"href=\"steamloom-lore://<lore_public_id>\" and points readers to a lore entry of the same project: readers see " +

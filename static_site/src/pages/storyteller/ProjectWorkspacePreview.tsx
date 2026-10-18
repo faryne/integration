@@ -70,6 +70,10 @@ import {
 } from "./WorkspaceLeaveGuard.ts";
 import { WorkspaceSearch } from "./WorkspaceSearch.tsx";
 import { useWorkspaceSearchLauncher } from "./useWorkspaceSearchLauncher.ts";
+import {
+  WorkspaceOpenDocumentProvider,
+  type WorkspaceOpenDocument,
+} from "@/pages/storyteller/WorkspaceOpenDocumentContext.ts";
 
 const storyPageSize = 20;
 const lorePageSize = 20;
@@ -453,6 +457,20 @@ export default function StorytellerProjectWorkspacePreview() {
     });
   }
 
+  // 編輯器裡要切到別篇編輯（註解參照卡的「開啟編輯」）：跟搜尋結果一樣先走未存檔確認
+  const openWorkspaceDocument: WorkspaceOpenDocument = ({
+    kind,
+    publicId,
+    isImage,
+  }) =>
+    guardedNavigate(() =>
+      navigate(
+        steamloomPath(
+          `my/workspace/${id}/${kind === "story" && isImage ? "image" : kind}/${publicId}`,
+        ),
+      ),
+    );
+
   function closeWorkspaceEditor() {
     guardedNavigate(() => {
       // 「編輯專案」的 selected 是特地塞進去、不對應任何真實分組的哨兵值
@@ -600,221 +618,225 @@ export default function StorytellerProjectWorkspacePreview() {
   }
 
   return (
-    <WorkspaceChrome
-      title={project?.name ?? "專案"}
-      projectId={project?.public_id ?? id}
-      projects={projectsQuery.data ?? []}
-      trail={
-        toolPage
-          ? [sectionBreadcrumbLabel]
-          : [sectionBreadcrumbLabel, collectionBreadcrumbLabel]
-      }
-      navigationAction={
-        <Button
-          size="small"
-          color="inherit"
-          startIcon={<MenuBookOutlinedIcon />}
-          onClick={() => setMobileNavigatorOpen(true)}
-          sx={{ display: { xs: "inline-flex", md: "none" }, minWidth: 0 }}
-        >
-          導覽
-        </Button>
-      }
-    >
-      <WorkspaceSearch
-        key={workspaceSearch.seq}
-        open={workspaceSearch.open}
-        initialKeyword={workspaceSearch.keyword}
-        onClose={workspaceSearch.closeSearch}
-        projectName={project?.name ?? "目前專案"}
-        projectPublicId={project?.public_id ?? id ?? ""}
-        onOpenResult={openWorkspaceSearchResult}
-      />
-      <WorkspaceMobileNavigatorDrawer
-        {...sidebarProps}
-        open={mobileNavigatorOpen}
-        onClose={() => setMobileNavigatorOpen(false)}
-      />
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: {
-            xs: "1fr",
-            md: sidebarCollapsed
-              ? "52px minmax(0, 1fr)"
-              : "268px minmax(0, 1fr)",
-          },
-          flex: 1,
-          minHeight: 0,
-          bgcolor: "background.default",
-        }}
+    <WorkspaceOpenDocumentProvider value={openWorkspaceDocument}>
+      <WorkspaceChrome
+        title={project?.name ?? "專案"}
+        projectId={project?.public_id ?? id}
+        projects={projectsQuery.data ?? []}
+        trail={
+          toolPage
+            ? [sectionBreadcrumbLabel]
+            : [sectionBreadcrumbLabel, collectionBreadcrumbLabel]
+        }
+        navigationAction={
+          <Button
+            size="small"
+            color="inherit"
+            startIcon={<MenuBookOutlinedIcon />}
+            onClick={() => setMobileNavigatorOpen(true)}
+            sx={{ display: { xs: "inline-flex", md: "none" }, minWidth: 0 }}
+          >
+            導覽
+          </Button>
+        }
       >
+        <WorkspaceSearch
+          key={workspaceSearch.seq}
+          open={workspaceSearch.open}
+          initialKeyword={workspaceSearch.keyword}
+          onClose={workspaceSearch.closeSearch}
+          projectName={project?.name ?? "目前專案"}
+          projectPublicId={project?.public_id ?? id ?? ""}
+          onOpenResult={openWorkspaceSearchResult}
+        />
+        <WorkspaceMobileNavigatorDrawer
+          {...sidebarProps}
+          open={mobileNavigatorOpen}
+          onClose={() => setMobileNavigatorOpen(false)}
+        />
         <Box
           sx={{
-            display: { xs: "none", md: "block" },
-            position: "relative",
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              md: sidebarCollapsed
+                ? "52px minmax(0, 1fr)"
+                : "268px minmax(0, 1fr)",
+            },
+            flex: 1,
             minHeight: 0,
+            bgcolor: "background.default",
           }}
         >
-          {/* 外層不能有 overflow:hidden——收合按鈕要浮貼在側欄與內容的交界；
-              真正需要裁切捲軸的 overflow:hidden 只留在包側欄內容的這一層。 */}
           <Box
             sx={{
-              height: "100%",
-              borderRight: 1,
-              borderColor: "divider",
-              bgcolor: "background.paper",
+              display: { xs: "none", md: "block" },
+              position: "relative",
               minHeight: 0,
-              overflow: "hidden",
             }}
           >
-            {sidebarCollapsed ? (
-              <WorkspaceSidebarRail
-                selected={selected}
-                onSelect={selectNode}
-                onSearch={() => workspaceSearch.openSearch()}
-                activeToolPage={sidebarProps.activeToolPage}
-                onOpenToolPage={sidebarProps.onOpenToolPage}
-              />
-            ) : (
-              <WorkspaceSidebar {...sidebarProps} />
-            )}
-          </Box>
-          <WorkspaceSidebarToggle
-            collapsed={sidebarCollapsed}
-            onToggle={() => setSidebarCollapsed((value) => !value)}
-          />
-        </Box>
-        <Box sx={{ minWidth: 0, overflow: "auto" }}>
-          {toolPage?.key === "memories" ? (
-            <StorytellerMemoryManagerPage projectPublicId={id} />
-          ) : showBleedEditor ? (
-            <EditorBleedContainer
-              onBack={closeWorkspaceEditor}
-              fitHeight={
-                routeEditorType === "story" || routeEditorType === "lore"
-              }
+            {/* 外層不能有 overflow:hidden——收合按鈕要浮貼在側欄與內容的交界；
+              真正需要裁切捲軸的 overflow:hidden 只留在包側欄內容的這一層。 */}
+            <Box
+              sx={{
+                height: "100%",
+                borderRight: 1,
+                borderColor: "divider",
+                bgcolor: "background.paper",
+                minHeight: 0,
+                overflow: "hidden",
+              }}
             >
-              {isEditProjectRoute ? (
-                <StorytellerNewProject embedded />
-              ) : isNewStoryRoute ? (
-                <StorytellerStoryEditor
-                  embedded
-                  projectId={id}
-                  storyPublicId="new"
+              {sidebarCollapsed ? (
+                <WorkspaceSidebarRail
+                  selected={selected}
+                  onSelect={selectNode}
+                  onSearch={() => workspaceSearch.openSearch()}
+                  activeToolPage={sidebarProps.activeToolPage}
+                  onOpenToolPage={sidebarProps.onOpenToolPage}
                 />
-              ) : isNewImageRoute ? (
-                <StorytellerImageEpisodeEditor
-                  embedded
-                  projectId={id}
-                  episodePublicId="new"
-                />
-              ) : isLoreRoute ? (
-                <StorytellerLoreEditor
-                  embedded
-                  projectId={id}
-                  lorePublicId={loreId}
-                />
-              ) : isExistingImageRoute ? (
-                <StorytellerImageEpisodeEditor
-                  embedded
-                  projectId={id}
-                  episodePublicId={storyId}
-                />
-              ) : isExistingStoryRoute ? (
-                <StorytellerStoryEditor
-                  embedded
-                  projectId={id}
-                  storyPublicId={storyId}
-                />
-              ) : isAssetRoute && routeAssetQuery.data ? (
-                <WorkspaceAssetPanel
-                  asset={routeAssetQuery.data}
+              ) : (
+                <WorkspaceSidebar {...sidebarProps} />
+              )}
+            </Box>
+            <WorkspaceSidebarToggle
+              collapsed={sidebarCollapsed}
+              onToggle={() => setSidebarCollapsed((value) => !value)}
+            />
+          </Box>
+          <Box sx={{ minWidth: 0, overflow: "auto" }}>
+            {toolPage?.key === "memories" ? (
+              <StorytellerMemoryManagerPage projectPublicId={id} />
+            ) : showBleedEditor ? (
+              <EditorBleedContainer
+                onBack={closeWorkspaceEditor}
+                fitHeight={
+                  routeEditorType === "story" || routeEditorType === "lore"
+                }
+              >
+                {isEditProjectRoute ? (
+                  <StorytellerNewProject embedded />
+                ) : isNewStoryRoute ? (
+                  <StorytellerStoryEditor
+                    embedded
+                    projectId={id}
+                    storyPublicId="new"
+                  />
+                ) : isNewImageRoute ? (
+                  <StorytellerImageEpisodeEditor
+                    embedded
+                    projectId={id}
+                    episodePublicId="new"
+                  />
+                ) : isLoreRoute ? (
+                  <StorytellerLoreEditor
+                    embedded
+                    projectId={id}
+                    lorePublicId={loreId}
+                  />
+                ) : isExistingImageRoute ? (
+                  <StorytellerImageEpisodeEditor
+                    embedded
+                    projectId={id}
+                    episodePublicId={storyId}
+                  />
+                ) : isExistingStoryRoute ? (
+                  <StorytellerStoryEditor
+                    embedded
+                    projectId={id}
+                    storyPublicId={storyId}
+                  />
+                ) : isAssetRoute && routeAssetQuery.data ? (
+                  <WorkspaceAssetPanel
+                    asset={routeAssetQuery.data}
+                    assetCollections={assetCollections}
+                    projectId={id ?? ""}
+                    onDeleted={closeWorkspaceEditor}
+                  />
+                ) : isAssetRoute && routeAssetQuery.isLoading ? (
+                  <WorkspaceCentered>
+                    <CircularProgress size={24} />
+                    <Typography color="text.secondary">
+                      載入資產中...
+                    </Typography>
+                  </WorkspaceCentered>
+                ) : isAssetRoute ? (
+                  <ErrorPage
+                    compact
+                    backUrl={steamloomPath(
+                      browsingPath(selected.section, selected.collectionId),
+                    )}
+                    code={
+                      axios.isAxiosError(routeAssetQuery.error)
+                        ? (routeAssetQuery.error.response?.status ?? 404)
+                        : 404
+                    }
+                  />
+                ) : null}
+              </EditorBleedContainer>
+            ) : (
+              <WorkspaceBleedContainer>
+                <WorkspacePane
+                  title={activeTitle}
+                  selected={selected}
+                  stories={visibleStoryRows}
+                  lores={loresPageQuery.data?.lores ?? []}
+                  assets={assetsQuery.data?.assets ?? []}
+                  volumes={volumes}
+                  loreCollections={loreCollections}
                   assetCollections={assetCollections}
-                  projectId={id ?? ""}
-                  onDeleted={closeWorkspaceEditor}
-                />
-              ) : isAssetRoute && routeAssetQuery.isLoading ? (
-                <WorkspaceCentered>
-                  <CircularProgress size={24} />
-                  <Typography color="text.secondary">載入資產中...</Typography>
-                </WorkspaceCentered>
-              ) : isAssetRoute ? (
-                <ErrorPage
-                  compact
-                  backUrl={steamloomPath(
-                    browsingPath(selected.section, selected.collectionId),
-                  )}
-                  code={
-                    axios.isAxiosError(routeAssetQuery.error)
-                      ? (routeAssetQuery.error.response?.status ?? 404)
-                      : 404
+                  loading={activeListLoading}
+                  errorCode={activeListErrorCode}
+                  errorBackUrl={steamloomPath(`my/workspace/${id}`)}
+                  onSelectItem={openStoryInWorkspace}
+                  onSelectCollection={(collectionId) =>
+                    selectNode(selected.section, collectionId)
+                  }
+                  actions={listActions.actions}
+                  titleActions={listActions.titleActions}
+                  pagination={
+                    selected.section === "stories"
+                      ? {
+                          count: storyTotalPages,
+                          page: Math.min(storyPage, storyTotalPages),
+                          onChange: setStoryPage,
+                        }
+                      : selected.section === "lores"
+                        ? {
+                            count: loreTotalPages,
+                            page: Math.min(lorePage, loreTotalPages),
+                            onChange: setLorePage,
+                          }
+                        : {
+                            count: assetTotalPages,
+                            page: Math.min(assetPage, assetTotalPages),
+                            onChange: setAssetPage,
+                          }
+                  }
+                  renderStoryActions={listActions.renderStoryActions}
+                  renderLoreActions={listActions.renderLoreActions}
+                  renderAssetActions={listActions.renderAssetActions}
+                  onReorderStory={
+                    canReorderStories ? listActions.reorderStory : undefined
                   }
                 />
-              ) : null}
-            </EditorBleedContainer>
-          ) : (
-            <WorkspaceBleedContainer>
-              <WorkspacePane
-                title={activeTitle}
-                selected={selected}
-                stories={visibleStoryRows}
-                lores={loresPageQuery.data?.lores ?? []}
-                assets={assetsQuery.data?.assets ?? []}
-                volumes={volumes}
-                loreCollections={loreCollections}
-                assetCollections={assetCollections}
-                loading={activeListLoading}
-                errorCode={activeListErrorCode}
-                errorBackUrl={steamloomPath(`my/workspace/${id}`)}
-                onSelectItem={openStoryInWorkspace}
-                onSelectCollection={(collectionId) =>
-                  selectNode(selected.section, collectionId)
-                }
-                actions={listActions.actions}
-                titleActions={listActions.titleActions}
-                pagination={
-                  selected.section === "stories"
-                    ? {
-                        count: storyTotalPages,
-                        page: Math.min(storyPage, storyTotalPages),
-                        onChange: setStoryPage,
-                      }
-                    : selected.section === "lores"
-                      ? {
-                          count: loreTotalPages,
-                          page: Math.min(lorePage, loreTotalPages),
-                          onChange: setLorePage,
-                        }
-                      : {
-                          count: assetTotalPages,
-                          page: Math.min(assetPage, assetTotalPages),
-                          onChange: setAssetPage,
-                        }
-                }
-                renderStoryActions={listActions.renderStoryActions}
-                renderLoreActions={listActions.renderLoreActions}
-                renderAssetActions={listActions.renderAssetActions}
-                onReorderStory={
-                  canReorderStories ? listActions.reorderStory : undefined
-                }
-              />
-            </WorkspaceBleedContainer>
-          )}
+              </WorkspaceBleedContainer>
+            )}
+          </Box>
         </Box>
-      </Box>
-      {listActions.dialogs}
-      <StorytellerUnsavedChangesDialog
-        open={pendingNavigation !== null}
-        onContinueEditing={() => setPendingNavigation(null)}
-        onDiscardChanges={() => {
-          pendingNavigation?.();
-          setPendingNavigation(null);
-        }}
-        onSaveAndContinue={
-          canSaveWorkspaceBeforeLeave() ? saveAndNavigate : undefined
-        }
-      />
-    </WorkspaceChrome>
+        {listActions.dialogs}
+        <StorytellerUnsavedChangesDialog
+          open={pendingNavigation !== null}
+          onContinueEditing={() => setPendingNavigation(null)}
+          onDiscardChanges={() => {
+            pendingNavigation?.();
+            setPendingNavigation(null);
+          }}
+          onSaveAndContinue={
+            canSaveWorkspaceBeforeLeave() ? saveAndNavigate : undefined
+          }
+        />
+      </WorkspaceChrome>
+    </WorkspaceOpenDocumentProvider>
   );
 }

@@ -35,6 +35,7 @@ import {
   type HeadingLevel,
   type MarkName,
 } from "./whitelist";
+import { MARKER_COMMENT_REFS_ATTR, normalizeCommentRefs } from "./commentRefs";
 import { assetImageTitle } from "./assetImageLayout";
 
 const CANONICAL_DELIMITER: Record<MarkName, string> = Object.fromEntries(
@@ -63,7 +64,12 @@ type InlineWrapper =
   | { kind: "span"; textColor?: string; bgColor?: string }
   | { kind: "a"; href: string; target?: string }
   | { kind: "footnote"; note: string }
-  | { kind: "comment"; comment: string; commentColor: CommentColorValue };
+  | {
+      kind: "comment";
+      comment: string;
+      commentColor: CommentColorValue;
+      commentRefs: string;
+    };
 
 /**
  * 讀出這個文字節點要套的所有包裝，由外而內排序：comment（註解）最外層，接著 footnote
@@ -80,6 +86,7 @@ function wrappersOf(node: JSONContent): InlineWrapper[] {
   let footnoteNote: string | undefined;
   let commentText: string | undefined;
   let commentColor: CommentColorValue | undefined;
+  let commentRefs = "";
   for (const mark of marks) {
     if (mark.type === "textColor") {
       textColor = mark.attrs?.value as string | undefined;
@@ -95,6 +102,10 @@ function wrappersOf(node: JSONContent): InlineWrapper[] {
       commentColor =
         (mark.attrs?.commentColor as CommentColorValue | undefined) ??
         DEFAULT_COMMENT_COLOR;
+      // 正規化後只剩安全字元，不用另外跳脫
+      commentRefs = normalizeCommentRefs(
+        mark.attrs?.commentRefs as string | undefined,
+      );
     }
   }
 
@@ -104,6 +115,7 @@ function wrappersOf(node: JSONContent): InlineWrapper[] {
       kind: "comment",
       comment: commentText,
       commentColor: commentColor ?? DEFAULT_COMMENT_COLOR,
+      commentRefs,
     });
   }
   if (footnoteNote !== undefined) {
@@ -138,7 +150,11 @@ function wrappersEqual(a: InlineWrapper, b: InlineWrapper): boolean {
     return a.note === b.note;
   }
   if (a.kind === "comment" && b.kind === "comment") {
-    return a.comment === b.comment && a.commentColor === b.commentColor;
+    return (
+      a.comment === b.comment &&
+      a.commentColor === b.commentColor &&
+      a.commentRefs === b.commentRefs
+    );
   }
   return false;
 }
@@ -191,8 +207,12 @@ function openWrapper(wrapper: InlineWrapper): {
     wrapper.commentColor !== DEFAULT_COMMENT_COLOR
       ? ` ${MARKER_COMMENT_COLOR_ATTR}="${wrapper.commentColor}"`
       : "";
+  // 沒有參照時不輸出 refs，舊資料存檔前後長得一樣
+  const commentRefsAttr = wrapper.commentRefs
+    ? ` ${MARKER_COMMENT_REFS_ATTR}="${wrapper.commentRefs}"`
+    : "";
   return {
-    text: `${MARKER_OPEN}${id}${commentAttr}${commentColorAttr}${MARKER_CLOSE}`,
+    text: `${MARKER_OPEN}${id}${commentAttr}${commentColorAttr}${commentRefsAttr}${MARKER_CLOSE}`,
     id,
   };
 }
