@@ -3,6 +3,7 @@ import BookmarkIcon from "@mui/icons-material/Bookmark";
 import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import SearchIcon from "@mui/icons-material/Search";
 import {
   Box,
   Divider,
@@ -55,6 +56,8 @@ interface StorytellerWysiwygContextMenuProps {
   isCurrentParagraphBookmarked?: boolean;
   writingBookmarkDisabledReason?: string;
   onToggleWritingBookmark?: () => void;
+  /** 有選取文字時的「搜尋選取的文字」：開尋找／取代並帶入選取的字 */
+  onFindSelection?: () => void;
 }
 
 /**
@@ -88,6 +91,7 @@ export function StorytellerWysiwygContextMenu({
   isCurrentParagraphBookmarked,
   writingBookmarkDisabledReason,
   onToggleWritingBookmark,
+  onFindSelection,
 }: StorytellerWysiwygContextMenuProps) {
   const runAndClose = (command: WysiwygCommand) => {
     command.run(editor, commandContext);
@@ -427,6 +431,23 @@ export function StorytellerWysiwygContextMenu({
         }
         return items;
       })}
+      {hasSelection &&
+        onFindSelection &&
+        !hasAssetImage && [
+          <Divider key="find-selection-divider" />,
+          <MenuItem
+            key="find-selection"
+            onClick={() => {
+              onClose();
+              onFindSelection();
+            }}
+          >
+            <ListItemIcon>
+              <SearchIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>搜尋選取的文字</ListItemText>
+          </MenuItem>,
+        ]}
       {canWritingBookmark &&
         onToggleWritingBookmark &&
         !hasAssetImage && [

@@ -5,6 +5,7 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CodeIcon from "@mui/icons-material/Code";
 import DeleteIcon from "@mui/icons-material/Delete";
+import FindReplaceIcon from "@mui/icons-material/FindReplace";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import FormatAlignCenterIcon from "@mui/icons-material/FormatAlignCenter";
 import FormatAlignLeftIcon from "@mui/icons-material/FormatAlignLeft";
@@ -91,6 +92,8 @@ export const BLOCK_OPERATION_GROUPS: WysiwygCommandGroup[] = [
 const SLASH_COMMAND_GROUPS: WysiwygCommandGroup[] = [
   ...BLOCK_OPERATION_GROUPS,
   "insert",
+  // 整份文件的動作：尋找／取代也能用 `/搜尋` 叫出來；匯出 markdown 用 hideInSlash 排除
+  "utility",
   // 比照無選取文字時的右鍵選單：文件操作在前，問 AI 固定收在最後。
   "ai",
 ];
@@ -122,6 +125,8 @@ export interface WysiwygCommandContext {
   openAssetPicker: () => void;
   openAI: () => void;
   exportMarkdown: () => void;
+  /** 開單篇的尋找／取代浮動列（有選取文字時帶進搜尋框） */
+  openFindReplace: () => void;
 }
 
 export interface WysiwygCommand {
@@ -134,6 +139,8 @@ export interface WysiwygCommand {
   icon?: ComponentType<{ fontSize?: "small" }>;
   /** 顏色類 command 用色塊而不是 icon 呈現，見 COLOR_COMMANDS。 */
   previewColor?: string;
+  /** 群組有列進 `/` 選單、但這個 command 本身不該出現在 `/` 裡（例如匯出 markdown） */
+  hideInSlash?: boolean;
   /** 中英文別名，Phase 3 slash command 要用；Phase 1 只需要先把資料備好。 */
   aliases?: string[];
   /** 目前是否處於生效狀態（工具列/右鍵選單的高亮判斷），未定義代表這個 command 不需要高亮。 */
@@ -553,10 +560,20 @@ const AI_COMMANDS: WysiwygCommand[] = [
 
 const UTILITY_COMMANDS: WysiwygCommand[] = [
   {
+    id: "find-replace",
+    label: "尋找／取代",
+    group: "utility",
+    scope: "action",
+    icon: FindReplaceIcon,
+    aliases: ["尋找", "搜尋", "取代", "find", "replace"],
+    run: (_editor, context) => context.openFindReplace(),
+  },
+  {
     id: "export-markdown",
     label: "匯出 markdown 檔案",
     group: "utility",
     scope: "action",
+    hideInSlash: true,
     icon: FileDownloadIcon,
     isVisible: (context) => context.canExportMarkdown,
     run: (_editor, context) => context.exportMarkdown(),
@@ -620,6 +637,7 @@ export function slashWysiwygCommands(
   return SLASH_COMMAND_GROUPS.flatMap((group) =>
     visibleWysiwygCommands(group, context),
   ).filter((command) => {
+    if (command.hideInSlash) return false;
     if (command.isEnabled && !command.isEnabled(editor, context)) return false;
     if (normalizedQuery === "") return true;
     return slashCommandSearchValues(command).some((value) =>
