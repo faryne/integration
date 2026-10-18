@@ -41,14 +41,3 @@ func TestComfyUIDiscoversCapabilities(t *testing.T) {
 		t.Fatalf("capabilities = %v", discovery.Capabilities)
 	}
 }
-
-func TestMockAdapterSupportsSuccessAndErrorScenarios(t *testing.T) {
-	adapter := NewMockAdapter()
-	discovery, err := adapter.Discover(context.Background(), map[string]string{"scenario": "success"}, nil)
-	if err != nil || len(discovery.Capabilities) != 4 {
-		t.Fatalf("successful discovery = %#v, %v", discovery, err)
-	}
-	if _, err := adapter.Discover(context.Background(), map[string]string{"scenario": "error"}, nil); err == nil {
-		t.Fatal("error scenario should fail")
-	}
-}

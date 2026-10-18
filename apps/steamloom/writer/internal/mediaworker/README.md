@@ -18,8 +18,6 @@
 
 目前 `asset.upload` 只接受 JPEG、PNG、WebP、GIF；音訊與影片要先擴充 SteamLoom asset contract，不能只在 adapter 宣告 media type。
 
-`mockAdapter` 是最小可執行參考：它不呼叫外部服務，會產生 deterministic PNG，供完整 lifecycle 驗證。
-
 `pixai.go` 是第一個串接外部 API 的 Generator 參考：`Discover()` 以查詢不存在的 task 驗證 key（有效 key 回 404、無效回 401），不送生成工作；`Generate()` 自帶 10 分鐘等待上限，完成後立即下載（PixAI 產物不會永久保存），下載 CDN 時不帶 API key。
 
 ## 已知 Bug 記錄

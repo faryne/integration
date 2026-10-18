@@ -15,13 +15,13 @@ func (v *memoryVault) save(id string, values map[string]string) error {
 	return nil
 }
 
-func TestMockWorkerJobSpecValidationAndExecution(t *testing.T) {
-	registry, err := NewRegistry(NewMockAdapter())
+func TestWorkerJobSpecValidationAndExecution(t *testing.T) {
+	registry, err := NewRegistry(fakeAdapter{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	service := NewService(registry, filepath.Join(t.TempDir(), "workers.json"), &memoryVault{values: map[string]map[string]string{}})
-	worker, err := service.Save(SaveInput{AdapterID: "mock-image", Name: "Mock", Enabled: true, Settings: map[string]string{"scenario": "success"}})
+	worker, err := service.Save(SaveInput{AdapterID: "fake", Name: "Fake", Enabled: true, Settings: map[string]string{"endpoint": "https://example.com"}, Secrets: map[string]string{"token": "secret"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,13 +56,27 @@ func (v *memoryVault) delete(id string) error { delete(v.values, id); return nil
 type fakeAdapter struct{}
 
 func (fakeAdapter) Descriptor() AdapterDescriptor {
-	return AdapterDescriptor{ID: "fake", Name: "Fake", Fields: []SettingField{
+	return AdapterDescriptor{ID: "fake", Name: "Fake", MediaTypes: []string{"image"}, Fields: []SettingField{
 		{Key: "endpoint", Label: "服務位址", Required: true},
 		{Key: "token", Label: "Token", Secret: true},
 	}}
 }
 func (fakeAdapter) Discover(context.Context, map[string]string, map[string]string) (Discovery, error) {
 	return Discovery{Capabilities: []string{"text_to_image"}, Message: "ok"}, nil
+}
+func (fakeAdapter) JobFields(map[string]string) []JobField {
+	return []JobField{
+		{Key: "prompt", Label: "Prompt", Kind: "textarea", Required: true},
+		{Key: "width", Label: "Width", Kind: "number", Default: 768, Min: number(256), Max: number(1024)},
+		{Key: "candidate_count", Label: "Candidates", Kind: "number", Default: 1, Min: number(1), Max: number(4)},
+	}
+}
+func (fakeAdapter) Generate(_ context.Context, _, _ map[string]string, _ map[string]any, root string) (GenerateResult, error) {
+	path := filepath.Join(root, "candidate.png")
+	if err := os.WriteFile(path, []byte("fake image"), 0o600); err != nil {
+		return GenerateResult{}, err
+	}
+	return GenerateResult{Root: root, Artifacts: []GeneratedArtifact{{LocalPath: path, FileName: "candidate.png", MIMEType: "image/png"}}}, nil
 }
 
 func TestServiceKeepsSecretsOutOfFileAndTestsWorker(t *testing.T) {
@@ -94,23 +108,39 @@ func TestServiceKeepsSecretsOutOfFileAndTestsWorker(t *testing.T) {
 	}
 }
 
+func TestWorkersHideRemovedAdapters(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "workers.json")
+	store := fileStore{path: path}
+	if err := store.save([]storedWorker{{ID: "legacy", AdapterID: "mock-image", Name: "Legacy Mock", Enabled: true}}); err != nil {
+		t.Fatal(err)
+	}
+	registry, err := NewRegistry(fakeAdapter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	workers, err := NewService(registry, path, &memoryVault{values: map[string]map[string]string{}}).Workers()
+	if err != nil || len(workers) != 0 {
+		t.Fatalf("workers = %#v, err = %v", workers, err)
+	}
+}
+
 func TestAgentCapabilitiesOnlyIncludeEnabledOnlineWorkers(t *testing.T) {
-	registry, err := NewRegistry(NewMockAdapter())
+	registry, err := NewRegistry(fakeAdapter{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	service := NewService(registry, filepath.Join(t.TempDir(), "workers.json"), &memoryVault{values: map[string]map[string]string{}})
-	online, err := service.Save(SaveInput{AdapterID: "mock-image", Name: "可用 Mock", Enabled: true, Settings: map[string]string{"scenario": "success"}})
+	online, err := service.Save(SaveInput{AdapterID: "fake", Name: "可用 Worker", Enabled: true, Settings: map[string]string{"endpoint": "https://online.example.com"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := service.Test(context.Background(), online.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.Save(SaveInput{AdapterID: "mock-image", Name: "未測試 Mock", Enabled: true, Settings: map[string]string{"scenario": "success"}}); err != nil {
+	if _, err := service.Save(SaveInput{AdapterID: "fake", Name: "未測試 Worker", Enabled: true, Settings: map[string]string{"endpoint": "https://untested.example.com"}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.Save(SaveInput{AdapterID: "mock-image", Name: "停用 Mock", Enabled: false, Settings: map[string]string{"scenario": "success"}}); err != nil {
+	if _, err := service.Save(SaveInput{AdapterID: "fake", Name: "停用 Worker", Enabled: false, Settings: map[string]string{"endpoint": "https://disabled.example.com"}}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -118,22 +148,22 @@ func TestAgentCapabilitiesOnlyIncludeEnabledOnlineWorkers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(capabilities) != 1 || capabilities[0].WorkerID != online.ID || capabilities[0].Name != "可用 Mock" {
+	if len(capabilities) != 1 || capabilities[0].WorkerID != online.ID || capabilities[0].Name != "可用 Worker" {
 		t.Fatalf("agent capabilities = %#v", capabilities)
 	}
 }
 
 func TestCompatibleWorkersKeepsRecommendationAndMatchingCapabilities(t *testing.T) {
-	registry, err := NewRegistry(NewMockAdapter())
+	registry, err := NewRegistry(fakeAdapter{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	service := NewService(registry, filepath.Join(t.TempDir(), "workers.json"), &memoryVault{values: map[string]map[string]string{}})
-	first, err := service.Save(SaveInput{AdapterID: "mock-image", Name: "PixAI", Enabled: true, Settings: map[string]string{"scenario": "success"}})
+	first, err := service.Save(SaveInput{AdapterID: "fake", Name: "PixAI", Enabled: true, Settings: map[string]string{"endpoint": "https://pixai.example.com"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := service.Save(SaveInput{AdapterID: "mock-image", Name: "ComfyUI", Enabled: true, Settings: map[string]string{"scenario": "success"}})
+	second, err := service.Save(SaveInput{AdapterID: "fake", Name: "ComfyUI", Enabled: true, Settings: map[string]string{"endpoint": "https://comfy.example.com"}})
 	if err != nil {
 		t.Fatal(err)
 	}

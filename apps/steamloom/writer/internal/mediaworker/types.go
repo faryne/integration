@@ -91,6 +91,14 @@ type GenerateResult struct {
 	Artifacts []GeneratedArtifact
 }
 
+func cloneAnyMap(input map[string]any) map[string]any {
+	result := make(map[string]any, len(input))
+	for key, value := range input {
+		result[key] = value
+	}
+	return result
+}
+
 // Worker 是可重複建立的 adapter instance；Settings 永遠不含密鑰。
 type Worker struct {
 	ID            string            `json:"id"`

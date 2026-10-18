@@ -31,7 +31,7 @@ func NewDefault() *Service {
 	}
 	client := &http.Client{Timeout: 10 * time.Second}
 	// PixAI 需要下載整張成圖，10 秒上限對 1.5k PNG 太緊，另用較寬的 client。
-	registry, err := NewRegistry(NewComfyUIAdapter(client), NewPixAIAdapter(&http.Client{Timeout: time.Minute}), NewMockAdapter())
+	registry, err := NewRegistry(NewComfyUIAdapter(client), NewPixAIAdapter(&http.Client{Timeout: time.Minute}))
 	if err != nil {
 		panic(err)
 	}
@@ -140,6 +140,10 @@ func (s *Service) Workers() ([]Worker, error) {
 	}
 	workers := make([]Worker, 0, len(stored))
 	for _, item := range stored {
+		// adapter 下架後不再把殘留設定顯示成無法操作的 Worker；原始設定檔仍保留，避免升級時破壞使用者資料。
+		if _, exists := s.registry.Get(item.AdapterID); !exists {
+			continue
+		}
 		worker, err := s.public(item)
 		if err != nil {
 			return nil, err

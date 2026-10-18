@@ -11,6 +11,8 @@ import (
 // multiselect 的值是 []string，Max 代表最多可選幾項（例如 PixAI LoRA 上限 5）。
 var supportedJobFieldKinds = map[string]bool{"text": true, "textarea": true, "select": true, "multiselect": true, "number": true, "boolean": true}
 
+func number(value float64) *float64 { return &value }
+
 func validateJobSchema(fields []JobField) error {
 	seen := make(map[string]bool, len(fields))
 	for _, field := range fields {
