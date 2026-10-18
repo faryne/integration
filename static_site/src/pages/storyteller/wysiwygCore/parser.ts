@@ -53,6 +53,7 @@ import {
   type MarkName,
   type TextColorValue,
 } from "./whitelist";
+import { MARKER_COMMENT_REFS_ATTR, normalizeCommentRefs } from "./commentRefs";
 
 export interface ParsedRun {
   text: string;
@@ -92,6 +93,8 @@ export interface ParsedRun {
   comment?: string;
   /** 註解底色，沒設定時渲染端要 fallback 成 DEFAULT_COMMENT_COLOR（比照原本段落屬性的規則）。 */
   commentColor?: CommentColorValue;
+  /** 註解參照（正規化後的 refs 字串，見 commentRefs.ts），跟註解文字一樣只在編輯區用得到。 */
+  commentRefs?: string;
 }
 
 export interface ParsedParagraph {
@@ -162,6 +165,7 @@ interface InlineAttrs {
   note?: string;
   comment?: string;
   commentColor?: CommentColorValue;
+  commentRefs?: string;
 }
 
 // 行內 marker 的開頭標記（sticky，用 lastIndex 從指定位置比對）：
@@ -224,6 +228,9 @@ function parseInlineAttrs(attrBlob: string): InlineAttrs {
       (COMMENT_COLOR_VALUES as readonly string[]).includes(value)
     ) {
       result.commentColor = value as CommentColorValue;
+    } else if (name === MARKER_COMMENT_REFS_ATTR) {
+      // 看不懂的參照直接丟掉（例如 AI 寫錯格式），不讓整個 marker 解析失敗
+      result.commentRefs = normalizeCommentRefs(value);
     }
   }
   return result;
@@ -345,6 +352,8 @@ function applyInlineAttrs(
     commentColor:
       run.commentColor ??
       (isComment ? (attrs.commentColor ?? DEFAULT_COMMENT_COLOR) : undefined),
+    commentRefs:
+      run.commentRefs ?? (isComment ? (attrs.commentRefs ?? "") : undefined),
   };
 }
 
@@ -1056,6 +1065,7 @@ function runToTiptapMarks(
       attrs: {
         comment: run.comment ?? "",
         commentColor: run.commentColor ?? DEFAULT_COMMENT_COLOR,
+        commentRefs: run.commentRefs ?? "",
       },
     });
   }

@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>尋找取代 Mockup</title>
+<style>
+  :root { color-scheme: dark; font-family: Inter, "Noto Sans TC", system-ui, sans-serif; --bg:#0d0b14; --surface:#16131f; --surface-2:#1e1a2a; --line:#2e2840; --line-soft:#231e31; --text:#ece8f5; --muted:#9a93ad; --accent:#8fd0c5; --hit:#f4bd6240; --hit-on:#f4bd62; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-width:1100px; height:100vh; display:flex; flex-direction:column; background:var(--bg); color:var(--text); font-size:14px; }
+  button, input { font:inherit; color:inherit; }
+  .switcher { display:flex; gap:6px; flex-wrap:wrap; padding:8px 16px; background:#08060d; border-bottom:1px solid var(--line-soft); font-size:12px; }
+  .switcher span { color:var(--muted); align-self:center; margin-right:4px; }
+  .switcher button { padding:4px 10px; border:1px solid var(--line); border-radius:6px; background:transparent; cursor:pointer; }
+  .switcher button.active { background:#2c2540; border-color:#4a3f66; }
+  .crumbs { height:40px; flex:none; display:flex; align-items:center; gap:8px; padding:0 16px; border-bottom:1px solid var(--line-soft); color:var(--muted); font-size:13px; }
+  .crumbs b { color:var(--accent); font-weight:500; }
+  .shell { flex:1; min-height:0; display:flex; }
+  .sidebar { width:220px; flex:none; border-right:1px solid var(--line); padding:8px; font-size:13px; color:#c4bdd6; }
+  .sidebar .search { border:1px solid var(--line); border-radius:6px; padding:6px 8px; color:var(--muted); margin-bottom:8px; }
+  .sidebar div.row { padding:5px 8px; border-radius:4px; }
+  .sidebar div.row.sel { background:#2c2540; color:#fff; }
+  .sidebar .sec { margin:10px 0 4px; font-size:12px; color:var(--muted); }
+  .editor { flex:1; min-width:0; display:flex; flex-direction:column; position:relative; }
+  .tabs-top { display:flex; gap:16px; padding:10px 24px 0; border-bottom:1px solid var(--line-soft); font-size:13px; }
+  .tabs-top span { padding-bottom:8px; } .tabs-top span.on { border-bottom:2px solid var(--accent); }
+  .doc { flex:1; overflow:auto; padding:18px 32px 24px; position:relative; }
+  .doc .col { max-width:720px; }
+  .doc h1 { margin:0 0 8px; font-size:28px; }
+  .meta { color:var(--muted); font-size:12px; margin-bottom:18px; }
+  .doc h3 { margin:18px 0 8px; font-size:16px; border-left:3px solid var(--accent); padding-left:8px; }
+  .doc p { line-height:1.9; color:#ddd7ea; margin:0 0 12px; }
+  .doc b { color:#fff; }
+  mark { background:var(--hit); color:inherit; border-radius:2px; }
+  mark.on { background:var(--hit-on); color:#1a1300; }
+  .sel-text { background:#4a6fa5; }
+  /* 底部文件工具列（現有）＋新的搜尋 icon */
+  .toolbar { height:46px; flex:none; border-top:1px solid var(--line-soft); display:flex; align-items:center; gap:4px; padding:0 12px; color:var(--muted); }
+  .toolbar .sp { flex:1; }
+  .tb { width:32px; height:32px; border:0; border-radius:6px; background:transparent; color:var(--muted); font-size:15px; cursor:pointer; position:relative; }
+  .tb:hover, .tb.on { background:#2c2540; color:#fff; }
+  .tb.new::after { content:"新"; position:absolute; top:-6px; right:-6px; font-size:9px; background:#e0679a; color:#fff; border-radius:6px; padding:0 4px; }
+  .save { padding:6px 12px; border-radius:6px; background:#3e3560; color:#fff; font-size:12.5px; }
+  .back { font-size:12.5px; margin-right:8px; }
+  /* 尋找／取代浮動列 */
+  .finder { position:absolute; top:12px; right:24px; z-index:5; width:420px; border:1px solid var(--line); border-radius:8px; background:var(--surface-2); box-shadow:0 12px 32px #000b; padding:8px; }
+  .finder .line { display:flex; align-items:center; gap:4px; }
+  .finder .line + .line { margin-top:6px; }
+  .finder .tog { width:24px; height:28px; border:0; background:transparent; color:var(--muted); cursor:pointer; border-radius:4px; }
+  .finder .tog:hover { background:#2c2540; }
+  .finder .field { flex:1; display:flex; align-items:center; border:1px solid var(--line); border-radius:6px; background:var(--bg); padding:0 6px; height:30px; }
+  .finder .field:focus-within { border-color:var(--accent); }
+  .finder .field input { flex:1; min-width:0; border:0; outline:0; background:transparent; height:28px; }
+  .finder .field .aa { font-size:11px; padding:1px 4px; border-radius:3px; color:var(--muted); cursor:pointer; border:1px solid transparent; }
+  .finder .field .aa.on { border-color:var(--accent); color:var(--accent); }
+  .finder .count { font-size:12px; color:var(--muted); min-width:58px; text-align:right; padding:0 4px; }
+  .finder .count.none { color:#ff8a80; }
+  .finder .ic { width:28px; height:28px; border:0; border-radius:4px; background:transparent; color:var(--muted); cursor:pointer; }
+  .finder .ic:hover:not(:disabled) { background:#2c2540; color:#fff; }
+  .finder .ic:disabled { opacity:.35; cursor:default; }
+  .finder .txt { padding:0 8px; height:28px; border:1px solid var(--line); border-radius:4px; background:transparent; cursor:pointer; font-size:12px; white-space:nowrap; }
+  .finder .txt:hover:not(:disabled) { background:#2c2540; }
+  .finder .txt:disabled { opacity:.35; cursor:default; }
+  .finder .pad { width:24px; }
+  /* 右鍵選單 */
+  .ctx { position:absolute; z-index:6; width:220px; border:1px solid var(--line); border-radius:8px; background:var(--surface-2); box-shadow:0 12px 32px #000b; padding:4px 0; font-size:13px; }
+  .ctx div { padding:7px 14px; display:flex; justify-content:space-between; cursor:pointer; }
+  .ctx div:hover { background:#2c2540; }
+  .ctx div small { color:var(--muted); }
+  .ctx hr { border:0; border-top:1px solid var(--line-soft); margin:4px 0; }
+  .ctx .new { color:var(--accent); }
+  .snack { position:fixed; left:50%; bottom:72px; transform:translateX(-50%); background:#2c2540; border:1px solid var(--line); border-radius:6px; padding:10px 16px; font-size:13px; box-shadow:0 8px 24px #000a; z-index:9; }
+  .note { flex:none; padding:10px 16px; border-top:1px dashed var(--line); color:var(--muted); font-size:12px; line-height:1.7; background:#08060d; max-height:150px; overflow:auto; }
+  .note b { color:var(--text); }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<div class="switcher"><span>情境：</span>
+  <button data-v="idle" class="active">① 底部多一個 🔍</button>
+  <button data-v="find">② ⌘F 搜尋（有符合）</button>
+  <button data-v="none">③ 沒有符合</button>
+  <button data-v="replace">④ 展開取代</button>
+  <button data-v="done">⑤ 全部取代之後</button>
+  <button data-v="ctx">⑥ 右鍵「搜尋選取的文字」</button>
+</div>
+<div class="crumbs">我的工作台 / 禁斷姐弟／兄妹戀 / 作品 / <b>[N] 第十一話　溫的</b></div>
+<div class="shell">
+  <div class="sidebar">
+    <div class="search">搜尋此專案……　⌘K</div>
+    <div class="sec">作品與冊</div>
+    <div class="row">[N] 第十話　雨夜</div>
+    <div class="row sel">[N] 第十一話　溫的</div>
+    <div class="sec">設定集</div>
+    <div class="row">角色 / 許芷瑄</div>
+    <div class="row">角色 / 許宥辰</div>
+  </div>
+  <div class="editor">
+    <div class="tabs-top"><span class="on">編輯</span><span>編輯歷史</span></div>
+    <div class="doc" id="doc">
+      <div class="col">
+        <h1>[N] 第十一話　溫的</h1>
+        <div class="meta">狀態 未公開　·　冊 不分冊　·　署名 本人</div>
+        <div id="body"></div>
+      </div>
+
+      <div class="finder" id="finder" hidden>
+        <div class="line">
+          <button class="tog" id="toggle" title="展開取代">▸</button>
+          <div class="field"><input id="q" placeholder="尋找"><span class="aa" id="aa" title="區分大小寫（英文）">Aa</span></div>
+          <span class="count" id="count"></span>
+          <button class="ic" id="prev" title="上一個（⇧Enter）">↑</button>
+          <button class="ic" id="next" title="下一個（Enter）">↓</button>
+          <button class="ic" id="close" title="關閉（Esc）">✕</button>
+        </div>
+        <div class="line" id="rline" hidden>
+          <span class="pad"></span>
+          <div class="field"><input id="r" placeholder="取代為"></div>
+          <button class="txt" id="one">取代</button>
+          <button class="txt" id="all">全部取代</button>
+        </div>
+      </div>
+
+      <div class="ctx" id="ctx" hidden>
+        <div>剪下 <small>⌘X</small></div>
+        <div>複製 <small>⌘C</small></div>
+        <hr>
+        <div>加連結</div>
+        <div>連到設定</div>
+        <div>加註解</div>
+        <hr>
+        <div class="new" id="ctx-find">搜尋選取的文字 <small>⌘F</small></div>
+        <div>問 AI</div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <span class="back">← 回列表</span>
+      <button class="tb" title="大綱與書籤">☰</button>
+      <button class="tb" title="編輯歷史">↺</button>
+      <span class="sp"></span>
+      <button class="tb" title="插入圖片">🖼</button>
+      <button class="tb new" id="find-btn" title="尋找／取代（⌘F）">🔍</button>
+      <button class="tb" title="文字設定">Tt</button>
+      <button class="tb" title="匯出 markdown">⤓</button>
+      <button class="tb" title="語法說明">?</button>
+      <span class="save">存檔 ⌘S</span>
+    </div>
+  </div>
+</div>
+<div class="snack" id="snack" hidden>已取代 3 處，⌘Z 可以一次還原</div>
+
+<div class="note">
+  <b>Mockup 說明（實作時不會出現）</b>
+  <b>入口：</b>⌘F／Ctrl+F（網站只在編輯頁攔下瀏覽器的尋找；Writer 本來就沒有）、底部文件工具列的 🔍（尋找／取代登記成 utility 指令，`/搜尋` 也找得到）、右鍵「搜尋選取的文字」（把選取的字帶進搜尋框）。
+  <b>浮動列：</b>Enter 下一個、⇧Enter 上一個、Esc 關閉並把游標放回目前那個符合處；▸ 展開取代；有選取文字時按 ⌘F 會預填。符合處是暫時的高亮（不會寫進內容），目前這個捲到畫面中間。
+  <b>範圍：</b>只找看得到的正文（段落、標題、清單、表格、程式碼區塊）；註解、腳注內文、參照這些存在屬性裡的不找、不換。可以跨粗體等格式邊界比對，例如搜「她回頭」會找到「她<b>回頭</b>」，取代後沿用第一個字的格式。
+  <b>取代：</b>「全部取代」是一步操作，⌘Z 一次還原；取代完不自動存檔，照常顯示未存檔。
+  <b>共用：</b>做在共用編輯器裡，網站與 Writer 同一套；圖像作品沒有正文，不顯示 🔍。
+</div>
+
+<script>
+// mockup 用的假內容：段落是 HTML 字串，比對只看純文字
+const original = [
+  "<h3>第一幕</h3>",
+  "<p>回到舊公寓的時候已經過了十一點。走廊的燈還是只亮一半，芷瑄把鑰匙插進門鎖，轉了兩次才轉開。</p>",
+  "<p>「你又沒關暖氣。」她<b>回頭</b>看了宥辰一眼，語氣裡聽不出是抱怨還是鬆了一口氣。屋子裡是溫的，跟外面的雨夜像兩個世界。</p>",
+  "<p>宥辰把傘靠在門邊，想起上一話在水族館前沒說完的那句話，喉嚨有點乾。</p>",
+  "<h3>第二幕</h3>",
+  "<p>芷瑄把外套掛好，背對著他說：「宥辰，你那天到底想說什麼？」</p>",
+  "<p>暖氣的聲音很吵，吵到他差點以為自己可以假裝沒聽到。</p>",
+];
+let paras = [...original], current = 0, caseOn = false;
+const $ = (id) => document.getElementById(id);
+
+// 在純文字上找出所有符合位置，再把 HTML 裡的對應字元包成 <mark>（跨 <b> 邊界也行）
+function render() {
+  const q = $("q").value;
+  let index = 0, total = 0;
+  const html = paras.map((p) => {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = p;
+    const text = tmp.textContent;
+    const hay = caseOn ? text : text.toLowerCase(), needle = caseOn ? q : q.toLowerCase();
+    const hits = [];
+    if (q && !$("finder").hidden) for (let i = hay.indexOf(needle); i >= 0; i = hay.indexOf(needle, i + needle.length)) hits.push([i, i + needle.length]);
+    if (!hits.length) return p;
+    let offset = 0;
+    const walk = (node) => {
+      for (const child of [...node.childNodes]) {
+        if (child.nodeType === 3) {
+          const start = offset, end = offset + child.length;
+          offset = end;
+          const frag = document.createDocumentFragment();
+          let cursor = start;
+          hits.forEach(([a, b], h) => {
+            const s = Math.max(a, start), e = Math.min(b, end);
+            if (s >= e) return;
+            if (s > cursor) frag.append(child.data.slice(cursor - start, s - start));
+            const m = document.createElement("mark");
+            m.dataset.hit = total + h;
+            m.textContent = child.data.slice(s - start, e - start);
+            frag.append(m);
+            cursor = e;
+          });
+          if (cursor < end) frag.append(child.data.slice(cursor - start));
+          child.replaceWith(frag);
+        } else walk(child);
+      }
+    };
+    walk(tmp);
+    total += hits.length;
+    return tmp.innerHTML;
+  });
+  $("body").innerHTML = html.join("");
+  if (current >= total) current = 0;
+  document.querySelectorAll(`mark[data-hit="${current}"]`).forEach((m) => m.classList.add("on"));
+  const count = $("count");
+  count.textContent = !q ? "" : total ? `${current + 1} / ${total}` : "沒有符合";
+  count.classList.toggle("none", Boolean(q) && !total);
+  ["prev", "next"].forEach((id) => ($(id).disabled = total < 2 && !(total === 1 && id === "next")));
+  $("one").disabled = $("all").disabled = !total;
+  return total;
+}
+function step(delta) {
+  const total = render();
+  if (!total) return;
+  current = (current + delta + total) % total;
+  render();
+}
+function replace(all) {
+  const q = $("q").value, r = $("r").value;
+  if (!q) return;
+  const flags = caseOn ? "g" : "gi";
+  const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), flags);
+  if (all) {
+    // 模擬：跨格式的符合處，取代後沿用第一個字的格式（這裡直接用純文字示意）
+    paras = paras.map((p) => { const t = document.createElement("div"); t.innerHTML = p; const tag = t.firstElementChild.tagName.toLowerCase(); return t.textContent.match(re) ? `<${tag}>${t.textContent.replace(re, r)}</${tag}>` : p; });
+    $("snack").hidden = false;
+    setTimeout(() => ($("snack").hidden = true), 2600);
+  } else {
+    let n = -1, done = false;
+    paras = paras.map((p) => { if (done) return p; const t = document.createElement("div"); t.innerHTML = p; const tag = t.firstElementChild.tagName.toLowerCase(); const text = t.textContent.replace(re, (m) => { n++; if (n === current && !done) { done = true; return r; } return m; }); return text !== t.textContent ? `<${tag}>${text}</${tag}>` : p; });
+  }
+  render();
+}
+function show(v) {
+  document.querySelectorAll(".switcher button").forEach((b) => b.classList.toggle("active", b.dataset.v === v));
+  paras = [...original]; current = 0; caseOn = false; $("aa").classList.remove("on");
+  $("finder").hidden = v === "idle" || v === "ctx";
+  $("ctx").hidden = v !== "ctx";
+  $("snack").hidden = true;
+  const expanded = v === "replace" || v === "done";
+  $("rline").hidden = !expanded;
+  $("toggle").textContent = expanded ? "▾" : "▸";
+  $("q").value = { find: "宥辰", none: "雨傘", replace: "宥辰", done: "宥辰" }[v] ?? "";
+  $("r").value = expanded ? "小辰" : "";
+  $("find-btn").classList.toggle("on", !$("finder").hidden);
+  render();
+  if (v === "done") replace(true);
+  if (v === "ctx") {
+    // 模擬：選了「暖氣」後按右鍵
+    const p = [...document.querySelectorAll("#body p")][4];
+    p.innerHTML = p.innerHTML.replace("暖氣", '<span class="sel-text">暖氣</span>');
+    const sel = p.querySelector(".sel-text");
+    $("ctx").style.left = sel.offsetLeft + 20 + "px";
+    $("ctx").style.top = sel.offsetTop + 24 + "px";
+  }
+  if (!$("finder").hidden) $("q").focus();
+}
+document.querySelectorAll(".switcher button").forEach((b) => (b.onclick = () => show(b.dataset.v)));
+$("find-btn").onclick = () => ($("finder").hidden ? show("find") : show("idle"));
+$("close").onclick = () => show("idle");
+$("toggle").onclick = () => { const open = $("rline").hidden; $("rline").hidden = !open; $("toggle").textContent = open ? "▾" : "▸"; };
+$("aa").onclick = () => { caseOn = !caseOn; $("aa").classList.toggle("on", caseOn); current = 0; render(); };
+$("q").oninput = () => { current = 0; render(); };
+$("q").onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); step(e.shiftKey ? -1 : 1); } if (e.key === "Escape") show("idle"); };
+$("next").onclick = () => step(1);
+$("prev").onclick = () => step(-1);
+$("one").onclick = () => replace(false);
+$("all").onclick = () => replace(true);
+$("ctx-find").onclick = () => { show("find"); $("q").value = "暖氣"; current = 0; render(); };
+document.addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "f") { e.preventDefault(); show("find"); } });
+show("idle");
+</script>
+</body>
+</html>

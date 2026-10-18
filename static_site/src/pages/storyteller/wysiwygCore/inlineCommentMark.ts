@@ -1,6 +1,7 @@
 import { Mark, mergeAttributes } from "@tiptap/core";
 
 import { DEFAULT_COMMENT_COLOR, type CommentColorValue } from "./whitelist";
+import { normalizeCommentRefs } from "./commentRefs";
 
 /**
  * 註解的行內 mark（對應序列化格式裡 comment 行內 marker 的 comment／commentColor 屬性）。
@@ -21,6 +22,8 @@ import { DEFAULT_COMMENT_COLOR, type CommentColorValue } from "./whitelist";
 export interface SetCommentOptions {
   comment: string;
   commentColor?: CommentColorValue;
+  /** 註解參照（見 commentRefs.ts），有參照時註解文字可以是空的 */
+  commentRefs?: string;
 }
 
 declare module "@tiptap/core" {
@@ -46,11 +49,13 @@ export const InlineComment = Mark.create({
         renderHTML: (attributes: {
           comment?: string | null;
           commentColor?: CommentColorValue | null;
+          commentRefs?: string | null;
         }) => {
-          if (!attributes.comment) return {};
+          // 只有參照、沒有文字的註解也要有螢光筆樣式與 hover
+          if (!attributes.comment && !attributes.commentRefs) return {};
           const color = attributes.commentColor ?? DEFAULT_COMMENT_COLOR;
           return {
-            "data-comment": attributes.comment,
+            "data-comment": attributes.comment ?? "",
             class: `wysiwyg-has-comment wysiwyg-comment-color-${color}`,
           };
         },
@@ -62,6 +67,15 @@ export const InlineComment = Mark.create({
             "data-comment-color",
           ) as CommentColorValue | null) ?? null,
         renderHTML: () => ({}),
+      },
+      commentRefs: {
+        default: "",
+        parseHTML: (element: HTMLElement) =>
+          normalizeCommentRefs(element.getAttribute("data-comment-refs")),
+        renderHTML: (attributes: { commentRefs?: string | null }) =>
+          attributes.commentRefs
+            ? { "data-comment-refs": attributes.commentRefs }
+            : {},
       },
     };
   },
@@ -77,11 +91,12 @@ export const InlineComment = Mark.create({
   addCommands() {
     return {
       setComment:
-        ({ comment, commentColor }: SetCommentOptions) =>
+        ({ comment, commentColor, commentRefs }: SetCommentOptions) =>
         ({ commands }) =>
           commands.setMark(this.name, {
             comment,
             commentColor: commentColor ?? DEFAULT_COMMENT_COLOR,
+            commentRefs: normalizeCommentRefs(commentRefs),
           }),
       unsetComment:
         () =>

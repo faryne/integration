@@ -1,6 +1,7 @@
 import { StorytellerUnsavedChangesDialog } from "@/components/storyteller/StorytellerUnsavedChangesDialog.tsx";
 import { StorytellerEditorDataContext } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 import { StorytellerMemoryManagerPage } from "@/pages/storyteller/StorytellerMemoryManagerPage.tsx";
+import { WorkspaceOpenDocumentProvider, type WorkspaceOpenDocument } from "@/pages/storyteller/WorkspaceOpenDocumentContext.ts";
 import { WorkspaceSidebarToggle } from "@/pages/storyteller/WorkspaceSidebarChrome.tsx";
 import { canSaveWorkspaceBeforeLeave, hasUnsavedWorkspaceChanges, saveWorkspaceBeforeLeave } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
 import { WorkspaceSearch } from "@/pages/storyteller/WorkspaceSearch.tsx";
@@ -105,6 +106,10 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
     setWorkspace: setRefreshed,
     reload,
   });
+
+  // 編輯器裡切到別篇編輯（註解參照卡的「開啟編輯」）：跟點側邊列一樣先走未存檔確認
+  const openDocument: WorkspaceOpenDocument = ({ kind, publicId, isImage }) =>
+    setSelected(workspaceDocuments(workspace ?? emptyWorkspace, kind).find((item) => item.public_id === publicId) ?? { kind, public_id: publicId, title: "", content_type: isImage ? "image" : "text" });
 
   // 專案搜尋：網站同一個對話框與 ⌘K／Ctrl+K；點結果比照網站打開對應的文件、資產或記憶頁
   const workspaceSearch = useWorkspaceSearchLauncher();
@@ -222,6 +227,7 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
             </Box>
             <Box component="main" sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
               <StorytellerEditorDataContext.Provider value={writerEditorData}>
+              <WorkspaceOpenDocumentProvider value={openDocument}>
               {selected ? (
                 // 「編輯／編輯歷史」分頁在共用編輯頁裡（圖像作品跟網站一樣沒有編輯歷史）
                 <Box key={`${selected.kind}:${selected.public_id}`} sx={{ flex: 1, minHeight: 0, display: "flex" }}>
@@ -281,6 +287,7 @@ export function WorkspacePage({ project, profile, initialCreate, onBack }: { pro
                   onWorkspaceChange={reload}
                 />
               )}
+              </WorkspaceOpenDocumentProvider>
               </StorytellerEditorDataContext.Provider>
             </Box>
           </Box>

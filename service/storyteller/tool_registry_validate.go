@@ -68,6 +68,12 @@ func validateStorytellerContent(ctx context.Context, arguments map[string]interf
 			Message: "設定連結指向這個專案裡不存在的設定，存檔會失敗：" + err.Error()})
 		report.OK = false
 	}
+	// 註解參照指到不存在的故事／設定只是 info，不影響 ok
+	refWarnings, err := service.commentReferenceWarnings(project.ID, args.Content)
+	if err != nil {
+		return nil, err
+	}
+	report.Warnings = append(report.Warnings, refWarnings...)
 
 	previous, err := currentStorytellerContent(service, userID, args)
 	if err != nil {

@@ -168,6 +168,8 @@ func checkStoryInlineFormat(text string, lineNo int, add func(storyFormatWarning
 		add(storyFormatWarning{Line: lineNo, Code: "unbalanced_inline_marker", Severity: storyFormatSeverityError, Message: msg})
 	}
 
+	checkStoryCommentRefsFormat(text, lineNo, add)
+
 	// 樣式符號只看 marker 以外的可見文字，避免 note／comment 屬性裡的字被誤算
 	visible := storyInlineMarkerPattern.ReplaceAllString(text, "")
 	if storyGFMStrikethroughPattern.MatchString(visible) {
