@@ -1,6 +1,7 @@
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import { Chip, type ChipProps } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import type { CommentRef } from "@/pages/storyteller/wysiwygCore/commentRefs.ts";
 import type { CommentRefTarget } from "./useCommentRefTargets.ts";
 
@@ -14,6 +15,7 @@ export function CommentRefChip({
   ChipProps,
   "label" | "icon"
 >) {
+  const { t } = useTranslation();
   const missing = loaded && !target;
   return (
     <Chip
@@ -26,7 +28,7 @@ export function CommentRefChip({
           <DescriptionOutlinedIcon />
         )
       }
-      label={target?.title || (missing ? "已刪除" : "…")}
+      label={target?.title || (missing ? t("web.commentRef.deleted") : "…")}
       color={missing ? "error" : "default"}
       sx={{ maxWidth: 220 }}
       {...chipProps}

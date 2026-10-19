@@ -7,6 +7,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import { PostTextInput } from "@/components/storyteller/timeline/PostTextInput.tsx";
 import { postTextValid } from "@/helpers/postMarkers.ts";
@@ -38,13 +39,17 @@ export function SpeakAs({
   onChange: (value: string) => void;
   verb: string;
 }) {
+  const { t } = useTranslation();
   // 身份清單可能比元件晚載入：還沒選過就顯示第一個（後端也是預設用第一個）
   const current = value || options[0] || "";
   return (
     <Stack direction="row" spacing={0.75} alignItems="center">
-      <Typography variant="caption" color="text.secondary">
-        以
-      </Typography>
+      {/* 「以 某筆名 回覆」的語序各語言不同，前後綴分開翻，空字串就不顯示 */}
+      {t("web.social.speakAs.prefix", { verb }) && (
+        <Typography variant="caption" color="text.secondary">
+          {t("web.social.speakAs.prefix", { verb })}
+        </Typography>
+      )}
       {options.length > 1 ? (
         <Select
           size="small"
@@ -64,9 +69,11 @@ export function SpeakAs({
           {current}
         </Typography>
       )}
-      <Typography variant="caption" color="text.secondary">
-        {verb}
-      </Typography>
+      {t("web.social.speakAs.suffix", { verb }) && (
+        <Typography variant="caption" color="text.secondary">
+          {t("web.social.speakAs.suffix", { verb })}
+        </Typography>
+      )}
     </Stack>
   );
 }
@@ -75,7 +82,7 @@ export function SpeakAs({
 export function CommentBox({
   asOptions,
   target,
-  placeholder = "回覆…",
+  placeholder,
   maxLength,
   pending,
   onClearTo,
@@ -91,17 +98,18 @@ export function CommentBox({
   onCancel?: () => void;
   onSend: (body: string, as: string, done: () => void) => void;
 }) {
+  const { t } = useTranslation();
   const [body, setBody] = useState("");
   const [as, setAs] = useState(asOptions[0] ?? "");
-  const verb = target ? "回覆" : "留言";
+  const verb = target ? t("web.social.reply") : t("web.social.comment");
   return (
     <Stack spacing={0.75}>
       {target?.to && (
         <Typography variant="caption" color="text.secondary">
-          ↪ 回覆 <b>@{target.to.penName}</b>
+          ↪ {t("web.social.reply")} <b>@{target.to.penName}</b>
           <IconButton
             size="small"
-            aria-label="改成回覆整串"
+            aria-label={t("web.social.replyToThread")}
             onClick={onClearTo}
             sx={{ ml: 0.25, p: 0.25, fontSize: 14 }}
           >
@@ -113,11 +121,13 @@ export function CommentBox({
         value={body}
         onChange={setBody}
         maxLength={maxLength}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t("web.social.replyPlaceholder")}
         minRows={2}
         footer={
           <>
-            {onCancel && <Button onClick={onCancel}>取消</Button>}
+            {onCancel && (
+              <Button onClick={onCancel}>{t("web.common.cancel")}</Button>
+            )}
             <Button
               variant="contained"
               disabled={pending || !postTextValid(body, maxLength)}
@@ -145,31 +155,32 @@ export function CommentGate({
   locked?: boolean;
   onLogin: () => void;
 }) {
+  const { t } = useTranslation();
   const content = locked
-    ? { text: "🔒 已鎖定" }
+    ? { text: `🔒 ${t("web.discussion.locked")}` }
     : state === "login"
       ? {
-          text: "登入後才能留言。",
+          text: t("web.social.gate.login"),
           action: (
             <Button variant="contained" onClick={onLogin}>
-              登入
+              {t("web.layout.login")}
             </Button>
           ),
         }
       : state === "pen_name"
         ? {
-            text: "留言前要先設定筆名，其他人會看到這個名字。",
+            text: t("web.social.gate.penName"),
             action: (
               <Button
                 variant="contained"
                 component={RouterLink}
                 to={steamloomPath("my/profile")}
               >
-                設定筆名
+                {t("web.social.gate.setPenName")}
               </Button>
             ),
           }
-        : { text: `${ownerName} 已限制你在這裡留言。` };
+        : { text: t("web.social.gate.restricted", { name: ownerName }) };
   return (
     <Stack
       direction="row"

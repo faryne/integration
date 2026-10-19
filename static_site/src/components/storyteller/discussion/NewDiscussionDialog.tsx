@@ -8,6 +8,7 @@ import {
   ToggleButtonGroup,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useDiscussionAction } from "@/apis/storyteller.ts";
 import { SpeakAs } from "@/components/storyteller/comments/CommentBox.tsx";
 import { StorytellerDialog } from "@/components/storyteller/StorytellerDialog.tsx";
@@ -42,6 +43,7 @@ export function NewDiscussionDialog({
   onCreated: (threadId: string) => void;
   onNotify: Notify;
 }) {
+  const { t } = useTranslation();
   const action = useDiscussionAction(context.share);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -74,7 +76,7 @@ export function NewDiscussionDialog({
         },
       })
       .then((created) => {
-        onNotify("已發起討論");
+        onNotify(t("web.discussion.messages.created"));
         setTitle("");
         setBody("");
         setPreview(false);
@@ -83,7 +85,10 @@ export function NewDiscussionDialog({
         );
       })
       .catch((error) =>
-        onNotify(apiErrorMessage(error, "發起失敗，請重試。"), "error"),
+        onNotify(
+          apiErrorMessage(error, t("web.discussion.errors.create")),
+          "error",
+        ),
       );
   }
 
@@ -91,7 +96,11 @@ export function NewDiscussionDialog({
     <StorytellerDialog
       open={open}
       maxWidth="sm"
-      title={anchor.kind === "fixed" ? `發起討論・${anchor.label}` : "發起討論"}
+      title={
+        anchor.kind === "fixed"
+          ? t("web.discussion.createFor", { label: anchor.label })
+          : t("web.discussion.create")
+      }
       onClose={onClose}
       actions={
         <Stack
@@ -105,23 +114,23 @@ export function NewDiscussionDialog({
               options={asOptions}
               value={as}
               onChange={setAs}
-              verb="發起"
+              verb={t("web.discussion.verbStart")}
             />
           </Box>
-          <Button onClick={onClose}>取消</Button>
+          <Button onClick={onClose}>{t("web.common.cancel")}</Button>
           <Button
             variant="contained"
             disabled={action.isPending || !title.trim() || !postTextValid(body)}
             onClick={submit}
           >
-            發起
+            {t("web.discussion.submit")}
           </Button>
         </Stack>
       }
     >
       <Stack spacing={2}>
         <TextField
-          label="標題"
+          label={t("web.discussion.fields.title")}
           size="small"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
@@ -134,14 +143,16 @@ export function NewDiscussionDialog({
               size="small"
               value={about}
               onChange={(_, value) => value && setAbout(value)}
-              aria-label="關於"
+              aria-label={t("web.discussion.fields.about")}
             >
-              <ToggleButton value="none">不指定</ToggleButton>
+              <ToggleButton value="none">
+                {t("web.discussion.about.none")}
+              </ToggleButton>
               <ToggleButton value="story" disabled={!context.stories.length}>
-                故事
+                {t("web.discussion.about.story")}
               </ToggleButton>
               <ToggleButton value="lore" disabled={!context.lores.length}>
-                設定
+                {t("web.discussion.about.lore")}
               </ToggleButton>
             </ToggleButtonGroup>
             {about === "story" && (
@@ -186,7 +197,7 @@ export function NewDiscussionDialog({
               color="inherit"
               onClick={() => setPreview((value) => !value)}
             >
-              👁 預覽
+              👁 {t("web.social.preview")}
             </Button>
           }
           footer={null}

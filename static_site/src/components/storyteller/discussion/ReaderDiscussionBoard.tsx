@@ -9,6 +9,7 @@ import {
   Stack,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { useDiscussionThreads } from "@/apis/storyteller.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
@@ -24,12 +25,8 @@ import { DiscussionThreadList } from "./DiscussionThreadList.tsx";
 import { NewDiscussionDialog } from "./NewDiscussionDialog.tsx";
 import { useDiscussionFeedback } from "./useDiscussionFeedback.ts";
 
-const FILTERS: [DiscussionFilter, string][] = [
-  ["all", "全部"],
-  ["general", "一般"],
-  ["story", "故事"],
-  ["lore", "設定"],
-];
+// 篩選值即翻譯 key：web.discussion.filters.<value>
+const FILTERS: DiscussionFilter[] = ["all", "general", "story", "lore"];
 
 // 作品首頁「討論」分頁：所有討論串，可篩選、排序；網址帶 ?thread= 時自動展開那一串。
 export function ReaderDiscussionBoard({
@@ -37,6 +34,7 @@ export function ReaderDiscussionBoard({
 }: {
   context: ReaderDiscussionContext;
 }) {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [filter, setFilter] = useState<DiscussionFilter>("all");
   const [sort, setSort] = useState<DiscussionSort>("latest");
@@ -61,10 +59,10 @@ export function ReaderDiscussionBoard({
         spacing={1}
       >
         <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-          {FILTERS.map(([value, label]) => (
+          {FILTERS.map((value) => (
             <Chip
               key={value}
-              label={label}
+              label={t(`web.discussion.filters.${value}`)}
               color={filter === value ? "primary" : "default"}
               variant={filter === value ? "filled" : "outlined"}
               onClick={() => setFilter(value)}
@@ -77,8 +75,12 @@ export function ReaderDiscussionBoard({
             value={sort}
             onChange={(event) => setSort(event.target.value as DiscussionSort)}
           >
-            <MenuItem value="latest">最新回覆</MenuItem>
-            <MenuItem value="newest">最新發起</MenuItem>
+            <MenuItem value="latest">
+              {t("web.discussion.sort.latest")}
+            </MenuItem>
+            <MenuItem value="newest">
+              {t("web.discussion.sort.newest")}
+            </MenuItem>
           </Select>
           {viewer && viewer.state !== "blocked" && (
             <Button
@@ -89,17 +91,17 @@ export function ReaderDiscussionBoard({
                   : setCreating(true)
               }
             >
-              發起討論
+              {t("web.discussion.create")}
             </Button>
           )}
         </Stack>
       </Stack>
       {query.isLoading ? (
-        <StorytellerLoading label="正在載入討論..." />
+        <StorytellerLoading label={t("web.discussion.loading")} />
       ) : threads.length === 0 ? (
         <CustomEmptyState
           icon={<ForumOutlinedIcon fontSize="large" />}
-          title="還沒有討論"
+          title={t("web.discussion.empty")}
         />
       ) : (
         <Paper variant="outlined" sx={{ borderRadius: 1, overflow: "hidden" }}>
@@ -124,7 +126,7 @@ export function ReaderDiscussionBoard({
                 disabled={query.isFetchingNextPage}
                 onClick={() => void query.fetchNextPage()}
               >
-                載入更多
+                {t("web.discussion.loadMore")}
               </Button>
             </Box>
           )}
@@ -144,7 +146,7 @@ export function ReaderDiscussionBoard({
       <LoginPromptDialog
         open={feedback.loginOpen}
         onClose={feedback.closeLogin}
-        description="參與討論需要登入。是否要現在登入？"
+        description={t("web.discussion.loginPrompt")}
       />
       <CustomSnackbar {...feedback.snackProps} />
     </Stack>

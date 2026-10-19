@@ -1,5 +1,6 @@
 import { Button, Stack, TextField, Typography } from "@mui/material";
 import { useRef, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   wrapTextareaSelection,
   type PostMarkerKind,
@@ -26,6 +27,7 @@ export function PostTextInput({
   // 右下角的送出按鈕等
   footer: ReactNode;
 }) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const length = [...value].length;
 
@@ -65,16 +67,16 @@ export function PostTextInput({
             size="small"
             variant="outlined"
             color="inherit"
-            title="選取文字後按，包成劇透"
+            title={t("web.timeline.marker.wrapSpoiler")}
             onClick={() => wrap("spoiler")}
           >
-            🙈 劇透
+            🙈 {t("web.timeline.marker.spoiler")}
           </Button>
           <Button
             size="small"
             variant="outlined"
             color="inherit"
-            title="選取文字後按，包成限制級"
+            title={t("web.timeline.marker.wrapR18")}
             onClick={() => wrap("r18")}
           >
             🔞 R18

@@ -2,6 +2,7 @@ import { Alert, Box, Button, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import { useAuthorPost, useTimelineAction } from "@/apis/storyteller.ts";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { CommentBox } from "@/components/storyteller/comments/CommentBox.tsx";
 import { apiErrorMessage } from "@/helpers/apiError.ts";
@@ -50,9 +51,12 @@ function Quote({
 }
 
 export function PostedNotificationBody({ n }: { n: StorytellerNotification }) {
+  const { t } = useTranslation();
   const author = n.payload.post_author ?? n.payload.actor?.pen_name;
   if (n.payload.deleted || !author) {
-    return <Alert severity="info">這些動態已經刪除。</Alert>;
+    return (
+      <Alert severity="info">{t("web.notification.post.postsDeleted")}</Alert>
+    );
   }
   return (
     <Stack spacing={1.5}>
@@ -75,7 +79,7 @@ export function PostedNotificationBody({ n }: { n: StorytellerNotification }) {
           <Typography variant="body2">{post.excerpt}</Typography>
           {post.work && (
             <Typography variant="caption" color="text.secondary">
-              附上 {post.work}
+              {t("web.notification.post.attached", { work: post.work })}
             </Typography>
           )}
         </Box>
@@ -86,7 +90,7 @@ export function PostedNotificationBody({ n }: { n: StorytellerNotification }) {
           component={RouterLink}
           to={steamloomPostsPath(author)}
         >
-          前往 {author} 的動態
+          {t("web.notification.post.goToPosts", { name: author })}
         </Button>
       </Box>
     </Stack>
@@ -94,19 +98,28 @@ export function PostedNotificationBody({ n }: { n: StorytellerNotification }) {
 }
 
 export function CommentNotificationBody({ n }: { n: StorytellerNotification }) {
+  const { t } = useTranslation();
   const p = n.payload;
   const replied = n.kind === "post.replied";
   return (
     <Stack spacing={1.5}>
       <Quote
-        label={`${p.post_author ?? "作者"} 的貼文`}
+        label={t("web.notification.post.postBy", {
+          name: p.post_author ?? t("web.social.author"),
+        })}
         text={p.post_excerpt ?? ""}
       />
       {replied && p.parent_excerpt && (
-        <Quote label="你的留言" text={p.parent_excerpt} indent />
+        <Quote
+          label={t("web.notification.post.yourComment")}
+          text={p.parent_excerpt}
+          indent
+        />
       )}
       {p.deleted ? (
-        <Alert severity="info">這則留言已經刪除。</Alert>
+        <Alert severity="info">
+          {t("web.notification.post.commentDeleted")}
+        </Alert>
       ) : (
         <>
           <Stack
@@ -138,6 +151,7 @@ export function CommentNotificationBody({ n }: { n: StorytellerNotification }) {
 
 // 從通知直接回覆：用貼文單頁的 comment_state 判斷能不能留言、會用哪個身份（後端決定，前端不傳身份）
 function QuickReply({ n }: { n: StorytellerNotification }) {
+  const { t } = useTranslation();
   const p = n.payload;
   const { data } = useAuthorPost(p.post_public_id);
   const action = useTimelineAction();
@@ -167,7 +181,9 @@ function QuickReply({ n }: { n: StorytellerNotification }) {
                 }
               : undefined,
           }}
-          placeholder={`直接回覆 ${notificationActorName(n)}…`}
+          placeholder={t("web.notification.post.quickReply", {
+            name: notificationActorName(n),
+          })}
           pending={action.isPending}
           onSend={(body, _as, done) =>
             action.mutate(
@@ -183,11 +199,17 @@ function QuickReply({ n }: { n: StorytellerNotification }) {
               {
                 onSuccess: () => {
                   done();
-                  setSnack({ message: "已回覆", severity: "success" });
+                  setSnack({
+                    message: t("web.social.messages.replied"),
+                    severity: "success",
+                  });
                 },
                 onError: (error) =>
                   setSnack({
-                    message: apiErrorMessage(error, "回覆失敗，請重試。"),
+                    message: apiErrorMessage(
+                      error,
+                      t("web.notification.post.replyFailed"),
+                    ),
                     severity: "error",
                   }),
               },
@@ -198,7 +220,7 @@ function QuickReply({ n }: { n: StorytellerNotification }) {
       {postLink && (
         <Box>
           <Button variant="outlined" component={RouterLink} to={postLink}>
-            前往貼文
+            {t("web.notification.post.goToPost")}
           </Button>
         </Box>
       )}

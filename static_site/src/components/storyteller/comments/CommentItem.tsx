@@ -99,9 +99,9 @@ export function CommentItem({
               )}
             </Box>
           ) : isReply ? (
-            "此回覆已刪除"
+            t("web.social.replyDeleted")
           ) : (
-            "此留言已刪除"
+            t("web.social.commentDeleted")
           )}
         </Typography>
       ) : (
@@ -130,7 +130,7 @@ export function CommentItem({
                 fontWeight={800}
                 color="text.secondary"
               >
-                已不存在的使用者
+                {t("web.social.deletedUser")}
               </Typography>
             )}
             {comment.is_post_author && (
@@ -138,7 +138,7 @@ export function CommentItem({
                 size="small"
                 color="primary"
                 variant="outlined"
-                label="作者"
+                label={t("web.social.author")}
                 sx={{ height: 18 }}
               />
             )}
@@ -147,7 +147,7 @@ export function CommentItem({
                 size="small"
                 color="error"
                 variant="outlined"
-                label="已封鎖"
+                label={t("web.social.blocked")}
                 sx={{ height: 18 }}
               />
             )}
@@ -158,15 +158,15 @@ export function CommentItem({
                 title={postFullTime(comment.created_at)}
               >
                 · {postTimeLabel(comment.created_at)}
-                {comment.edited && " · 已編輯"}
+                {comment.edited && ` · ${t("web.social.edited")}`}
               </Typography>
             )}
           </Stack>
           {comment.reply_to && (
             <Typography variant="caption" color="text.secondary">
-              ↪ 回覆{" "}
+              ↪ {t("web.social.reply")}{" "}
               {comment.reply_to.deleted ? (
-                "已刪除的留言"
+                t("web.social.deletedComment")
               ) : (
                 <b>@{comment.reply_to.pen_name}</b>
               )}
@@ -182,7 +182,9 @@ export function CommentItem({
                 minRows={2}
                 footer={
                   <>
-                    <Button onClick={() => setDraft(null)}>取消</Button>
+                    <Button onClick={() => setDraft(null)}>
+                      {t("web.common.cancel")}
+                    </Button>
                     <Button
                       variant="contained"
                       disabled={!postTextValid(draft, maxLength)}
@@ -190,7 +192,7 @@ export function CommentItem({
                         onEdit?.(comment, draft, () => setDraft(null))
                       }
                     >
-                      儲存
+                      {t("web.common.save")}
                     </Button>
                   </>
                 }
@@ -206,7 +208,7 @@ export function CommentItem({
           >
             {canWrite && (
               <CommentAction
-                label="回覆"
+                label={t("web.social.reply")}
                 onClick={() =>
                   onReply({
                     thread: threadId,
@@ -220,20 +222,20 @@ export function CommentItem({
             )}
             {comment.can_edit && onEdit && (
               <CommentAction
-                label="編輯"
+                label={t("web.common.edit")}
                 onClick={() => setDraft(comment.body ?? "")}
               />
             )}
             {comment.can_delete && (
               <CommentAction
-                label="刪除"
+                label={t("web.common.delete")}
                 danger
                 onClick={() => onConfirm({ type: "delete", comment })}
               />
             )}
             {comment.can_block && (
               <CommentAction
-                label="封鎖"
+                label={t("web.social.block")}
                 danger
                 onClick={() => onConfirm({ type: "block", comment })}
               />

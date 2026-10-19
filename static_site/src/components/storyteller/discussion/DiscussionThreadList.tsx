@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { Fragment, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import { postTimeLabel } from "@/components/storyteller/timeline/postTime.ts";
 import type { DiscussionThread } from "@/types/storytellerDiscussion.ts";
@@ -112,6 +113,7 @@ function ThreadRow({
   open: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Box
       role="button"
@@ -153,13 +155,13 @@ function ThreadRow({
             color={masked ? "text.secondary" : undefined}
             sx={{ overflowWrap: "anywhere" }}
           >
-            {masked ? "尚未讀完的內容" : thread.title}
+            {masked ? t("web.discussion.maskedTitle") : thread.title}
           </Typography>
           {thread.locked && (
             <Chip
               size="small"
               variant="outlined"
-              label="🔒 已鎖定"
+              label={`🔒 ${t("web.discussion.locked")}`}
               sx={{ height: 20 }}
             />
           )}
@@ -187,14 +189,14 @@ function ThreadRow({
             />
           )}
           <Typography variant="caption" color="text.secondary">
-            {thread.author?.pen_name ?? "已不存在的使用者"}
+            {thread.author?.pen_name ?? t("web.social.deletedUser")}
           </Typography>
           {thread.is_project_author && (
             <Chip
               size="small"
               color="primary"
               variant="outlined"
-              label="作者"
+              label={t("web.social.author")}
               sx={{ height: 18 }}
             />
           )}
@@ -203,12 +205,15 @@ function ThreadRow({
               size="small"
               color="error"
               variant="outlined"
-              label="已封鎖"
+              label={t("web.social.blocked")}
               sx={{ height: 18 }}
             />
           )}
           <Typography variant="caption" color="text.disabled">
-            · 最後回覆 {postTimeLabel(thread.last_activity_at)}
+            ·{" "}
+            {t("web.discussion.lastReply", {
+              time: postTimeLabel(thread.last_activity_at),
+            })}
           </Typography>
         </Stack>
       </Box>
@@ -216,7 +221,7 @@ function ThreadRow({
         <Typography fontWeight={800} color="text.primary">
           {thread.reply_count}
         </Typography>
-        <Typography variant="caption">回覆</Typography>
+        <Typography variant="caption">{t("web.discussion.replies")}</Typography>
       </Box>
     </Box>
   );
@@ -232,6 +237,7 @@ function SpoilerGate({
   href?: string;
   onPass: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Box
       sx={(theme) => ({
@@ -242,18 +248,20 @@ function SpoilerGate({
         bgcolor: alpha(theme.palette.warning.main, 0.08),
       })}
     >
-      <Typography fontWeight={800}>這串在討論「{label}」</Typography>
+      <Typography fontWeight={800}>
+        {t("web.discussion.spoiler.title", { label })}
+      </Typography>
       <Typography variant="body2" color="text.secondary">
-        你還沒讀完這部分。
+        {t("web.discussion.spoiler.description")}
       </Typography>
       <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
         {href && (
           <Button variant="contained" component={RouterLink} to={href}>
-            先去讀
+            {t("web.discussion.spoiler.readFirst")}
           </Button>
         )}
         <Button variant="outlined" onClick={onPass}>
-          直接看
+          {t("web.discussion.spoiler.viewAnyway")}
         </Button>
       </Stack>
     </Box>

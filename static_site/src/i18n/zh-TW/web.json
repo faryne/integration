@@ -1016,5 +1016,339 @@
       "volumeHelp": "未選擇時視為不分冊。",
       "authorsHelp": "可多選；預設為本人。"
     }
+  },
+  "discussion": {
+    "title": "討論",
+    "titleFor": "{{label}}的討論",
+    "loading": "正在載入討論...",
+    "empty": "還沒有討論",
+    "loadMore": "載入更多",
+    "loginPrompt": "參與討論需要登入。是否要現在登入？",
+    "create": "發起討論",
+    "createFor": "發起討論・{{label}}",
+    "submit": "發起",
+    "verbStart": "發起",
+    "unavailable": "已下架",
+    "maskedTitle": "尚未讀完的內容",
+    "locked": "已鎖定",
+    "lastReply": "最後回覆 {{time}}",
+    "replies": "回覆",
+    "lock": "鎖定",
+    "unlock": "解除鎖定",
+    "blockStarter": "封鎖發串者",
+    "blockDescription": "對方將不能在這部作品的討論版與你這部作品署名身份的動態留言或發起討論，但還是可以閱讀。對方以前的內容會保留，你可以逐則刪除。",
+    "spoiler": {
+      "title": "這串在討論「{{label}}」",
+      "description": "你還沒讀完這部分。",
+      "readFirst": "先去讀",
+      "viewAnyway": "直接看"
+    },
+    "confirm": {
+      "lockTitle": "鎖定「{{title}}」？",
+      "lockBody": "鎖定後所有人都無法再回覆這個討論串，已經有的內容仍然看得到。之後可以解除鎖定。",
+      "deleteTitle": "要刪除這個討論串嗎？",
+      "deleteBodyWithReplies": "刪除後無法復原，底下 {{count}} 則回覆也會一起看不到。",
+      "deleteBody": "刪除後無法復原。"
+    },
+    "messages": {
+      "locked": "已鎖定，所有人都無法再回覆",
+      "unlocked": "已解除鎖定",
+      "deleted": "已刪除討論串",
+      "linkCopied": "已複製討論串連結",
+      "created": "已發起討論"
+    },
+    "errors": {
+      "create": "發起失敗，請重試。"
+    },
+    "fields": {
+      "title": "標題",
+      "about": "關於"
+    },
+    "about": {
+      "none": "不指定",
+      "story": "故事",
+      "lore": "設定"
+    },
+    "filters": {
+      "all": "全部",
+      "general": "一般",
+      "story": "故事",
+      "lore": "設定"
+    },
+    "sort": {
+      "latest": "最新回覆",
+      "newest": "最新發起"
+    }
+  },
+  "social": {
+    "deletedUser": "已不存在的使用者",
+    "author": "作者",
+    "blocked": "已封鎖",
+    "block": "封鎖",
+    "blockTitle": "封鎖 {{name}}？",
+    "blockedName": "已封鎖 {{name}}",
+    "thisUser": "這位使用者",
+    "theOtherUser": "對方",
+    "actionFailed": "操作失敗，請重試。",
+    "saved": "已儲存",
+    "edited": "已編輯",
+    "moreActions": "更多動作",
+    "copyLink": "複製連結",
+    "copyFailed": "複製失敗，請手動複製網址列。",
+    "preview": "預覽",
+    "reply": "回覆",
+    "comment": "留言",
+    "replyPlaceholder": "回覆…",
+    "commentPlaceholder": "留言…",
+    "replyToThread": "改成回覆整串",
+    "replyDeleted": "此回覆已刪除",
+    "commentDeleted": "此留言已刪除",
+    "deletedComment": "已刪除的留言",
+    "showEarlierReplies": "查看前面 {{count}} 則回覆",
+    "commentCount": "留言 {{count}}",
+    "deleteComment": "刪除留言",
+    "confirmDeleteComment": "要刪除這則留言嗎？",
+    "deleteReaderComment": "這是讀者的留言。你可以刪除自己版面上的任何留言；對方不會收到通知。",
+    "deleteCommentBody": "刪除後無法復原，這裡會留下「已刪除」的佔位。",
+    "speakAs": {
+      "prefix": "以",
+      "suffix": "{{verb}}"
+    },
+    "gate": {
+      "login": "登入後才能留言。",
+      "penName": "留言前要先設定筆名，其他人會看到這個名字。",
+      "setPenName": "設定筆名",
+      "restricted": "{{name}} 已限制你在這裡留言。"
+    },
+    "messages": {
+      "replied": "已回覆",
+      "commented": "已留言",
+      "commentDeleted": "已刪除留言"
+    },
+    "errors": {
+      "comment": "留言失敗，請重試。",
+      "save": "儲存失敗，請重試。"
+    }
+  },
+  "commentRef": {
+    "title": "參照",
+    "add": "加參照",
+    "searchPlaceholder": "搜尋故事或設定",
+    "story": "故事",
+    "lore": "設定",
+    "deleted": "已刪除",
+    "savedVersion": "{{kind}}・已存檔版本・",
+    "imageNoText": "圖像作品沒有文字內容",
+    "openEditor": "開啟編輯",
+    "editHelp": "右鍵，或選取文字後用格式列可編輯／移除註解"
+  },
+  "timeline": {
+    "loading": "正在載入動態...",
+    "empty": "還沒有動態",
+    "pinned": "置頂",
+    "pin": "置頂",
+    "unpin": "取消置頂",
+    "like": "喜歡",
+    "unlike": "取消喜歡",
+    "deletePost": "刪除動態",
+    "confirmDeleteTitle": "要刪除這則動態嗎？",
+    "confirmDeleteWithComments": "刪除後無法復原，底下 {{count}} 則留言也會一起看不到。動態不能編輯，想改內容只能刪掉重發。",
+    "composerPlaceholder": "想說點什麼？公告、近況、創作碎念都可以",
+    "attachWork": "附上作品",
+    "attachTitle": "選一部作品或其中一話",
+    "publish": "發佈",
+    "emptyPreview": "（沒有內容）",
+    "noPublicWorks": "這個身份目前沒有公開的作品。",
+    "restricted": "限制級",
+    "wholeWork": "整部作品（作品首頁）",
+    "workHome": "作品首頁",
+    "attachmentUnavailable": "這部作品目前無法瀏覽",
+    "removeAttachment": "移除作品卡",
+    "blockDescription": "對方將不能在 {{name}} 的動態與作品討論版留言或回覆，但還是可以看你的動態和作品。對方以前的留言會保留，你可以逐則刪除。這個封鎖只對 {{name}} 這個身份有效，不影響你的其他筆名。",
+    "replyToReaders": "回應讀者…",
+    "commentTo": "留言給 {{name}}…",
+    "messages": {
+      "pinned": "已置頂，原本的置頂已取消",
+      "unpinned": "已取消置頂",
+      "linkCopied": "已複製貼文連結",
+      "deleted": "已刪除動態",
+      "publishedAs": "已以 {{name}} 發佈"
+    },
+    "errors": {
+      "publish": "發佈失敗，請重試。"
+    },
+    "marker": {
+      "spoiler": "劇透",
+      "r18": "R18",
+      "reveal": "顯示{{label}}內容",
+      "clickToReveal": "{{label}}・點擊顯示",
+      "wrapSpoiler": "選取文字後按，包成劇透",
+      "wrapR18": "選取文字後按，包成限制級"
+    },
+    "r18": {
+      "eyebrow": "年齡確認",
+      "title": "這段內容含限制級描寫",
+      "description": "確認你已年滿 18 歲才會顯示。確認後，全站的限制級封面與 R18 標籤都會解鎖。",
+      "notNow": "先不要",
+      "confirm": "我已滿 18 歲"
+    },
+    "time": {
+      "justNow": "剛剛",
+      "minutesAgo": "{{count}} 分鐘前",
+      "hoursAgo": "{{count}} 小時前",
+      "yesterday": "昨天"
+    }
+  },
+  "notification": {
+    "title": "通知",
+    "titleWithUnread": "通知（{{count}} 則未讀）",
+    "description": "追蹤的作者、收藏的作品更新，以及帳號安全提醒。",
+    "markAllRead": "全部標為已讀",
+    "viewAll": "查看全部通知",
+    "backToList": "返回通知",
+    "delete": "刪除通知",
+    "lock": "鎖定通知",
+    "unlock": "解除鎖定",
+    "lockHint": "鎖定（不會被自動清除）",
+    "lockedCount": "已鎖定 {{count}} / {{limit}}",
+    "confirmDeleteTitle": "確定要刪除這則通知？",
+    "confirmDeleteLocked": "這則通知已鎖定，刪除後就不會再保留，此操作無法復原。",
+    "retention": "通知會在<strong>建立 180 天後自動清除</strong>。想留下來的通知可以按鎖頭鎖定，鎖定的通知會永久保留。",
+    "listSeparator": "、",
+    "quote": "「{{text}}」",
+    "reason": "原因：{{reason}}",
+    "filters": {
+      "unread": "未讀",
+      "locked": "已鎖定"
+    },
+    "empty": {
+      "all": {
+        "title": "目前沒有通知",
+        "description": "追蹤作者或收藏作品後，更新會出現在這裡。"
+      },
+      "unread": {
+        "title": "都看完了",
+        "description": "沒有未讀的通知。"
+      },
+      "locked": {
+        "title": "還沒有鎖定的通知",
+        "description": "按通知右側的鎖頭就能鎖定，鎖定的通知不會被自動清除。"
+      }
+    },
+    "messages": {
+      "locked": "已鎖定，這則通知不會被自動清除",
+      "unlocked": "已解除鎖定",
+      "allRead": "已將全部通知標為已讀",
+      "deleted": "通知已刪除"
+    },
+    "errors": {
+      "lock": "鎖定失敗，請稍後再試。",
+      "unlock": "解除鎖定失敗，請稍後再試。",
+      "markRead": "標為已讀失敗，請稍後再試。",
+      "load": "通知載入失敗，請稍後再試。",
+      "delete": "刪除通知失敗，請稍後再試。"
+    },
+    "tags": {
+      "security": "帳號安全",
+      "expiresIn": "{{count}} 天後清除"
+    },
+    "groups": {
+      "today": "今天",
+      "week": "這一週",
+      "month": "這個月",
+      "earlier": "更早"
+    },
+    "time": {
+      "yesterday": "昨天 {{time}}",
+      "daysAgo": "{{count}} 天前"
+    },
+    "source": {
+      "web": "網頁"
+    },
+    "deleted": {
+      "post": "（動態已刪除）",
+      "comment": "（留言已刪除）"
+    },
+    "headline": {
+      "storiesUpdated": " 的《{{project}}》更新了",
+      "storiesUpdatedMany": " 的《{{project}}》更新了 {{count}} 話",
+      "startingFrom": "從 {{label}} 開始",
+      "newProject": " 發表了新作品《{{project}}》",
+      "followedPenName": " 追蹤了你的筆名 {{name}}",
+      "followedYou": " 追蹤了你",
+      "favorited": " 收藏了你的作品《{{project}}》",
+      "byline": "署名：{{names}}",
+      "posted": " 發了新動態",
+      "postedMany": " 發了 {{count}} 則新動態",
+      "repliedToYou": " 回覆了你的留言",
+      "commentedPenName": " 留言了你的筆名 {{name}} 的貼文",
+      "commented": " 留言了你的貼文"
+    },
+    "detail": {
+      "notFound": "找不到這則通知",
+      "notFoundDescription": "可能已經被刪除，或超過保留期限被清除了。",
+      "selectOne": "選一則通知查看內容",
+      "selectOneDescription": "點左邊的通知就會在這裡打開。",
+      "lockedNote": "已鎖定，這則通知不會被自動清除。",
+      "expiresNote": "這則通知會在 {{count}} 天後自動清除，想留下來可以按右上角的鎖頭。",
+      "open": "前往查看",
+      "startFrom": "從〈{{title}}〉開始讀",
+      "goToWork": "前往作品首頁",
+      "updatedContent": "這次更新的內容",
+      "read": "閱讀",
+      "words": "{{count}} 字",
+      "moreStories": "以及其他 {{count}} 話，到作品首頁看完整目錄。",
+      "projectStats": "目前 {{count}} 話 · 約 {{words}} 字",
+      "security": {
+        "app": "應用程式",
+        "grantedAt": "授權時間",
+        "scope": "授權範圍",
+        "scopeValue": "讀取與修改你帳號下所有專案，包含刪除",
+        "name": "名稱",
+        "tokenPrefix": "Token 前綴",
+        "createdAt": "建立時間",
+        "expiresAt": "到期日",
+        "neverExpires": "不會過期",
+        "source": "入口",
+        "device": "裝置",
+        "notYou": "不是你本人操作？",
+        "revokeOAuth": "請立刻撤銷這個授權，{{name}} 會馬上失去存取權限。",
+        "deleteToken": "請立刻刪除這組 Token，並檢查最近的活動紀錄。",
+        "goRevoke": "前往撤銷授權",
+        "goDeleteToken": "前往刪除 Token",
+        "viewActivity": "查看活動紀錄"
+      }
+    },
+    "post": {
+      "postsDeleted": "這些動態已經刪除。",
+      "attached": "附上 {{work}}",
+      "goToPosts": "前往 {{name}} 的動態",
+      "postBy": "{{name}} 的貼文",
+      "yourComment": "你的留言",
+      "commentDeleted": "這則留言已經刪除。",
+      "quickReply": "直接回覆 {{name}}…",
+      "replyFailed": "回覆失敗，請重試。",
+      "goToPost": "前往貼文"
+    },
+    "follow": {
+      "goToCreator": "前往 {{name}} 的創作者頁",
+      "mutual": "已互相追蹤",
+      "followBack": "回追",
+      "followBackAs": "以 {{name}} 回追",
+      "followBackAsSelf": "以 {{name}}（本人）回追",
+      "followedBack": "已回追 {{name}}",
+      "followedBackAs": "已以 {{as}} 回追 {{name}}",
+      "failed": "回追失敗，請稍後再試。",
+      "chooseIdentity": "選擇回追身份",
+      "note": {
+        "ownIdentityGone": "你被追蹤的身份已經不存在，無法回追。",
+        "actorGone": "對方已刪除這個身份，無法回追。",
+        "followedPenName": "對方追蹤的是你的筆名「{{name}}」，回追也會用「{{name}}」的身份，對方看不出這個筆名屬於誰。",
+        "followedSelf": "對方追蹤的是你的本人身份，回追會用本人身份。",
+        "multipleIdentities": "這部作品有 {{count}} 個署名身份，選一個回追；只會列出這部作品署名過的身份。",
+        "workSelf": "這部作品以本人身份署名，回追會用本人身份。",
+        "workPenName": "這部作品署名「{{name}}」，回追會用「{{name}}」的身份。"
+      }
+    }
   }
 }

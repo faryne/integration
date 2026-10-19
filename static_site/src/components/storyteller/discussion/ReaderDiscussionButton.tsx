@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useDiscussionThreads } from "@/apis/storyteller.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
@@ -31,6 +32,7 @@ export function ReaderDiscussionButton({
   context: ReaderDiscussionContext;
   anchor: { type: "story" | "lore"; id: string; label: string };
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const [open, setOpen] = useState(false);
@@ -47,11 +49,11 @@ export function ReaderDiscussionButton({
 
   return (
     <>
-      <Tooltip title="討論">
+      <Tooltip title={t("web.discussion.title")}>
         <Button
           size="small"
           color="inherit"
-          aria-label="討論"
+          aria-label={t("web.discussion.title")}
           onClick={() => setOpen(true)}
           startIcon={
             <Badge badgeContent={total} color="primary" max={99}>
@@ -65,7 +67,7 @@ export function ReaderDiscussionButton({
           }}
         >
           <Box component="span" sx={{ display: { xs: "none", md: "inline" } }}>
-            討論
+            {t("web.discussion.title")}
           </Box>
         </Button>
       </Tooltip>
@@ -84,7 +86,7 @@ export function ReaderDiscussionButton({
           sx={{ px: 2, py: 1.25, borderBottom: 1, borderColor: "divider" }}
         >
           <Typography fontWeight={800} sx={{ flex: 1, minWidth: 0 }} noWrap>
-            {anchor.label}的討論
+            {t("web.discussion.titleFor", { label: anchor.label })}
           </Typography>
           {viewer && viewer.state !== "blocked" && (
             <Button
@@ -96,22 +98,25 @@ export function ReaderDiscussionButton({
                   : setCreating(true)
               }
             >
-              發起討論
+              {t("web.discussion.create")}
             </Button>
           )}
-          <IconButton aria-label="關閉" onClick={() => setOpen(false)}>
+          <IconButton
+            aria-label={t("web.common.close")}
+            onClick={() => setOpen(false)}
+          >
             <CloseIcon />
           </IconButton>
         </Stack>
         <Box sx={{ flex: 1, overflow: "auto" }}>
           {query.isLoading ? (
-            <StorytellerLoading label="正在載入討論..." />
+            <StorytellerLoading label={t("web.discussion.loading")} />
           ) : threads.length === 0 ? (
             <Typography
               color="text.secondary"
               sx={{ py: 6, textAlign: "center" }}
             >
-              還沒有討論
+              {t("web.discussion.empty")}
             </Typography>
           ) : (
             <DiscussionThreadList
@@ -143,7 +148,7 @@ export function ReaderDiscussionButton({
       <LoginPromptDialog
         open={feedback.loginOpen}
         onClose={feedback.closeLogin}
-        description="參與討論需要登入。是否要現在登入？"
+        description={t("web.discussion.loginPrompt")}
       />
       <CustomSnackbar {...feedback.snackProps} />
     </>

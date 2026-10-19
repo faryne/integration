@@ -59,7 +59,7 @@ export function WorkspaceChrome({
   action?: ReactNode;
   children: ReactNode;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [projectMenuAnchor, setProjectMenuAnchor] =
     useState<HTMLElement | null>(null);
   const switchableProjects = projects.filter(
@@ -247,7 +247,10 @@ export function WorkspaceChrome({
               <ListItemText
                 primary={project.name}
                 secondary={t("web.workspacePreview.lastUpdated", {
-                  date: formatStorytellerDate(project.updated_at),
+                  date: formatStorytellerDate(
+                    project.updated_at,
+                    i18n.resolvedLanguage,
+                  ),
                 })}
                 primaryTypographyProps={{ noWrap: true }}
                 secondaryTypographyProps={{ noWrap: true }}

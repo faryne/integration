@@ -61,7 +61,7 @@ export function AuthorPostCard({
         onDone?.();
       },
       onError: (error) =>
-        onNotify(apiErrorMessage(error, "操作失敗，請重試。"), "error"),
+        onNotify(apiErrorMessage(error, t("web.social.actionFailed")), "error"),
     });
 
   return (
@@ -104,7 +104,7 @@ export function AuthorPostCard({
               color="warning"
               variant="outlined"
               icon={<PushPinOutlinedIcon />}
-              label="置頂"
+              label={t("web.timeline.pinned")}
               sx={{ height: 20 }}
             />
           )}
@@ -126,7 +126,11 @@ export function AuthorPostCard({
             startIcon={
               post.liked_by_me ? <FavoriteIcon /> : <FavoriteBorderIcon />
             }
-            aria-label={post.liked_by_me ? "取消喜歡" : "喜歡"}
+            aria-label={
+              post.liked_by_me
+                ? t("web.timeline.unlike")
+                : t("web.timeline.like")
+            }
             disabled={action.isPending}
             onClick={() =>
               onLoginRequired
@@ -144,7 +148,7 @@ export function AuthorPostCard({
             size="small"
             color="inherit"
             startIcon={<ChatBubbleOutlineIcon />}
-            aria-label="留言"
+            aria-label={t("web.social.comment")}
             onClick={() => navigate(postPath)}
           >
             {post.comment_count}
@@ -152,7 +156,7 @@ export function AuthorPostCard({
           <Box sx={{ flex: 1 }} />
           <IconButton
             size="small"
-            aria-label="更多動作"
+            aria-label={t("web.social.moreActions")}
             onClick={(event) => setMenuAnchor(event.currentTarget)}
           >
             <MoreHorizIcon fontSize="small" />
@@ -171,11 +175,15 @@ export function AuthorPostCard({
               setMenuAnchor(null);
               run(
                 { type: "pin", postId: post.public_id, pinned: !post.pinned },
-                post.pinned ? "已取消置頂" : "已置頂，原本的置頂已取消",
+                post.pinned
+                  ? t("web.timeline.messages.unpinned")
+                  : t("web.timeline.messages.pinned"),
               );
             }}
           >
-            {post.pinned ? "取消置頂" : "📌 置頂"}
+            {post.pinned
+              ? t("web.timeline.unpin")
+              : `📌 ${t("web.timeline.pin")}`}
           </MenuItem>
         )}
         <MenuItem
@@ -183,11 +191,11 @@ export function AuthorPostCard({
             setMenuAnchor(null);
             void navigator.clipboard
               .writeText(new URL(postPath, window.location.origin).toString())
-              .then(() => onNotify("已複製貼文連結"))
-              .catch(() => onNotify("複製失敗，請手動複製網址列。", "error"));
+              .then(() => onNotify(t("web.timeline.messages.linkCopied")))
+              .catch(() => onNotify(t("web.social.copyFailed"), "error"));
           }}
         >
-          🔗 複製連結
+          🔗 {t("web.social.copyLink")}
         </MenuItem>
         {!post.is_owner && (
           <MenuItem
@@ -212,7 +220,7 @@ export function AuthorPostCard({
               setConfirmDelete(true);
             }}
           >
-            🗑 刪除
+            🗑 {t("web.common.delete")}
           </MenuItem>
         )}
       </Menu>
@@ -220,17 +228,21 @@ export function AuthorPostCard({
         <StorytellerMascotDialog
           open={confirmDelete}
           state="danger"
-          eyebrow="刪除動態"
-          title="要刪除這則動態嗎？"
+          eyebrow={t("web.timeline.deletePost")}
+          title={t("web.timeline.confirmDeleteTitle")}
           description={
             post.comment_count > 0
-              ? `刪除後無法復原，底下 ${post.comment_count} 則留言也會一起看不到。動態不能編輯，想改內容只能刪掉重發。`
-              : "刪除後無法復原。"
+              ? t("web.timeline.confirmDeleteWithComments", {
+                  count: post.comment_count,
+                })
+              : t("web.discussion.confirm.deleteBody")
           }
           onClose={() => setConfirmDelete(false)}
           actions={
             <>
-              <Button onClick={() => setConfirmDelete(false)}>保留</Button>
+              <Button onClick={() => setConfirmDelete(false)}>
+                {t("web.community.keep")}
+              </Button>
               <Button
                 color="error"
                 variant="contained"
@@ -238,7 +250,7 @@ export function AuthorPostCard({
                 onClick={() =>
                   run(
                     { type: "delete-post", postId: post.public_id },
-                    "已刪除動態",
+                    t("web.timeline.messages.deleted"),
                     () => {
                       setConfirmDelete(false);
                       if (detail) navigate(steamloomPostsPath(penName));
@@ -246,7 +258,7 @@ export function AuthorPostCard({
                   )
                 }
               >
-                刪除
+                {t("web.common.delete")}
               </Button>
             </>
           }

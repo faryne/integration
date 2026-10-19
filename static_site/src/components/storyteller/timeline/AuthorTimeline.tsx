@@ -1,6 +1,7 @@
 import DynamicFeedOutlinedIcon from "@mui/icons-material/DynamicFeedOutlined";
 import { Box, Button, Divider, Paper, Stack } from "@mui/material";
 import { Fragment } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuthorPosts } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
@@ -23,6 +24,7 @@ export function AuthorTimeline({
   onNotify: Notify;
   onLoginRequired: () => void;
 }) {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const query = useAuthorPosts(author.pen_name);
   const posts = query.data?.pages.flatMap((page) => page?.items ?? []) ?? [];
@@ -31,11 +33,11 @@ export function AuthorTimeline({
     <Stack spacing={2}>
       {isOwner && <AuthorPostComposer author={author} onNotify={onNotify} />}
       {query.isLoading ? (
-        <StorytellerLoading label="正在載入動態..." />
+        <StorytellerLoading label={t("web.timeline.loading")} />
       ) : posts.length === 0 ? (
         <CustomEmptyState
           icon={<DynamicFeedOutlinedIcon fontSize="large" />}
-          title="還沒有動態"
+          title={t("web.timeline.empty")}
         />
       ) : (
         <Paper variant="outlined" sx={{ borderRadius: 1, overflow: "hidden" }}>
@@ -62,7 +64,7 @@ export function AuthorTimeline({
                 disabled={query.isFetchingNextPage}
                 onClick={() => void query.fetchNextPage()}
               >
-                載入更多
+                {t("web.discussion.loadMore")}
               </Button>
             </Box>
           )}

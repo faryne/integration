@@ -1016,5 +1016,339 @@
       "volumeHelp": "未选择时视为不分册。",
       "authorsHelp": "可多选；默认为本人。"
     }
+  },
+  "discussion": {
+    "title": "讨论",
+    "titleFor": "{{label}}的讨论",
+    "loading": "正在加载讨论...",
+    "empty": "还没有讨论",
+    "loadMore": "加载更多",
+    "loginPrompt": "参与讨论需要登录。是否现在登录？",
+    "create": "发起讨论",
+    "createFor": "发起讨论・{{label}}",
+    "submit": "发起",
+    "verbStart": "发起",
+    "unavailable": "已下架",
+    "maskedTitle": "尚未读完的内容",
+    "locked": "已锁定",
+    "lastReply": "最后回复 {{time}}",
+    "replies": "回复",
+    "lock": "锁定",
+    "unlock": "解除锁定",
+    "blockStarter": "屏蔽发帖人",
+    "blockDescription": "对方将无法在这部作品的讨论区以及你这部作品署名身份的动态下评论或发起讨论，但仍可以阅读。对方以前的内容会保留，你可以逐条删除。",
+    "spoiler": {
+      "title": "这个帖子在讨论「{{label}}」",
+      "description": "你还没读完这部分。",
+      "readFirst": "先去读",
+      "viewAnyway": "直接看"
+    },
+    "confirm": {
+      "lockTitle": "锁定「{{title}}」？",
+      "lockBody": "锁定后所有人都无法再回复这个帖子，已有的内容仍然可见。之后可以解除锁定。",
+      "deleteTitle": "要删除这个帖子吗？",
+      "deleteBodyWithReplies": "删除后无法恢复，下面的 {{count}} 条回复也会一起不可见。",
+      "deleteBody": "删除后无法恢复。"
+    },
+    "messages": {
+      "locked": "已锁定，所有人都无法再回复",
+      "unlocked": "已解除锁定",
+      "deleted": "已删除帖子",
+      "linkCopied": "已复制帖子链接",
+      "created": "已发起讨论"
+    },
+    "errors": {
+      "create": "发起失败，请重试。"
+    },
+    "fields": {
+      "title": "标题",
+      "about": "关于"
+    },
+    "about": {
+      "none": "不指定",
+      "story": "故事",
+      "lore": "设定"
+    },
+    "filters": {
+      "all": "全部",
+      "general": "一般",
+      "story": "故事",
+      "lore": "设定"
+    },
+    "sort": {
+      "latest": "最新回复",
+      "newest": "最新发起"
+    }
+  },
+  "social": {
+    "deletedUser": "已不存在的用户",
+    "author": "作者",
+    "blocked": "已屏蔽",
+    "block": "屏蔽",
+    "blockTitle": "屏蔽 {{name}}？",
+    "blockedName": "已屏蔽 {{name}}",
+    "thisUser": "这位用户",
+    "theOtherUser": "对方",
+    "actionFailed": "操作失败，请重试。",
+    "saved": "已保存",
+    "edited": "已编辑",
+    "moreActions": "更多操作",
+    "copyLink": "复制链接",
+    "copyFailed": "复制失败，请手动复制地址栏。",
+    "preview": "预览",
+    "reply": "回复",
+    "comment": "评论",
+    "replyPlaceholder": "回复…",
+    "commentPlaceholder": "评论…",
+    "replyToThread": "改为回复整个帖子",
+    "replyDeleted": "此回复已删除",
+    "commentDeleted": "此评论已删除",
+    "deletedComment": "已删除的评论",
+    "showEarlierReplies": "查看前面 {{count}} 条回复",
+    "commentCount": "评论 {{count}}",
+    "deleteComment": "删除评论",
+    "confirmDeleteComment": "要删除这条评论吗？",
+    "deleteReaderComment": "这是读者的评论。你可以删除自己页面上的任何评论；对方不会收到通知。",
+    "deleteCommentBody": "删除后无法恢复，这里会留下「已删除」的占位。",
+    "speakAs": {
+      "prefix": "以",
+      "suffix": "{{verb}}"
+    },
+    "gate": {
+      "login": "登录后才能评论。",
+      "penName": "评论前要先设置笔名，其他人会看到这个名字。",
+      "setPenName": "设置笔名",
+      "restricted": "{{name}} 已限制你在这里评论。"
+    },
+    "messages": {
+      "replied": "已回复",
+      "commented": "已评论",
+      "commentDeleted": "已删除评论"
+    },
+    "errors": {
+      "comment": "评论失败，请重试。",
+      "save": "保存失败，请重试。"
+    }
+  },
+  "commentRef": {
+    "title": "参照",
+    "add": "添加参照",
+    "searchPlaceholder": "搜索故事或设定",
+    "story": "故事",
+    "lore": "设定",
+    "deleted": "已删除",
+    "savedVersion": "{{kind}}・已保存版本・",
+    "imageNoText": "图像作品没有文字内容",
+    "openEditor": "打开编辑",
+    "editHelp": "右键，或选中文字后用格式栏可编辑／移除批注"
+  },
+  "timeline": {
+    "loading": "正在加载动态...",
+    "empty": "还没有动态",
+    "pinned": "置顶",
+    "pin": "置顶",
+    "unpin": "取消置顶",
+    "like": "喜欢",
+    "unlike": "取消喜欢",
+    "deletePost": "删除动态",
+    "confirmDeleteTitle": "要删除这条动态吗？",
+    "confirmDeleteWithComments": "删除后无法恢复，下面的 {{count}} 条评论也会一起不可见。动态不能编辑，想改内容只能删除后重发。",
+    "composerPlaceholder": "想说点什么？公告、近况、创作碎碎念都可以",
+    "attachWork": "附上作品",
+    "attachTitle": "选一部作品或其中一话",
+    "publish": "发布",
+    "emptyPreview": "（没有内容）",
+    "noPublicWorks": "这个身份目前没有公开的作品。",
+    "restricted": "限制级",
+    "wholeWork": "整部作品（作品首页）",
+    "workHome": "作品首页",
+    "attachmentUnavailable": "这部作品目前无法浏览",
+    "removeAttachment": "移除作品卡",
+    "blockDescription": "对方将无法在 {{name}} 的动态与作品讨论区评论或回复，但仍可以看你的动态和作品。对方以前的评论会保留，你可以逐条删除。这个屏蔽只对 {{name}} 这个身份有效，不影响你的其他笔名。",
+    "replyToReaders": "回应读者…",
+    "commentTo": "评论给 {{name}}…",
+    "messages": {
+      "pinned": "已置顶，原来的置顶已取消",
+      "unpinned": "已取消置顶",
+      "linkCopied": "已复制动态链接",
+      "deleted": "已删除动态",
+      "publishedAs": "已以 {{name}} 发布"
+    },
+    "errors": {
+      "publish": "发布失败，请重试。"
+    },
+    "marker": {
+      "spoiler": "剧透",
+      "r18": "R18",
+      "reveal": "显示{{label}}内容",
+      "clickToReveal": "{{label}}・点击显示",
+      "wrapSpoiler": "选中文字后点击，标记为剧透",
+      "wrapR18": "选中文字后点击，标记为限制级"
+    },
+    "r18": {
+      "eyebrow": "年龄确认",
+      "title": "这段内容含限制级描写",
+      "description": "确认你已年满 18 岁才会显示。确认后，全站的限制级封面与 R18 标签都会解锁。",
+      "notNow": "先不要",
+      "confirm": "我已满 18 岁"
+    },
+    "time": {
+      "justNow": "刚刚",
+      "minutesAgo": "{{count}} 分钟前",
+      "hoursAgo": "{{count}} 小时前",
+      "yesterday": "昨天"
+    }
+  },
+  "notification": {
+    "title": "通知",
+    "titleWithUnread": "通知（{{count}} 条未读）",
+    "description": "关注的作者、收藏的作品更新，以及账号安全提醒。",
+    "markAllRead": "全部标为已读",
+    "viewAll": "查看全部通知",
+    "backToList": "返回通知",
+    "delete": "删除通知",
+    "lock": "锁定通知",
+    "unlock": "解除锁定",
+    "lockHint": "锁定（不会被自动清除）",
+    "lockedCount": "已锁定 {{count}} / {{limit}}",
+    "confirmDeleteTitle": "确定要删除这条通知？",
+    "confirmDeleteLocked": "这条通知已锁定，删除后就不会再保留，此操作无法恢复。",
+    "retention": "通知会在<strong>创建 180 天后自动清除</strong>。想保留的通知可以点锁头锁定，锁定的通知会永久保留。",
+    "listSeparator": "、",
+    "quote": "「{{text}}」",
+    "reason": "原因：{{reason}}",
+    "filters": {
+      "unread": "未读",
+      "locked": "已锁定"
+    },
+    "empty": {
+      "all": {
+        "title": "目前没有通知",
+        "description": "关注作者或收藏作品后，更新会出现在这里。"
+      },
+      "unread": {
+        "title": "都看完了",
+        "description": "没有未读的通知。"
+      },
+      "locked": {
+        "title": "还没有锁定的通知",
+        "description": "点通知右侧的锁头就能锁定，锁定的通知不会被自动清除。"
+      }
+    },
+    "messages": {
+      "locked": "已锁定，这条通知不会被自动清除",
+      "unlocked": "已解除锁定",
+      "allRead": "已将全部通知标为已读",
+      "deleted": "通知已删除"
+    },
+    "errors": {
+      "lock": "锁定失败，请稍后再试。",
+      "unlock": "解除锁定失败，请稍后再试。",
+      "markRead": "标为已读失败，请稍后再试。",
+      "load": "通知加载失败，请稍后再试。",
+      "delete": "删除通知失败，请稍后再试。"
+    },
+    "tags": {
+      "security": "账号安全",
+      "expiresIn": "{{count}} 天后清除"
+    },
+    "groups": {
+      "today": "今天",
+      "week": "这一周",
+      "month": "这个月",
+      "earlier": "更早"
+    },
+    "time": {
+      "yesterday": "昨天 {{time}}",
+      "daysAgo": "{{count}} 天前"
+    },
+    "source": {
+      "web": "网页"
+    },
+    "deleted": {
+      "post": "（动态已删除）",
+      "comment": "（评论已删除）"
+    },
+    "headline": {
+      "storiesUpdated": " 的《{{project}}》更新了",
+      "storiesUpdatedMany": " 的《{{project}}》更新了 {{count}} 话",
+      "startingFrom": "从 {{label}} 开始",
+      "newProject": " 发表了新作品《{{project}}》",
+      "followedPenName": " 关注了你的笔名 {{name}}",
+      "followedYou": " 关注了你",
+      "favorited": " 收藏了你的作品《{{project}}》",
+      "byline": "署名：{{names}}",
+      "posted": " 发了新动态",
+      "postedMany": " 发了 {{count}} 条新动态",
+      "repliedToYou": " 回复了你的评论",
+      "commentedPenName": " 评论了你的笔名 {{name}} 的动态",
+      "commented": " 评论了你的动态"
+    },
+    "detail": {
+      "notFound": "找不到这条通知",
+      "notFoundDescription": "可能已经被删除，或超过保留期限被清除了。",
+      "selectOne": "选一条通知查看内容",
+      "selectOneDescription": "点左边的通知就会在这里打开。",
+      "lockedNote": "已锁定，这条通知不会被自动清除。",
+      "expiresNote": "这条通知会在 {{count}} 天后自动清除，想保留可以点右上角的锁头。",
+      "open": "前往查看",
+      "startFrom": "从〈{{title}}〉开始读",
+      "goToWork": "前往作品首页",
+      "updatedContent": "这次更新的内容",
+      "read": "阅读",
+      "words": "{{count}} 字",
+      "moreStories": "以及其他 {{count}} 话，到作品首页查看完整目录。",
+      "projectStats": "目前 {{count}} 话 · 约 {{words}} 字",
+      "security": {
+        "app": "应用",
+        "grantedAt": "授权时间",
+        "scope": "授权范围",
+        "scopeValue": "读取与修改你账号下所有项目，包括删除",
+        "name": "名称",
+        "tokenPrefix": "Token 前缀",
+        "createdAt": "创建时间",
+        "expiresAt": "到期日",
+        "neverExpires": "永不过期",
+        "source": "入口",
+        "device": "设备",
+        "notYou": "不是你本人操作？",
+        "revokeOAuth": "请立即撤销这个授权，{{name}} 会马上失去访问权限。",
+        "deleteToken": "请立即删除这个 Token，并检查最近的活动记录。",
+        "goRevoke": "前往撤销授权",
+        "goDeleteToken": "前往删除 Token",
+        "viewActivity": "查看活动记录"
+      }
+    },
+    "post": {
+      "postsDeleted": "这些动态已经删除。",
+      "attached": "附上 {{work}}",
+      "goToPosts": "前往 {{name}} 的动态",
+      "postBy": "{{name}} 的动态",
+      "yourComment": "你的评论",
+      "commentDeleted": "这条评论已经删除。",
+      "quickReply": "直接回复 {{name}}…",
+      "replyFailed": "回复失败，请重试。",
+      "goToPost": "前往动态"
+    },
+    "follow": {
+      "goToCreator": "前往 {{name}} 的创作者页",
+      "mutual": "已互相关注",
+      "followBack": "回关",
+      "followBackAs": "以 {{name}} 回关",
+      "followBackAsSelf": "以 {{name}}（本人）回关",
+      "followedBack": "已回关 {{name}}",
+      "followedBackAs": "已以 {{as}} 回关 {{name}}",
+      "failed": "回关失败，请稍后再试。",
+      "chooseIdentity": "选择回关身份",
+      "note": {
+        "ownIdentityGone": "你被关注的身份已经不存在，无法回关。",
+        "actorGone": "对方已删除这个身份，无法回关。",
+        "followedPenName": "对方关注的是你的笔名「{{name}}」，回关也会用「{{name}}」的身份，对方看不出这个笔名属于谁。",
+        "followedSelf": "对方关注的是你的本人身份，回关会用本人身份。",
+        "multipleIdentities": "这部作品有 {{count}} 个署名身份，选一个回关；只会列出这部作品署名过的身份。",
+        "workSelf": "这部作品以本人身份署名，回关会用本人身份。",
+        "workPenName": "这部作品署名「{{name}}」，回关会用「{{name}}」的身份。"
+      }
+    }
   }
 }

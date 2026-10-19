@@ -9,6 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useRef, useState, type PointerEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { StorytellerWysiwygMarkdown } from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
 import { StorytellerLoreLinkContext } from "@/pages/storyteller/storytellerLoreLinkContext.ts";
@@ -38,6 +39,7 @@ export function CommentRefCard({
   initial: CommentRefCardState;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [state, setState] = useState(initial);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const dragRef = useRef<{ x: number; y: number } | null>(null);
@@ -106,9 +108,13 @@ export function CommentRefCard({
       >
         <PushPinOutlinedIcon fontSize="small" color="action" />
         <Typography variant="subtitle2" noWrap sx={{ flex: 1 }}>
-          {target?.title ?? (loaded ? "已刪除" : "")}
+          {target?.title ?? (loaded ? t("web.commentRef.deleted") : "")}
         </Typography>
-        <IconButton size="small" aria-label="關閉" onClick={onClose}>
+        <IconButton
+          size="small"
+          aria-label={t("web.common.close")}
+          onClick={onClose}
+        >
           <CloseIcon fontSize="small" />
         </IconButton>
       </Stack>
@@ -142,12 +148,17 @@ export function CommentRefCard({
               color="text.secondary"
               sx={{ display: "block", mb: 1 }}
             >
-              {target.kind === "lore" ? "設定" : "故事"}・已存檔版本・
+              {t("web.commentRef.savedVersion", {
+                kind:
+                  target.kind === "lore"
+                    ? t("web.commentRef.lore")
+                    : t("web.commentRef.story"),
+              })}
               {formatTime(target.updatedAt)}
             </Typography>
             {target.isImage ? (
               <Typography variant="body2" color="text.secondary">
-                圖像作品沒有文字內容
+                {t("web.commentRef.imageNoText")}
               </Typography>
             ) : (
               <StorytellerLoreLinkContext.Provider
@@ -192,7 +203,7 @@ export function CommentRefCard({
               })
             }
           >
-            開啟編輯
+            {t("web.commentRef.openEditor")}
           </Button>
         </Stack>
       )}

@@ -12,6 +12,7 @@ import {
   Typography,
 } from "@mui/material";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
@@ -36,20 +37,14 @@ import {
   notificationTimeLabel,
 } from "./storytellerNotificationUI.ts";
 
-const emptyCopy: Record<StorytellerNotificationFilter, [string, string]> = {
-  all: ["目前沒有通知", "追蹤作者或收藏作品後，更新會出現在這裡。"],
-  unread: ["都看完了", "沒有未讀的通知。"],
-  locked: [
-    "還沒有鎖定的通知",
-    "按通知右側的鎖頭就能鎖定，鎖定的通知不會被自動清除。",
-  ],
-};
+// 空狀態文案：web.notification.empty.<filter>.title／.description
 
 // 內容區寬度低於這個值就改成「列表 → 內容」切換（手機、平板、側欄展開的窄視窗）
 const SPLIT_MIN_WIDTH = 760;
 
 // 「我的工作台 › 通知」：左邊列表、右邊內容；點通知＝打開內容並標為已讀，不直接跳走。
 export function StorytellerNotificationsPanel() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { notificationId } = useParams();
   const [filter, setFilter] = useState<StorytellerNotificationFilter>("all");
@@ -118,8 +113,12 @@ export function StorytellerNotificationsPanel() {
       onToggleLock={() =>
         run(
           { type: n.locked ? "unlock" : "lock", publicId: n.public_id },
-          n.locked ? "已解除鎖定" : "已鎖定，這則通知不會被自動清除",
-          n.locked ? "解除鎖定失敗，請稍後再試。" : "鎖定失敗，請稍後再試。",
+          n.locked
+            ? t("web.notification.messages.unlocked")
+            : t("web.notification.messages.locked"),
+          n.locked
+            ? t("web.notification.errors.unlock")
+            : t("web.notification.errors.lock"),
         )
       }
       onDelete={() => setPendingDelete(n)}
@@ -159,10 +158,10 @@ export function StorytellerNotificationsPanel() {
         >
           <Box>
             <Typography variant="h6" fontWeight={800}>
-              通知
+              {t("web.notification.title")}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              追蹤的作者、收藏的作品更新，以及帳號安全提醒。
+              {t("web.notification.description")}
             </Typography>
           </Box>
           <Button
@@ -171,19 +170,21 @@ export function StorytellerNotificationsPanel() {
             onClick={() =>
               run(
                 { type: "read-all" },
-                "已將全部通知標為已讀",
-                "標為已讀失敗，請稍後再試。",
+                t("web.notification.messages.allRead"),
+                t("web.notification.errors.markRead"),
               )
             }
           >
-            全部標為已讀
+            {t("web.notification.markAllRead")}
           </Button>
         </Stack>
 
         {/* 保留期說明：常駐、不可關閉 */}
         <Alert severity="info" variant="outlined">
-          通知會在<strong>建立 180 天後自動清除</strong>
-          。想留下來的通知可以按鎖頭鎖定，鎖定的通知會永久保留。
+          <Trans
+            i18nKey="web.notification.retention"
+            components={{ strong: <strong /> }}
+          />
           {lockLimit > 0 && (
             <Stack
               direction="row"
@@ -192,7 +193,10 @@ export function StorytellerNotificationsPanel() {
               sx={{ mt: 1 }}
             >
               <Typography variant="caption" fontWeight={700} noWrap>
-                已鎖定 {lockedCount} / {lockLimit}
+                {t("web.notification.lockedCount", {
+                  count: lockedCount,
+                  limit: lockLimit,
+                })}
               </Typography>
               <LinearProgress
                 variant="determinate"
@@ -224,13 +228,14 @@ export function StorytellerNotificationsPanel() {
               value && setFilter(value)
             }
           >
-            <ToggleButton value="all">全部</ToggleButton>
+            <ToggleButton value="all">{t("web.common.all")}</ToggleButton>
             <ToggleButton value="unread">
-              未讀
+              {t("web.notification.filters.unread")}
               {firstPage?.unread_count ? ` ${firstPage.unread_count}` : ""}
             </ToggleButton>
             <ToggleButton value="locked">
-              已鎖定{lockedCount ? ` ${lockedCount}` : ""}
+              {t("web.notification.filters.locked")}
+              {lockedCount ? ` ${lockedCount}` : ""}
             </ToggleButton>
           </ToggleButtonGroup>
           <Paper
@@ -245,19 +250,21 @@ export function StorytellerNotificationsPanel() {
               <Alert severity="error" sx={{ m: 1.5 }}>
                 {notificationErrorMessage(
                   list.error,
-                  "通知載入失敗，請稍後再試。",
+                  t("web.notification.errors.load"),
                 )}
               </Alert>
             ) : items.length === 0 ? (
               <Stack alignItems="center" spacing={1} sx={{ py: 5, px: 2 }}>
                 <NotificationsNoneOutlinedIcon color="disabled" />
-                <Typography fontWeight={800}>{emptyCopy[filter][0]}</Typography>
+                <Typography fontWeight={800}>
+                  {t(`web.notification.empty.${filter}.title`)}
+                </Typography>
                 <Typography
                   variant="body2"
                   color="text.secondary"
                   textAlign="center"
                 >
-                  {emptyCopy[filter][1]}
+                  {t(`web.notification.empty.${filter}.description`)}
                 </Typography>
               </Stack>
             ) : (
@@ -330,12 +337,14 @@ export function StorytellerNotificationsPanel() {
               sx={{ minHeight: 360, px: 2, textAlign: "center" }}
             >
               <Typography fontWeight={800}>
-                {notificationId ? "找不到這則通知" : "選一則通知查看內容"}
+                {notificationId
+                  ? t("web.notification.detail.notFound")
+                  : t("web.notification.detail.selectOne")}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {notificationId
-                  ? "可能已經被刪除，或超過保留期限被清除了。"
-                  : "點左邊的通知就會在這裡打開。"}
+                  ? t("web.notification.detail.notFoundDescription")
+                  : t("web.notification.detail.selectOneDescription")}
               </Typography>
               {notificationId && (
                 <Button
@@ -343,7 +352,7 @@ export function StorytellerNotificationsPanel() {
                   sx={{ mt: 1 }}
                   onClick={() => navigate(notificationPath())}
                 >
-                  返回通知
+                  {t("web.notification.backToList")}
                 </Button>
               )}
             </Stack>
@@ -354,17 +363,19 @@ export function StorytellerNotificationsPanel() {
       <StorytellerMascotDialog
         open={pendingDelete !== null}
         state="danger"
-        eyebrow="刪除通知"
-        title="確定要刪除這則通知？"
+        eyebrow={t("web.notification.delete")}
+        title={t("web.notification.confirmDeleteTitle")}
         description={
           pendingDelete?.locked
-            ? "這則通知已鎖定，刪除後就不會再保留，此操作無法復原。"
-            : "刪除後無法復原。"
+            ? t("web.notification.confirmDeleteLocked")
+            : t("web.discussion.confirm.deleteBody")
         }
         onClose={() => setPendingDelete(null)}
         actions={
           <>
-            <Button onClick={() => setPendingDelete(null)}>取消</Button>
+            <Button onClick={() => setPendingDelete(null)}>
+              {t("web.common.cancel")}
+            </Button>
             <Button
               color="error"
               variant="contained"
@@ -375,15 +386,15 @@ export function StorytellerNotificationsPanel() {
                     pendingDelete.public_id === notificationId;
                   run(
                     { type: "delete", publicId: pendingDelete.public_id },
-                    "通知已刪除",
-                    "刪除通知失敗，請稍後再試。",
+                    t("web.notification.messages.deleted"),
+                    t("web.notification.errors.delete"),
                   );
                   if (deletingSelected) navigate(notificationPath());
                 }
                 setPendingDelete(null);
               }}
             >
-              刪除
+              {t("web.common.delete")}
             </Button>
           </>
         }

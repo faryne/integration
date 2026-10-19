@@ -21,6 +21,7 @@ import {
 } from "@mui/material";
 import { alpha, type Theme } from "@mui/material/styles";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import type {
   StorytellerNotification,
   StorytellerNotificationView,
@@ -118,6 +119,7 @@ export function NotificationTags({
   n: StorytellerNotification;
   showKindLabel?: boolean;
 }) {
+  const { t } = useTranslation();
   const definition = useNotificationKindDefinition(n.kind);
   const daysLeft = notificationDaysLeft(n);
   return (
@@ -129,7 +131,11 @@ export function NotificationTags({
         <Chip size="small" color="error" variant="outlined" label="R18" />
       )}
       {definition?.category === "security" && (
-        <Chip size="small" variant="outlined" label="帳號安全" />
+        <Chip
+          size="small"
+          variant="outlined"
+          label={t("web.notification.tags.security")}
+        />
       )}
       {n.locked && (
         <Chip
@@ -137,7 +143,7 @@ export function NotificationTags({
           color="primary"
           variant="outlined"
           icon={<LockIcon />}
-          label="已鎖定"
+          label={t("web.notification.filters.locked")}
         />
       )}
       {daysLeft !== null && daysLeft <= NOTIFICATION_EXPIRING_WITHIN_DAYS && (
@@ -145,7 +151,7 @@ export function NotificationTags({
           size="small"
           color="warning"
           variant="outlined"
-          label={`${daysLeft} 天後清除`}
+          label={t("web.notification.tags.expiresIn", { count: daysLeft })}
         />
       )}
     </>
@@ -163,14 +169,23 @@ export function NotificationActions({
   onToggleLock: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0 }}>
-      <Tooltip title={n.locked ? "解除鎖定" : "鎖定（不會被自動清除）"}>
+      <Tooltip
+        title={
+          n.locked
+            ? t("web.notification.unlock")
+            : t("web.notification.lockHint")
+        }
+      >
         <IconButton
           size="small"
           disabled={disabled}
           color={n.locked ? "primary" : "default"}
-          aria-label={n.locked ? "解除鎖定" : "鎖定通知"}
+          aria-label={
+            n.locked ? t("web.notification.unlock") : t("web.notification.lock")
+          }
           onClick={(event) => {
             event.stopPropagation();
             onToggleLock();
@@ -183,11 +198,11 @@ export function NotificationActions({
           )}
         </IconButton>
       </Tooltip>
-      <Tooltip title="刪除">
+      <Tooltip title={t("web.common.delete")}>
         <IconButton
           size="small"
           disabled={disabled}
-          aria-label="刪除通知"
+          aria-label={t("web.notification.delete")}
           onClick={(event) => {
             event.stopPropagation();
             onDelete();

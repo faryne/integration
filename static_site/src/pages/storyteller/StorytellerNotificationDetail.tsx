@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { moderationReasonLabel } from "@/helpers/moderationReasons.ts";
@@ -57,6 +58,7 @@ export function StorytellerNotificationDetail({
   actions: ReactNode;
   onBack: () => void;
 }) {
+  const { t } = useTranslation();
   const view = useNotificationView(n);
   const daysLeft = notificationDaysLeft(n);
   return (
@@ -69,7 +71,7 @@ export function StorytellerNotificationDetail({
         onClick={onBack}
         sx={{ display: "none", m: 1.5, mb: 0 }}
       >
-        返回通知
+        {t("web.notification.backToList")}
       </Button>
       <Stack
         direction="row"
@@ -110,8 +112,8 @@ export function StorytellerNotificationDetail({
         sx={{ px: { xs: 2, sm: 2.5 }, py: 1.5 }}
       >
         {daysLeft === null
-          ? "已鎖定，這則通知不會被自動清除。"
-          : `這則通知會在 ${daysLeft} 天後自動清除，想留下來可以按右上角的鎖頭。`}
+          ? t("web.notification.detail.lockedNote")
+          : t("web.notification.detail.expiresNote", { count: daysLeft })}
       </Typography>
     </Box>
   );
@@ -149,6 +151,7 @@ function NotificationBody({
 
 // 站方移除：被移除的內容名稱／摘要與原因（原因 slug 在前端對照文字）
 function ModerationBody({ n }: { n: StorytellerNotification }) {
+  const { t } = useTranslation();
   return (
     <>
       {n.payload.label && (
@@ -157,7 +160,9 @@ function ModerationBody({ n }: { n: StorytellerNotification }) {
         </Typography>
       )}
       <Typography variant="body2" color="text.secondary">
-        原因：{moderationReasonLabel(n.payload.delete_reason ?? "")}
+        {t("web.notification.reason", {
+          reason: moderationReasonLabel(n.payload.delete_reason ?? ""),
+        })}
       </Typography>
     </>
   );
@@ -165,6 +170,7 @@ function ModerationBody({ n }: { n: StorytellerNotification }) {
 
 // 沒有專屬畫面的類型：顯示通用內文與「前往查看」
 function GenericBody({ n }: { n: StorytellerNotification }) {
+  const { t } = useTranslation();
   const link = notificationLink(n.payload.link);
   return (
     <>
@@ -184,11 +190,11 @@ function GenericBody({ n }: { n: StorytellerNotification }) {
               rel="noopener noreferrer"
               endIcon={<OpenInNewIcon />}
             >
-              前往查看
+              {t("web.notification.detail.open")}
             </Button>
           ) : (
             <Button variant="contained" component={RouterLink} to={link.href}>
-              前往查看
+              {t("web.notification.detail.open")}
             </Button>
           )}
         </Box>
@@ -199,6 +205,7 @@ function GenericBody({ n }: { n: StorytellerNotification }) {
 
 // 「從第 N 話開始讀」＋「前往作品首頁」，新話與新作品共用
 function ReadActions({ n }: { n: StorytellerNotification }) {
+  const { t } = useTranslation();
   const first = n.payload.stories?.[0];
   const projectPath = notificationProjectPath(n);
   return (
@@ -209,12 +216,12 @@ function ReadActions({ n }: { n: StorytellerNotification }) {
           component={RouterLink}
           to={notificationStoryPath(n, first.public_id)}
         >
-          從〈{first.title}〉開始讀
+          {t("web.notification.detail.startFrom", { title: first.title })}
         </Button>
       )}
       {projectPath && (
         <Button variant="outlined" component={RouterLink} to={projectPath}>
-          前往作品首頁
+          {t("web.notification.detail.goToWork")}
         </Button>
       )}
     </Stack>
@@ -222,12 +229,13 @@ function ReadActions({ n }: { n: StorytellerNotification }) {
 }
 
 function StoryPublishedBody({ n }: { n: StorytellerNotification }) {
+  const { t } = useTranslation();
   const stories = n.payload.stories ?? [];
   const rest = (n.payload.story_total ?? stories.length) - stories.length;
   return (
     <>
       <Typography variant="overline" color="text.secondary">
-        這次更新的內容
+        {t("web.notification.detail.updatedContent")}
       </Typography>
       <List
         disablePadding
@@ -243,7 +251,7 @@ function StoryPublishedBody({ n }: { n: StorytellerNotification }) {
                 component={RouterLink}
                 to={notificationStoryPath(n, story.public_id)}
               >
-                閱讀
+                {t("web.notification.detail.read")}
               </Button>
             }
           >
@@ -251,7 +259,9 @@ function StoryPublishedBody({ n }: { n: StorytellerNotification }) {
               primary={story.title}
               secondary={[
                 story.volume_title,
-                `${story.word_count.toLocaleString()} 字`,
+                t("web.notification.detail.words", {
+                  count: story.word_count.toLocaleString(),
+                }),
               ]
                 .filter(Boolean)
                 .join(" · ")}
@@ -261,7 +271,9 @@ function StoryPublishedBody({ n }: { n: StorytellerNotification }) {
         {rest > 0 && (
           <ListItem>
             <ListItemText
-              secondary={`以及其他 ${rest} 話，到作品首頁看完整目錄。`}
+              secondary={t("web.notification.detail.moreStories", {
+                count: rest,
+              })}
             />
           </ListItem>
         )}
@@ -272,6 +284,7 @@ function StoryPublishedBody({ n }: { n: StorytellerNotification }) {
 }
 
 function ProjectPublishedBody({ n }: { n: StorytellerNotification }) {
+  const { t } = useTranslation();
   const p = n.payload;
   return (
     <>
@@ -302,7 +315,10 @@ function ProjectPublishedBody({ n }: { n: StorytellerNotification }) {
         <Chip
           size="small"
           variant="outlined"
-          label={`目前 ${p.story_total ?? 0} 話 · 約 ${(p.word_total ?? 0).toLocaleString()} 字`}
+          label={t("web.notification.detail.projectStats", {
+            count: p.story_total ?? 0,
+            words: (p.word_total ?? 0).toLocaleString(),
+          })}
         />
       </Stack>
       <ReadActions n={n} />
@@ -311,29 +327,47 @@ function ProjectPublishedBody({ n }: { n: StorytellerNotification }) {
 }
 
 function SecurityBody({ n }: { n: StorytellerNotification }) {
+  const { t } = useTranslation();
   const p = n.payload;
   // 安全類共用同一個畫面：有 client_name 的是 OAuth 授權，否則是 Personal Access Token
   const isOAuth = Boolean(p.client_name);
   const rows: [string, ReactNode][] = isOAuth
     ? [
-        ["應用程式", p.client_name],
-        ["授權時間", notificationFullTime(n.created_at)],
-        ["授權範圍", "讀取與修改你帳號下所有專案，包含刪除"],
+        [t("web.notification.detail.security.app"), p.client_name],
+        [
+          t("web.notification.detail.security.grantedAt"),
+          notificationFullTime(n.created_at),
+        ],
+        [
+          t("web.notification.detail.security.scope"),
+          t("web.notification.detail.security.scopeValue"),
+        ],
       ]
     : [
-        ["名稱", p.label],
-        ["Token 前綴", p.token_prefix && <code>{p.token_prefix}…</code>],
-        ["建立時間", notificationFullTime(n.created_at)],
+        [t("web.notification.detail.security.name"), p.label],
         [
-          "到期日",
-          p.expires_at ? notificationFullTime(p.expires_at) : "不會過期",
+          t("web.notification.detail.security.tokenPrefix"),
+          p.token_prefix && <code>{p.token_prefix}…</code>,
+        ],
+        [
+          t("web.notification.detail.security.createdAt"),
+          notificationFullTime(n.created_at),
+        ],
+        [
+          t("web.notification.detail.security.expiresAt"),
+          p.expires_at
+            ? notificationFullTime(p.expires_at)
+            : t("web.notification.detail.security.neverExpires"),
         ],
       ];
   rows.push(
-    ["入口", notificationSourceLabel(p.source)],
+    [
+      t("web.notification.detail.security.source"),
+      notificationSourceLabel(p.source),
+    ],
     ["IP", p.ip || "—"],
     [
-      "裝置",
+      t("web.notification.detail.security.device"),
       <Tooltip key="ua" title={p.user_agent ?? ""}>
         <span>{summarizeUserAgent(p.user_agent) || "—"}</span>
       </Tooltip>,
@@ -361,10 +395,12 @@ function SecurityBody({ n }: { n: StorytellerNotification }) {
         ))}
       </Box>
       <Alert severity="warning" variant="outlined">
-        <strong>不是你本人操作？</strong>
+        <strong>{t("web.notification.detail.security.notYou")}</strong>
         {isOAuth
-          ? `請立刻撤銷這個授權，${p.client_name} 會馬上失去存取權限。`
-          : "請立刻刪除這組 Token，並檢查最近的活動紀錄。"}
+          ? t("web.notification.detail.security.revokeOAuth", {
+              name: p.client_name,
+            })
+          : t("web.notification.detail.security.deleteToken")}
       </Alert>
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         <Button
@@ -373,14 +409,16 @@ function SecurityBody({ n }: { n: StorytellerNotification }) {
           component={RouterLink}
           to={steamloomPath(isOAuth ? "my/oauth" : "my/pat")}
         >
-          {isOAuth ? "前往撤銷授權" : "前往刪除 Token"}
+          {isOAuth
+            ? t("web.notification.detail.security.goRevoke")
+            : t("web.notification.detail.security.goDeleteToken")}
         </Button>
         <Button
           variant="outlined"
           component={RouterLink}
           to={steamloomPath("my/activity")}
         >
-          查看活動紀錄
+          {t("web.notification.detail.security.viewActivity")}
         </Button>
       </Stack>
     </>

@@ -1,4 +1,5 @@
 import { Box } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { useTimelineAction } from "@/apis/storyteller.ts";
 import {
   CommentCountHeader,
@@ -21,6 +22,7 @@ export function CommentSection({
   onNotify: Notify;
   onLoginRequired: () => void;
 }) {
+  const { t } = useTranslation();
   const action = useTimelineAction();
   const postId = detail.post.public_id;
   const postAuthor = detail.post.author.pen_name;
@@ -34,10 +36,12 @@ export function CommentSection({
         ownerName={postAuthor}
         isOwner={detail.post.is_owner}
         blockDescription={() =>
-          `對方將不能在 ${postAuthor} 的動態與作品討論版留言或回覆，但還是可以看你的動態和作品。對方以前的留言會保留，你可以逐則刪除。這個封鎖只對 ${postAuthor} 這個身份有效，不影響你的其他筆名。`
+          t("web.timeline.blockDescription", { name: postAuthor })
         }
         placeholder={
-          detail.post.is_owner ? "回應讀者…" : `留言給 ${postAuthor}…`
+          detail.post.is_owner
+            ? t("web.timeline.replyToReaders")
+            : t("web.timeline.commentTo", { name: postAuthor })
         }
         maxLength={COMMENT_MAX_LENGTH}
         actions={{

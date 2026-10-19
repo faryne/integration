@@ -1,10 +1,10 @@
 import { Box, Button, Link } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { Fragment, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { StorytellerDialog } from "@/components/storyteller/StorytellerDialog.tsx";
 import { setAgeConfirmed, useAgeConfirmed } from "@/helpers/ageConfirmation.ts";
 import {
-  POST_MARKER_LABEL,
   parsePostBody,
   splitUrls,
   type PostMarkerKind,
@@ -43,6 +43,7 @@ export function PostMarkerText({
   body: string;
   fontSize?: number;
 }) {
+  const { t } = useTranslation();
   const ageConfirmed = useAgeConfirmed();
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const [pendingR18, setPendingR18] = useState<number | null>(null);
@@ -88,7 +89,9 @@ export function PostMarkerText({
             component="span"
             role="button"
             tabIndex={0}
-            aria-label={`顯示${POST_MARKER_LABEL[segment.type]}內容`}
+            aria-label={t("web.timeline.marker.reveal", {
+              label: t(`web.timeline.marker.${segment.type}`),
+            })}
             onClick={(event) => handleReveal(event, index, segment.type)}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ")
@@ -117,7 +120,9 @@ export function PostMarkerText({
             }}
           >
             {segment.type === "r18" ? "🔞" : "🙈"}{" "}
-            {POST_MARKER_LABEL[segment.type]}・點擊顯示
+            {t("web.timeline.marker.clickToReveal", {
+              label: t(`web.timeline.marker.${segment.type}`),
+            })}
           </Box>
         ),
       )}
@@ -125,13 +130,15 @@ export function PostMarkerText({
       <Box component="span" onClick={(event) => event.stopPropagation()}>
         <StorytellerDialog
           open={pendingR18 !== null}
-          eyebrow="年齡確認"
-          title="這段內容含限制級描寫"
-          description="確認你已年滿 18 歲才會顯示。確認後，全站的限制級封面與 R18 標籤都會解鎖。"
+          eyebrow={t("web.timeline.r18.eyebrow")}
+          title={t("web.timeline.r18.title")}
+          description={t("web.timeline.r18.description")}
           onClose={() => setPendingR18(null)}
           actions={
             <>
-              <Button onClick={() => setPendingR18(null)}>先不要</Button>
+              <Button onClick={() => setPendingR18(null)}>
+                {t("web.timeline.r18.notNow")}
+              </Button>
               <Button
                 color="error"
                 variant="contained"
@@ -141,7 +148,7 @@ export function PostMarkerText({
                   setPendingR18(null);
                 }}
               >
-                我已滿 18 歲
+                {t("web.timeline.r18.confirm")}
               </Button>
             </>
           }

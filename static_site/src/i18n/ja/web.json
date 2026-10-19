@@ -1016,5 +1016,339 @@
       "volumeHelp": "未選択の場合は巻なしになります。",
       "authorsHelp": "複数選択できます。既定は本人です。"
     }
+  },
+  "discussion": {
+    "title": "ディスカッション",
+    "titleFor": "{{label}}のディスカッション",
+    "loading": "ディスカッションを読み込み中…",
+    "empty": "まだディスカッションはありません",
+    "loadMore": "もっと読み込む",
+    "loginPrompt": "ディスカッションに参加するにはログインが必要です。今すぐログインしますか？",
+    "create": "ディスカッションを始める",
+    "createFor": "ディスカッションを始める・{{label}}",
+    "submit": "投稿",
+    "verbStart": "投稿",
+    "unavailable": "公開停止",
+    "maskedTitle": "まだ読み終えていない内容",
+    "locked": "ロック中",
+    "lastReply": "最終返信 {{time}}",
+    "replies": "返信",
+    "lock": "ロック",
+    "unlock": "ロック解除",
+    "blockStarter": "スレ主をブロック",
+    "blockDescription": "相手はこの作品のディスカッションや、この作品の名義での投稿へのコメント、ディスカッションの開始ができなくなりますが、閲覧はできます。相手の過去の内容は残り、1 件ずつ削除できます。",
+    "spoiler": {
+      "title": "このスレッドは「{{label}}」についての話題です",
+      "description": "この部分はまだ読み終えていません。",
+      "readFirst": "先に読む",
+      "viewAnyway": "そのまま見る"
+    },
+    "confirm": {
+      "lockTitle": "「{{title}}」をロックしますか？",
+      "lockBody": "ロックすると誰もこのスレッドに返信できなくなります。既存の内容は引き続き表示され、後でロックを解除できます。",
+      "deleteTitle": "このスレッドを削除しますか？",
+      "deleteBodyWithReplies": "削除すると元に戻せません。返信 {{count}} 件も表示されなくなります。",
+      "deleteBody": "削除すると元に戻せません。"
+    },
+    "messages": {
+      "locked": "ロックしました。誰も返信できなくなります",
+      "unlocked": "ロックを解除しました",
+      "deleted": "スレッドを削除しました",
+      "linkCopied": "スレッドのリンクをコピーしました",
+      "created": "ディスカッションを始めました"
+    },
+    "errors": {
+      "create": "投稿できませんでした。もう一度お試しください。"
+    },
+    "fields": {
+      "title": "タイトル",
+      "about": "対象"
+    },
+    "about": {
+      "none": "指定しない",
+      "story": "物語",
+      "lore": "設定"
+    },
+    "filters": {
+      "all": "すべて",
+      "general": "一般",
+      "story": "物語",
+      "lore": "設定"
+    },
+    "sort": {
+      "latest": "最新の返信",
+      "newest": "新しい順"
+    }
+  },
+  "social": {
+    "deletedUser": "存在しないユーザー",
+    "author": "作者",
+    "blocked": "ブロック中",
+    "block": "ブロック",
+    "blockTitle": "{{name}} をブロックしますか？",
+    "blockedName": "{{name}} をブロックしました",
+    "thisUser": "このユーザー",
+    "theOtherUser": "相手",
+    "actionFailed": "操作に失敗しました。もう一度お試しください。",
+    "saved": "保存しました",
+    "edited": "編集済み",
+    "moreActions": "その他の操作",
+    "copyLink": "リンクをコピー",
+    "copyFailed": "コピーできませんでした。アドレスバーから URL をコピーしてください。",
+    "preview": "プレビュー",
+    "reply": "返信",
+    "comment": "コメント",
+    "replyPlaceholder": "返信…",
+    "commentPlaceholder": "コメント…",
+    "replyToThread": "スレッド全体への返信に切り替え",
+    "replyDeleted": "この返信は削除されました",
+    "commentDeleted": "このコメントは削除されました",
+    "deletedComment": "削除されたコメント",
+    "showEarlierReplies": "以前の返信 {{count}} 件を表示",
+    "commentCount": "コメント {{count}}",
+    "deleteComment": "コメントを削除",
+    "confirmDeleteComment": "このコメントを削除しますか？",
+    "deleteReaderComment": "これは読者のコメントです。自分のページのコメントはどれでも削除できます。相手には通知されません。",
+    "deleteCommentBody": "削除すると元に戻せません。ここには「削除済み」の表示が残ります。",
+    "speakAs": {
+      "prefix": "",
+      "suffix": "として{{verb}}"
+    },
+    "gate": {
+      "login": "ログインするとコメントできます。",
+      "penName": "コメントする前にペンネームを設定してください。ほかの人にはこの名前が表示されます。",
+      "setPenName": "ペンネームを設定",
+      "restricted": "{{name}} によってここでのコメントが制限されています。"
+    },
+    "messages": {
+      "replied": "返信しました",
+      "commented": "コメントしました",
+      "commentDeleted": "コメントを削除しました"
+    },
+    "errors": {
+      "comment": "コメントできませんでした。もう一度お試しください。",
+      "save": "保存できませんでした。もう一度お試しください。"
+    }
+  },
+  "commentRef": {
+    "title": "参照",
+    "add": "参照を追加",
+    "searchPlaceholder": "物語や設定を検索",
+    "story": "物語",
+    "lore": "設定",
+    "deleted": "削除済み",
+    "savedVersion": "{{kind}}・保存済みバージョン・",
+    "imageNoText": "画像作品にはテキストがありません",
+    "openEditor": "編集を開く",
+    "editHelp": "右クリック、またはテキストを選択して書式バーからメモを編集・削除できます"
+  },
+  "timeline": {
+    "loading": "投稿を読み込み中…",
+    "empty": "まだ投稿はありません",
+    "pinned": "固定",
+    "pin": "固定",
+    "unpin": "固定を解除",
+    "like": "いいね",
+    "unlike": "いいねを取り消す",
+    "deletePost": "投稿を削除",
+    "confirmDeleteTitle": "この投稿を削除しますか？",
+    "confirmDeleteWithComments": "削除すると元に戻せません。コメント {{count}} 件も表示されなくなります。投稿は編集できないため、内容を変えたいときは削除して投稿し直してください。",
+    "composerPlaceholder": "何か話したいことは？お知らせ、近況、創作のつぶやきなど",
+    "attachWork": "作品を添付",
+    "attachTitle": "作品またはその中の 1 話を選択",
+    "publish": "投稿",
+    "emptyPreview": "（内容なし）",
+    "noPublicWorks": "この名義にはまだ公開中の作品がありません。",
+    "restricted": "成人向け",
+    "wholeWork": "作品全体（作品トップ）",
+    "workHome": "作品トップ",
+    "attachmentUnavailable": "この作品は現在閲覧できません",
+    "removeAttachment": "作品カードを外す",
+    "blockDescription": "相手は {{name}} の投稿や作品のディスカッションにコメント・返信できなくなりますが、あなたの投稿や作品は引き続き見られます。相手の過去のコメントは残り、1 件ずつ削除できます。このブロックは {{name}} の名義にだけ有効で、ほかのペンネームには影響しません。",
+    "replyToReaders": "読者に返信…",
+    "commentTo": "{{name}} にコメント…",
+    "messages": {
+      "pinned": "固定しました。以前の固定は解除されました",
+      "unpinned": "固定を解除しました",
+      "linkCopied": "投稿のリンクをコピーしました",
+      "deleted": "投稿を削除しました",
+      "publishedAs": "{{name}} として投稿しました"
+    },
+    "errors": {
+      "publish": "投稿できませんでした。もう一度お試しください。"
+    },
+    "marker": {
+      "spoiler": "ネタバレ",
+      "r18": "R18",
+      "reveal": "{{label}}の内容を表示",
+      "clickToReveal": "{{label}}・クリックで表示",
+      "wrapSpoiler": "テキストを選択して押すとネタバレにします",
+      "wrapR18": "テキストを選択して押すと成人向けにします"
+    },
+    "r18": {
+      "eyebrow": "年齢確認",
+      "title": "この部分には成人向けの描写が含まれます",
+      "description": "18 歳以上であることを確認すると表示されます。確認すると、サイト全体の成人向け表紙と R18 タグも表示されるようになります。",
+      "notNow": "やめておく",
+      "confirm": "18 歳以上です"
+    },
+    "time": {
+      "justNow": "たった今",
+      "minutesAgo": "{{count}} 分前",
+      "hoursAgo": "{{count}} 時間前",
+      "yesterday": "昨日"
+    }
+  },
+  "notification": {
+    "title": "通知",
+    "titleWithUnread": "通知（未読 {{count}} 件）",
+    "description": "フォロー中の作者やお気に入り作品の更新、アカウントのセキュリティ通知です。",
+    "markAllRead": "すべて既読にする",
+    "viewAll": "すべての通知を見る",
+    "backToList": "通知に戻る",
+    "delete": "通知を削除",
+    "lock": "通知をロック",
+    "unlock": "ロック解除",
+    "lockHint": "ロック（自動削除されません）",
+    "lockedCount": "ロック中 {{count}} / {{limit}}",
+    "confirmDeleteTitle": "この通知を削除しますか？",
+    "confirmDeleteLocked": "この通知はロックされています。削除すると保持されなくなり、元に戻せません。",
+    "retention": "通知は<strong>作成から 180 日後に自動で削除</strong>されます。残したい通知は鍵マークでロックすると、ずっと保持されます。",
+    "listSeparator": "、",
+    "quote": "「{{text}}」",
+    "reason": "理由：{{reason}}",
+    "filters": {
+      "unread": "未読",
+      "locked": "ロック中"
+    },
+    "empty": {
+      "all": {
+        "title": "通知はありません",
+        "description": "作者をフォローしたり作品をお気に入りに入れたりすると、更新がここに表示されます。"
+      },
+      "unread": {
+        "title": "すべて確認済み",
+        "description": "未読の通知はありません。"
+      },
+      "locked": {
+        "title": "ロック中の通知はありません",
+        "description": "通知の右側にある鍵マークでロックすると、自動削除されなくなります。"
+      }
+    },
+    "messages": {
+      "locked": "ロックしました。この通知は自動削除されません",
+      "unlocked": "ロックを解除しました",
+      "allRead": "すべての通知を既読にしました",
+      "deleted": "通知を削除しました"
+    },
+    "errors": {
+      "lock": "ロックできませんでした。しばらくしてからお試しください。",
+      "unlock": "ロックを解除できませんでした。しばらくしてからお試しください。",
+      "markRead": "既読にできませんでした。しばらくしてからお試しください。",
+      "load": "通知を読み込めませんでした。しばらくしてからお試しください。",
+      "delete": "通知を削除できませんでした。しばらくしてからお試しください。"
+    },
+    "tags": {
+      "security": "アカウントのセキュリティ",
+      "expiresIn": "{{count}} 日後に削除"
+    },
+    "groups": {
+      "today": "今日",
+      "week": "今週",
+      "month": "今月",
+      "earlier": "それ以前"
+    },
+    "time": {
+      "yesterday": "昨日 {{time}}",
+      "daysAgo": "{{count}} 日前"
+    },
+    "source": {
+      "web": "Web"
+    },
+    "deleted": {
+      "post": "（投稿は削除されました）",
+      "comment": "（コメントは削除されました）"
+    },
+    "headline": {
+      "storiesUpdated": " さんが《{{project}}》を更新しました",
+      "storiesUpdatedMany": " さんが《{{project}}》を {{count}} 話更新しました",
+      "startingFrom": "{{label}} から",
+      "newProject": " さんが新作《{{project}}》を公開しました",
+      "followedPenName": " さんがあなたのペンネーム {{name}} をフォローしました",
+      "followedYou": " さんがあなたをフォローしました",
+      "favorited": " さんがあなたの作品《{{project}}》をお気に入りに追加しました",
+      "byline": "名義：{{names}}",
+      "posted": " さんが新しい投稿をしました",
+      "postedMany": " さんが新しい投稿を {{count}} 件しました",
+      "repliedToYou": " さんがあなたのコメントに返信しました",
+      "commentedPenName": " さんがあなたのペンネーム {{name}} の投稿にコメントしました",
+      "commented": " さんがあなたの投稿にコメントしました"
+    },
+    "detail": {
+      "notFound": "この通知は見つかりません",
+      "notFoundDescription": "削除されたか、保持期間を過ぎて削除された可能性があります。",
+      "selectOne": "通知を選択してください",
+      "selectOneDescription": "左の通知をクリックするとここに表示されます。",
+      "lockedNote": "ロック中です。この通知は自動削除されません。",
+      "expiresNote": "この通知は {{count}} 日後に自動削除されます。残したい場合は右上の鍵マークを押してください。",
+      "open": "見に行く",
+      "startFrom": "〈{{title}}〉から読む",
+      "goToWork": "作品トップへ",
+      "updatedContent": "今回の更新内容",
+      "read": "読む",
+      "words": "{{count}} 字",
+      "moreStories": "ほか {{count}} 話。作品トップで全体の目次を確認できます。",
+      "projectStats": "現在 {{count}} 話 · 約 {{words}} 字",
+      "security": {
+        "app": "アプリ",
+        "grantedAt": "許可日時",
+        "scope": "許可範囲",
+        "scopeValue": "アカウント内のすべてのプロジェクトの読み取りと変更（削除を含む）",
+        "name": "名前",
+        "tokenPrefix": "Token のプレフィックス",
+        "createdAt": "作成日時",
+        "expiresAt": "有効期限",
+        "neverExpires": "無期限",
+        "source": "経路",
+        "device": "デバイス",
+        "notYou": "ご本人の操作ではありませんか？",
+        "revokeOAuth": "すぐにこの許可を取り消してください。{{name}} はすぐにアクセスできなくなります。",
+        "deleteToken": "すぐにこの Token を削除し、最近のアクティビティを確認してください。",
+        "goRevoke": "許可を取り消す",
+        "goDeleteToken": "Token を削除する",
+        "viewActivity": "アクティビティを見る"
+      }
+    },
+    "post": {
+      "postsDeleted": "これらの投稿は削除されました。",
+      "attached": "{{work}} を添付",
+      "goToPosts": "{{name}} さんの投稿へ",
+      "postBy": "{{name}} さんの投稿",
+      "yourComment": "あなたのコメント",
+      "commentDeleted": "このコメントは削除されました。",
+      "quickReply": "{{name}} さんに返信…",
+      "replyFailed": "返信できませんでした。もう一度お試しください。",
+      "goToPost": "投稿へ"
+    },
+    "follow": {
+      "goToCreator": "{{name}} さんのクリエイターページへ",
+      "mutual": "相互フォロー中",
+      "followBack": "フォローバック",
+      "followBackAs": "{{name}} としてフォローバック",
+      "followBackAsSelf": "{{name}}（本人）としてフォローバック",
+      "followedBack": "{{name}} さんをフォローバックしました",
+      "followedBackAs": "{{as}} として {{name}} さんをフォローバックしました",
+      "failed": "フォローバックできませんでした。しばらくしてからお試しください。",
+      "chooseIdentity": "フォローバックする名義を選択",
+      "note": {
+        "ownIdentityGone": "フォローされた名義はすでに存在しないため、フォローバックできません。",
+        "actorGone": "相手がこの名義を削除したため、フォローバックできません。",
+        "followedPenName": "相手がフォローしたのはあなたのペンネーム「{{name}}」です。フォローバックも「{{name}}」の名義で行われ、相手にはこのペンネームが誰のものかわかりません。",
+        "followedSelf": "相手がフォローしたのはあなた本人の名義です。フォローバックも本人の名義で行われます。",
+        "multipleIdentities": "この作品には {{count}} 個の名義があります。フォローバックに使う名義を選んでください。この作品の名義だけが表示されます。",
+        "workSelf": "この作品は本人名義です。フォローバックも本人の名義で行われます。",
+        "workPenName": "この作品の名義は「{{name}}」です。フォローバックも「{{name}}」の名義で行われます。"
+      }
+    }
   }
 }

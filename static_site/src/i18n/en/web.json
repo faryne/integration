@@ -1016,5 +1016,339 @@
       "volumeHelp": "Leave empty to keep it ungrouped.",
       "authorsHelp": "Multiple selections allowed; defaults to you."
     }
+  },
+  "discussion": {
+    "title": "Discussions",
+    "titleFor": "Discussions on {{label}}",
+    "loading": "Loading discussions…",
+    "empty": "No discussions yet",
+    "loadMore": "Load more",
+    "loginPrompt": "You need to sign in to join discussions. Sign in now?",
+    "create": "Start a discussion",
+    "createFor": "Start a discussion · {{label}}",
+    "submit": "Start",
+    "verbStart": "Start",
+    "unavailable": "Unavailable",
+    "maskedTitle": "Content you haven't finished reading",
+    "locked": "Locked",
+    "lastReply": "Last reply {{time}}",
+    "replies": "Replies",
+    "lock": "Lock",
+    "unlock": "Unlock",
+    "blockStarter": "Block thread starter",
+    "blockDescription": "They won't be able to comment on this work's discussion board or on posts from the identity credited on this work, or start discussions, but they can still read. Their earlier content stays; you can delete it one by one.",
+    "spoiler": {
+      "title": "This thread is about \"{{label}}\"",
+      "description": "You haven't finished reading this part yet.",
+      "readFirst": "Read it first",
+      "viewAnyway": "View anyway"
+    },
+    "confirm": {
+      "lockTitle": "Lock \"{{title}}\"?",
+      "lockBody": "Once locked, nobody can reply to this thread. Existing content stays visible, and you can unlock it later.",
+      "deleteTitle": "Delete this thread?",
+      "deleteBodyWithReplies": "This can't be undone. Its replies ({{count}}) will be hidden too.",
+      "deleteBody": "This can't be undone."
+    },
+    "messages": {
+      "locked": "Locked. Nobody can reply anymore.",
+      "unlocked": "Unlocked",
+      "deleted": "Thread deleted",
+      "linkCopied": "Thread link copied",
+      "created": "Discussion started"
+    },
+    "errors": {
+      "create": "Couldn't start the discussion. Please try again."
+    },
+    "fields": {
+      "title": "Title",
+      "about": "About"
+    },
+    "about": {
+      "none": "None",
+      "story": "Story",
+      "lore": "Lore"
+    },
+    "filters": {
+      "all": "All",
+      "general": "General",
+      "story": "Stories",
+      "lore": "Lore"
+    },
+    "sort": {
+      "latest": "Latest reply",
+      "newest": "Newest"
+    }
+  },
+  "social": {
+    "deletedUser": "Deleted user",
+    "author": "Author",
+    "blocked": "Blocked",
+    "block": "Block",
+    "blockTitle": "Block {{name}}?",
+    "blockedName": "Blocked {{name}}",
+    "thisUser": "this user",
+    "theOtherUser": "them",
+    "actionFailed": "Something went wrong. Please try again.",
+    "saved": "Saved",
+    "edited": "edited",
+    "moreActions": "More actions",
+    "copyLink": "Copy link",
+    "copyFailed": "Couldn't copy. Please copy the URL from the address bar.",
+    "preview": "Preview",
+    "reply": "Reply",
+    "comment": "Comment",
+    "replyPlaceholder": "Reply…",
+    "commentPlaceholder": "Comment…",
+    "replyToThread": "Reply to the whole thread instead",
+    "replyDeleted": "This reply was deleted",
+    "commentDeleted": "This comment was deleted",
+    "deletedComment": "a deleted comment",
+    "showEarlierReplies": "Show earlier replies ({{count}})",
+    "commentCount": "Comments · {{count}}",
+    "deleteComment": "Delete comment",
+    "confirmDeleteComment": "Delete this comment?",
+    "deleteReaderComment": "This is a reader's comment. You can delete any comment on your own page; they won't be notified.",
+    "deleteCommentBody": "This can't be undone. A \"deleted\" placeholder will remain here.",
+    "speakAs": {
+      "prefix": "{{verb}} as",
+      "suffix": ""
+    },
+    "gate": {
+      "login": "Sign in to comment.",
+      "penName": "Set a pen name before commenting. Others will see this name.",
+      "setPenName": "Set pen name",
+      "restricted": "{{name}} has restricted you from commenting here."
+    },
+    "messages": {
+      "replied": "Replied",
+      "commented": "Comment posted",
+      "commentDeleted": "Comment deleted"
+    },
+    "errors": {
+      "comment": "Couldn't post the comment. Please try again.",
+      "save": "Couldn't save. Please try again."
+    }
+  },
+  "commentRef": {
+    "title": "References",
+    "add": "Add reference",
+    "searchPlaceholder": "Search stories or lore",
+    "story": "Story",
+    "lore": "Lore",
+    "deleted": "Deleted",
+    "savedVersion": "{{kind}} · saved version · ",
+    "imageNoText": "Image works have no text content",
+    "openEditor": "Open in editor",
+    "editHelp": "Right-click, or select text and use the format bar, to edit or remove the comment"
+  },
+  "timeline": {
+    "loading": "Loading posts…",
+    "empty": "No posts yet",
+    "pinned": "Pinned",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "like": "Like",
+    "unlike": "Unlike",
+    "deletePost": "Delete post",
+    "confirmDeleteTitle": "Delete this post?",
+    "confirmDeleteWithComments": "This can't be undone. Its comments ({{count}}) will be hidden too. Posts can't be edited; to change one, delete it and post again.",
+    "composerPlaceholder": "What's on your mind? Announcements, updates, writing thoughts…",
+    "attachWork": "Attach a work",
+    "attachTitle": "Choose a work or one of its episodes",
+    "publish": "Post",
+    "emptyPreview": "(Nothing yet)",
+    "noPublicWorks": "This identity has no public works yet.",
+    "restricted": "Restricted",
+    "wholeWork": "The whole work (work home)",
+    "workHome": "Work home",
+    "attachmentUnavailable": "This work isn't available right now",
+    "removeAttachment": "Remove work card",
+    "blockDescription": "They won't be able to comment or reply on {{name}}'s posts or work discussion boards, but can still see your posts and works. Their earlier comments stay; you can delete them one by one. This block only applies to the {{name}} identity, not your other pen names.",
+    "replyToReaders": "Reply to readers…",
+    "commentTo": "Comment to {{name}}…",
+    "messages": {
+      "pinned": "Pinned. The previous pinned post was unpinned.",
+      "unpinned": "Unpinned",
+      "linkCopied": "Post link copied",
+      "deleted": "Post deleted",
+      "publishedAs": "Posted as {{name}}"
+    },
+    "errors": {
+      "publish": "Couldn't post. Please try again."
+    },
+    "marker": {
+      "spoiler": "Spoiler",
+      "r18": "R18",
+      "reveal": "Show {{label}} content",
+      "clickToReveal": "{{label}} · click to show",
+      "wrapSpoiler": "Select text, then click to mark it as a spoiler",
+      "wrapR18": "Select text, then click to mark it as R18"
+    },
+    "r18": {
+      "eyebrow": "Age check",
+      "title": "This passage contains adult content",
+      "description": "It's only shown after you confirm you're 18 or older. Confirming also unlocks restricted covers and R18 tags across the site.",
+      "notNow": "Not now",
+      "confirm": "I'm 18 or older"
+    },
+    "time": {
+      "justNow": "Just now",
+      "minutesAgo": "{{count}} min ago",
+      "hoursAgo": "{{count}}h ago",
+      "yesterday": "Yesterday"
+    }
+  },
+  "notification": {
+    "title": "Notifications",
+    "titleWithUnread": "Notifications ({{count}} unread)",
+    "description": "Updates from authors you follow and works you favorite, plus account security alerts.",
+    "markAllRead": "Mark all as read",
+    "viewAll": "View all notifications",
+    "backToList": "Back to notifications",
+    "delete": "Delete notification",
+    "lock": "Lock notification",
+    "unlock": "Unlock",
+    "lockHint": "Lock (won't be auto-deleted)",
+    "lockedCount": "Locked {{count}} / {{limit}}",
+    "confirmDeleteTitle": "Delete this notification?",
+    "confirmDeleteLocked": "This notification is locked. Once deleted it won't be kept. This can't be undone.",
+    "retention": "Notifications are <strong>automatically deleted 180 days after they're created</strong>. Lock any you want to keep; locked notifications are kept forever.",
+    "listSeparator": ", ",
+    "quote": "“{{text}}”",
+    "reason": "Reason: {{reason}}",
+    "filters": {
+      "unread": "Unread",
+      "locked": "Locked"
+    },
+    "empty": {
+      "all": {
+        "title": "No notifications",
+        "description": "Follow authors or favorite works and their updates will show up here."
+      },
+      "unread": {
+        "title": "All caught up",
+        "description": "No unread notifications."
+      },
+      "locked": {
+        "title": "No locked notifications",
+        "description": "Click the lock on a notification to keep it from being auto-deleted."
+      }
+    },
+    "messages": {
+      "locked": "Locked. This notification won't be auto-deleted.",
+      "unlocked": "Unlocked",
+      "allRead": "All notifications marked as read",
+      "deleted": "Notification deleted"
+    },
+    "errors": {
+      "lock": "Couldn't lock. Please try again later.",
+      "unlock": "Couldn't unlock. Please try again later.",
+      "markRead": "Couldn't mark as read. Please try again later.",
+      "load": "Couldn't load notifications. Please try again later.",
+      "delete": "Couldn't delete the notification. Please try again later."
+    },
+    "tags": {
+      "security": "Account security",
+      "expiresIn": "Deleted in {{count}}d"
+    },
+    "groups": {
+      "today": "Today",
+      "week": "This week",
+      "month": "This month",
+      "earlier": "Earlier"
+    },
+    "time": {
+      "yesterday": "Yesterday {{time}}",
+      "daysAgo": "{{count}}d ago"
+    },
+    "source": {
+      "web": "Web"
+    },
+    "deleted": {
+      "post": "(Post deleted)",
+      "comment": "(Comment deleted)"
+    },
+    "headline": {
+      "storiesUpdated": " updated “{{project}}”",
+      "storiesUpdatedMany": " updated “{{project}}” with {{count}} episodes",
+      "startingFrom": "Starting from {{label}}",
+      "newProject": " published a new work, “{{project}}”",
+      "followedPenName": " followed your pen name {{name}}",
+      "followedYou": " followed you",
+      "favorited": " favorited your work “{{project}}”",
+      "byline": "By {{names}}",
+      "posted": " shared a new post",
+      "postedMany": " shared {{count}} new posts",
+      "repliedToYou": " replied to your comment",
+      "commentedPenName": " commented on a post by your pen name {{name}}",
+      "commented": " commented on your post"
+    },
+    "detail": {
+      "notFound": "Notification not found",
+      "notFoundDescription": "It may have been deleted, or removed after the retention period.",
+      "selectOne": "Select a notification",
+      "selectOneDescription": "Click a notification on the left to open it here.",
+      "lockedNote": "Locked. This notification won't be auto-deleted.",
+      "expiresNote": "This notification will be auto-deleted in {{count}} days. Click the lock at the top right to keep it.",
+      "open": "Open",
+      "startFrom": "Start reading from “{{title}}”",
+      "goToWork": "Go to work home",
+      "updatedContent": "What's new",
+      "read": "Read",
+      "words": "{{count}} words",
+      "moreStories": "And {{count}} more. See the full contents on the work home.",
+      "projectStats": "{{count}} episodes · about {{words}} words",
+      "security": {
+        "app": "App",
+        "grantedAt": "Authorized at",
+        "scope": "Scope",
+        "scopeValue": "Read and modify all projects in your account, including deletion",
+        "name": "Name",
+        "tokenPrefix": "Token prefix",
+        "createdAt": "Created at",
+        "expiresAt": "Expires",
+        "neverExpires": "Never",
+        "source": "Source",
+        "device": "Device",
+        "notYou": "Wasn't you?",
+        "revokeOAuth": "Revoke this authorization now. {{name}} will lose access immediately.",
+        "deleteToken": "Delete this token now and check your recent activity.",
+        "goRevoke": "Revoke authorization",
+        "goDeleteToken": "Delete token",
+        "viewActivity": "View activity"
+      }
+    },
+    "post": {
+      "postsDeleted": "These posts have been deleted.",
+      "attached": "Attached {{work}}",
+      "goToPosts": "Go to {{name}}'s posts",
+      "postBy": "Post by {{name}}",
+      "yourComment": "Your comment",
+      "commentDeleted": "This comment has been deleted.",
+      "quickReply": "Reply to {{name}}…",
+      "replyFailed": "Couldn't reply. Please try again.",
+      "goToPost": "Go to post"
+    },
+    "follow": {
+      "goToCreator": "Go to {{name}}'s creator page",
+      "mutual": "Following each other",
+      "followBack": "Follow back",
+      "followBackAs": "Follow back as {{name}}",
+      "followBackAsSelf": "Follow back as {{name}} (you)",
+      "followedBack": "Followed back {{name}}",
+      "followedBackAs": "Followed back {{name}} as {{as}}",
+      "failed": "Couldn't follow back. Please try again later.",
+      "chooseIdentity": "Choose identity to follow back with",
+      "note": {
+        "ownIdentityGone": "The identity they followed no longer exists, so you can't follow back.",
+        "actorGone": "They deleted this identity, so you can't follow back.",
+        "followedPenName": "They followed your pen name “{{name}}”. Following back will also use “{{name}}”, and they can't tell who owns that pen name.",
+        "followedSelf": "They followed your own identity. Following back will use your own identity.",
+        "multipleIdentities": "This work has {{count}} credited identities. Pick one to follow back with; only identities credited on this work are listed.",
+        "workSelf": "This work is credited to your own identity. Following back will use your own identity.",
+        "workPenName": "This work is credited to “{{name}}”. Following back will use “{{name}}”."
+      }
+    }
   }
 }

@@ -1,5 +1,6 @@
 import { Box, Button, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import { apiErrorMessage } from "@/helpers/apiError.ts";
@@ -64,6 +65,7 @@ export function CommentThreadView({
   // 不公開作品的討論版要帶分享 token，檢舉留言時用
   share?: string;
 }) {
+  const { t } = useTranslation();
   const location = useLocation();
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -102,9 +104,13 @@ export function CommentThreadView({
       })
       .then(() => {
         onDone();
-        onNotify(target ? "已回覆" : "已留言");
+        onNotify(
+          target
+            ? t("web.social.messages.replied")
+            : t("web.social.messages.commented"),
+        );
       })
-      .catch(fail("留言失敗，請重試。"));
+      .catch(fail(t("web.social.errors.comment")));
   }
 
   function runConfirm() {
@@ -117,12 +123,14 @@ export function CommentThreadView({
       .then(() => {
         onNotify(
           confirm.type === "delete"
-            ? "已刪除留言"
-            : `已封鎖 ${confirm.comment.author?.pen_name ?? ""}`,
+            ? t("web.social.messages.commentDeleted")
+            : t("web.social.blockedName", {
+                name: confirm.comment.author?.pen_name ?? "",
+              }),
         );
         setConfirm(null);
       })
-      .catch(fail("操作失敗，請重試。"));
+      .catch(fail(t("web.social.actionFailed")));
   }
 
   const itemProps = {
@@ -137,9 +145,9 @@ export function CommentThreadView({
           actions.edit!(comment.public_id, body)
             .then(() => {
               done();
-              onNotify("已儲存");
+              onNotify(t("web.social.saved"));
             })
-            .catch(fail("儲存失敗，請重試。"))
+            .catch(fail(t("web.social.errors.save")))
       : undefined,
   };
 
@@ -169,7 +177,10 @@ export function CommentThreadView({
                     setExpanded((prev) => new Set(prev).add(thread.public_id))
                   }
                 >
-                  ↳ 查看前面 {replies.length - VISIBLE_REPLIES} 則回覆
+                  ↳{" "}
+                  {t("web.social.showEarlierReplies", {
+                    count: replies.length - VISIBLE_REPLIES,
+                  })}
                 </Button>
               )}
               {shown.map((reply) => (
@@ -227,30 +238,45 @@ export function CommentThreadView({
         <StorytellerMascotDialog
           open={Boolean(confirm)}
           state={confirm?.type === "block" ? "neutral" : "danger"}
-          eyebrow={confirm?.type === "block" ? "封鎖" : "刪除留言"}
+          eyebrow={
+            confirm?.type === "block"
+              ? t("web.social.block")
+              : t("web.social.deleteComment")
+          }
           title={
             confirm?.type === "block"
-              ? `封鎖 ${confirm.comment.author?.pen_name ?? "這位使用者"}？`
-              : "要刪除這則留言嗎？"
+              ? t("web.social.blockTitle", {
+                  name:
+                    confirm.comment.author?.pen_name ??
+                    t("web.social.thisUser"),
+                })
+              : t("web.social.confirmDeleteComment")
           }
           description={
             confirm?.type === "block"
-              ? blockDescription(confirm.comment.author?.pen_name ?? "對方")
+              ? blockDescription(
+                  confirm.comment.author?.pen_name ??
+                    t("web.social.theOtherUser"),
+                )
               : isOwner && !confirm?.comment.is_post_author
-                ? "這是讀者的留言。你可以刪除自己版面上的任何留言；對方不會收到通知。"
-                : "刪除後無法復原，這裡會留下「已刪除」的佔位。"
+                ? t("web.social.deleteReaderComment")
+                : t("web.social.deleteCommentBody")
           }
           onClose={() => setConfirm(null)}
           actions={
             <>
-              <Button onClick={() => setConfirm(null)}>取消</Button>
+              <Button onClick={() => setConfirm(null)}>
+                {t("web.common.cancel")}
+              </Button>
               <Button
                 color="error"
                 variant="contained"
                 disabled={actions.pending}
                 onClick={runConfirm}
               >
-                {confirm?.type === "block" ? "封鎖" : "刪除"}
+                {confirm?.type === "block"
+                  ? t("web.social.block")
+                  : t("web.common.delete")}
               </Button>
             </>
           }
@@ -262,12 +288,13 @@ export function CommentThreadView({
 
 // 留言區上方的「留言 N」標題列；動態與討論串共用
 export function CommentCountHeader({ count }: { count: number }) {
+  const { t } = useTranslation();
   return (
     <Typography
       fontWeight={800}
       sx={{ px: 2, py: 1.25, borderTop: 1, borderColor: "divider" }}
     >
-      留言 {count}
+      {t("web.social.commentCount", { count })}
     </Typography>
   );
 }

@@ -1016,5 +1016,339 @@
       "volumeHelp": "선택하지 않으면 권 없음으로 처리됩니다.",
       "authorsHelp": "여러 개 선택할 수 있으며 기본값은 본인입니다."
     }
+  },
+  "discussion": {
+    "title": "토론",
+    "titleFor": "{{label}} 토론",
+    "loading": "토론을 불러오는 중…",
+    "empty": "아직 토론이 없습니다",
+    "loadMore": "더 보기",
+    "loginPrompt": "토론에 참여하려면 로그인해야 합니다. 지금 로그인할까요?",
+    "create": "토론 시작",
+    "createFor": "토론 시작・{{label}}",
+    "submit": "시작",
+    "verbStart": "시작",
+    "unavailable": "비공개됨",
+    "maskedTitle": "아직 다 읽지 않은 내용",
+    "locked": "잠김",
+    "lastReply": "마지막 답글 {{time}}",
+    "replies": "답글",
+    "lock": "잠그기",
+    "unlock": "잠금 해제",
+    "blockStarter": "작성자 차단",
+    "blockDescription": "상대는 이 작품의 토론 게시판과 이 작품 명의의 소식에 댓글을 달거나 토론을 시작할 수 없지만, 읽을 수는 있습니다. 상대의 이전 글은 남아 있으며 하나씩 삭제할 수 있습니다.",
+    "spoiler": {
+      "title": "이 스레드는 「{{label}}」에 관한 토론입니다",
+      "description": "아직 이 부분을 다 읽지 않았습니다.",
+      "readFirst": "먼저 읽기",
+      "viewAnyway": "그냥 보기"
+    },
+    "confirm": {
+      "lockTitle": "「{{title}}」을(를) 잠글까요?",
+      "lockBody": "잠그면 아무도 이 스레드에 답글을 달 수 없습니다. 기존 내용은 계속 보이며 나중에 잠금을 해제할 수 있습니다.",
+      "deleteTitle": "이 스레드를 삭제할까요?",
+      "deleteBodyWithReplies": "삭제하면 되돌릴 수 없으며, 답글 {{count}}개도 함께 보이지 않게 됩니다.",
+      "deleteBody": "삭제하면 되돌릴 수 없습니다."
+    },
+    "messages": {
+      "locked": "잠갔습니다. 이제 아무도 답글을 달 수 없습니다",
+      "unlocked": "잠금을 해제했습니다",
+      "deleted": "스레드를 삭제했습니다",
+      "linkCopied": "스레드 링크를 복사했습니다",
+      "created": "토론을 시작했습니다"
+    },
+    "errors": {
+      "create": "토론을 시작하지 못했습니다. 다시 시도하세요."
+    },
+    "fields": {
+      "title": "제목",
+      "about": "대상"
+    },
+    "about": {
+      "none": "지정 안 함",
+      "story": "이야기",
+      "lore": "설정"
+    },
+    "filters": {
+      "all": "전체",
+      "general": "일반",
+      "story": "이야기",
+      "lore": "설정"
+    },
+    "sort": {
+      "latest": "최신 답글순",
+      "newest": "최신 작성순"
+    }
+  },
+  "social": {
+    "deletedUser": "존재하지 않는 사용자",
+    "author": "작가",
+    "blocked": "차단됨",
+    "block": "차단",
+    "blockTitle": "{{name}} 님을 차단할까요?",
+    "blockedName": "{{name}} 님을 차단했습니다",
+    "thisUser": "이 사용자",
+    "theOtherUser": "상대",
+    "actionFailed": "작업에 실패했습니다. 다시 시도하세요.",
+    "saved": "저장했습니다",
+    "edited": "수정됨",
+    "moreActions": "더 보기",
+    "copyLink": "링크 복사",
+    "copyFailed": "복사하지 못했습니다. 주소창에서 직접 복사하세요.",
+    "preview": "미리보기",
+    "reply": "답글",
+    "comment": "댓글",
+    "replyPlaceholder": "답글…",
+    "commentPlaceholder": "댓글…",
+    "replyToThread": "스레드 전체에 답글 달기로 변경",
+    "replyDeleted": "삭제된 답글입니다",
+    "commentDeleted": "삭제된 댓글입니다",
+    "deletedComment": "삭제된 댓글",
+    "showEarlierReplies": "이전 답글 {{count}}개 보기",
+    "commentCount": "댓글 {{count}}",
+    "deleteComment": "댓글 삭제",
+    "confirmDeleteComment": "이 댓글을 삭제할까요?",
+    "deleteReaderComment": "독자의 댓글입니다. 내 페이지의 댓글은 무엇이든 삭제할 수 있으며, 상대에게는 알림이 가지 않습니다.",
+    "deleteCommentBody": "삭제하면 되돌릴 수 없으며, 이 자리에 「삭제됨」 표시가 남습니다.",
+    "speakAs": {
+      "prefix": "",
+      "suffix": "명의로 {{verb}}"
+    },
+    "gate": {
+      "login": "로그인하면 댓글을 달 수 있습니다.",
+      "penName": "댓글을 달기 전에 필명을 설정하세요. 다른 사람에게 이 이름이 보입니다.",
+      "setPenName": "필명 설정",
+      "restricted": "{{name}} 님이 이곳에서 내 댓글을 제한했습니다."
+    },
+    "messages": {
+      "replied": "답글을 달았습니다",
+      "commented": "댓글을 달았습니다",
+      "commentDeleted": "댓글을 삭제했습니다"
+    },
+    "errors": {
+      "comment": "댓글을 달지 못했습니다. 다시 시도하세요.",
+      "save": "저장하지 못했습니다. 다시 시도하세요."
+    }
+  },
+  "commentRef": {
+    "title": "참조",
+    "add": "참조 추가",
+    "searchPlaceholder": "이야기 또는 설정 검색",
+    "story": "이야기",
+    "lore": "설정",
+    "deleted": "삭제됨",
+    "savedVersion": "{{kind}}・저장된 버전・",
+    "imageNoText": "이미지 작품에는 텍스트가 없습니다",
+    "openEditor": "편집 열기",
+    "editHelp": "마우스 오른쪽 버튼을 누르거나 텍스트를 선택한 뒤 서식 막대에서 메모를 편집/삭제할 수 있습니다"
+  },
+  "timeline": {
+    "loading": "소식을 불러오는 중…",
+    "empty": "아직 소식이 없습니다",
+    "pinned": "고정됨",
+    "pin": "고정",
+    "unpin": "고정 해제",
+    "like": "좋아요",
+    "unlike": "좋아요 취소",
+    "deletePost": "소식 삭제",
+    "confirmDeleteTitle": "이 소식을 삭제할까요?",
+    "confirmDeleteWithComments": "삭제하면 되돌릴 수 없으며, 댓글 {{count}}개도 함께 보이지 않게 됩니다. 소식은 편집할 수 없으니 내용을 바꾸려면 삭제 후 다시 올려 주세요.",
+    "composerPlaceholder": "무슨 이야기를 할까요? 공지, 근황, 창작 잡담 무엇이든 좋아요",
+    "attachWork": "작품 첨부",
+    "attachTitle": "작품 또는 그중 한 화를 선택",
+    "publish": "게시",
+    "emptyPreview": "(내용 없음)",
+    "noPublicWorks": "이 명의에는 아직 공개된 작품이 없습니다.",
+    "restricted": "성인용",
+    "wholeWork": "작품 전체(작품 홈)",
+    "workHome": "작품 홈",
+    "attachmentUnavailable": "이 작품은 현재 볼 수 없습니다",
+    "removeAttachment": "작품 카드 제거",
+    "blockDescription": "상대는 {{name}}의 소식과 작품 토론 게시판에 댓글이나 답글을 달 수 없지만, 내 소식과 작품은 계속 볼 수 있습니다. 상대의 이전 댓글은 남아 있으며 하나씩 삭제할 수 있습니다. 이 차단은 {{name}} 명의에만 적용되며 다른 필명에는 영향을 주지 않습니다.",
+    "replyToReaders": "독자에게 답하기…",
+    "commentTo": "{{name}}에게 댓글…",
+    "messages": {
+      "pinned": "고정했습니다. 기존 고정은 해제되었습니다",
+      "unpinned": "고정을 해제했습니다",
+      "linkCopied": "소식 링크를 복사했습니다",
+      "deleted": "소식을 삭제했습니다",
+      "publishedAs": "{{name}} 명의로 게시했습니다"
+    },
+    "errors": {
+      "publish": "게시하지 못했습니다. 다시 시도하세요."
+    },
+    "marker": {
+      "spoiler": "스포일러",
+      "r18": "R18",
+      "reveal": "{{label}} 내용 보기",
+      "clickToReveal": "{{label}}・클릭해서 보기",
+      "wrapSpoiler": "텍스트를 선택한 뒤 누르면 스포일러로 감쌉니다",
+      "wrapR18": "텍스트를 선택한 뒤 누르면 성인용으로 감쌉니다"
+    },
+    "r18": {
+      "eyebrow": "연령 확인",
+      "title": "이 부분에는 성인용 묘사가 포함되어 있습니다",
+      "description": "만 18세 이상임을 확인해야 표시됩니다. 확인하면 사이트 전체의 성인용 표지와 R18 태그도 볼 수 있습니다.",
+      "notNow": "나중에",
+      "confirm": "만 18세 이상입니다"
+    },
+    "time": {
+      "justNow": "방금",
+      "minutesAgo": "{{count}}분 전",
+      "hoursAgo": "{{count}}시간 전",
+      "yesterday": "어제"
+    }
+  },
+  "notification": {
+    "title": "알림",
+    "titleWithUnread": "알림 (읽지 않음 {{count}}개)",
+    "description": "팔로우한 작가와 즐겨찾기한 작품의 업데이트, 계정 보안 알림입니다.",
+    "markAllRead": "모두 읽음으로 표시",
+    "viewAll": "알림 전체 보기",
+    "backToList": "알림으로 돌아가기",
+    "delete": "알림 삭제",
+    "lock": "알림 잠그기",
+    "unlock": "잠금 해제",
+    "lockHint": "잠그기 (자동 삭제되지 않음)",
+    "lockedCount": "잠금 {{count}} / {{limit}}",
+    "confirmDeleteTitle": "이 알림을 삭제할까요?",
+    "confirmDeleteLocked": "잠긴 알림입니다. 삭제하면 더 이상 보관되지 않으며 되돌릴 수 없습니다.",
+    "retention": "알림은 <strong>생성 후 180일이 지나면 자동으로 삭제</strong>됩니다. 남기고 싶은 알림은 자물쇠를 눌러 잠그면 계속 보관됩니다.",
+    "listSeparator": ", ",
+    "quote": "「{{text}}」",
+    "reason": "사유: {{reason}}",
+    "filters": {
+      "unread": "읽지 않음",
+      "locked": "잠김"
+    },
+    "empty": {
+      "all": {
+        "title": "알림이 없습니다",
+        "description": "작가를 팔로우하거나 작품을 즐겨찾기하면 업데이트가 여기에 표시됩니다."
+      },
+      "unread": {
+        "title": "모두 확인했습니다",
+        "description": "읽지 않은 알림이 없습니다."
+      },
+      "locked": {
+        "title": "잠긴 알림이 없습니다",
+        "description": "알림 오른쪽의 자물쇠를 누르면 잠기며, 잠긴 알림은 자동 삭제되지 않습니다."
+      }
+    },
+    "messages": {
+      "locked": "잠갔습니다. 이 알림은 자동 삭제되지 않습니다",
+      "unlocked": "잠금을 해제했습니다",
+      "allRead": "모든 알림을 읽음으로 표시했습니다",
+      "deleted": "알림을 삭제했습니다"
+    },
+    "errors": {
+      "lock": "잠그지 못했습니다. 잠시 후 다시 시도하세요.",
+      "unlock": "잠금을 해제하지 못했습니다. 잠시 후 다시 시도하세요.",
+      "markRead": "읽음으로 표시하지 못했습니다. 잠시 후 다시 시도하세요.",
+      "load": "알림을 불러오지 못했습니다. 잠시 후 다시 시도하세요.",
+      "delete": "알림을 삭제하지 못했습니다. 잠시 후 다시 시도하세요."
+    },
+    "tags": {
+      "security": "계정 보안",
+      "expiresIn": "{{count}}일 후 삭제"
+    },
+    "groups": {
+      "today": "오늘",
+      "week": "이번 주",
+      "month": "이번 달",
+      "earlier": "이전"
+    },
+    "time": {
+      "yesterday": "어제 {{time}}",
+      "daysAgo": "{{count}}일 전"
+    },
+    "source": {
+      "web": "웹"
+    },
+    "deleted": {
+      "post": "(삭제된 소식)",
+      "comment": "(삭제된 댓글)"
+    },
+    "headline": {
+      "storiesUpdated": " 님이 《{{project}}》을(를) 업데이트했습니다",
+      "storiesUpdatedMany": " 님이 《{{project}}》을(를) {{count}}화 업데이트했습니다",
+      "startingFrom": "{{label}}부터",
+      "newProject": " 님이 새 작품 《{{project}}》을(를) 발표했습니다",
+      "followedPenName": " 님이 내 필명 {{name}}을(를) 팔로우했습니다",
+      "followedYou": " 님이 나를 팔로우했습니다",
+      "favorited": " 님이 내 작품 《{{project}}》을(를) 즐겨찾기했습니다",
+      "byline": "명의: {{names}}",
+      "posted": " 님이 새 소식을 올렸습니다",
+      "postedMany": " 님이 새 소식 {{count}}개를 올렸습니다",
+      "repliedToYou": " 님이 내 댓글에 답글을 달았습니다",
+      "commentedPenName": " 님이 내 필명 {{name}}의 소식에 댓글을 달았습니다",
+      "commented": " 님이 내 소식에 댓글을 달았습니다"
+    },
+    "detail": {
+      "notFound": "알림을 찾을 수 없습니다",
+      "notFoundDescription": "삭제되었거나 보관 기간이 지나 삭제되었을 수 있습니다.",
+      "selectOne": "알림을 선택하세요",
+      "selectOneDescription": "왼쪽 알림을 누르면 여기에서 열립니다.",
+      "lockedNote": "잠긴 알림입니다. 자동 삭제되지 않습니다.",
+      "expiresNote": "이 알림은 {{count}}일 후 자동 삭제됩니다. 남기려면 오른쪽 위의 자물쇠를 누르세요.",
+      "open": "보러 가기",
+      "startFrom": "〈{{title}}〉부터 읽기",
+      "goToWork": "작품 홈으로",
+      "updatedContent": "이번 업데이트 내용",
+      "read": "읽기",
+      "words": "{{count}}자",
+      "moreStories": "그 밖에 {{count}}화가 더 있습니다. 작품 홈에서 전체 목차를 확인하세요.",
+      "projectStats": "현재 {{count}}화 · 약 {{words}}자",
+      "security": {
+        "app": "앱",
+        "grantedAt": "승인 시간",
+        "scope": "권한 범위",
+        "scopeValue": "계정의 모든 프로젝트 읽기 및 수정(삭제 포함)",
+        "name": "이름",
+        "tokenPrefix": "Token 접두사",
+        "createdAt": "생성 시간",
+        "expiresAt": "만료일",
+        "neverExpires": "만료 없음",
+        "source": "경로",
+        "device": "기기",
+        "notYou": "본인이 한 작업이 아닌가요?",
+        "revokeOAuth": "지금 바로 이 승인을 취소하세요. {{name}}은(는) 즉시 접근 권한을 잃습니다.",
+        "deleteToken": "지금 바로 이 Token을 삭제하고 최근 활동 기록을 확인하세요.",
+        "goRevoke": "승인 취소하러 가기",
+        "goDeleteToken": "Token 삭제하러 가기",
+        "viewActivity": "활동 기록 보기"
+      }
+    },
+    "post": {
+      "postsDeleted": "이 소식들은 삭제되었습니다.",
+      "attached": "{{work}} 첨부",
+      "goToPosts": "{{name}}의 소식으로",
+      "postBy": "{{name}}의 소식",
+      "yourComment": "내 댓글",
+      "commentDeleted": "이 댓글은 삭제되었습니다.",
+      "quickReply": "{{name}}에게 바로 답글…",
+      "replyFailed": "답글을 달지 못했습니다. 다시 시도하세요.",
+      "goToPost": "소식으로"
+    },
+    "follow": {
+      "goToCreator": "{{name}}의 창작자 페이지로",
+      "mutual": "서로 팔로우 중",
+      "followBack": "맞팔로우",
+      "followBackAs": "{{name}} 명의로 맞팔로우",
+      "followBackAsSelf": "{{name}}(본인) 명의로 맞팔로우",
+      "followedBack": "{{name}} 님을 맞팔로우했습니다",
+      "followedBackAs": "{{as}} 명의로 {{name}} 님을 맞팔로우했습니다",
+      "failed": "맞팔로우하지 못했습니다. 잠시 후 다시 시도하세요.",
+      "chooseIdentity": "맞팔로우할 명의 선택",
+      "note": {
+        "ownIdentityGone": "팔로우된 명의가 더 이상 존재하지 않아 맞팔로우할 수 없습니다.",
+        "actorGone": "상대가 이 명의를 삭제해 맞팔로우할 수 없습니다.",
+        "followedPenName": "상대는 내 필명 「{{name}}」을(를) 팔로우했습니다. 맞팔로우도 「{{name}}」 명의로 하며, 상대는 이 필명이 누구의 것인지 알 수 없습니다.",
+        "followedSelf": "상대는 내 본인 명의를 팔로우했습니다. 맞팔로우도 본인 명의로 합니다.",
+        "multipleIdentities": "이 작품에는 명의가 {{count}}개 있습니다. 맞팔로우할 명의를 하나 선택하세요. 이 작품에 쓰인 명의만 표시됩니다.",
+        "workSelf": "이 작품은 본인 명의입니다. 맞팔로우도 본인 명의로 합니다.",
+        "workPenName": "이 작품의 명의는 「{{name}}」입니다. 맞팔로우도 「{{name}}」 명의로 합니다."
+      }
+    }
   }
 }

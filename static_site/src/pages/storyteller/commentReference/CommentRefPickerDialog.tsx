@@ -12,6 +12,7 @@ import {
   TextField,
 } from "@mui/material";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { CommentRef } from "@/pages/storyteller/wysiwygCore/commentRefs.ts";
 import {
   commentRefKey,
@@ -37,6 +38,7 @@ export function CommentRefPickerDialog({
   onPick: (ref: CommentRef) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [keyword, setKeyword] = useState("");
   const { targets } = useCommentRefTargets(open ? projectPublicId : undefined);
   const groups = useMemo(() => {
@@ -50,19 +52,19 @@ export function CommentRefPickerDialog({
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     return [
       {
-        label: "故事",
+        label: t("web.commentRef.story"),
         items: matched
           .filter((target) => target.kind === "story")
           .slice(0, GROUP_LIMIT),
       },
       {
-        label: "設定",
+        label: t("web.commentRef.lore"),
         items: matched
           .filter((target) => target.kind === "lore")
           .slice(0, GROUP_LIMIT),
       },
     ].filter((group) => group.items.length > 0);
-  }, [targets, keyword]);
+  }, [targets, keyword, t]);
   const selectedKeys = new Set(selected.map(commentRefKey));
   const pick = (target: CommentRefTarget) => {
     onPick({ kind: target.kind, publicId: target.publicId });
@@ -71,13 +73,13 @@ export function CommentRefPickerDialog({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>加參照</DialogTitle>
+      <DialogTitle>{t("web.commentRef.add")}</DialogTitle>
       <DialogContent sx={{ pb: 1 }}>
         <TextField
           autoFocus
           fullWidth
           size="small"
-          placeholder="搜尋故事或設定"
+          placeholder={t("web.commentRef.searchPlaceholder")}
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
           sx={{ mt: 0.5 }}

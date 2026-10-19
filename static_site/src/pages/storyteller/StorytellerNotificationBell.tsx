@@ -14,6 +14,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import {
@@ -32,6 +33,7 @@ const POPOVER_LIMIT = 10;
 
 // 頂欄鈴鐺：桌機開 popover，手機直接進通知頁；未讀數每分鐘輪詢、換頁時也更新。
 export function StorytellerNotificationBell() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -54,9 +56,13 @@ export function StorytellerNotificationBell() {
 
   return (
     <>
-      <Tooltip title="通知">
+      <Tooltip title={t("web.notification.title")}>
         <IconButton
-          aria-label={`通知${unread.data ? `（${unread.data} 則未讀）` : ""}`}
+          aria-label={
+            unread.data
+              ? t("web.notification.titleWithUnread", { count: unread.data })
+              : t("web.notification.title")
+          }
           onClick={(event) =>
             isMobile ? open(notificationPath()) : setAnchor(event.currentTarget)
           }
@@ -83,13 +89,15 @@ export function StorytellerNotificationBell() {
           justifyContent="space-between"
           sx={{ px: 1.75, py: 1.25 }}
         >
-          <Typography fontWeight={800}>通知</Typography>
+          <Typography fontWeight={800}>
+            {t("web.notification.title")}
+          </Typography>
           <Button
             size="small"
             disabled={!unread.data || action.isPending}
             onClick={() => action.mutate({ type: "read-all" })}
           >
-            全部標為已讀
+            {t("web.notification.markAllRead")}
           </Button>
         </Stack>
         <Divider />
@@ -105,13 +113,15 @@ export function StorytellerNotificationBell() {
               textAlign="center"
               sx={{ py: 4, px: 2 }}
             >
-              通知載入失敗，請稍後再試。
+              {t("web.notification.errors.load")}
             </Typography>
           ) : items.length === 0 ? (
             <Stack alignItems="center" sx={{ py: 4, px: 2 }} spacing={0.5}>
-              <Typography fontWeight={800}>目前沒有通知</Typography>
+              <Typography fontWeight={800}>
+                {t("web.notification.empty.all.title")}
+              </Typography>
               <Typography variant="body2" color="text.secondary">
-                追蹤作者或收藏作品後，更新會出現在這裡。
+                {t("web.notification.empty.all.description")}
               </Typography>
             </Stack>
           ) : (
@@ -129,13 +139,13 @@ export function StorytellerNotificationBell() {
         <Divider />
         <Stack alignItems="center" sx={{ py: 0.75 }}>
           <Button size="small" onClick={() => open(notificationPath())}>
-            查看全部通知
+            {t("web.notification.viewAll")}
           </Button>
         </Stack>
       </Popover>
       <CustomSnackbar
         open={action.isError}
-        message="標為已讀失敗，請稍後再試。"
+        message={t("web.notification.errors.markRead")}
         severity="error"
         onClose={() => action.reset()}
       />

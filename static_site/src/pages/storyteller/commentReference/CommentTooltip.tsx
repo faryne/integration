@@ -1,4 +1,5 @@
 import { Box, Paper, Stack, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import {
   parseCommentRefs,
   type CommentRef,
@@ -30,6 +31,7 @@ export function CommentTooltip({
   onOpenRefs: (refs: CommentRef[], active: number) => void;
   onLeave: () => void;
 }) {
+  const { t } = useTranslation();
   const refs = parseCommentRefs(hovered.refs);
   const { targets, loaded } = useCommentRefTargets(
     refs.length > 0 ? projectPublicId : undefined,
@@ -96,7 +98,7 @@ export function CommentTooltip({
               已放行給原生長按選字，不會跳出我們的選單）——選取文字後叫出的格式列（bubble menu）
               「加註解」按鈕在選到既有註解時會變成「編輯註解」，對話框裡也有「移除註解」按鈕，
               不寫死成「右鍵」這一種說法。 */}
-          右鍵，或選取文字後用格式列可編輯／移除註解
+          {t("web.commentRef.editHelp")}
         </Typography>
       </Paper>
     </Box>

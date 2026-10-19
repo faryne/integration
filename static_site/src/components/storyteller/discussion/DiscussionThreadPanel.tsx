@@ -64,10 +64,10 @@ export function DiscussionThreadPanel({
   );
 
   if (isLoading || !data) {
-    return <StorytellerLoading label="正在載入討論..." />;
+    return <StorytellerLoading label={t("web.discussion.loading")} />;
   }
   const thread = data.thread;
-  const starter = thread.author?.pen_name ?? "已不存在的使用者";
+  const starter = thread.author?.pen_name ?? t("web.social.deletedUser");
   const owner = data.viewer;
   const threadId = thread.public_id;
   const fail = (fallback: string) => (error: unknown) =>
@@ -83,29 +83,31 @@ export function DiscussionThreadPanel({
         onNotify(success);
         after?.();
       })
-      .catch(fail("操作失敗，請重試。"));
+      .catch(fail(t("web.social.actionFailed")));
 
   const confirmCopy: Record<
     Confirm,
     { title: string; body: string; ok: string }
   > = {
     lock: {
-      title: `鎖定「${thread.title}」？`,
-      body: "鎖定後所有人都無法再回覆這個討論串，已經有的內容仍然看得到。之後可以解除鎖定。",
-      ok: "鎖定",
+      title: t("web.discussion.confirm.lockTitle", { title: thread.title }),
+      body: t("web.discussion.confirm.lockBody"),
+      ok: t("web.discussion.lock"),
     },
     delete: {
-      title: "要刪除這個討論串嗎？",
+      title: t("web.discussion.confirm.deleteTitle"),
       body:
         thread.reply_count > 0
-          ? `刪除後無法復原，底下 ${thread.reply_count} 則回覆也會一起看不到。`
-          : "刪除後無法復原。",
-      ok: "刪除",
+          ? t("web.discussion.confirm.deleteBodyWithReplies", {
+              count: thread.reply_count,
+            })
+          : t("web.discussion.confirm.deleteBody"),
+      ok: t("web.common.delete"),
     },
     block: {
-      title: `封鎖 ${starter}？`,
-      body: `對方將不能在這部作品的討論版與你這部作品署名身份的動態留言或發起討論，但還是可以閱讀。對方以前的內容會保留，你可以逐則刪除。`,
-      ok: "封鎖",
+      title: t("web.social.blockTitle", { name: starter }),
+      body: t("web.discussion.blockDescription"),
+      ok: t("web.social.block"),
     },
   };
 
@@ -114,17 +116,23 @@ export function DiscussionThreadPanel({
     if (confirm === "lock")
       void run(
         { type: "lock", threadId, locked: true },
-        "已鎖定，所有人都無法再回覆",
+        t("web.discussion.messages.locked"),
         () => setConfirm(null),
       );
     if (confirm === "delete")
-      void run({ type: "delete", threadId }, "已刪除討論串", () => {
-        setConfirm(null);
-        onDeleted();
-      });
+      void run(
+        { type: "delete", threadId },
+        t("web.discussion.messages.deleted"),
+        () => {
+          setConfirm(null);
+          onDeleted();
+        },
+      );
     if (confirm === "block")
-      void run({ type: "block-starter", threadId }, `已封鎖 ${starter}`, () =>
-        setConfirm(null),
+      void run(
+        { type: "block-starter", threadId },
+        t("web.social.blockedName", { name: starter }),
+        () => setConfirm(null),
       );
   }
 
@@ -138,7 +146,7 @@ export function DiscussionThreadPanel({
             onChange={(event) =>
               setDraft({ ...draft, title: event.target.value })
             }
-            inputProps={{ "aria-label": "標題" }}
+            inputProps={{ "aria-label": t("web.discussion.fields.title") }}
           />
           <PostTextInput
             value={draft.body}
@@ -147,7 +155,9 @@ export function DiscussionThreadPanel({
             minRows={4}
             footer={
               <>
-                <Button onClick={() => setDraft(null)}>取消</Button>
+                <Button onClick={() => setDraft(null)}>
+                  {t("web.common.cancel")}
+                </Button>
                 <Button
                   variant="contained"
                   disabled={
@@ -158,12 +168,12 @@ export function DiscussionThreadPanel({
                   onClick={() =>
                     void run(
                       { type: "edit", threadId, ...draft },
-                      "已儲存",
+                      t("web.social.saved"),
                       () => setDraft(null),
                     )
                   }
                 >
-                  儲存
+                  {t("web.common.save")}
                 </Button>
               </>
             }
@@ -179,11 +189,11 @@ export function DiscussionThreadPanel({
               sx={{ flex: 1 }}
             >
               {starter} · {postTimeLabel(thread.created_at)}
-              {thread.edited && " · 已編輯"}
+              {thread.edited && ` · ${t("web.social.edited")}`}
             </Typography>
             <IconButton
               size="small"
-              aria-label="更多動作"
+              aria-label={t("web.social.moreActions")}
               onClick={(event) => setMenuAnchor(event.currentTarget)}
             >
               <MoreHorizIcon fontSize="small" />
@@ -199,12 +209,10 @@ export function DiscussionThreadPanel({
         state={owner.state}
         asOptions={owner.as ?? []}
         locked={thread.locked}
-        ownerName="作者"
+        ownerName={t("web.social.author")}
         isOwner={Boolean(thread.can_lock)}
-        blockDescription={() =>
-          "對方將不能在這部作品的討論版與你這部作品署名身份的動態留言或發起討論，但還是可以閱讀。對方以前的內容會保留，你可以逐則刪除。"
-        }
-        placeholder="留言…"
+        blockDescription={() => t("web.discussion.blockDescription")}
+        placeholder={t("web.social.commentPlaceholder")}
         actions={{
           pending: action.isPending,
           send: (input) =>
@@ -232,7 +240,7 @@ export function DiscussionThreadPanel({
               setDraft({ title: thread.title, body: thread.body ?? "" });
             }}
           >
-            ✏️ 編輯
+            ✏️ {t("web.common.edit")}
           </MenuItem>
         )}
         {thread.can_lock && (
@@ -242,12 +250,14 @@ export function DiscussionThreadPanel({
               if (thread.locked)
                 void run(
                   { type: "lock", threadId, locked: false },
-                  "已解除鎖定",
+                  t("web.discussion.messages.unlocked"),
                 );
               else setConfirm("lock");
             }}
           >
-            {thread.locked ? "解除鎖定" : "🔒 鎖定"}
+            {thread.locked
+              ? t("web.discussion.unlock")
+              : `🔒 ${t("web.discussion.lock")}`}
           </MenuItem>
         )}
         <MenuItem
@@ -255,11 +265,11 @@ export function DiscussionThreadPanel({
             setMenuAnchor(null);
             void navigator.clipboard
               .writeText(discussionThreadLink(context, threadId))
-              .then(() => onNotify("已複製討論串連結"))
-              .catch(() => onNotify("複製失敗，請手動複製網址列。", "error"));
+              .then(() => onNotify(t("web.discussion.messages.linkCopied")))
+              .catch(() => onNotify(t("web.social.copyFailed"), "error"));
           }}
         >
-          🔗 複製連結
+          🔗 {t("web.social.copyLink")}
         </MenuItem>
         {!thread.is_mine && (
           <MenuItem
@@ -285,7 +295,7 @@ export function DiscussionThreadPanel({
               setConfirm("block");
             }}
           >
-            🚫 封鎖發串者
+            🚫 {t("web.discussion.blockStarter")}
           </MenuItem>
         )}
         {thread.can_delete && (
@@ -296,7 +306,7 @@ export function DiscussionThreadPanel({
               setConfirm("delete");
             }}
           >
-            🗑 刪除
+            🗑 {t("web.common.delete")}
           </MenuItem>
         )}
       </Menu>
@@ -308,7 +318,9 @@ export function DiscussionThreadPanel({
         onClose={() => setConfirm(null)}
         actions={
           <>
-            <Button onClick={() => setConfirm(null)}>取消</Button>
+            <Button onClick={() => setConfirm(null)}>
+              {t("web.common.cancel")}
+            </Button>
             <Button
               variant="contained"
               color={confirm === "lock" ? "primary" : "error"}

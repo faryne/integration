@@ -1,6 +1,7 @@
 import AddIcon from "@mui/icons-material/Add";
 import { Button, Stack, Typography } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   COMMENT_REFS_MAX,
   type CommentRef,
@@ -19,6 +20,7 @@ export function CommentRefsField({
   refs: CommentRef[];
   onChange: (refs: CommentRef[]) => void;
 }) {
+  const { t } = useTranslation();
   const [pickerOpen, setPickerOpen] = useState(false);
   const { targets, loaded } = useCommentRefTargets(
     refs.length > 0 ? projectPublicId : undefined,
@@ -30,7 +32,7 @@ export function CommentRefsField({
         color="text.secondary"
         sx={{ display: "block", mt: 2, mb: 1 }}
       >
-        參照
+        {t("web.commentRef.title")}
       </Typography>
       <Stack
         direction="row"
@@ -54,7 +56,7 @@ export function CommentRefsField({
           disabled={refs.length >= COMMENT_REFS_MAX}
           onClick={() => setPickerOpen(true)}
         >
-          加參照
+          {t("web.commentRef.add")}
         </Button>
       </Stack>
       <CommentRefPickerDialog

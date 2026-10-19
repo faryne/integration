@@ -1,6 +1,7 @@
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Chip, IconButton, Stack, Typography } from "@mui/material";
 import type { MouseEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import {
   storytellerReaderPath,
@@ -18,6 +19,7 @@ export function PostAttachmentCard({
   // 發文框預覽用：顯示移除按鈕、不給連結
   onRemove?: () => void;
 }) {
+  const { t } = useTranslation();
   const coverUrl = useGatedCoverUrl(attachment.cover_url, attachment.rating);
   const restricted = attachment.rating === "restricted";
   const frame = {
@@ -39,7 +41,7 @@ export function PostAttachmentCard({
     return (
       <Box sx={frame}>
         <Typography variant="body2" color="text.secondary">
-          這部作品目前無法瀏覽
+          {t("web.timeline.attachmentUnavailable")}
         </Typography>
       </Box>
     );
@@ -60,7 +62,7 @@ export function PostAttachmentCard({
     ? [attachment.volume_title, attachment.story_title]
         .filter(Boolean)
         .join("・")
-    : "作品首頁";
+    : t("web.timeline.workHome");
 
   return (
     <Box
@@ -111,7 +113,7 @@ export function PostAttachmentCard({
               size="small"
               color="error"
               variant="outlined"
-              label="限制級"
+              label={t("web.timeline.restricted")}
             />
           )}
         </Stack>
@@ -119,7 +121,7 @@ export function PostAttachmentCard({
       {onRemove && (
         <IconButton
           size="small"
-          aria-label="移除作品卡"
+          aria-label={t("web.timeline.removeAttachment")}
           onClick={onRemove}
           sx={{ alignSelf: "flex-start" }}
         >

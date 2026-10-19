@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import {
   storytellerReaderPath,
   storytellerSearchResultPath,
@@ -16,6 +17,10 @@ import type {
 } from "@/types/storytellerNotification.ts";
 
 // 通知列表／popover／內容頁共用的文案與格式化；DB 只存快照，文字一律在這裡組。
+// 這裡都是非元件 helper，用全域 i18next（每次 render 呼叫，拿得到目前語系）。
+const t = i18n.t.bind(i18n);
+const listJoin = (items: string[]) =>
+  items.join(t("web.notification.listSeparator"));
 
 const knownViews: StorytellerNotificationView[] = [
   "stories",
@@ -67,41 +72,67 @@ export function notificationHeadline(
   view: StorytellerNotificationView,
 ): NotificationHeadline {
   const p = n.payload;
-  const authors = (p.authors ?? []).join("、");
+  const authors = listJoin(p.authors ?? []);
   switch (view) {
     case "stories": {
       const total = p.story_total ?? p.stories?.length ?? 0;
       return {
         actor: authors,
-        text: ` 的《${p.project_name}》更新了${total > 1 ? ` ${total} 話` : ""}`,
-        sub: total > 1 ? `從 ${firstStoryLabel(n)} 開始` : firstStoryLabel(n),
+        text:
+          total > 1
+            ? t("web.notification.headline.storiesUpdatedMany", {
+                project: p.project_name,
+                count: total,
+              })
+            : t("web.notification.headline.storiesUpdated", {
+                project: p.project_name,
+              }),
+        sub:
+          total > 1
+            ? t("web.notification.headline.startingFrom", {
+                label: firstStoryLabel(n),
+              })
+            : firstStoryLabel(n),
       };
     }
     case "project":
       return {
         actor: authors,
-        text: ` 發表了新作品《${p.project_name}》`,
+        text: t("web.notification.headline.newProject", {
+          project: p.project_name,
+        }),
         sub: p.description,
       };
     case "follower":
       return {
         actor: notificationActorName(n),
         text: p.target_pen_name
-          ? ` 追蹤了你的筆名 ${p.target_pen_name}`
-          : " 追蹤了你",
+          ? t("web.notification.headline.followedPenName", {
+              name: p.target_pen_name,
+            })
+          : t("web.notification.headline.followedYou"),
       };
     case "favorite":
       return {
         actor: notificationActorName(n),
-        text: ` 收藏了你的作品《${p.project_name}》`,
+        text: t("web.notification.headline.favorited", {
+          project: p.project_name,
+        }),
         sub:
-          (p.authors ?? []).length > 0 ? `署名：${p.authors!.join("、")}` : "",
+          (p.authors ?? []).length > 0
+            ? t("web.notification.headline.byline", {
+                names: listJoin(p.authors!),
+              })
+            : "",
       };
     case "posted": {
       const count = p.posts?.length ?? 0;
       return {
         actor: notificationActorName(n),
-        text: count > 1 ? ` 發了 ${count} 則新動態` : " 發了新動態",
+        text:
+          count > 1
+            ? t("web.notification.headline.postedMany", { count })
+            : t("web.notification.headline.posted"),
         sub: p.deleted
           ? deletedText("post", p.delete_reason)
           : (p.posts?.[0]?.excerpt ?? p.body),
@@ -112,21 +143,25 @@ export function notificationHeadline(
         actor: notificationActorName(n),
         text:
           n.kind === "post.replied"
-            ? " 回覆了你的留言"
+            ? t("web.notification.headline.repliedToYou")
             : p.target_pen_name
-              ? ` 留言了你的筆名 ${p.target_pen_name} 的貼文`
-              : " 留言了你的貼文",
+              ? t("web.notification.headline.commentedPenName", {
+                  name: p.target_pen_name,
+                })
+              : t("web.notification.headline.commented"),
         sub: p.deleted
           ? deletedText("comment", p.delete_reason)
-          : `「${p.comment_excerpt ?? ""}」`,
+          : t("web.notification.quote", { text: p.comment_excerpt ?? "" }),
       };
     case "moderation":
       // 標題是後端寫入的「你的留言已由站方移除」，原因依 slug 在前端對照
       return {
         text: p.title,
         sub: [
-          p.label && `「${p.label}」`,
-          `原因：${moderationReasonLabel(p.delete_reason ?? "")}`,
+          p.label && t("web.notification.quote", { text: p.label }),
+          t("web.notification.reason", {
+            reason: moderationReasonLabel(p.delete_reason ?? ""),
+          }),
         ]
           .filter(Boolean)
           .join(" · "),
@@ -145,7 +180,7 @@ export function notificationHeadline(
 
 // 追蹤／收藏通知的追蹤者名稱；身份已刪除時後端不帶 actor
 export const notificationActorName = (n: StorytellerNotification) =>
-  n.payload.actor?.pen_name ?? "已不存在的使用者";
+  n.payload.actor?.pen_name ?? t("web.social.deletedUser");
 
 // 通用 link：站內路徑走 router，http(s) 外部網址另開分頁；
 // 其他協定（javascript: 等）不顯示按鈕，避免點了直接執行程式碼
@@ -157,14 +192,15 @@ export function notificationLink(link?: string) {
   return /^https?:\/\//i.test(link) ? { href: link, external: true } : null;
 }
 
-const sourceLabels: Record<string, string> = {
-  web: "網頁",
-  mcp: "MCP",
-  api: "API",
+// 只有 web 需要翻譯，MCP／API 是專有名詞
+const sourceLabels: Record<string, () => string> = {
+  web: () => t("web.notification.source.web"),
+  mcp: () => "MCP",
+  api: () => "API",
 };
 
 export const notificationSourceLabel = (source?: string) =>
-  (source && sourceLabels[source]) || source || "—";
+  (source && sourceLabels[source]?.()) || source || "—";
 
 // 依序比對，先中的優先（Edge／Chrome 的 UA 都含 Safari，所以 Safari 放最後）
 const osPatterns: [string, RegExp][] = [
@@ -207,16 +243,16 @@ const daysAgo = (iso: string) =>
 export function notificationGroupLabel(iso: string) {
   const days = daysAgo(iso);
   return days <= 0
-    ? "今天"
+    ? t("web.notification.groups.today")
     : days <= 7
-      ? "這一週"
+      ? t("web.notification.groups.week")
       : days <= 30
-        ? "這個月"
-        : "更早";
+        ? t("web.notification.groups.month")
+        : t("web.notification.groups.earlier");
 }
 
 const hhmm = (d: Date) =>
-  d.toLocaleTimeString("zh-TW", {
+  d.toLocaleTimeString(i18n.resolvedLanguage, {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -227,13 +263,14 @@ export function notificationTimeLabel(iso: string) {
   const days = daysAgo(iso);
   const date = new Date(iso);
   if (days <= 0) return hhmm(date);
-  if (days === 1) return `昨天 ${hhmm(date)}`;
-  if (days <= 30) return `${days} 天前`;
-  return date.toLocaleDateString("zh-TW");
+  if (days === 1)
+    return t("web.notification.time.yesterday", { time: hhmm(date) });
+  if (days <= 30) return t("web.notification.time.daysAgo", { count: days });
+  return date.toLocaleDateString(i18n.resolvedLanguage);
 }
 
 export const notificationFullTime = (iso: string) =>
-  new Date(iso).toLocaleString("zh-TW", { hour12: false });
+  new Date(iso).toLocaleString(i18n.resolvedLanguage, { hour12: false });
 
 // 剩 14 天內就要被清除時才提醒
 export const NOTIFICATION_EXPIRING_WITHIN_DAYS = 14;
@@ -276,5 +313,7 @@ export const notificationErrorMessage = apiErrorMessage;
 // 已刪除的貼文／留言：本人刪的「（留言已刪除）」，站方移除的整句帶原因（翻譯檔 moderation.removedByStaff.notice.*）
 function deletedText(kind: "comment" | "post", reason?: string) {
   if (reason) return removedByStaffText(`notice.${kind}`, reason);
-  return kind === "post" ? "（動態已刪除）" : "（留言已刪除）";
+  return kind === "post"
+    ? t("web.notification.deleted.post")
+    : t("web.notification.deleted.comment");
 }

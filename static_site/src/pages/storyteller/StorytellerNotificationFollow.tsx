@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import CheckIcon from "@mui/icons-material/Check";
 import PersonIcon from "@mui/icons-material/Person";
@@ -15,6 +16,7 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import { useStorytellerNotificationAction } from "@/apis/storyteller.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
@@ -40,6 +42,7 @@ export function NotificationActorAvatar({
   n: StorytellerNotification;
   size?: number;
 }) {
+  const { t } = useTranslation();
   const actor = n.payload.actor;
   const avatar = (
     <Avatar
@@ -54,7 +57,7 @@ export function NotificationActorAvatar({
     <Box
       component={RouterLink}
       to={steamloomCreatorPath(actor.pen_name)}
-      title={`前往 ${actor.pen_name} 的創作者頁`}
+      title={t("web.notification.follow.goToCreator", { name: actor.pen_name })}
       // 列表列整列可點，頭像點擊不要再觸發「打開通知」
       onClick={(event) => event.stopPropagation()}
       sx={{ display: "inline-flex", borderRadius: "50%" }}
@@ -109,6 +112,7 @@ export function NotificationFavoriteCover({
 
 // 回追：已互相追蹤顯示 chip；snack 放在外層，回追成功、按鈕換成 chip 時才不會跟著被卸載
 function FollowBackControl({ n }: { n: StorytellerNotification }) {
+  const { t } = useTranslation();
   const [snack, setSnack] = useState<{
     message: string;
     severity: "success" | "error";
@@ -118,7 +122,11 @@ function FollowBackControl({ n }: { n: StorytellerNotification }) {
   return (
     <>
       {followBack.state === "following" ? (
-        <Chip icon={<CheckIcon />} label="已互相追蹤" variant="outlined" />
+        <Chip
+          icon={<CheckIcon />}
+          label={t("web.notification.follow.mutual")}
+          variant="outlined"
+        />
       ) : (
         <FollowBackButton
           n={n}
@@ -146,11 +154,14 @@ function FollowBackButton({
   identities: StorytellerNotificationFollowBack["identities"];
   onResult: (message: string, severity: "success" | "error") => void;
 }) {
+  const { t } = useTranslation();
   const action = useStorytellerNotificationAction();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [selected, setSelected] = useState(0);
   const identity = identities[Math.min(selected, identities.length - 1)];
-  const label = identity.is_self ? "回追" : `以 ${identity.pen_name} 回追`;
+  const label = identity.is_self
+    ? t("web.notification.follow.followBack")
+    : t("web.notification.follow.followBackAs", { name: identity.pen_name });
   const followBackNow = () =>
     action.mutate(
       {
@@ -163,13 +174,21 @@ function FollowBackButton({
         onSuccess: () =>
           onResult(
             identity.is_self
-              ? `已回追 ${notificationActorName(n)}`
-              : `已以 ${identity.pen_name} 回追 ${notificationActorName(n)}`,
+              ? t("web.notification.follow.followedBack", {
+                  name: notificationActorName(n),
+                })
+              : t("web.notification.follow.followedBackAs", {
+                  as: identity.pen_name,
+                  name: notificationActorName(n),
+                }),
             "success",
           ),
         onError: (error) =>
           onResult(
-            notificationErrorMessage(error, "回追失敗，請稍後再試。"),
+            notificationErrorMessage(
+              error,
+              t("web.notification.follow.failed"),
+            ),
             "error",
           ),
       },
@@ -184,7 +203,7 @@ function FollowBackButton({
         {identities.length > 1 && (
           <Button
             size="small"
-            aria-label="選擇回追身份"
+            aria-label={t("web.notification.follow.chooseIdentity")}
             onClick={(event) => setMenuAnchor(event.currentTarget)}
           >
             <ArrowDropDownIcon />
@@ -205,8 +224,14 @@ function FollowBackButton({
               setMenuAnchor(null);
             }}
           >
-            以 {item.pen_name}
-            {item.is_self ? "（本人）" : ""} 回追
+            {t(
+              item.is_self
+                ? "web.notification.follow.followBackAsSelf"
+                : "web.notification.follow.followBackAs",
+              {
+                name: item.pen_name,
+              },
+            )}
           </MenuItem>
         ))}
       </Menu>
@@ -215,30 +240,37 @@ function FollowBackButton({
 }
 
 // 說明這次回追會用哪個身份，讓使用者知道對方看不出筆名屬於誰
+// 非元件 helper（在 render 中呼叫），用全域 i18next
 function identityNote(n: StorytellerNotification, isFavorite: boolean) {
+  const t = i18n.t.bind(i18n);
   const followBack = n.follow_back;
   if (!followBack || followBack.state === "unavailable") {
     return n.payload.actor
-      ? "你被追蹤的身份已經不存在，無法回追。"
-      : "對方已刪除這個身份，無法回追。";
+      ? t("web.notification.follow.note.ownIdentityGone")
+      : t("web.notification.follow.note.actorGone");
   }
   if (!isFavorite) {
     const target = n.payload.target_pen_name;
     return target
-      ? `對方追蹤的是你的筆名「${target}」，回追也會用「${target}」的身份，對方看不出這個筆名屬於誰。`
-      : "對方追蹤的是你的本人身份，回追會用本人身份。";
+      ? t("web.notification.follow.note.followedPenName", { name: target })
+      : t("web.notification.follow.note.followedSelf");
   }
   const identities = followBack.identities;
   if (identities.length > 1) {
-    return `這部作品有 ${identities.length} 個署名身份，選一個回追；只會列出這部作品署名過的身份。`;
+    return t("web.notification.follow.note.multipleIdentities", {
+      count: identities.length,
+    });
   }
   return identities[0]?.is_self
-    ? "這部作品以本人身份署名，回追會用本人身份。"
-    : `這部作品署名「${identities[0]?.pen_name}」，回追會用「${identities[0]?.pen_name}」的身份。`;
+    ? t("web.notification.follow.note.workSelf")
+    : t("web.notification.follow.note.workPenName", {
+        name: identities[0]?.pen_name,
+      });
 }
 
 // 追蹤者卡片：大頭像與筆名可點進創作者頁，右邊是回追
 function ActorCard({ n }: { n: StorytellerNotification }) {
+  const { t } = useTranslation();
   const actor = n.payload.actor;
   return (
     <Paper
@@ -264,7 +296,7 @@ function ActorCard({ n }: { n: StorytellerNotification }) {
           </Typography>
         ) : (
           <Typography variant="subtitle1" fontWeight={800}>
-            已不存在的使用者
+            {t("web.social.deletedUser")}
           </Typography>
         )}
         {actor?.bio && (
@@ -299,6 +331,7 @@ export function FollowerBody({ n }: { n: StorytellerNotification }) {
 }
 
 export function FavoriteBody({ n }: { n: StorytellerNotification }) {
+  const { t } = useTranslation();
   const p = n.payload;
   const projectPath = notificationProjectPath(n);
   return (
@@ -328,7 +361,9 @@ export function FavoriteBody({ n }: { n: StorytellerNotification }) {
           </Typography>
           {(p.authors ?? []).length > 0 && (
             <Typography variant="body2" color="text.secondary">
-              署名：{p.authors!.join("、")}
+              {t("web.notification.headline.byline", {
+                names: p.authors!.join(t("web.notification.listSeparator")),
+              })}
             </Typography>
           )}
           {projectPath && (
@@ -339,7 +374,7 @@ export function FavoriteBody({ n }: { n: StorytellerNotification }) {
                 component={RouterLink}
                 to={projectPath}
               >
-                前往作品首頁
+                {t("web.notification.detail.goToWork")}
               </Button>
             </Box>
           )}

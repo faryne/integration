@@ -12,6 +12,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAttachableWorks, useTimelineAction } from "@/apis/storyteller.ts";
 import { StorytellerDialog } from "@/components/storyteller/StorytellerDialog.tsx";
 import { apiErrorMessage } from "@/helpers/apiError.ts";
@@ -37,6 +38,7 @@ export function AuthorPostComposer({
   author: StorytellerAuthorIdentity;
   onNotify: Notify;
 }) {
+  const { t } = useTranslation();
   const [body, setBody] = useState("");
   const [preview, setPreview] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -63,10 +65,15 @@ export function AuthorPostComposer({
           setBody("");
           setAttachment(null);
           setPreview(false);
-          onNotify(`已以 ${author.pen_name} 發佈`);
+          onNotify(
+            t("web.timeline.messages.publishedAs", { name: author.pen_name }),
+          );
         },
         onError: (error) =>
-          onNotify(apiErrorMessage(error, "發佈失敗，請重試。"), "error"),
+          onNotify(
+            apiErrorMessage(error, t("web.timeline.errors.publish")),
+            "error",
+          ),
       },
     );
   }
@@ -82,7 +89,7 @@ export function AuthorPostComposer({
             value={body}
             onChange={setBody}
             maxLength={AUTHOR_POST_MAX_LENGTH}
-            placeholder="想說點什麼？公告、近況、創作碎念都可以"
+            placeholder={t("web.timeline.composerPlaceholder")}
             extraTools={
               <>
                 <Button
@@ -91,7 +98,7 @@ export function AuthorPostComposer({
                   color="inherit"
                   onClick={() => setPickerOpen(true)}
                 >
-                  📎 附上作品
+                  📎 {t("web.timeline.attachWork")}
                 </Button>
                 <Button
                   size="small"
@@ -99,7 +106,7 @@ export function AuthorPostComposer({
                   color="inherit"
                   onClick={() => setPreview((value) => !value)}
                 >
-                  👁 預覽
+                  👁 {t("web.social.preview")}
                 </Button>
               </>
             }
@@ -112,7 +119,7 @@ export function AuthorPostComposer({
                 }
                 onClick={publish}
               >
-                發佈
+                {t("web.timeline.publish")}
               </Button>
             }
           />
@@ -136,7 +143,7 @@ export function AuthorPostComposer({
                 <PostMarkerText body={body} />
               ) : (
                 <Typography variant="body2" color="text.disabled">
-                  （沒有內容）
+                  {t("web.timeline.emptyPreview")}
                 </Typography>
               )}
               {attachment && (
@@ -145,7 +152,14 @@ export function AuthorPostComposer({
             </Box>
           )}
           <Typography variant="caption" color="text.secondary">
-            以 <b>{author.pen_name}</b> 發佈
+            {/* 「以 某筆名 發佈」語序各語言不同，共用 SpeakAs 的前後綴 */}
+            {t("web.social.speakAs.prefix", {
+              verb: t("web.timeline.publish"),
+            })}{" "}
+            <b>{author.pen_name}</b>{" "}
+            {t("web.social.speakAs.suffix", {
+              verb: t("web.timeline.publish"),
+            })}
           </Typography>
         </Stack>
       </Stack>
@@ -188,20 +202,23 @@ function AttachWorkDialog({
     story?: AttachableWork["stories"][number],
   ) => void;
 }) {
+  const { t } = useTranslation();
   const { data, isLoading } = useAttachableWorks(penName, open);
   return (
     <StorytellerDialog
       open={open}
-      eyebrow="附上作品"
-      title="選一部作品或其中一話"
+      eyebrow={t("web.timeline.attachWork")}
+      title={t("web.timeline.attachTitle")}
       onClose={onClose}
-      actions={<Button onClick={onClose}>取消</Button>}
+      actions={<Button onClick={onClose}>{t("web.common.cancel")}</Button>}
     >
       {isLoading ? (
-        <Typography color="text.secondary">載入中…</Typography>
+        <Typography color="text.secondary">
+          {t("web.common.loading")}
+        </Typography>
       ) : (data ?? []).length === 0 ? (
         <Typography color="text.secondary">
-          這個身份目前沒有公開的作品。
+          {t("web.timeline.noPublicWorks")}
         </Typography>
       ) : (
         <List dense sx={{ maxHeight: 420, overflow: "auto" }}>
@@ -209,10 +226,11 @@ function AttachWorkDialog({
             <Box key={work.project_public_id}>
               <ListSubheader disableSticky sx={{ lineHeight: 2.2, px: 1 }}>
                 《{work.project_name}》
-                {work.rating === "restricted" && "・限制級"}
+                {work.rating === "restricted" &&
+                  `・${t("web.timeline.restricted")}`}
               </ListSubheader>
               <ListItemButton onClick={() => onPick(work)}>
-                <ListItemText primary="整部作品（作品首頁）" />
+                <ListItemText primary={t("web.timeline.wholeWork")} />
               </ListItemButton>
               {work.stories.map((story) => (
                 <ListItemButton

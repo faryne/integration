@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import type { ReaderDiscussionContext } from "@/components/storyteller/discussion/discussionContext.ts";
 import {
   readerDiscussionsPath,
@@ -50,7 +51,8 @@ export function buildReaderDiscussion({
       return lore ? loreLocked(lore) : false;
     },
     anchorLabel: (anchor: DiscussionAnchor) => {
-      if (anchor.unavailable) return "已下架";
+      // 這裡不是元件，取全域 i18next（每次 render 呼叫，拿得到目前語系）
+      if (anchor.unavailable) return i18n.t("web.discussion.unavailable");
       if (anchor.type === "lore") {
         const lore = findLore(anchor.public_id);
         return lore ? loreTitle(lore) : (anchor.title ?? "");
