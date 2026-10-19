@@ -3,7 +3,6 @@ import LanguageIcon from "@mui/icons-material/Language";
 import { Box, IconButton, MenuItem, Popover, Stack, Tooltip, Typography } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import i18n from "@/i18n/index.ts";
 import {
   normalizeStorytellerLanguage,
   persistStorytellerLanguage,
@@ -13,9 +12,10 @@ import {
 
 /** 與外觀切換並列的全站語言入口；選擇後立即套用並記住，不另設儲存流程。 */
 export function StorytellerLanguageMenu() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  const current = normalizeStorytellerLanguage(i18n.resolvedLanguage) ?? "zh-TW";
+  // language 會在 languageChanged 事件前更新；resolvedLanguage 在同一輪 render 仍可能是舊值。
+  const current = normalizeStorytellerLanguage(i18n.language) ?? "zh-TW";
 
   async function selectLanguage(language: StorytellerLanguage) {
     persistStorytellerLanguage(language);

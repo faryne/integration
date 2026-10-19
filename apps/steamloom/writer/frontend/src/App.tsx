@@ -145,7 +145,7 @@ function Shell() {
         ) : (
           <WebApiProvider onExpired={handleSessionExpired}>
             {settings ? (
-              <SettingsPage rootLabel={openProject?.name ?? t("projects.title")} section={settings} onSection={setSettings} onBack={() => setSettings(null)} />
+              <SettingsPage section={settings} onSection={setSettings} onBack={() => { setSettings(null); setOpenProject(null); }} />
             ) : projectForm ? (
               <ProjectFormPage project={projectForm.project} onBack={() => setProjectForm(null)} onCreated={(id, next) => void openCreatedProject(id, next)} />
             ) : openProject ? (

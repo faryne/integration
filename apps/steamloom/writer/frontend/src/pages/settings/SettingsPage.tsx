@@ -19,7 +19,7 @@ const sections: { id: SettingsSection; icon: ReactNode; title: string; render: (
 
 export const defaultSettingsSection: SettingsSection = "general";
 
-export function SettingsPage({ rootLabel, section, onSection, onBack }: { rootLabel: string; section: SettingsSection; onSection: (section: SettingsSection) => void; onBack: () => void }) {
+export function SettingsPage({ section, onSection, onBack }: { section: SettingsSection; onSection: (section: SettingsSection) => void; onBack: () => void }) {
   const { t } = useTranslation();
   const [controller, setController] = useState<SettingsFormController | null>(null);
   const controllerRef = useRef<SettingsFormController | null>(null);
@@ -65,7 +65,7 @@ export function SettingsPage({ rootLabel, section, onSection, onBack }: { rootLa
 
   return (
     <SettingsFormContextProvider value={context}>
-      <AppBreadcrumbs items={[{ label: rootLabel, onClick: () => requestNavigation(onBack) }, { label: t("settings.title") }, { label: t(current.title) }]} />
+      <AppBreadcrumbs items={[{ label: t("projects.title"), onClick: () => requestNavigation(onBack) }, { label: t("settings.title") }, { label: t(current.title) }]} />
       <Box sx={{ flex: 1, minHeight: 0, display: "flex" }}>
         <Box component="nav" sx={{ width: 220, flex: "none", borderRight: 1, borderColor: "divider", overflow: "auto" }}>
           <List dense sx={{ py: 1 }}>
