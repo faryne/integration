@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import {
   readerProjectBasePath,
   readerStoryPath,
@@ -13,12 +14,6 @@ export const STORYTELLER_AI_ASSISTANT_ENABLED =
   import.meta.env.VITE_STORYTELLER_AI_ASSISTANT_ENABLED === "true";
 
 // 專案公開範圍的中文名稱；專案卡片選單與稽核紀錄的欄位差異共用同一份，避免兩邊講法不同。
-export const STORYTELLER_VISIBILITY_LABELS = {
-  private: "私密",
-  unlisted: "分享",
-  public: "公開",
-} satisfies Record<"private" | "unlisted" | "public", string>;
-
 // 圖像作品上傳限制：跟後端 service/storyteller/upload.go 的
 // maxImagePagesPerUpload／maxImagePageSizeBytes／allowedImagePageContentTypes 對應，
 // 前端這邊只是先擋一次給使用者即時回饋，實際防濫用還是靠後端驗證。
@@ -92,16 +87,11 @@ export function storytellerSearchResultPath(result: {
 // 日期格式搬到獨立檔案，讓 SteamLoom Writer 也能 import（那邊不能用 "@/" alias）
 export { formatStorytellerDate } from "./storytellerDate";
 
+// 分級標籤沿用搜尋頁的翻譯（web.search.ratings.*）；非元件 helper，用全域 i18next
 export function storytellerProjectRatingLabel(
   rating: "general" | "guidance" | "restricted" | undefined,
 ) {
-  if (rating === "restricted") {
-    return "限制級";
-  }
-  if (rating === "guidance") {
-    return "輔導級";
-  }
-  return "普通級";
+  return i18n.t(`web.search.ratings.${rating ?? "general"}`);
 }
 
 export function storytellerProjectRatingColor(

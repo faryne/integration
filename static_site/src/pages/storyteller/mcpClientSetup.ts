@@ -48,19 +48,19 @@ export const mcpSkillInstallers: Record<
 > = {
   unix: {
     label: "macOS／Linux",
-    runLabel: "在終端機執行：",
+    runLabel: "web.mcp.runInTerminal",
     command: `curl -fsSL ${skillBase}/skill-installer.sh | sh`,
     inspect: `curl -fsSL ${skillBase}/skill-installer.sh -o skill-installer.sh\nless skill-installer.sh\nsh skill-installer.sh`,
     downloadUrl: `${skillBase}/skill-installer.sh?download=1`,
-    downloadLabel: "下載安裝程式（.sh）",
+    downloadLabel: "web.mcp.installer.downloadSh",
   },
   win: {
     label: "Windows（PowerShell）",
-    runLabel: "在 PowerShell 執行：",
+    runLabel: "web.mcp.installer.runInPowerShell",
     command: `irm ${skillBase}/skill-installer.ps1 | iex`,
     inspect: `irm ${skillBase}/skill-installer.ps1 -OutFile skill-installer.ps1\nnotepad skill-installer.ps1\npowershell -ExecutionPolicy Bypass -File .\\skill-installer.ps1`,
     downloadUrl: `${skillBase}/skill-installer.ps1?download=1`,
-    downloadLabel: "下載安裝程式（.ps1）",
+    downloadLabel: "web.mcp.installer.downloadPs1",
   },
 };
 
@@ -73,12 +73,13 @@ export function detectSkillInstallerOs(): McpSkillInstallerOs {
 }
 
 // Personal Access Token 的效期選項；Personal Access Token 頁與 MCP 連接頁共用。
+// label 是翻譯 key，days 帶進 {{count}}
 export const personalAccessTokenExpiryOptions = [
-  { value: "30", label: "30 天" },
-  { value: "90", label: "90 天" },
-  { value: "180", label: "180 天" },
-  { value: "365", label: "365 天" },
-  { value: "forever", label: "永久（不過期）" },
+  { value: "30", label: "web.mcp.expiry.days", days: 30 },
+  { value: "90", label: "web.mcp.expiry.days", days: 90 },
+  { value: "180", label: "web.mcp.expiry.days", days: 180 },
+  { value: "365", label: "web.mcp.expiry.days", days: 365 },
+  { value: "forever", label: "web.mcp.expiry.forever", days: 0 },
 ] as const;
 
 // 選項值轉成 API 的 expires_in_days；永久不過期就不帶這個欄位。
@@ -91,6 +92,10 @@ const PAT_PLACEHOLDER = "<YOUR_PERSONAL_ACCESS_TOKEN>";
 // Codex 用環境變數帶 token，避免把明碼寫進 config.toml
 const CODEX_TOKEN_ENV = "STEAMLOOM_TOKEN";
 
+// 這支檔案裡的文字欄位都存翻譯 key（web.mcp.*），呈現端用 t(key, mcpTextParams) 取字，
+// 需要帶入的伺服器名稱／環境變數名稱統一放這裡。
+export const mcpTextParams = { server: MCP_SERVER_NAME, env: CODEX_TOKEN_ENV };
+
 export type McpAuthMethod = "oauth" | "pat";
 
 export const mcpAuthMeta: Record<
@@ -98,14 +103,12 @@ export const mcpAuthMeta: Record<
   { label: string; description: string }
 > = {
   oauth: {
-    label: "OAuth 授權",
-    description:
-      "在瀏覽器按一次「允許」就連上了，不用複製 token。隨時可以到 OAuth Token 頁撤銷。",
+    label: "web.mcp.auth.oauth.label",
+    description: "web.mcp.auth.oauth.description",
   },
   pat: {
-    label: "Personal Access Token",
-    description:
-      "建立一組 token 貼進工具的設定。適合不能開瀏覽器的環境（例如遠端伺服器）。",
+    label: "web.mcp.auth.pat.label",
+    description: "web.mcp.auth.pat.description",
   },
 };
 
@@ -139,79 +142,69 @@ export interface McpService {
 }
 
 const uploadZipSteps = (where: string) => [
-  "下載 Skill 的 ZIP 檔（不用解壓縮）",
+  "web.mcp.skill.downloadZip",
   where,
-  "Skill 更新時，重新下載 ZIP 再上傳一次；之前上傳過舊版（名稱叫 storyteller-mcp）的話，請在技能列表把舊的移除。",
+  "web.mcp.skill.updateZip",
 ];
 
 export const mcpServices: McpService[] = [
   {
     key: "claudeai",
-    label: "Claude.ai",
-    description: "網頁版、桌面版與手機 App",
+    label: "web.mcp.services.claudeai.label",
+    description: "web.mcp.services.claudeai.description",
     authMethods: ["oauth"],
-    oauthOnlyReason:
-      "Claude.ai 的自訂 connector 只能用 OAuth，不能自己填 token。",
+    oauthOnlyReason: "web.mcp.services.claudeai.oauthOnly",
     oauthSteps: [
-      { text: "到 Claude.ai 的「設定 › Connectors」，新增自訂 connector" },
+      { text: "web.mcp.services.claudeai.steps.add" },
       {
-        text: "名稱填 SteamLoom，網址貼上：",
+        text: "web.mcp.services.claudeai.steps.url",
         code: (endpoint) => endpoint,
       },
-      { text: "按「連線」後會跳到 SteamLoom 授權頁，確認帳號後按「允許」" },
+      { text: "web.mcp.services.claudeai.steps.allow" },
     ],
     skill: {
       kind: "upload",
       steps: [
-        "先到「設定 › 功能」開啟「程式碼執行與檔案建立」（Team／Enterprise 方案要由管理員開啟）",
-        ...uploadZipSteps(
-          "到「自訂 › 技能」，按「＋」→「上傳技能」，選剛才下載的 ZIP",
-        ),
+        "web.mcp.services.claudeai.skill.enableCode",
+        ...uploadZipSteps("web.mcp.services.claudeai.skill.upload"),
       ],
     },
   },
   {
     key: "chatgpt",
-    label: "ChatGPT",
-    description: "需要開啟開發者模式",
+    label: "web.mcp.services.chatgpt.label",
+    description: "web.mcp.services.chatgpt.description",
     authMethods: ["oauth"],
-    oauthOnlyReason:
-      "ChatGPT 的自訂 connector 只能用 OAuth，不能自己填 token。",
+    oauthOnlyReason: "web.mcp.services.chatgpt.oauthOnly",
     oauthSteps: [
+      { text: "web.mcp.services.chatgpt.steps.add" },
       {
-        text: "到 ChatGPT 的「設定 › 應用程式與連接器」，開啟開發者模式後新增 connector",
-      },
-      {
-        text: "網址貼上下面的位址，驗證方式選 OAuth：",
+        text: "web.mcp.services.chatgpt.steps.url",
         code: (endpoint) => endpoint,
       },
-      { text: "跳到 SteamLoom 授權頁後按「允許」" },
+      { text: "web.mcp.services.chatgpt.steps.allow" },
     ],
     skill: {
       kind: "upload",
-      steps: uploadZipSteps(
-        "到 ChatGPT 的 Skills，選擇建立 → 從電腦上傳，選剛才下載的 ZIP；ChatGPT 會先掃描，掃描完就能用",
-      ),
+      steps: uploadZipSteps("web.mcp.services.chatgpt.skill.upload"),
     },
   },
   {
     key: "claudecode",
-    label: "Claude Code",
-    description: "終端機與 IDE",
+    label: "web.mcp.services.claudecode.label",
+    description: "web.mcp.services.claudecode.description",
     authMethods: ["oauth", "pat"],
     oauthSteps: [
       {
-        text: "在終端機執行：",
+        text: "web.mcp.runInTerminal",
         code: (endpoint) =>
           `claude mcp add --transport http ${MCP_SERVER_NAME} ${endpoint}`,
       },
-      {
-        text: `在 Claude Code 裡輸入 /mcp，選 ${MCP_SERVER_NAME} 進行驗證（或執行 claude mcp login ${MCP_SERVER_NAME}）`,
-      },
-      { text: "瀏覽器會跳到 SteamLoom 授權頁，按「允許」" },
+      { text: "web.mcp.services.claudecode.steps.login" },
+      { text: "web.mcp.services.claudecode.steps.allow" },
     ],
     pat: {
-      snippetLabel: "在終端機執行：",
+      snippetLabel: "web.mcp.runInTerminal",
       snippet: (endpoint, token) =>
         `claude mcp add --transport http ${MCP_SERVER_NAME} ${endpoint} \\\n  --header "Authorization: Bearer ${token}"`,
     },
@@ -219,41 +212,39 @@ export const mcpServices: McpService[] = [
   },
   {
     key: "codex",
-    label: "Codex",
-    description: "Codex CLI 與 IDE 擴充",
+    label: "web.mcp.services.codex.label",
+    description: "web.mcp.services.codex.description",
     authMethods: ["oauth", "pat"],
     oauthSteps: [
       {
-        text: "在終端機執行：",
+        text: "web.mcp.runInTerminal",
         code: (endpoint) =>
           `codex mcp add ${MCP_SERVER_NAME} --url ${endpoint}\ncodex mcp login ${MCP_SERVER_NAME}`,
       },
-      { text: "執行 login 後瀏覽器會跳到 SteamLoom 授權頁，按「允許」" },
+      { text: "web.mcp.services.codex.steps.allow" },
     ],
     pat: {
-      snippetLabel: `加到 ~/.codex/config.toml，並在環境變數 ${CODEX_TOKEN_ENV} 放入 token：`,
+      snippetLabel: "web.mcp.services.codex.patSnippet",
       snippet: (endpoint, token) =>
-        `[mcp_servers.${MCP_SERVER_NAME}]\nurl = "${endpoint}"\nbearer_token_env_var = "${CODEX_TOKEN_ENV}"\n\n# 例如加到 ~/.zshrc\nexport ${CODEX_TOKEN_ENV}="${token}"`,
+        `[mcp_servers.${MCP_SERVER_NAME}]\nurl = "${endpoint}"\nbearer_token_env_var = "${CODEX_TOKEN_ENV}"\n\n# e.g. add to ~/.zshrc\nexport ${CODEX_TOKEN_ENV}="${token}"`,
     },
     skill: { kind: "installer" },
   },
   {
     key: "other",
-    label: "其他",
-    description: "其他支援遠端 MCP 的工具",
+    label: "web.mcp.services.other.label",
+    description: "web.mcp.services.other.description",
     authMethods: ["oauth", "pat"],
     oauthSteps: [
       {
-        text: "在工具裡新增遠端 MCP server，貼上：",
+        text: "web.mcp.services.other.steps.add",
         code: (endpoint) => endpoint,
       },
-      { text: "工具會自動註冊並開啟 SteamLoom 授權頁，按「允許」" },
-      {
-        text: "如果工具要求手動填 Client ID／Client Secret，代表它不支援自動註冊，請回上一步改選 Personal Access Token",
-      },
+      { text: "web.mcp.services.other.steps.allow" },
+      { text: "web.mcp.services.other.steps.manualClient" },
     ],
     pat: {
-      snippetLabel: "MCP client 設定範例（JSON）：",
+      snippetLabel: "web.mcp.services.other.patSnippet",
       snippet: (endpoint, token) => mcpJsonConfigSnippet(endpoint, token),
     },
     skill: { kind: "download" },

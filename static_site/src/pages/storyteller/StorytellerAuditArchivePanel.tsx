@@ -10,6 +10,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useCreateStorytellerAuditArchiveQuery,
   useStorytellerAuditArchiveQuery,
@@ -34,11 +35,8 @@ import type {
 } from "@/types/storyteller.ts";
 
 // 失敗原因只有固定分類，不會拿到 Athena 的錯誤原文。
-const archiveErrorLabels: Record<string, string> = {
-  query_start_failed: "查詢沒有成功送出，請稍後再試。",
-  query_failed:
-    "查詢執行失敗，可能是範圍太大超過單次掃描上限，請縮小月份範圍再試。",
-};
+// 封存查詢錯誤分類的文案：web.audit.archive.errors.<category>，查不到用通用文案
+const archiveErrorCategories = ["query_start_failed", "query_failed"];
 
 function monthSpan(from: string, to: string) {
   const [fromYear, fromMonth] = from.split("-").map(Number);
@@ -58,6 +56,7 @@ export function StorytellerAuditArchivePanel({
 }: {
   months: StorytellerAuditArchiveMonths;
 }) {
+  const { t } = useTranslation();
   const availableMonths = useMemo(
     () =>
       months.months
@@ -89,9 +88,11 @@ export function StorytellerAuditArchivePanel({
   const span = from && to ? monthSpan(from, to) : 0;
   const rangeError =
     span <= 0
-      ? "結束月份不能早於開始月份"
+      ? t("web.audit.archive.errors.endBeforeStart")
       : span > months.max_span_months
-        ? `一次最多查詢 ${months.max_span_months} 個月`
+        ? t("web.audit.archive.errors.maxSpan", {
+            months: months.max_span_months,
+          })
         : "";
   const running = status === "queued" || status === "running";
 
@@ -138,10 +139,7 @@ export function StorytellerAuditArchivePanel({
 
   if (!months.archive_available) {
     return (
-      <Alert severity="info">
-        封存查詢尚未開放：系統還沒設定封存儲存空間，目前只能查詢近 3
-        個月的紀錄。
-      </Alert>
+      <Alert severity="info">{t("web.audit.archive.notConfigured")}</Alert>
     );
   }
 
@@ -150,14 +148,17 @@ export function StorytellerAuditArchivePanel({
       <Paper variant="outlined" sx={{ p: 2 }}>
         <Stack spacing={1.5}>
           <Box>
-            <Typography fontWeight={800}>查詢封存紀錄</Typography>
+            <Typography fontWeight={800}>
+              {t("web.audit.archive.title")}
+            </Typography>
             <Typography variant="body2" color="text.secondary">
-              3 個月以前的紀錄已封存，查詢會在背景執行，需要指定月份範圍（最多{" "}
-              {months.max_span_months} 個月）。
+              {t("web.audit.archive.description", {
+                months: months.max_span_months,
+              })}
             </Typography>
           </Box>
           {availableMonths.length === 0 ? (
-            <Alert severity="info">目前還沒有可以查詢的封存月份。</Alert>
+            <Alert severity="info">{t("web.audit.archive.noMonths")}</Alert>
           ) : (
             <Stack
               direction={{ xs: "column", sm: "row" }}
@@ -167,7 +168,7 @@ export function StorytellerAuditArchivePanel({
               <TextField
                 select
                 size="small"
-                label="開始月份"
+                label={t("web.audit.archive.startMonth")}
                 value={from}
                 onChange={(event) => setMonthFrom(event.target.value)}
                 sx={{ minWidth: 160 }}
@@ -181,7 +182,7 @@ export function StorytellerAuditArchivePanel({
               <TextField
                 select
                 size="small"
-                label="結束月份"
+                label={t("web.audit.archive.endMonth")}
                 value={to}
                 onChange={(event) => setMonthTo(event.target.value)}
                 error={Boolean(rangeError)}
@@ -201,7 +202,9 @@ export function StorytellerAuditArchivePanel({
                   Boolean(rangeError) || createQuery.isPending || running
                 }
               >
-                {createQuery.isPending ? "送出中…" : "送出查詢"}
+                {createQuery.isPending
+                  ? t("web.audit.archive.submitting")
+                  : t("web.audit.archive.submit")}
               </Button>
             </Stack>
           )}
@@ -212,8 +215,10 @@ export function StorytellerAuditArchivePanel({
           />
           {purgedMonths.length > 0 && (
             <Typography variant="caption" color="text.secondary">
-              已超過 {months.retention_years} 年保存期限並已刪除：
-              {purgedMonths.join("、")}
+              {t("web.audit.archive.purged", {
+                years: months.retention_years,
+                months: purgedMonths.join(t("web.notification.listSeparator")),
+              })}
             </Typography>
           )}
         </Stack>
@@ -224,28 +229,34 @@ export function StorytellerAuditArchivePanel({
           <Stack alignItems="center" spacing={1.5}>
             <CircularProgress size={28} />
             <Typography fontWeight={700}>
-              {status === "running" ? "查詢執行中…" : "查詢排隊中…"}
+              {status === "running"
+                ? t("web.audit.archive.running")
+                : t("web.audit.archive.queued")}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              封存查詢通常需要幾秒到幾十秒，請保持這個頁面開啟。
+              {t("web.audit.archive.runningHelp")}
             </Typography>
           </Stack>
         </Paper>
       ) : status === "failed" ? (
         <Alert severity="error">
-          {archiveErrorLabels[job.data?.error_category ?? ""] ??
-            "查詢失敗，請稍後再試。"}
+          {archiveErrorCategories.includes(job.data?.error_category ?? "")
+            ? t(`web.audit.archive.errors.${job.data?.error_category}`)
+            : t("web.audit.archive.errors.generic")}
         </Alert>
       ) : status === "expired" ? (
-        <Alert severity="warning">
-          這次查詢的結果已超過保留時間，請重新送出查詢。
-        </Alert>
+        <Alert severity="warning">{t("web.audit.archive.expired")}</Alert>
       ) : status === "succeeded" ? (
         <Stack spacing={1.5}>
           <Typography variant="body2" color="text.secondary">
-            {job.data?.month_from} ～ {job.data?.month_to} 的查詢結果
+            {t("web.audit.archive.resultTitle", {
+              from: job.data?.month_from,
+              to: job.data?.month_to,
+            })}
             {job.data?.scanned_bytes !== undefined &&
-              `（掃描 ${formatBytes(job.data.scanned_bytes)}）`}
+              t("web.audit.archive.scanned", {
+                size: formatBytes(job.data.scanned_bytes),
+              })}
           </Typography>
           <Paper variant="outlined" sx={{ overflow: "hidden" }}>
             {results.isLoading ? (
@@ -254,7 +265,7 @@ export function StorytellerAuditArchivePanel({
               </Stack>
             ) : items.length === 0 ? (
               <Typography sx={{ py: 6, textAlign: "center" }} fontWeight={700}>
-                這段期間沒有符合條件的紀錄
+                {t("web.audit.archive.empty")}
               </Typography>
             ) : (
               <AuditEventItems items={items} onOpen={setSelected} />
@@ -267,7 +278,9 @@ export function StorytellerAuditArchivePanel({
               disabled={results.isFetchingNextPage}
               sx={{ alignSelf: "center" }}
             >
-              {results.isFetchingNextPage ? "載入中…" : "載入更多"}
+              {results.isFetchingNextPage
+                ? t("web.common.loading")
+                : t("web.discussion.loadMore")}
             </Button>
           )}
         </Stack>

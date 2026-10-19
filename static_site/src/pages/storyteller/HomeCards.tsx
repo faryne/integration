@@ -19,7 +19,6 @@ import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
 import {
   formatStorytellerDate,
-  STORYTELLER_VISIBILITY_LABELS,
 } from "@/data/storyteller.ts";
 import { storytellerMascotSrc } from "@/helpers/storytellerMascot.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
@@ -57,7 +56,6 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
   const { t } = useTranslation();
   const { appearance } = useStorytellerAppearance();
   const navigate = useNavigate();
-  const visibilityLabel = STORYTELLER_VISIBILITY_LABELS;
 
   return (
     <>
@@ -86,7 +84,7 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                     <Chip
                       size="small"
                       variant="outlined"
-                      label={visibilityLabel[project.visibility]}
+                      label={t(`web.visibility.${project.visibility}`)}
                     />
                     {/* 公開狀態／編輯／刪除選單與 SteamLoom Writer 共用 */}
                     <StorytellerProjectMenuButton project={project} />

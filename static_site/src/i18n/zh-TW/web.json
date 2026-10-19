@@ -1350,5 +1350,617 @@
         "workPenName": "這部作品署名「{{name}}」，回追會用「{{name}}」的身份。"
       }
     }
+  },
+  "visibility": {
+    "public": "公開",
+    "unlisted": "分享",
+    "private": "私密"
+  },
+  "profile": {
+    "loading": "正在載入作者設定...",
+    "description": "這些資料會用在公開故事閱讀頁的作者資訊。",
+    "penNameHelp": "會顯示在公開作者頁網址上，不能包含 / \\ ? # % 等符號。",
+    "bio": "自我介紹",
+    "bioHelp": "支援 Markdown 語法，會顯示在公開作者頁。",
+    "snsLinks": "SNS 連結",
+    "avatar": {
+      "source": "Avatar 來源",
+      "gravatar": "使用 Gravatar",
+      "default": "使用登入帳號的 avatar",
+      "custom": "自己填入網址"
+    },
+    "privacy": {
+      "title": "隱私設定",
+      "hideFavoriteWorks": "隱藏我追蹤的作品",
+      "hideFavoriteAuthors": "隱藏我追蹤的作家"
+    },
+    "editor": {
+      "title": "編輯器設定",
+      "description": "這裡是故事與設定編輯頁的預設值，開啟編輯頁時仍可依當次需要另外調整。",
+      "autoSaveInterval": "自動存檔頻率（分鐘）",
+      "intervalRange": "請輸入 {{min}} 到 {{max}} 之間的整數",
+      "intervalDefault": "未填寫預設為 {{minutes}} 分鐘"
+    },
+    "messages": {
+      "saved": "作者設定已儲存"
+    },
+    "errors": {
+      "save": "作者設定儲存失敗，請確認欄位內容。",
+      "penNameEmpty": "筆名不能是空白",
+      "penNameInvalid": "筆名不能包含 / \\ ? # % 或控制字元"
+    },
+    "extra": {
+      "title": "額外筆名",
+      "description": "可指定給個別故事作為署名。沒有建立時，故事一律使用上面的本人筆名。",
+      "limitReached": "已達可建立的額外筆名數量上限（{{max}} 個），請刪除後再建立新的。",
+      "add": "新增筆名",
+      "edit": "編輯筆名",
+      "delete": "刪除筆名",
+      "editNamed": "編輯筆名 {{name}}",
+      "deleteNamed": "刪除筆名 {{name}}",
+      "penNameHelp": "會顯示在公開作者頁網址上，全站不可與其他筆名重複。",
+      "avatarHelp": "留空時使用依筆名產生的 identicon。",
+      "deleteDescription": "刪除後無法復原。若仍有故事署名此筆名，後端會拒絕刪除。以它身份發的留言與它的封鎖名單也會一起刪除。",
+      "deleteDescriptionWithPosts": "刪除後無法復原。若仍有故事署名此筆名，後端會拒絕刪除。這個筆名的 {{count}} 則動態、以它身份發的留言與它的封鎖名單也會一起刪除。",
+      "messages": {
+        "created": "額外筆名已建立",
+        "updated": "額外筆名已更新",
+        "deleted": "額外筆名已刪除"
+      },
+      "errors": {
+        "save": "筆名儲存失敗，請確認欄位內容。",
+        "delete": "刪除筆名失敗。"
+      }
+    },
+    "sns": {
+      "type": "類型",
+      "customType": "自訂類型",
+      "customTypeName": "自訂類型名稱",
+      "url": "網址",
+      "visibility": "這個連結的可見性",
+      "public": "公開",
+      "private": "僅自己",
+      "remove": "刪除這個 SNS 連結",
+      "addRow": "新增一列",
+      "privateHelp": "設成「僅自己」的連結不會出現在公開作者頁、作品作者欄與追蹤清單。"
+    },
+    "blocks": {
+      "title": "封鎖名單",
+      "loading": "正在載入封鎖名單...",
+      "self": "本人 {{name}}",
+      "penName": "筆名 {{name}}",
+      "empty": "{{name}} 沒有封鎖任何人",
+      "blockedOn": "{{date}} 封鎖",
+      "unblock": "解除封鎖",
+      "confirmTitle": "解除封鎖 {{name}}？",
+      "confirmDescription": "對方之後就可以在 {{name}} 的動態留言了。",
+      "unblocked": "已解除封鎖 {{name}}",
+      "errors": {
+        "unblock": "解除封鎖失敗，請重試。"
+      }
+    }
+  },
+  "developer": {
+    "viewConnectGuide": "看連線方式",
+    "untitled": "（未命名）",
+    "createdAt": "建立於 {{date}}",
+    "lastUsed": "上次使用於 {{date}}",
+    "neverUsed": "尚未使用過",
+    "copied": "已複製到剪貼簿",
+    "copyFailed": "複製失敗，請手動選取內容。",
+    "pat": {
+      "webServicesHint": "要連 Claude.ai、ChatGPT 這類網頁版服務？不用建立 Personal Access Token，直接貼 MCP 網址走 OAuth 授權就好。",
+      "createTitle": "建立 Personal Access Token",
+      "createDescription": "給 Codex CLI 這類本機工具使用，貼進工具的設定檔即可連線。",
+      "name": "名稱",
+      "namePlaceholder": "例如：Codex、我的筆電",
+      "expiry": "效期",
+      "creating": "建立中",
+      "listTitle": "已建立的 Token",
+      "empty": "尚未建立任何 token，請先在上方建立。",
+      "created": "Token 已建立",
+      "copiedClose": "我已複製，關閉",
+      "showOnce": "這組 token 只會顯示這一次，請妥善保存，離開這個視窗後就無法再次查看完整內容。",
+      "configExample": "MCP client 設定範例：",
+      "delete": "刪除 Token",
+      "expiredAt": "已於 {{date}} 過期",
+      "expiresAt": "將於 {{date}} 到期",
+      "confirmDeleteTitle": "確定要刪除「{{name}}」？",
+      "confirmDeleteDescription": "刪除後使用這組 Token 的工具會立刻失去連線權限，此操作無法復原。",
+      "errors": {
+        "create": "建立 Token 失敗，請確認欄位內容後重試。",
+        "delete": "Token 刪除失敗，請稍後再試。"
+      }
+    },
+    "oauth": {
+      "scopeWarning": "<strong>目前授權不分範圍。</strong>已授權的應用程式可以讀取與修改你帳號下所有專案（作品、設定、資產、作者檔案、梭梭的記憶），包含刪除。",
+      "listTitle": "已授權的應用程式",
+      "emptyTitle": "還沒有授權任何應用程式",
+      "emptyDescription": "在 Claude.ai 或 ChatGPT 新增自訂 connector，貼上 MCP 網址後就會出現在這裡。",
+      "revokeTitle": "撤銷授權",
+      "confirmRevokeTitle": "確定要撤銷「{{name}}」？",
+      "confirmRevokeDescription": "撤銷後 {{name}} 會立刻失去存取權限，需要重新授權才能再次連線。",
+      "thisApp": "這個應用程式",
+      "revoke": "撤銷",
+      "revoked": "已撤銷授權",
+      "errors": {
+        "revoke": "撤銷授權失敗，請稍後再試。"
+      },
+      "nameFromApp": "名稱由應用程式提供",
+      "redirectHost": "跳轉網域 {{host}}",
+      "grantedAt": "授權於 {{date}}",
+      "expiry": "30 天未使用將自動失效（目前至 {{date}}）"
+    },
+    "authorize": {
+      "pageTitle": "{{appName}} 授權連線",
+      "title": "授權連線",
+      "app": "應用程式",
+      "redirecting": "正在帶你回到 {{name}}…",
+      "redirectingHelp": "如果沒有自動跳轉，請回到原本的分頁確認連線狀態。",
+      "invalidTitle": "這個授權請求無效",
+      "invalidDescription": "應用程式提供的 client_id 或跳轉網址不正確。為了你的帳號安全，我們不會把你導回該應用程式，請回到原本的工具重新連線。",
+      "backHome": "回到 {{appName}} 首頁",
+      "requestTitle": "{{name}} 想要連線到你的 {{appName}} 帳號",
+      "loginTitle": "先登入，確認要授權的帳號",
+      "loginHelp": "登入會以彈出視窗開啟，這個頁面不會離開。",
+      "noPenName": "（尚未設定筆名）",
+      "redirectTo": "授權後將跳轉到",
+      "deny": "拒絕",
+      "allow": "允許",
+      "revokeLater": "之後可以在「開發者 › OAuth Token」隨時撤銷。",
+      "switchAccount": "切換帳號",
+      "errors": {
+        "authorize": "授權失敗，請稍後再試。"
+      },
+      "mascot": {
+        "redirecting": "好了，我送您回 {{name}} 那邊。",
+        "invalid": "這個請求對不上，我先不放行。請您回原本的工具重新連一次。",
+        "login": "{{name}} 想來讀您的文字。請您先登入，我才知道要替誰開門。",
+        "confirm": "答應之後，它能讀、能改，也能刪。請您看清楚了再按。"
+      },
+      "scopes": {
+        "allowedTitle": "授權後，這個應用程式可以：",
+        "deniedTitle": "不能：",
+        "allowed": {
+          "projects": "讀取與修改你帳號下所有專案的作品、設定、資產",
+          "profile": "管理你的作者檔案、讀寫梭梭的記憶",
+          "manage": "建立、搬移與刪除上述內容"
+        },
+        "denied": {
+          "account": "變更帳號設定、刪除帳號",
+          "credentials": "查看或使用你的 Provider 金鑰、Personal Access Token 與其他授權"
+        }
+      }
+    }
+  },
+  "mcp": {
+    "intro": "透過 MCP（Model Context Protocol），你可以讓 Claude、ChatGPT、Codex 等 AI 服務直接讀寫你的創作專案、故事內容與世界觀設定，不需要手動複製貼上。",
+    "runInTerminal": "在終端機執行：",
+    "recommended": "推薦",
+    "needsOAuth": "需要 OAuth，請到 steamloom.works 設定",
+    "oauthSteamLoomOnly": "OAuth 只在 steamloom.works 開放，faryne.dev 的 MCP 位址只能用 Personal Access Token。",
+    "createToken": "建立 Token",
+    "patShowOnce": "這組 token 只會顯示這一次，請馬上貼進設定；離開這一頁就無法再次查看完整內容。",
+    "patPending": "建立後會在這裡顯示 token 和 {{service}} 的設定方式。",
+    "oauthDone": "按下「允許」後就完成了，可以到 <link>OAuth Token 頁</link>確認或撤銷。",
+    "patDone": "設定好後重新啟動工具即可連線；token 可以到 <link>Personal Access Token 頁</link>管理或撤銷。",
+    "endpointNote": "MCP 連線位址：<code>{{endpoint}}</code>・目前不支援 SSE，若工具連線卡住可能是這個原因。不確定怎麼設定可參考 <link>MCP 官方文件</link>。",
+    "expiry": {
+      "days": "{{count}} 天",
+      "forever": "永久（不過期）"
+    },
+    "auth": {
+      "oauth": {
+        "label": "OAuth 授權",
+        "description": "在瀏覽器按一次「允許」就連上了，不用複製 token。隨時可以到 OAuth Token 頁撤銷。"
+      },
+      "pat": {
+        "label": "Personal Access Token",
+        "description": "建立一組 token 貼進工具的設定。適合不能開瀏覽器的環境（例如遠端伺服器）。"
+      }
+    },
+    "steps": {
+      "service": "選擇你使用的 AI 服務",
+      "auth": "選擇授權方式",
+      "authPending": "先選 AI 服務，這裡會列出它支援的授權方式。",
+      "setup": "連線設定",
+      "setupPending": "選好授權方式後，這裡會列出設定步驟。",
+      "optional": "選用",
+      "skill": "安裝 Skill",
+      "skillPending": "Skill 告訴 AI 怎麼在 SteamLoom 上寫作、改稿，以及寫入前後要檢查什麼。選好 AI 服務後會顯示安裝方式。"
+    },
+    "installer": {
+      "runInPowerShell": "在 PowerShell 執行：",
+      "downloadSh": "下載安裝程式（.sh）",
+      "downloadPs1": "下載安裝程式（.ps1）",
+      "detected": "已依你的瀏覽器預先選好",
+      "willDo": "這行指令會：",
+      "detect": "偵測這台電腦有沒有裝 Claude Code、Codex，有哪個就裝到哪個",
+      "update": "已經裝過的話，比對版本，有新版才更新",
+      "rerun": "Skill 更新時，再執行一次同一行指令即可，{{service}} 會自動載入，不用重啟。",
+      "inspect": "想先看過安裝程式再執行？",
+      "inspectHelp": "下載後用文字編輯器打開確認內容，再執行："
+    },
+    "skill": {
+      "description": "Skill 告訴 AI 怎麼在 SteamLoom 上寫作、改稿，以及寫入前後要檢查什麼。",
+      "downloadZip": "下載 Skill 的 ZIP 檔（不用解壓縮）",
+      "updateZip": "Skill 更新時，重新下載 ZIP 再上傳一次；之前上傳過舊版（名稱叫 storyteller-mcp）的話，請在技能列表把舊的移除。",
+      "downloadPlace": "下載後放進你的工具的 skill 目錄，資料夾名稱用 <code>{{name}}</code>。",
+      "downloadZipButton": "下載 ZIP",
+      "downloadMd": "下載 SKILL.md",
+      "preview": "預覽內容",
+      "version": "目前版本 v{{version}}・最後更新 {{updatedAt}}",
+      "previewFailed": "讀取 Skill 內容失敗，請稍後再試。",
+      "previewEyebrow": "SKILL.md 預覽",
+      "previewTitle": "給 AI 的寫作與操作指南"
+    },
+    "services": {
+      "claudeai": {
+        "label": "Claude.ai",
+        "description": "網頁版、桌面版與手機 App",
+        "oauthOnly": "Claude.ai 的自訂 connector 只能用 OAuth，不能自己填 token。",
+        "steps": {
+          "add": "到 Claude.ai 的「設定 › Connectors」，新增自訂 connector",
+          "url": "名稱填 SteamLoom，網址貼上：",
+          "allow": "按「連線」後會跳到 SteamLoom 授權頁，確認帳號後按「允許」"
+        },
+        "skill": {
+          "enableCode": "先到「設定 › 功能」開啟「程式碼執行與檔案建立」（Team／Enterprise 方案要由管理員開啟）",
+          "upload": "到「自訂 › 技能」，按「＋」→「上傳技能」，選剛才下載的 ZIP"
+        }
+      },
+      "chatgpt": {
+        "label": "ChatGPT",
+        "description": "需要開啟開發者模式",
+        "oauthOnly": "ChatGPT 的自訂 connector 只能用 OAuth，不能自己填 token。",
+        "steps": {
+          "add": "到 ChatGPT 的「設定 › 應用程式與連接器」，開啟開發者模式後新增 connector",
+          "url": "網址貼上下面的位址，驗證方式選 OAuth：",
+          "allow": "跳到 SteamLoom 授權頁後按「允許」"
+        },
+        "skill": {
+          "upload": "到 ChatGPT 的 Skills，選擇建立 → 從電腦上傳，選剛才下載的 ZIP；ChatGPT 會先掃描，掃描完就能用"
+        }
+      },
+      "claudecode": {
+        "label": "Claude Code",
+        "description": "終端機與 IDE",
+        "steps": {
+          "login": "在 Claude Code 裡輸入 /mcp，選 {{server}} 進行驗證（或執行 claude mcp login {{server}}）",
+          "allow": "瀏覽器會跳到 SteamLoom 授權頁，按「允許」"
+        }
+      },
+      "codex": {
+        "label": "Codex",
+        "description": "Codex CLI 與 IDE 擴充",
+        "steps": {
+          "allow": "執行 login 後瀏覽器會跳到 SteamLoom 授權頁，按「允許」"
+        },
+        "patSnippet": "加到 ~/.codex/config.toml，並在環境變數 {{env}} 放入 token："
+      },
+      "other": {
+        "label": "其他",
+        "description": "其他支援遠端 MCP 的工具",
+        "steps": {
+          "add": "在工具裡新增遠端 MCP server，貼上：",
+          "allow": "工具會自動註冊並開啟 SteamLoom 授權頁，按「允許」",
+          "manualClient": "如果工具要求手動填 Client ID／Client Secret，代表它不支援自動註冊，請回上一步改選 Personal Access Token"
+        },
+        "patSnippet": "MCP client 設定範例（JSON）："
+      }
+    }
+  },
+  "audit": {
+    "actor": {
+      "system": "系統",
+      "unknown": "未識別的使用者"
+    },
+    "errors": {
+      "load": "稽核紀錄載入失敗，請稍後再試。"
+    },
+    "autosaveGroup": "{{count}} 次自動儲存",
+    "ranges": {
+      "24h": "最近 24 小時",
+      "7d": "最近 7 天",
+      "30d": "最近 30 天",
+      "custom": "自訂"
+    },
+    "panel": {
+      "title": "活動紀錄",
+      "description": "你在網頁與 MCP 上的所有操作，以及登入、Personal Access Token、OAuth 授權與 API key 的安全事件。",
+      "developerSettings": "開發者設定",
+      "recent": "近期",
+      "archive": "封存",
+      "asyncNotice": "活動紀錄是非同步寫入的，最近幾秒內的操作可能還沒出現，稍後重新整理即可。",
+      "errors": {
+        "months": "封存月份載入失敗，請稍後再試。"
+      }
+    },
+    "list": {
+      "time": "時間",
+      "startDate": "開始日期",
+      "endDate": "結束日期",
+      "useArchive": "改用封存查詢",
+      "archivedNotice": "{{months}} 個月以前的紀錄已封存，請改用封存查詢。",
+      "adjustRange": "請先調整時間範圍",
+      "loadedCount": "已載入 {{count}} 筆（合併顯示 {{rows}} 列）",
+      "empty": "這段時間沒有符合條件的紀錄",
+      "loadEarlier": "載入更早的紀錄",
+      "errors": {
+        "selectDates": "請選擇開始與結束日期",
+        "endBeforeStart": "結束日期不能早於開始日期",
+        "endAfterToday": "結束日期不能晚於今天",
+        "load": "活動紀錄載入失敗。"
+      }
+    },
+    "filters": {
+      "advanced": "進階篩選",
+      "advancedWithCount": "進階篩選（{{count}}）",
+      "clear": "清除篩選",
+      "project": "專案",
+      "category": "類別",
+      "source": "入口",
+      "outcome": "結果",
+      "credential": "憑證",
+      "includeLowImportance": "包含讀取與收藏等低重要度事件"
+    },
+    "archive": {
+      "title": "查詢封存紀錄",
+      "description": "3 個月以前的紀錄已封存，查詢會在背景執行，需要指定月份範圍（最多 {{months}} 個月）。",
+      "notConfigured": "封存查詢尚未開放：系統還沒設定封存儲存空間，目前只能查詢近 3 個月的紀錄。",
+      "noMonths": "目前還沒有可以查詢的封存月份。",
+      "startMonth": "開始月份",
+      "endMonth": "結束月份",
+      "submit": "送出查詢",
+      "submitting": "送出中…",
+      "purged": "已超過 {{years}} 年保存期限並已刪除：{{months}}",
+      "running": "查詢執行中…",
+      "queued": "查詢排隊中…",
+      "runningHelp": "封存查詢通常需要幾秒到幾十秒，請保持這個頁面開啟。",
+      "expired": "這次查詢的結果已超過保留時間，請重新送出查詢。",
+      "resultTitle": "{{from}} ～ {{to}} 的查詢結果",
+      "scanned": "（掃描 {{size}}）",
+      "empty": "這段期間沒有符合條件的紀錄",
+      "errors": {
+        "endBeforeStart": "結束月份不能早於開始月份",
+        "maxSpan": "一次最多查詢 {{months}} 個月",
+        "generic": "查詢失敗，請稍後再試。",
+        "query_start_failed": "查詢沒有成功送出，請稍後再試。",
+        "query_failed": "查詢執行失敗，可能是範圍太大超過單次掃描上限，請縮小月份範圍再試。"
+      }
+    },
+    "detail": {
+      "title": "事件詳情",
+      "close": "關閉事件詳情",
+      "empty": "（空白）",
+      "time": "時間",
+      "actor": "操作者",
+      "target": "目標",
+      "credential": "使用的憑證",
+      "changes": "變更內容",
+      "deniedReason": "拒絕原因",
+      "failedReason": "失敗原因",
+      "errorCategory": "原因分類",
+      "uncategorized": "未分類",
+      "httpStatus": "HTTP 狀態",
+      "errorCode": "錯誤代碼",
+      "summary": "摘要",
+      "connection": "連線與追蹤",
+      "ip": "IP 位址",
+      "eventId": "事件 ID",
+      "projectFields": {
+        "name": "名稱",
+        "slug": "網址代稱",
+        "description": "簡介",
+        "visibility": "公開範圍",
+        "rating": "分級",
+        "tags": "標籤",
+        "cover_asset_public_id": "封面",
+        "cover_layout": "封面版面",
+        "cover_focal_point": "封面焦點"
+      },
+      "summaryFields": {
+        "version_id": "版本",
+        "latest_version_id": "最新版本",
+        "target_version_id": "還原到的版本",
+        "base_version_id": "編輯時的基準版本",
+        "chat_id": "對話",
+        "provider": "AI 服務",
+        "model": "模型",
+        "input_tokens": "輸入 tokens",
+        "output_tokens": "輸出 tokens",
+        "count": "筆數",
+        "total_count": "總筆數",
+        "label": "名稱",
+        "secret_last4": "金鑰末四碼",
+        "public_id": "識別碼",
+        "memory_public_id": "記憶",
+        "reason": "原因",
+        "duration_ms": "耗時（毫秒）",
+        "client_name": "應用程式",
+        "client_id": "應用程式 ID",
+        "revoked_by": "撤銷者"
+      },
+      "summaryValues": {
+        "revoked_by": {
+          "user": "使用者（OAuth Token 頁）",
+          "client": "應用程式自行撤銷"
+        },
+        "reason": {
+          "expired": "憑證已過期",
+          "revoked": "授權已撤銷",
+          "reused": "使用已輪替掉的 refresh token",
+          "client_mismatch": "應用程式與授權時不符",
+          "concurrent": "同時有兩個換發請求"
+        }
+      },
+      "errorCategories": {
+        "authorization": "權限或身分驗證",
+        "validation": "輸入內容不符規定",
+        "not_found": "找不到目標",
+        "conflict": "與目前資料衝突",
+        "internal": "伺服器內部錯誤",
+        "request": "請求無法處理",
+        "tool_execution": "工具執行失敗"
+      }
+    },
+    "actions": {
+      "project_create": "建立專案",
+      "project_update": "更新專案",
+      "project_delete": "刪除專案",
+      "project_visibility_change": "變更專案公開範圍",
+      "project_share_token_regenerate": "重新產生分享連結",
+      "story_create": "建立作品",
+      "story_update": "更新作品",
+      "story_delete": "刪除作品",
+      "story_move": "搬移作品",
+      "story_reorder": "調整作品順序",
+      "story_revert": "還原作品版本",
+      "story_chapter_replace": "改寫作品章節",
+      "story_chapter_insert": "插入作品章節",
+      "story_chapter_delete": "刪除作品章節",
+      "volume_create": "建立冊",
+      "volume_update": "更新冊",
+      "volume_delete": "刪除冊",
+      "volume_reorder": "調整冊順序",
+      "lore_create": "建立設定",
+      "lore_update": "更新設定",
+      "lore_delete": "刪除設定",
+      "lore_move": "搬移設定",
+      "lore_revert": "還原設定版本",
+      "lore_collection_create": "建立設定集",
+      "lore_collection_update": "更新設定集",
+      "lore_collection_delete": "刪除設定集",
+      "lore_chapter_replace": "改寫設定章節",
+      "lore_chapter_insert": "插入設定章節",
+      "lore_chapter_delete": "刪除設定章節",
+      "asset_upload_confirm": "上傳資產",
+      "asset_replace_confirm": "更換資產檔案",
+      "asset_update": "更新資產",
+      "asset_move": "搬移資產",
+      "asset_delete": "刪除資產",
+      "asset_collection_create": "建立資產集",
+      "asset_collection_update": "更新資產集",
+      "asset_collection_delete": "刪除資產集",
+      "agent_run": "執行 AI 助理",
+      "agent_resend": "重送 AI 助理",
+      "agent_proposal_apply": "套用 AI 提案",
+      "agent_proposal_reject": "拒絕 AI 提案",
+      "agent_proposal_reset": "重設 AI 提案",
+      "memory_create": "新增梭梭記憶",
+      "memory_update": "更新梭梭記憶",
+      "memory_delete": "刪除梭梭記憶",
+      "memory_confirm": "確認梭梭記憶",
+      "memory_draft_generate": "整理記憶草稿",
+      "memory_draft_retry": "重新整理記憶草稿",
+      "memory_draft_discard": "捨棄記憶草稿",
+      "auth_login": "登入",
+      "auth_login_failed": "登入失敗",
+      "auth_logout": "登出",
+      "auth_pat_denied": "Personal Access Token 驗證被拒絕",
+      "auth_oauth_denied": "OAuth Token 驗證被拒絕",
+      "auth_oauth_refresh_denied": "OAuth Token 換發被拒絕",
+      "pat_create": "建立 Personal Access Token",
+      "pat_revoke": "撤銷 Personal Access Token",
+      "oauth_authorize": "同意 OAuth 授權",
+      "oauth_deny": "拒絕 OAuth 授權",
+      "oauth_grant_create": "應用程式完成 OAuth 連線",
+      "oauth_token_refresh": "OAuth Token 換發",
+      "oauth_revoke": "撤銷 OAuth 授權",
+      "provider_key_create": "新增 API key",
+      "provider_key_update": "更新 API key",
+      "provider_key_delete": "刪除 API key",
+      "provider_key_test": "測試 API key 連線",
+      "profile_update": "更新個人資料",
+      "profile_delete": "刪除個人資料",
+      "author_profile_create": "建立作者頁",
+      "author_profile_update": "更新作者頁",
+      "author_profile_delete": "刪除作者頁",
+      "agent_skill_create": "建立 Skill",
+      "agent_skill_update": "更新 Skill",
+      "agent_skill_delete": "刪除 Skill",
+      "favorite_add": "追蹤",
+      "favorite_remove": "取消追蹤",
+      "favorite_visibility_update": "變更追蹤清單可見度",
+      "ranking_update": "更新排名",
+      "ranking_delete": "移除排名",
+      "bookmark_add": "加入閱讀書籤",
+      "bookmark_remove": "移除閱讀書籤",
+      "bookmark_create": "建立寫作書籤",
+      "bookmark_update": "更新寫作書籤",
+      "bookmark_delete": "刪除寫作書籤",
+      "notification_lock": "鎖定通知",
+      "notification_unlock": "解除通知鎖定",
+      "notification_delete": "刪除通知",
+      "notification_follow_back": "從通知回追",
+      "post_create": "發佈動態",
+      "post_delete": "刪除動態",
+      "post_pin": "置頂動態",
+      "post_unpin": "取消置頂動態",
+      "post_like": "喜歡動態",
+      "post_unlike": "取消喜歡動態",
+      "comment_create": "留言",
+      "comment_delete": "刪除留言",
+      "author_block": "封鎖留言者",
+      "author_unblock": "解除封鎖",
+      "report_create": "檢舉",
+      "admin_report_remove": "站方移除被檢舉的內容",
+      "admin_report_dismiss": "駁回檢舉",
+      "project_list": "讀取專案列表",
+      "project_read": "讀取專案",
+      "story_list": "讀取作品列表",
+      "story_read": "讀取作品",
+      "story_version_list": "讀取作品版本列表",
+      "story_chapter_list": "讀取作品章節列表",
+      "story_chapter_read": "讀取作品章節",
+      "volume_list": "讀取冊列表",
+      "lore_list": "讀取設定列表",
+      "lore_read": "讀取設定",
+      "lore_version_list": "讀取設定版本列表",
+      "lore_collection_list": "讀取設定集列表",
+      "lore_chapter_list": "讀取設定章節列表",
+      "lore_chapter_read": "讀取設定章節",
+      "asset_list": "讀取資產列表",
+      "asset_read": "讀取資產",
+      "asset_collection_list": "讀取資產集列表",
+      "memory_list": "讀取梭梭記憶",
+      "memory_search": "搜尋梭梭記憶",
+      "content_validate": "檢查內容格式",
+      "author_profile_list": "讀取作者頁列表",
+      "audit_archive_query_create": "查詢封存稽核紀錄",
+      "system_audit_export": "匯出稽核封存",
+      "system_audit_mysql_purge": "清除已封存的近期稽核資料",
+      "system_audit_archive_purge": "刪除超過保存期限的封存",
+      "system_notification_fanout": "派送作品更新通知",
+      "system_notification_purge": "清除超過保留期的通知",
+      "system_banned_account_purge": "清除停權帳號的內容"
+    },
+    "categories": {
+      "project": "專案",
+      "story": "作品",
+      "lore": "設定",
+      "asset": "資產",
+      "agent": "AI 助理",
+      "memory": "梭梭記憶",
+      "auth": "登入",
+      "credential": "憑證",
+      "profile": "個人資料",
+      "social": "收藏與追蹤",
+      "read": "讀取",
+      "audit": "稽核查詢",
+      "system": "系統",
+      "admin": "站方管理"
+    },
+    "sources": {
+      "web": "網頁",
+      "mcp": "MCP",
+      "api": "API",
+      "cron": "排程"
+    },
+    "outcomes": {
+      "success": "成功",
+      "denied": "拒絕",
+      "failed": "失敗"
+    }
   }
 }

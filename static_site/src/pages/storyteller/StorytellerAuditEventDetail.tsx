@@ -1,12 +1,13 @@
 import { Box, Chip, Divider, Stack, Typography } from "@mui/material";
 import type { ReactNode } from "react";
-import { STORYTELLER_VISIBILITY_LABELS } from "@/data/storyteller.ts";
+import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 import {
   auditActionLabel,
   auditActorLabel,
   auditOutcomeColors,
-  auditOutcomeLabels,
-  auditSourceLabels,
+  auditOutcomeLabel,
+  auditSourceLabel,
   auditTargetLabel,
   formatAuditTimestamp,
 } from "@/pages/storyteller/storytellerAuditUI.ts";
@@ -14,73 +15,58 @@ import type { StorytellerAuditEvent } from "@/types/storyteller.ts";
 
 // 專案欄位變更只顯示寫入端 allowlist 會記錄的欄位；沒列在這裡的 key 一律不顯示，
 // 不做通用 JSON viewer，避免之後 summary 多了欄位就被原樣攤在畫面上。
-const projectFieldLabels: Record<string, string> = {
-  name: "名稱",
-  slug: "網址代稱",
-  description: "簡介",
-  visibility: "公開範圍",
-  rating: "分級",
-  tags: "標籤",
-  cover_asset_public_id: "封面",
-  cover_layout: "封面版面",
-  cover_focal_point: "封面焦點",
-};
+// 欄位名稱翻譯在 web.audit.detail.projectFields.*
+const projectFields = [
+  "name",
+  "slug",
+  "description",
+  "visibility",
+  "rating",
+  "tags",
+  "cover_asset_public_id",
+  "cover_layout",
+  "cover_focal_point",
+];
 
-const summaryFieldLabels: Record<string, string> = {
-  version_id: "版本",
-  latest_version_id: "最新版本",
-  target_version_id: "還原到的版本",
-  base_version_id: "編輯時的基準版本",
-  chat_id: "對話",
-  provider: "AI 服務",
-  model: "模型",
-  input_tokens: "輸入 tokens",
-  output_tokens: "輸出 tokens",
-  count: "筆數",
-  total_count: "總筆數",
-  label: "名稱",
-  secret_last4: "金鑰末四碼",
-  public_id: "識別碼",
-  memory_public_id: "記憶",
-  reason: "原因",
-  duration_ms: "耗時（毫秒）",
-  client_name: "應用程式",
-  client_id: "應用程式 ID",
-  revoked_by: "撤銷者",
-};
+// summary 只顯示這些欄位，名稱翻譯在 web.audit.detail.summaryFields.*
+const summaryFields = [
+  "version_id",
+  "latest_version_id",
+  "target_version_id",
+  "base_version_id",
+  "chat_id",
+  "provider",
+  "model",
+  "input_tokens",
+  "output_tokens",
+  "count",
+  "total_count",
+  "label",
+  "secret_last4",
+  "public_id",
+  "memory_public_id",
+  "reason",
+  "duration_ms",
+  "client_name",
+  "client_id",
+  "revoked_by",
+];
 
-// 摘要裡值本身是代碼的欄位，換成中文顯示。
-const summaryValueLabels: Record<string, Record<string, string>> = {
-  revoked_by: { user: "使用者（OAuth Token 頁）", client: "應用程式自行撤銷" },
-  reason: {
-    expired: "憑證已過期",
-    revoked: "授權已撤銷",
-    reused: "使用已輪替掉的 refresh token",
-    client_mismatch: "應用程式與授權時不符",
-    concurrent: "同時有兩個換發請求",
-  },
-};
-
-const errorCategoryLabels: Record<string, string> = {
-  authorization: "權限或身分驗證",
-  validation: "輸入內容不符規定",
-  not_found: "找不到目標",
-  conflict: "與目前資料衝突",
-  internal: "伺服器內部錯誤",
-  request: "請求無法處理",
-  tool_execution: "工具執行失敗",
-};
-
-// 欄位值本身是代碼時換成中文（例如公開範圍），其餘照原值顯示。
-const projectFieldValueLabels: Record<string, Record<string, string>> = {
-  visibility: STORYTELLER_VISIBILITY_LABELS,
-};
+// 欄位值本身是代碼時換成翻譯（例如公開範圍、撤銷原因），其餘照原值顯示；
+// 翻譯檔有對應 key 才換，沒有就原樣顯示（非元件 helper，用全域 i18next）。
+function codeLabel(prefix: string, value: unknown) {
+  const key = `${prefix}.${String(value)}`;
+  return i18n.exists(key) ? i18n.t(key) : undefined;
+}
 
 function formatValue(value: unknown) {
-  if (value === null || value === undefined || value === "") return "（空白）";
-  if (Array.isArray(value)) return value.join("、") || "（空白）";
+  const empty = i18n.t("web.audit.detail.empty");
+  if (value === null || value === undefined || value === "") return empty;
+  if (Array.isArray(value))
+    return value.join(i18n.t("web.notification.listSeparator")) || empty;
   if (typeof value === "object") return JSON.stringify(value);
-  if (value === "expired") return "憑證已過期";
+  if (value === "expired")
+    return i18n.t("web.audit.detail.summaryValues.reason.expired");
   return String(value);
 }
 
@@ -102,8 +88,9 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
 }
 
 function ProjectChanges({ changes }: { changes: Record<string, unknown> }) {
-  const rows = Object.entries(changes).filter(
-    ([field]) => field in projectFieldLabels,
+  const { t } = useTranslation();
+  const rows = Object.entries(changes).filter(([field]) =>
+    projectFields.includes(field),
   );
   if (rows.length === 0) return null;
   return (
@@ -116,7 +103,7 @@ function ProjectChanges({ changes }: { changes: Record<string, unknown> }) {
         return (
           <Box key={field}>
             <Typography variant="caption" color="text.secondary">
-              {projectFieldLabels[field]}
+              {t(`web.audit.detail.projectFields.${field}`)}
             </Typography>
             <Typography variant="body2" sx={{ wordBreak: "break-all" }}>
               <Box
@@ -124,12 +111,16 @@ function ProjectChanges({ changes }: { changes: Record<string, unknown> }) {
                 sx={{ textDecoration: "line-through", color: "text.secondary" }}
               >
                 {formatValue(
-                  projectFieldValueLabels[field]?.[String(before)] ?? before,
+                  field === "visibility"
+                    ? (codeLabel("web.visibility", before) ?? before)
+                    : before,
                 )}
               </Box>
               {" → "}
               {formatValue(
-                projectFieldValueLabels[field]?.[String(after)] ?? after,
+                field === "visibility"
+                  ? (codeLabel("web.visibility", after) ?? after)
+                  : after,
               )}
             </Typography>
           </Box>
@@ -144,11 +135,12 @@ export function StorytellerAuditEventDetail({
 }: {
   event: StorytellerAuditEvent;
 }) {
+  const { t } = useTranslation();
   const summary = event.summary ?? {};
   const changes = summary.changes as Record<string, unknown> | undefined;
   const failed = event.outcome !== "success";
-  const summaryRows = Object.entries(summary).filter(
-    ([key]) => key in summaryFieldLabels,
+  const summaryRows = Object.entries(summary).filter(([key]) =>
+    summaryFields.includes(key),
   );
   return (
     <Stack spacing={2}>
@@ -160,27 +152,33 @@ export function StorytellerAuditEventDetail({
           <Chip
             size="small"
             color={auditOutcomeColors[event.outcome]}
-            label={auditOutcomeLabels[event.outcome]}
+            label={auditOutcomeLabel(event.outcome)}
           />
           <Chip
             size="small"
             variant="outlined"
-            label={auditSourceLabels[event.source]}
+            label={auditSourceLabel(event.source)}
           />
         </Stack>
       </Box>
       <Stack>
         <DetailRow
-          label="時間"
+          label={t("web.audit.detail.time")}
           value={formatAuditTimestamp(event.occurred_at)}
         />
-        <DetailRow label="操作者" value={auditActorLabel(event)} />
+        <DetailRow
+          label={t("web.audit.detail.actor")}
+          value={auditActorLabel(event)}
+        />
         {event.target && (
-          <DetailRow label="目標" value={auditTargetLabel(event)} />
+          <DetailRow
+            label={t("web.audit.detail.target")}
+            value={auditTargetLabel(event)}
+          />
         )}
         {event.credential && (
           <DetailRow
-            label="使用的憑證"
+            label={t("web.audit.detail.credential")}
             value={`${event.credential.label}（${event.credential.public_id}）`}
           />
         )}
@@ -189,7 +187,7 @@ export function StorytellerAuditEventDetail({
         <>
           <Divider />
           <Typography variant="subtitle2" fontWeight={800}>
-            變更內容
+            {t("web.audit.detail.changes")}
           </Typography>
           <ProjectChanges changes={changes} />
         </>
@@ -198,24 +196,31 @@ export function StorytellerAuditEventDetail({
         <>
           <Divider />
           <Typography variant="subtitle2" fontWeight={800}>
-            {event.outcome === "denied" ? "拒絕原因" : "失敗原因"}
+            {event.outcome === "denied"
+              ? t("web.audit.detail.deniedReason")
+              : t("web.audit.detail.failedReason")}
           </Typography>
           <Stack>
             <DetailRow
-              label="原因分類"
+              label={t("web.audit.detail.errorCategory")}
               value={
-                errorCategoryLabels[String(summary.error_category ?? "")] ??
-                "未分類"
+                codeLabel(
+                  "web.audit.detail.errorCategories",
+                  summary.error_category,
+                ) ?? t("web.audit.detail.uncategorized")
               }
             />
             {summary.http_status !== undefined && (
               <DetailRow
-                label="HTTP 狀態"
+                label={t("web.audit.detail.httpStatus")}
                 value={String(summary.http_status)}
               />
             )}
             {summary.custom_code !== undefined && (
-              <DetailRow label="錯誤代碼" value={String(summary.custom_code)} />
+              <DetailRow
+                label={t("web.audit.detail.errorCode")}
+                value={String(summary.custom_code)}
+              />
             )}
           </Stack>
         </>
@@ -224,15 +229,16 @@ export function StorytellerAuditEventDetail({
         <>
           <Divider />
           <Typography variant="subtitle2" fontWeight={800}>
-            摘要
+            {t("web.audit.detail.summary")}
           </Typography>
           <Stack>
             {summaryRows.map(([key, value]) => (
               <DetailRow
                 key={key}
-                label={summaryFieldLabels[key]}
+                label={t(`web.audit.detail.summaryFields.${key}`)}
                 value={
-                  summaryValueLabels[key]?.[String(value)] ?? formatValue(value)
+                  codeLabel(`web.audit.detail.summaryValues.${key}`, value) ??
+                  formatValue(value)
                 }
               />
             ))}
@@ -241,13 +247,16 @@ export function StorytellerAuditEventDetail({
       )}
       <Divider />
       <Typography variant="subtitle2" fontWeight={800}>
-        連線與追蹤
+        {t("web.audit.detail.connection")}
       </Typography>
       <Stack>
-        <DetailRow label="IP 位址" value={event.ip || "—"} />
+        <DetailRow label={t("web.audit.detail.ip")} value={event.ip || "—"} />
         <DetailRow label="User-Agent" value={event.user_agent || "—"} />
         <DetailRow label="Request ID" value={event.request_id || "—"} />
-        <DetailRow label="事件 ID" value={event.event_id} />
+        <DetailRow
+          label={t("web.audit.detail.eventId")}
+          value={event.event_id}
+        />
       </Stack>
     </Stack>
   );

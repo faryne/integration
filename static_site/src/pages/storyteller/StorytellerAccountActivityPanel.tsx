@@ -9,6 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import { useStorytellerAuditArchiveMonths } from "@/apis/storyteller/audit.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
@@ -19,6 +20,7 @@ import { StorytellerAuditEventList } from "@/pages/storyteller/StorytellerAuditE
 // 分成「近期（MySQL）」與「封存（Athena）」兩種模式，不混在同一個列表裡分頁。
 // 協作還沒上線，專案裡的操作只可能是本人，所以不另做專案層的稽核頁。
 export function StorytellerAccountActivityPanel() {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<"recent" | "archive">("recent");
   const months = useStorytellerAuditArchiveMonths();
   return (
@@ -31,11 +33,10 @@ export function StorytellerAccountActivityPanel() {
       >
         <Box>
           <Typography variant="h6" fontWeight={800}>
-            活動紀錄
+            {t("web.audit.panel.title")}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            你在網頁與 MCP 上的所有操作，以及登入、Personal Access Token、OAuth
-            授權與 API key 的安全事件。
+            {t("web.audit.panel.description")}
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} alignItems="center">
@@ -45,7 +46,7 @@ export function StorytellerAccountActivityPanel() {
             size="small"
             variant="outlined"
           >
-            開發者設定
+            {t("web.audit.panel.developerSettings")}
           </Button>
           <ToggleButtonGroup
             size="small"
@@ -53,16 +54,18 @@ export function StorytellerAccountActivityPanel() {
             value={mode}
             onChange={(_, value) => value && setMode(value)}
           >
-            <ToggleButton value="recent">近期</ToggleButton>
-            <ToggleButton value="archive">封存</ToggleButton>
+            <ToggleButton value="recent">
+              {t("web.audit.panel.recent")}
+            </ToggleButton>
+            <ToggleButton value="archive">
+              {t("web.audit.panel.archive")}
+            </ToggleButton>
           </ToggleButtonGroup>
         </Stack>
       </Stack>
       {mode === "recent" ? (
         <>
-          <Alert severity="info">
-            活動紀錄是非同步寫入的，最近幾秒內的操作可能還沒出現，稍後重新整理即可。
-          </Alert>
+          <Alert severity="info">{t("web.audit.panel.asyncNotice")}</Alert>
           <StorytellerAuditEventList
             onSwitchToArchive={() => setMode("archive")}
           />
@@ -70,7 +73,7 @@ export function StorytellerAccountActivityPanel() {
       ) : months.data ? (
         <StorytellerAuditArchivePanel months={months.data} />
       ) : months.isError ? (
-        <Alert severity="error">封存月份載入失敗，請稍後再試。</Alert>
+        <Alert severity="error">{t("web.audit.panel.errors.months")}</Alert>
       ) : (
         <Stack alignItems="center" sx={{ py: 6 }}>
           <CircularProgress size={28} />

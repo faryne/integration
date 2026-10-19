@@ -1,5 +1,6 @@
 import axios from "axios";
 import dayjs from "dayjs";
+import i18n from "i18next";
 import type {
   StorytellerAuditAdvancedFilterValues,
   StorytellerAuditEvent,
@@ -7,189 +8,43 @@ import type {
   StorytellerAuditSource,
 } from "@/types/storyteller.ts";
 
-// 稽核紀錄的中文文案集中在這裡：action 字串是後端 registry 的穩定 key，
+// 稽核紀錄的文案放在翻譯檔 web.audit.*：action 字串是後端 registry 的穩定 key，
 // 不直接拆 "." 組文案，沒對應到的就顯示原始 action，避免新 action 上線時畫面空白。
-export const auditActionLabels: Record<string, string> = {
-  "project.create": "建立專案",
-  "project.update": "更新專案",
-  "project.delete": "刪除專案",
-  "project.visibility.change": "變更專案公開範圍",
-  "project.share_token.regenerate": "重新產生分享連結",
-  "story.create": "建立作品",
-  "story.update": "更新作品",
-  "story.delete": "刪除作品",
-  "story.move": "搬移作品",
-  "story.reorder": "調整作品順序",
-  "story.revert": "還原作品版本",
-  "story_chapter.replace": "改寫作品章節",
-  "story_chapter.insert": "插入作品章節",
-  "story_chapter.delete": "刪除作品章節",
-  "volume.create": "建立冊",
-  "volume.update": "更新冊",
-  "volume.delete": "刪除冊",
-  "volume.reorder": "調整冊順序",
-  "lore.create": "建立設定",
-  "lore.update": "更新設定",
-  "lore.delete": "刪除設定",
-  "lore.move": "搬移設定",
-  "lore.revert": "還原設定版本",
-  "lore_collection.create": "建立設定集",
-  "lore_collection.update": "更新設定集",
-  "lore_collection.delete": "刪除設定集",
-  "lore_chapter.replace": "改寫設定章節",
-  "lore_chapter.insert": "插入設定章節",
-  "lore_chapter.delete": "刪除設定章節",
-  "asset.upload.confirm": "上傳資產",
-  "asset.replace.confirm": "更換資產檔案",
-  "asset.update": "更新資產",
-  "asset.move": "搬移資產",
-  "asset.delete": "刪除資產",
-  "asset_collection.create": "建立資產集",
-  "asset_collection.update": "更新資產集",
-  "asset_collection.delete": "刪除資產集",
-  "agent.run": "執行 AI 助理",
-  "agent.resend": "重送 AI 助理",
-  "agent.proposal.apply": "套用 AI 提案",
-  "agent.proposal.reject": "拒絕 AI 提案",
-  "agent.proposal.reset": "重設 AI 提案",
-  "memory.create": "新增梭梭記憶",
-  "memory.update": "更新梭梭記憶",
-  "memory.delete": "刪除梭梭記憶",
-  "memory.confirm": "確認梭梭記憶",
-  "memory.draft.generate": "整理記憶草稿",
-  "memory.draft.retry": "重新整理記憶草稿",
-  "memory.draft.discard": "捨棄記憶草稿",
-  "auth.login": "登入",
-  "auth.login.failed": "登入失敗",
-  "auth.logout": "登出",
-  "auth.pat.denied": "Personal Access Token 驗證被拒絕",
-  "auth.oauth.denied": "OAuth Token 驗證被拒絕",
-  "auth.oauth.refresh.denied": "OAuth Token 換發被拒絕",
-  "pat.create": "建立 Personal Access Token",
-  "pat.revoke": "撤銷 Personal Access Token",
-  "oauth.authorize": "同意 OAuth 授權",
-  "oauth.deny": "拒絕 OAuth 授權",
-  "oauth.grant.create": "應用程式完成 OAuth 連線",
-  "oauth.token.refresh": "OAuth Token 換發",
-  "oauth.revoke": "撤銷 OAuth 授權",
-  "provider_key.create": "新增 API key",
-  "provider_key.update": "更新 API key",
-  "provider_key.delete": "刪除 API key",
-  "provider_key.test": "測試 API key 連線",
-  "profile.update": "更新個人資料",
-  "profile.delete": "刪除個人資料",
-  "author_profile.create": "建立作者頁",
-  "author_profile.update": "更新作者頁",
-  "author_profile.delete": "刪除作者頁",
-  "agent_skill.create": "建立 Skill",
-  "agent_skill.update": "更新 Skill",
-  "agent_skill.delete": "刪除 Skill",
-  "favorite.add": "追蹤",
-  "favorite.remove": "取消追蹤",
-  "favorite.visibility.update": "變更追蹤清單可見度",
-  "ranking.update": "更新排名",
-  "ranking.delete": "移除排名",
-  "bookmark.add": "加入閱讀書籤",
-  "bookmark.remove": "移除閱讀書籤",
-  "bookmark.create": "建立寫作書籤",
-  "bookmark.update": "更新寫作書籤",
-  "bookmark.delete": "刪除寫作書籤",
-  "notification.lock": "鎖定通知",
-  "notification.unlock": "解除通知鎖定",
-  "notification.delete": "刪除通知",
-  "notification.follow_back": "從通知回追",
-  "post.create": "發佈動態",
-  "post.delete": "刪除動態",
-  "post.pin": "置頂動態",
-  "post.unpin": "取消置頂動態",
-  "post.like": "喜歡動態",
-  "post.unlike": "取消喜歡動態",
-  "comment.create": "留言",
-  "comment.delete": "刪除留言",
-  "author.block": "封鎖留言者",
-  "author.unblock": "解除封鎖",
-  "report.create": "檢舉",
-  "admin.report.remove": "站方移除被檢舉的內容",
-  "admin.report.dismiss": "駁回檢舉",
-  "project.list": "讀取專案列表",
-  "project.read": "讀取專案",
-  "story.list": "讀取作品列表",
-  "story.read": "讀取作品",
-  "story.version.list": "讀取作品版本列表",
-  "story_chapter.list": "讀取作品章節列表",
-  "story_chapter.read": "讀取作品章節",
-  "volume.list": "讀取冊列表",
-  "lore.list": "讀取設定列表",
-  "lore.read": "讀取設定",
-  "lore.version.list": "讀取設定版本列表",
-  "lore_collection.list": "讀取設定集列表",
-  "lore_chapter.list": "讀取設定章節列表",
-  "lore_chapter.read": "讀取設定章節",
-  "asset.list": "讀取資產列表",
-  "asset.read": "讀取資產",
-  "asset_collection.list": "讀取資產集列表",
-  "memory.list": "讀取梭梭記憶",
-  "memory.search": "搜尋梭梭記憶",
-  "content.validate": "檢查內容格式",
-  "author_profile.list": "讀取作者頁列表",
-  "audit.archive_query.create": "查詢封存稽核紀錄",
-  "system.audit.export": "匯出稽核封存",
-  "system.audit.mysql_purge": "清除已封存的近期稽核資料",
-  "system.audit.archive_purge": "刪除超過保存期限的封存",
-  "system.notification.fanout": "派送作品更新通知",
-  "system.notification.purge": "清除超過保留期的通知",
-  "system.banned_account.purge": "清除停權帳號的內容",
-};
+// action 本身含 "."（且 auth.login 與 auth.login.failed 會在巢狀 key 裡衝突），
+// 所以翻譯 key 一律把 "." 換成 "_"。這些都是非元件 helper，用全域 i18next。
+const t = i18n.t.bind(i18n);
 
-export const auditCategoryLabels: Record<string, string> = {
-  project: "專案",
-  story: "作品",
-  lore: "設定",
-  asset: "資產",
-  agent: "AI 助理",
-  memory: "梭梭記憶",
-  auth: "登入",
-  credential: "憑證",
-  profile: "個人資料",
-  social: "收藏與追蹤",
-  read: "讀取",
-  audit: "稽核查詢",
-  system: "系統",
-  admin: "站方管理",
-};
+export const auditCategoryLabel = (category: string) =>
+  t(`web.audit.categories.${category}`, { defaultValue: category });
 
-export const auditSourceLabels: Record<StorytellerAuditSource, string> = {
-  web: "網頁",
-  mcp: "MCP",
-  api: "API",
-  cron: "排程",
-};
+export const auditSourceLabel = (source: StorytellerAuditSource) =>
+  t(`web.audit.sources.${source}`);
 
-export const auditOutcomeLabels: Record<StorytellerAuditOutcome, string> = {
-  success: "成功",
-  denied: "拒絕",
-  failed: "失敗",
-};
+export const auditOutcomeLabel = (outcome: StorytellerAuditOutcome) =>
+  t(`web.audit.outcomes.${outcome}`);
 
 export const auditOutcomeColors: Record<
   StorytellerAuditOutcome,
   "success" | "warning" | "error"
 > = { success: "success", denied: "warning", failed: "error" };
 
+// [值, 翻譯 key]；呈現端用 t() 取字
 export const auditRangeOptions: Array<[string, string]> = [
-  ["24h", "最近 24 小時"],
-  ["7d", "最近 7 天"],
-  ["30d", "最近 30 天"],
-  ["custom", "自訂"],
+  ["24h", "web.audit.ranges.24h"],
+  ["7d", "web.audit.ranges.7d"],
+  ["30d", "web.audit.ranges.30d"],
+  ["custom", "web.audit.ranges.custom"],
 ];
 
 export function auditActionLabel(action: string) {
-  return auditActionLabels[action] ?? action;
+  return t(`web.audit.actions.${action.replaceAll(".", "_")}`, {
+    defaultValue: action,
+  });
 }
 
 export function auditActorLabel(event: StorytellerAuditEvent) {
-  if (event.actor.type === "system") return "系統";
-  return event.actor.display_name || "未識別的使用者";
+  if (event.actor.type === "system") return t("web.audit.actor.system");
+  return event.actor.display_name || t("web.audit.actor.unknown");
 }
 
 export function auditTargetLabel(event: StorytellerAuditEvent) {
@@ -270,7 +125,7 @@ export function auditErrorMessage(error: unknown) {
       ?.message;
     if (message) return message;
   }
-  return "稽核紀錄載入失敗，請稍後再試。";
+  return t("web.audit.errors.load");
 }
 
 // 近期查詢的保存月數，對應後端 AUDIT_HOT_RETENTION_MONTHS 的預設值；前端只用來提早提示，

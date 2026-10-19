@@ -12,10 +12,11 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
-  auditCategoryLabels,
-  auditOutcomeLabels,
-  auditSourceLabels,
+  auditCategoryLabel,
+  auditOutcomeLabel,
+  auditSourceLabel,
   countActiveAuditFilters,
   emptyAuditAdvancedFilters,
 } from "@/pages/storyteller/storytellerAuditUI.ts";
@@ -38,6 +39,7 @@ function SearchableSelect({
   options: Option[];
   onChange: (value: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Autocomplete
       size="small"
@@ -49,7 +51,11 @@ function SearchableSelect({
         option.value === selected.value
       }
       renderInput={(params) => (
-        <TextField {...params} label={label} placeholder="全部" />
+        <TextField
+          {...params}
+          label={label}
+          placeholder={t("web.common.all")}
+        />
       )}
     />
   );
@@ -66,6 +72,7 @@ function PlainSelect({
   options: Array<[string, string]>;
   onChange: (value: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <TextField
       select
@@ -74,7 +81,7 @@ function PlainSelect({
       value={value}
       onChange={(event) => onChange(event.target.value)}
     >
-      <MenuItem value="">全部</MenuItem>
+      <MenuItem value="">{t("web.common.all")}</MenuItem>
       {options.map(([optionValue, optionLabel]) => (
         <MenuItem key={optionValue} value={optionValue}>
           {optionLabel}
@@ -95,6 +102,7 @@ export function StorytellerAuditAdvancedFilters({
   options?: StorytellerAuditEventFilters;
   onChange: (patch: Partial<StorytellerAuditAdvancedFilterValues>) => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const activeCount = countActiveAuditFilters(value);
   return (
@@ -106,7 +114,9 @@ export function StorytellerAuditAdvancedFilters({
           onClick={() => setOpen((current) => !current)}
           aria-expanded={open}
         >
-          進階篩選{activeCount > 0 ? `（${activeCount}）` : ""}
+          {activeCount > 0
+            ? t("web.audit.filters.advancedWithCount", { count: activeCount })
+            : t("web.audit.filters.advanced")}
         </Button>
         {activeCount > 0 && (
           <Button
@@ -114,7 +124,7 @@ export function StorytellerAuditAdvancedFilters({
             color="inherit"
             onClick={() => onChange(emptyAuditAdvancedFilters)}
           >
-            清除篩選
+            {t("web.audit.filters.clear")}
           </Button>
         )}
       </Stack>
@@ -132,40 +142,40 @@ export function StorytellerAuditAdvancedFilters({
           }}
         >
           <SearchableSelect
-            label="專案"
+            label={t("web.audit.filters.project")}
             value={value.projectPublicId}
             options={options?.projects ?? []}
             onChange={(projectPublicId) => onChange({ projectPublicId })}
           />
           <PlainSelect
-            label="類別"
+            label={t("web.audit.filters.category")}
             value={value.category}
             options={(options?.categories ?? []).map((category) => [
               category,
-              auditCategoryLabels[category] ?? category,
+              auditCategoryLabel(category),
             ])}
             onChange={(category) => onChange({ category })}
           />
           <PlainSelect
-            label="入口"
+            label={t("web.audit.filters.source")}
             value={value.source}
             options={(options?.sources ?? []).map((source) => [
               source,
-              auditSourceLabels[source],
+              auditSourceLabel(source),
             ])}
             onChange={(source) => onChange({ source })}
           />
           <PlainSelect
-            label="結果"
+            label={t("web.audit.filters.outcome")}
             value={value.outcome}
             options={(options?.outcomes ?? []).map((outcome) => [
               outcome,
-              auditOutcomeLabels[outcome],
+              auditOutcomeLabel(outcome),
             ])}
             onChange={(outcome) => onChange({ outcome })}
           />
           <SearchableSelect
-            label="憑證"
+            label={t("web.audit.filters.credential")}
             value={value.credentialRef}
             options={options?.credentials ?? []}
             onChange={(credentialRef) => onChange({ credentialRef })}
@@ -188,7 +198,7 @@ export function StorytellerAuditAdvancedFilters({
             }
             label={
               <Typography variant="body2">
-                包含讀取與收藏等低重要度事件
+                {t("web.audit.filters.includeLowImportance")}
               </Typography>
             }
           />

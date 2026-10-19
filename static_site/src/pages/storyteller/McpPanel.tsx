@@ -9,6 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { useStorytellerMcpSkill } from "@/apis/storyteller.ts";
 import {
@@ -30,6 +31,7 @@ import {
 // 作者先講自己用的是什麼服務，後面才問 OAuth／PAT，不用一開始就懂這兩個詞。
 // 憑證本身的管理分別在 Personal Access Token 與 OAuth Token 頁，這裡只負責把工具接起來。
 export function StorytellerMcpPanel() {
+  const { t } = useTranslation();
   const { copy, snackbars } = useClipboardCopy();
   const [service, setService] = useState<McpService | null>(null);
   const [method, setMethod] = useState<McpAuthMethod | null>(null);
@@ -49,15 +51,14 @@ export function StorytellerMcpPanel() {
 
   return (
     <Stack spacing={2}>
-      <Typography color="text.secondary">
-        透過 MCP（Model Context Protocol），你可以讓 Claude、ChatGPT、Codex 等
-        AI 服務直接讀寫你的創作專案、故事內容與世界觀設定，不需要手動複製貼上。
-      </Typography>
+      <Typography color="text.secondary">{t("web.mcp.intro")}</Typography>
 
       <Stepper orientation="vertical" activeStep={activeStep}>
         <Step completed={Boolean(service)} expanded>
           <StepLabel>
-            <Typography fontWeight={800}>選擇你使用的 AI 服務</Typography>
+            <Typography fontWeight={800}>
+              {t("web.mcp.steps.service")}
+            </Typography>
           </StepLabel>
           <StepContent>
             <McpServicePicker
@@ -69,7 +70,7 @@ export function StorytellerMcpPanel() {
 
         <Step completed={Boolean(method)} expanded>
           <StepLabel>
-            <Typography fontWeight={800}>選擇授權方式</Typography>
+            <Typography fontWeight={800}>{t("web.mcp.steps.auth")}</Typography>
           </StepLabel>
           <StepContent>
             {service ? (
@@ -80,7 +81,7 @@ export function StorytellerMcpPanel() {
               />
             ) : (
               <Typography variant="body2" color="text.secondary">
-                先選 AI 服務，這裡會列出它支援的授權方式。
+                {t("web.mcp.steps.authPending")}
               </Typography>
             )}
           </StepContent>
@@ -88,7 +89,7 @@ export function StorytellerMcpPanel() {
 
         <Step expanded>
           <StepLabel>
-            <Typography fontWeight={800}>連線設定</Typography>
+            <Typography fontWeight={800}>{t("web.mcp.steps.setup")}</Typography>
           </StepLabel>
           <StepContent>
             {service && method ? (
@@ -100,15 +101,21 @@ export function StorytellerMcpPanel() {
               />
             ) : (
               <Typography variant="body2" color="text.secondary">
-                選好授權方式後，這裡會列出設定步驟。
+                {t("web.mcp.steps.setupPending")}
               </Typography>
             )}
           </StepContent>
         </Step>
 
         <Step expanded>
-          <StepLabel optional={<Typography variant="caption">選用</Typography>}>
-            <Typography fontWeight={800}>安裝 Skill</Typography>
+          <StepLabel
+            optional={
+              <Typography variant="caption">
+                {t("web.mcp.steps.optional")}
+              </Typography>
+            }
+          >
+            <Typography fontWeight={800}>{t("web.mcp.steps.skill")}</Typography>
           </StepLabel>
           <StepContent>
             {service ? (
@@ -121,9 +128,7 @@ export function StorytellerMcpPanel() {
               />
             ) : (
               <Typography variant="body2" color="text.secondary">
-                Skill 告訴 AI 怎麼在 SteamLoom
-                上寫作、改稿，以及寫入前後要檢查什麼。選好 AI
-                服務後會顯示安裝方式。
+                {t("web.mcp.steps.skillPending")}
               </Typography>
             )}
           </StepContent>
@@ -132,17 +137,20 @@ export function StorytellerMcpPanel() {
 
       <Box>
         <Typography variant="caption" color="text.secondary">
-          MCP 連線位址：<code>{mcpEndpoint}</code>・目前不支援
-          SSE，若工具連線卡住可能是這個原因。不確定怎麼設定可參考
-          <Link
-            href="https://modelcontextprotocol.io/docs/develop/connect-remote-servers"
-            target="_blank"
-            rel="noopener"
-            sx={{ ml: 0.5 }}
-          >
-            MCP 官方文件
-          </Link>
-          。
+          <Trans
+            i18nKey="web.mcp.endpointNote"
+            values={{ endpoint: mcpEndpoint }}
+            components={{
+              code: <code />,
+              link: (
+                <Link
+                  href="https://modelcontextprotocol.io/docs/develop/connect-remote-servers"
+                  target="_blank"
+                  rel="noopener"
+                />
+              ),
+            }}
+          />
         </Typography>
       </Box>
 
@@ -156,7 +164,7 @@ export function StorytellerMcpPanel() {
       {/* 預覽要讀後端的 SKILL.md；讀不到時告訴作者，連線設定的步驟不受影響 */}
       <CustomSnackbar
         open={previewOpen && skill.isError}
-        message="讀取 Skill 內容失敗，請稍後再試。"
+        message={t("web.mcp.skill.previewFailed")}
         severity="error"
         onClose={() => setPreviewOpen(false)}
       />

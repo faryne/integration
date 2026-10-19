@@ -21,6 +21,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
@@ -46,6 +47,7 @@ import type {
 // 「開發者 › Personal Access Token」分頁：給 Codex CLI 這類要在設定檔寫 token 的本機工具。
 // 只輸出內容本體，外層標題／麵包屑交給 Home.tsx 的 WorkspaceChrome。
 export function StorytellerPersonalAccessTokenPanel() {
+  const { t } = useTranslation();
   const { data: tokens = [], isLoading } = useStorytellerPersonalAccessTokens();
   const createToken = useCreateStorytellerPersonalAccessToken();
   const deleteToken = useDeleteStorytellerPersonalAccessToken();
@@ -70,12 +72,11 @@ export function StorytellerPersonalAccessTokenPanel() {
             color="inherit"
             size="small"
           >
-            看連線方式
+            {t("web.developer.viewConnectGuide")}
           </Button>
         }
       >
-        要連 Claude.ai、ChatGPT 這類網頁版服務？不用建立 Personal Access
-        Token，直接貼 MCP 網址走 OAuth 授權就好。
+        {t("web.developer.pat.webServicesHint")}
       </Alert>
 
       <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}>
@@ -102,9 +103,11 @@ export function StorytellerPersonalAccessTokenPanel() {
           }}
         >
           <Box>
-            <Typography variant="h6">建立 Personal Access Token</Typography>
+            <Typography variant="h6">
+              {t("web.developer.pat.createTitle")}
+            </Typography>
             <Typography variant="body2" color="text.secondary">
-              給 Codex CLI 這類本機工具使用，貼進工具的設定檔即可連線。
+              {t("web.developer.pat.createDescription")}
             </Typography>
           </Box>
           <Grid container spacing={2}>
@@ -112,8 +115,8 @@ export function StorytellerPersonalAccessTokenPanel() {
               <TextField
                 required
                 fullWidth
-                label="名稱"
-                placeholder="例如：Codex、我的筆電"
+                label={t("web.developer.pat.name")}
+                placeholder={t("web.developer.pat.namePlaceholder")}
                 value={label}
                 onChange={(event) => setLabel(event.target.value)}
               />
@@ -122,13 +125,13 @@ export function StorytellerPersonalAccessTokenPanel() {
               <TextField
                 fullWidth
                 select
-                label="效期"
+                label={t("web.developer.pat.expiry")}
                 value={expiresInDays}
                 onChange={(event) => setExpiresInDays(event.target.value)}
               >
                 {personalAccessTokenExpiryOptions.map((option) => (
                   <MenuItem key={option.value} value={option.value}>
-                    {option.label}
+                    {t(option.label, { count: option.days })}
                   </MenuItem>
                 ))}
               </TextField>
@@ -144,7 +147,9 @@ export function StorytellerPersonalAccessTokenPanel() {
                 startIcon={<AddIcon />}
                 disabled={createToken.isPending || !label.trim()}
               >
-                {createToken.isPending ? "建立中" : "建立"}
+                {createToken.isPending
+                  ? t("web.developer.pat.creating")
+                  : t("web.common.create")}
               </Button>
             </Grid>
           </Grid>
@@ -153,14 +158,16 @@ export function StorytellerPersonalAccessTokenPanel() {
 
       <Paper variant="outlined" sx={{ borderRadius: 1 }}>
         <Stack sx={{ p: { xs: 2, md: 3 } }} spacing={1}>
-          <Typography variant="h6">已建立的 Token</Typography>
+          <Typography variant="h6">
+            {t("web.developer.pat.listTitle")}
+          </Typography>
           {isLoading ? (
             <Stack alignItems="center" sx={{ py: 4 }}>
               <CircularProgress size={28} />
             </Stack>
           ) : tokens.length === 0 ? (
             <Alert severity="info" variant="outlined">
-              尚未建立任何 token，請先在上方建立。
+              {t("web.developer.pat.empty")}
             </Alert>
           ) : (
             <List disablePadding>
@@ -183,18 +190,17 @@ export function StorytellerPersonalAccessTokenPanel() {
         open={createdToken !== null}
         state="success"
         eyebrow="Personal Access Token"
-        title="Token 已建立"
+        title={t("web.developer.pat.created")}
         onClose={() => setCreatedToken(null)}
         actions={
           <Button variant="contained" onClick={() => setCreatedToken(null)}>
-            我已複製，關閉
+            {t("web.developer.pat.copiedClose")}
           </Button>
         }
       >
         <Stack spacing={1.5}>
           <Alert severity="warning" variant="outlined">
-            這組 token
-            只會顯示這一次，請妥善保存，離開這個視窗後就無法再次查看完整內容。
+            {t("web.developer.pat.showOnce")}
           </Alert>
           {createdToken && (
             <>
@@ -204,7 +210,7 @@ export function StorytellerPersonalAccessTokenPanel() {
                 onCopy={(value) => void copy(value)}
               />
               <CopyableCode
-                label="MCP client 設定範例："
+                label={t("web.developer.pat.configExample")}
                 value={configSnippet}
                 onCopy={(value) => void copy(value)}
               />
@@ -216,13 +222,13 @@ export function StorytellerPersonalAccessTokenPanel() {
       {snackbars}
       <CustomSnackbar
         open={createToken.isError}
-        message="建立 Token 失敗，請確認欄位內容後重試。"
+        message={t("web.developer.pat.errors.create")}
         severity="error"
         onClose={() => createToken.reset()}
       />
       <CustomSnackbar
         open={deleteToken.isError}
-        message="Token 刪除失敗，請稍後再試。"
+        message={t("web.developer.pat.errors.delete")}
         severity="error"
         onClose={() => deleteToken.reset()}
       />
@@ -239,6 +245,7 @@ function PersonalAccessTokenRow({
   onDelete: () => void;
   deletePending: boolean;
 }) {
+  const { t, i18n } = useTranslation();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const isExpired =
     token.expires_at !== null && new Date(token.expires_at) < new Date();
@@ -246,7 +253,7 @@ function PersonalAccessTokenRow({
   return (
     <ListItem
       secondaryAction={
-        <Tooltip title="刪除 token">
+        <Tooltip title={t("web.developer.pat.delete")}>
           <IconButton
             edge="end"
             disabled={deletePending}
@@ -267,21 +274,37 @@ function PersonalAccessTokenRow({
         <KeyIcon color={isExpired ? "disabled" : "action"} />
       </ListItemIcon>
       <ListItemText
-        primary={token.label || "（未命名）"}
+        primary={token.label || t("web.developer.untitled")}
         secondary={
           <Stack spacing={0.25} sx={{ mt: 0.25 }}>
             <span>
               {token.token_prefix}
-              {"…"}・建立於 {new Date(token.created_at).toLocaleString()}
+              {"…"}・
+              {t("web.developer.createdAt", {
+                date: new Date(token.created_at).toLocaleString(
+                  i18n.resolvedLanguage,
+                ),
+              })}
             </span>
             <span>
               {token.last_used_at
-                ? `上次使用於 ${new Date(token.last_used_at).toLocaleString()}`
-                : "尚未使用過"}
+                ? t("web.developer.lastUsed", {
+                    date: new Date(token.last_used_at).toLocaleString(
+                      i18n.resolvedLanguage,
+                    ),
+                  })
+                : t("web.developer.neverUsed")}
               {token.expires_at &&
-                `・${isExpired ? "已於" : "將於"} ${new Date(
-                  token.expires_at,
-                ).toLocaleString()} ${isExpired ? "過期" : "到期"}`}
+                `・${t(
+                  isExpired
+                    ? "web.developer.pat.expiredAt"
+                    : "web.developer.pat.expiresAt",
+                  {
+                    date: new Date(token.expires_at).toLocaleString(
+                      i18n.resolvedLanguage,
+                    ),
+                  },
+                )}`}
             </span>
           </Stack>
         }
@@ -290,13 +313,17 @@ function PersonalAccessTokenRow({
       <StorytellerMascotDialog
         open={confirmingDelete}
         state="danger"
-        eyebrow="刪除 Token"
-        title={`確定要刪除「${token.label || "（未命名）"}」？`}
-        description="刪除後使用這組 Token 的工具會立刻失去連線權限，此操作無法復原。"
+        eyebrow={t("web.developer.pat.delete")}
+        title={t("web.developer.pat.confirmDeleteTitle", {
+          name: token.label || t("web.developer.untitled"),
+        })}
+        description={t("web.developer.pat.confirmDeleteDescription")}
         onClose={() => setConfirmingDelete(false)}
         actions={
           <>
-            <Button onClick={() => setConfirmingDelete(false)}>取消</Button>
+            <Button onClick={() => setConfirmingDelete(false)}>
+              {t("web.common.cancel")}
+            </Button>
             <Button
               color="error"
               variant="contained"
@@ -306,7 +333,7 @@ function PersonalAccessTokenRow({
                 setConfirmingDelete(false);
               }}
             >
-              刪除 Token
+              {t("web.developer.pat.delete")}
             </Button>
           </>
         }

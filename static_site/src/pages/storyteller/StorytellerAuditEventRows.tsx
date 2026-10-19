@@ -11,13 +11,14 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StorytellerAuditEventDetail } from "@/pages/storyteller/StorytellerAuditEventDetail.tsx";
 import {
   auditActionLabel,
   auditActorLabel,
   auditOutcomeColors,
-  auditOutcomeLabels,
-  auditSourceLabels,
+  auditOutcomeLabel,
+  auditSourceLabel,
   auditTargetLabel,
   formatAuditTime,
   type AuditListItem,
@@ -89,7 +90,7 @@ function EventRow({
             <Chip
               size="small"
               variant="outlined"
-              label={auditSourceLabels[event.source]}
+              label={auditSourceLabel(event.source)}
             />
             {event.credential && (
               <Chip
@@ -102,7 +103,7 @@ function EventRow({
             <Chip
               size="small"
               color={auditOutcomeColors[event.outcome]}
-              label={auditOutcomeLabels[event.outcome]}
+              label={auditOutcomeLabel(event.outcome)}
             />
           </Stack>
         )}
@@ -118,6 +119,7 @@ function AutosaveGroupRow({
   events: StorytellerAuditEvent[];
   onOpen: (event: StorytellerAuditEvent) => void;
 }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const latest = events[0];
   return (
@@ -170,12 +172,12 @@ function AutosaveGroupRow({
               size="small"
               color="primary"
               variant="outlined"
-              label={`${events.length} 次自動儲存`}
+              label={t("web.audit.autosaveGroup", { count: events.length })}
             />
             <Chip
               size="small"
               variant="outlined"
-              label={auditSourceLabels[latest.source]}
+              label={auditSourceLabel(latest.source)}
             />
             {latest.credential && (
               <Chip
@@ -240,6 +242,7 @@ export function AuditEventDetailDrawer({
   event: StorytellerAuditEvent | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Drawer
       anchor="right"
@@ -249,9 +252,9 @@ export function AuditEventDetailDrawer({
     >
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Typography variant="overline" color="primary.main" fontWeight={800}>
-          事件詳情
+          {t("web.audit.detail.title")}
         </Typography>
-        <IconButton aria-label="關閉事件詳情" onClick={onClose}>
+        <IconButton aria-label={t("web.audit.detail.close")} onClick={onClose}>
           <CloseIcon />
         </IconButton>
       </Stack>

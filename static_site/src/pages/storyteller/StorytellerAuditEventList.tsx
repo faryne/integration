@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import {
   Alert,
   Button,
@@ -9,6 +10,7 @@ import {
 } from "@mui/material";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useStorytellerAuditEventFilters,
   useStorytellerAuditEvents,
@@ -51,9 +53,13 @@ const defaultQuery: StorytellerAuditEventQuery = {
 // 自訂日期的驗證：最早只能到近期範圍起點，更早的要改用封存查詢（回傳 "archive"）。
 function customRangeError(query: StorytellerAuditEventQuery) {
   if (query.range !== "custom") return "";
-  if (!query.customFrom || !query.customTo) return "請選擇開始與結束日期";
-  if (query.customTo < query.customFrom) return "結束日期不能早於開始日期";
-  if (query.customTo > today()) return "結束日期不能晚於今天";
+  // 非元件 helper，用全域 i18next
+  if (!query.customFrom || !query.customTo)
+    return i18n.t("web.audit.list.errors.selectDates");
+  if (query.customTo < query.customFrom)
+    return i18n.t("web.audit.list.errors.endBeforeStart");
+  if (query.customTo > today())
+    return i18n.t("web.audit.list.errors.endAfterToday");
   if (query.customFrom < earliestHotDate()) return "archive";
   return "";
 }
@@ -65,6 +71,7 @@ export function StorytellerAuditEventList({
 }: {
   onSwitchToArchive: () => void;
 }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState(defaultQuery);
   const [selected, setSelected] = useState<StorytellerAuditEvent | null>(null);
   const [snack, setSnack] = useState("");
@@ -99,10 +106,10 @@ export function StorytellerAuditEventList({
       <Paper variant="outlined" sx={{ p: 2 }}>
         <Stack spacing={1.5}>
           <StorytellerFilterChips
-            label="時間"
+            label={t("web.audit.list.time")}
             value={query.range}
             hideAll
-            options={auditRangeOptions}
+            options={auditRangeOptions.map(([value, key]) => [value, t(key)])}
             onChange={(range) =>
               update({
                 range: (range || "24h") as StorytellerAuditEventQuery["range"],
@@ -123,7 +130,7 @@ export function StorytellerAuditEventList({
               <TextField
                 type="date"
                 size="small"
-                label="開始日期"
+                label={t("web.audit.list.startDate")}
                 value={query.customFrom}
                 onChange={(event) => update({ customFrom: event.target.value })}
                 slotProps={{
@@ -134,7 +141,7 @@ export function StorytellerAuditEventList({
               <TextField
                 type="date"
                 size="small"
-                label="結束日期"
+                label={t("web.audit.list.endDate")}
                 value={query.customTo}
                 onChange={(event) => update({ customTo: event.target.value })}
                 slotProps={{
@@ -153,12 +160,13 @@ export function StorytellerAuditEventList({
                   size="small"
                   onClick={onSwitchToArchive}
                 >
-                  改用封存查詢
+                  {t("web.audit.list.useArchive")}
                 </Button>
               }
             >
-              {AUDIT_HOT_RETENTION_MONTHS}{" "}
-              個月以前的紀錄已封存，請改用封存查詢。
+              {t("web.audit.list.archivedNotice", {
+                months: AUDIT_HOT_RETENTION_MONTHS,
+              })}
             </Alert>
           ) : (
             rangeError && <Alert severity="warning">{rangeError}</Alert>
@@ -173,10 +181,13 @@ export function StorytellerAuditEventList({
 
       <Typography variant="body2" color="text.secondary">
         {rangeError
-          ? "請先調整時間範圍"
+          ? t("web.audit.list.adjustRange")
           : events.isLoading
-            ? "載入中…"
-            : `已載入 ${eventCount} 筆（合併顯示 ${items.length} 列）`}
+            ? t("web.common.loading")
+            : t("web.audit.list.loadedCount", {
+                count: eventCount,
+                rows: items.length,
+              })}
       </Typography>
 
       {rangeError ? null : (
@@ -194,20 +205,20 @@ export function StorytellerAuditEventList({
                   size="small"
                   onClick={() => events.refetch()}
                 >
-                  重試
+                  {t("web.common.retry")}
                 </Button>
               }
               sx={{ m: 2 }}
             >
-              活動紀錄載入失敗。
+              {t("web.audit.list.errors.load")}
             </Alert>
           ) : items.length === 0 ? (
             <Stack alignItems="center" spacing={1} sx={{ py: 6, px: 2 }}>
               <Typography fontWeight={700}>
-                這段時間沒有符合條件的紀錄
+                {t("web.audit.list.empty")}
               </Typography>
               <Button size="small" onClick={() => setQuery(defaultQuery)}>
-                清除篩選
+                {t("web.audit.filters.clear")}
               </Button>
             </Stack>
           ) : (
@@ -223,7 +234,9 @@ export function StorytellerAuditEventList({
           disabled={events.isFetchingNextPage}
           sx={{ alignSelf: "center" }}
         >
-          {events.isFetchingNextPage ? "載入中…" : "載入更早的紀錄"}
+          {events.isFetchingNextPage
+            ? t("web.common.loading")
+            : t("web.audit.list.loadEarlier")}
         </Button>
       )}
 

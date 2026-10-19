@@ -1350,5 +1350,617 @@
         "workPenName": "This work is credited to “{{name}}”. Following back will use “{{name}}”."
       }
     }
+  },
+  "visibility": {
+    "public": "Public",
+    "unlisted": "Shared",
+    "private": "Private"
+  },
+  "profile": {
+    "loading": "Loading author settings…",
+    "description": "This information appears as the author info on public story reader pages.",
+    "penNameHelp": "Shown in your public author page URL. Can't contain / \\ ? # % or similar symbols.",
+    "bio": "Bio",
+    "bioHelp": "Supports Markdown. Shown on your public author page.",
+    "snsLinks": "Social links",
+    "avatar": {
+      "source": "Avatar source",
+      "gravatar": "Use Gravatar",
+      "default": "Use your sign-in account's avatar",
+      "custom": "Enter a URL"
+    },
+    "privacy": {
+      "title": "Privacy",
+      "hideFavoriteWorks": "Hide works I follow",
+      "hideFavoriteAuthors": "Hide authors I follow"
+    },
+    "editor": {
+      "title": "Editor",
+      "description": "Defaults for the story and lore editors. You can still adjust them each time you open the editor.",
+      "autoSaveInterval": "Autosave interval (minutes)",
+      "intervalRange": "Enter a whole number from {{min}} to {{max}}",
+      "intervalDefault": "Defaults to {{minutes}} minutes if left empty"
+    },
+    "messages": {
+      "saved": "Author settings saved"
+    },
+    "errors": {
+      "save": "Couldn't save author settings. Please check the fields.",
+      "penNameEmpty": "Pen name can't be empty",
+      "penNameInvalid": "Pen name can't contain / \\ ? # % or control characters"
+    },
+    "extra": {
+      "title": "Additional pen names",
+      "description": "Assign them to individual stories as the byline. Without any, stories use your main pen name above.",
+      "limitReached": "You've reached the limit of {{max}} additional pen names. Delete one before creating another.",
+      "add": "Add pen name",
+      "edit": "Edit pen name",
+      "delete": "Delete pen name",
+      "editNamed": "Edit pen name {{name}}",
+      "deleteNamed": "Delete pen name {{name}}",
+      "penNameHelp": "Shown in your public author page URL. Must be unique across the site.",
+      "avatarHelp": "Leave empty to use an identicon generated from the pen name.",
+      "deleteDescription": "This can't be undone. If any story is still credited to this pen name, deletion will be refused. Comments posted as it and its block list will also be deleted.",
+      "deleteDescriptionWithPosts": "This can't be undone. If any story is still credited to this pen name, deletion will be refused. Its {{count}} posts, comments posted as it, and its block list will also be deleted.",
+      "messages": {
+        "created": "Pen name created",
+        "updated": "Pen name updated",
+        "deleted": "Pen name deleted"
+      },
+      "errors": {
+        "save": "Couldn't save the pen name. Please check the fields.",
+        "delete": "Couldn't delete the pen name."
+      }
+    },
+    "sns": {
+      "type": "Type",
+      "customType": "Custom type",
+      "customTypeName": "Custom type name",
+      "url": "URL",
+      "visibility": "Visibility of this link",
+      "public": "Public",
+      "private": "Only me",
+      "remove": "Remove this social link",
+      "addRow": "Add row",
+      "privateHelp": "Links set to \"Only me\" won't appear on your public author page, work bylines, or follow lists."
+    },
+    "blocks": {
+      "title": "Block list",
+      "loading": "Loading block list…",
+      "self": "Me {{name}}",
+      "penName": "Pen name {{name}}",
+      "empty": "{{name}} hasn't blocked anyone",
+      "blockedOn": "Blocked {{date}}",
+      "unblock": "Unblock",
+      "confirmTitle": "Unblock {{name}}?",
+      "confirmDescription": "They'll be able to comment on {{name}}'s posts again.",
+      "unblocked": "Unblocked {{name}}",
+      "errors": {
+        "unblock": "Couldn't unblock. Please try again."
+      }
+    }
+  },
+  "developer": {
+    "viewConnectGuide": "See how to connect",
+    "untitled": "(Untitled)",
+    "createdAt": "Created {{date}}",
+    "lastUsed": "Last used {{date}}",
+    "neverUsed": "Never used",
+    "copied": "Copied to clipboard",
+    "copyFailed": "Couldn't copy. Please select the content manually.",
+    "pat": {
+      "webServicesHint": "Connecting web services like Claude.ai or ChatGPT? You don't need a Personal Access Token — just paste the MCP URL and authorize with OAuth.",
+      "createTitle": "Create a Personal Access Token",
+      "createDescription": "For local tools like Codex CLI. Paste it into the tool's config to connect.",
+      "name": "Name",
+      "namePlaceholder": "e.g. Codex, my laptop",
+      "expiry": "Expires in",
+      "creating": "Creating",
+      "listTitle": "Your tokens",
+      "empty": "No tokens yet. Create one above.",
+      "created": "Token created",
+      "copiedClose": "I've copied it, close",
+      "showOnce": "This token is shown only once. Store it safely; you won't be able to see it again after closing this dialog.",
+      "configExample": "MCP client config example:",
+      "delete": "Delete token",
+      "expiredAt": "expired {{date}}",
+      "expiresAt": "expires {{date}}",
+      "confirmDeleteTitle": "Delete \"{{name}}\"?",
+      "confirmDeleteDescription": "Tools using this token will lose access immediately. This can't be undone.",
+      "errors": {
+        "create": "Couldn't create the token. Please check the fields and try again.",
+        "delete": "Couldn't delete the token. Please try again later."
+      }
+    },
+    "oauth": {
+      "scopeWarning": "<strong>Authorizations aren't scoped yet.</strong> Authorized apps can read and modify every project in your account (works, lore, assets, author profiles, Shuoshuo's memory), including deleting them.",
+      "listTitle": "Authorized apps",
+      "emptyTitle": "No authorized apps yet",
+      "emptyDescription": "Add a custom connector in Claude.ai or ChatGPT and paste the MCP URL; it will appear here.",
+      "revokeTitle": "Revoke access",
+      "confirmRevokeTitle": "Revoke \"{{name}}\"?",
+      "confirmRevokeDescription": "{{name}} will lose access immediately and must be authorized again to reconnect.",
+      "thisApp": "this app",
+      "revoke": "Revoke",
+      "revoked": "Access revoked",
+      "errors": {
+        "revoke": "Couldn't revoke access. Please try again later."
+      },
+      "nameFromApp": "Name provided by the app",
+      "redirectHost": "Redirects to {{host}}",
+      "grantedAt": "authorized {{date}}",
+      "expiry": "expires after 30 days of inactivity (currently until {{date}})"
+    },
+    "authorize": {
+      "pageTitle": "{{appName}} authorization",
+      "title": "Authorize connection",
+      "app": "the app",
+      "redirecting": "Taking you back to {{name}}…",
+      "redirectingHelp": "If nothing happens, return to the original tab to check the connection.",
+      "invalidTitle": "This authorization request is invalid",
+      "invalidDescription": "The app's client_id or redirect URL is incorrect. For your account's safety we won't send you back to it. Please reconnect from the original tool.",
+      "backHome": "Back to {{appName}} home",
+      "requestTitle": "{{name}} wants to connect to your {{appName}} account",
+      "loginTitle": "Sign in to choose the account to authorize",
+      "loginHelp": "Sign-in opens in a pop-up; you won't leave this page.",
+      "noPenName": "(No pen name yet)",
+      "redirectTo": "After authorizing you'll be redirected to",
+      "deny": "Deny",
+      "allow": "Allow",
+      "revokeLater": "You can revoke it anytime under \"Developer › OAuth Token\".",
+      "switchAccount": "Switch account",
+      "errors": {
+        "authorize": "Authorization failed. Please try again later."
+      },
+      "mascot": {
+        "redirecting": "All set. I'll send you back to {{name}}.",
+        "invalid": "This request doesn't check out, so I'm not letting it through. Please reconnect from your original tool.",
+        "login": "{{name}} wants to read your writing. Sign in first so I know whose door I'm opening.",
+        "confirm": "Once you agree, it can read, edit, and delete. Please look carefully before you press."
+      },
+      "scopes": {
+        "allowedTitle": "Once authorized, this app can:",
+        "deniedTitle": "It can't:",
+        "allowed": {
+          "projects": "Read and modify works, lore, and assets in all projects in your account",
+          "profile": "Manage your author profiles and read/write Shuoshuo's memory",
+          "manage": "Create, move, and delete the above"
+        },
+        "denied": {
+          "account": "Change account settings or delete your account",
+          "credentials": "View or use your provider keys, Personal Access Tokens, or other authorizations"
+        }
+      }
+    }
+  },
+  "mcp": {
+    "intro": "With MCP (Model Context Protocol), AI services like Claude, ChatGPT, and Codex can read and write your projects, stories, and worldbuilding directly — no more copy and paste.",
+    "runInTerminal": "Run in a terminal:",
+    "recommended": "Recommended",
+    "needsOAuth": "Requires OAuth. Set it up on steamloom.works.",
+    "oauthSteamLoomOnly": "OAuth is only available on steamloom.works. The faryne.dev MCP endpoint only supports Personal Access Tokens.",
+    "createToken": "Create token",
+    "patShowOnce": "This token is shown only once. Paste it into your config now; you won't see it again after leaving this page.",
+    "patPending": "After you create it, the token and {{service}} setup will appear here.",
+    "oauthDone": "That's it once you press \"Allow\". You can review or revoke it on the <link>OAuth Token page</link>.",
+    "patDone": "Restart the tool after setup to connect. Manage or revoke tokens on the <link>Personal Access Token page</link>.",
+    "endpointNote": "MCP endpoint: <code>{{endpoint}}</code> · SSE isn't supported yet, which may be why a tool gets stuck connecting. Not sure how to set it up? See the <link>official MCP docs</link>.",
+    "expiry": {
+      "days": "{{count}} days",
+      "forever": "Never (no expiry)"
+    },
+    "auth": {
+      "oauth": {
+        "label": "OAuth",
+        "description": "Press \"Allow\" once in your browser and you're connected — no token to copy. Revoke anytime on the OAuth Token page."
+      },
+      "pat": {
+        "label": "Personal Access Token",
+        "description": "Create a token and paste it into the tool's config. Good for environments without a browser (e.g. remote servers)."
+      }
+    },
+    "steps": {
+      "service": "Choose your AI service",
+      "auth": "Choose an authorization method",
+      "authPending": "Pick an AI service first; its supported methods will be listed here.",
+      "setup": "Connection setup",
+      "setupPending": "Pick an authorization method to see the setup steps here.",
+      "optional": "Optional",
+      "skill": "Install the Skill",
+      "skillPending": "The Skill tells the AI how to write and revise on SteamLoom and what to check before and after writing. Pick an AI service to see how to install it."
+    },
+    "installer": {
+      "runInPowerShell": "Run in PowerShell:",
+      "downloadSh": "Download installer (.sh)",
+      "downloadPs1": "Download installer (.ps1)",
+      "detected": "Preselected based on your browser",
+      "willDo": "This command will:",
+      "detect": "Detect whether Claude Code or Codex is installed and install the Skill into whichever is present",
+      "update": "If it's already installed, compare versions and update only when there's a newer one",
+      "rerun": "When the Skill updates, just run the same command again. {{service}} loads it automatically without a restart.",
+      "inspect": "Want to review the installer first?",
+      "inspectHelp": "Download it, open it in a text editor to check, then run:"
+    },
+    "skill": {
+      "description": "The Skill tells the AI how to write and revise on SteamLoom and what to check before and after writing.",
+      "downloadZip": "Download the Skill ZIP (no need to unzip)",
+      "updateZip": "When the Skill updates, download the ZIP and upload it again. If you uploaded the old version (named storyteller-mcp), remove it from your skills list.",
+      "downloadPlace": "After downloading, put it in your tool's skill directory with the folder name <code>{{name}}</code>.",
+      "downloadZipButton": "Download ZIP",
+      "downloadMd": "Download SKILL.md",
+      "preview": "Preview",
+      "version": "Version v{{version}} · updated {{updatedAt}}",
+      "previewFailed": "Couldn't load the Skill content. Please try again later.",
+      "previewEyebrow": "SKILL.md preview",
+      "previewTitle": "Writing and operating guide for the AI"
+    },
+    "services": {
+      "claudeai": {
+        "label": "Claude.ai",
+        "description": "Web, desktop, and mobile apps",
+        "oauthOnly": "Claude.ai custom connectors only support OAuth; you can't enter a token yourself.",
+        "steps": {
+          "add": "In Claude.ai, go to \"Settings › Connectors\" and add a custom connector",
+          "url": "Name it SteamLoom and paste this URL:",
+          "allow": "Press \"Connect\" to open the SteamLoom authorization page, confirm the account, and press \"Allow\""
+        },
+        "skill": {
+          "enableCode": "First enable \"Code execution and file creation\" under \"Settings › Capabilities\" (on Team/Enterprise plans an admin must enable it)",
+          "upload": "Go to \"Customize › Skills\", press \"+\" → \"Upload skill\", and choose the ZIP you downloaded"
+        }
+      },
+      "chatgpt": {
+        "label": "ChatGPT",
+        "description": "Requires developer mode",
+        "oauthOnly": "ChatGPT custom connectors only support OAuth; you can't enter a token yourself.",
+        "steps": {
+          "add": "In ChatGPT, go to \"Settings › Apps & Connectors\", turn on developer mode, and add a connector",
+          "url": "Paste this URL and choose OAuth for authentication:",
+          "allow": "On the SteamLoom authorization page, press \"Allow\""
+        },
+        "skill": {
+          "upload": "In ChatGPT Skills, choose Create → Upload from computer and pick the ZIP you downloaded. ChatGPT scans it first; it's ready once the scan finishes"
+        }
+      },
+      "claudecode": {
+        "label": "Claude Code",
+        "description": "Terminal and IDE",
+        "steps": {
+          "login": "In Claude Code, type /mcp and choose {{server}} to authenticate (or run claude mcp login {{server}})",
+          "allow": "Your browser opens the SteamLoom authorization page; press \"Allow\""
+        }
+      },
+      "codex": {
+        "label": "Codex",
+        "description": "Codex CLI and IDE extensions",
+        "steps": {
+          "allow": "After running login, your browser opens the SteamLoom authorization page; press \"Allow\""
+        },
+        "patSnippet": "Add to ~/.codex/config.toml and put the token in the {{env}} environment variable:"
+      },
+      "other": {
+        "label": "Other",
+        "description": "Other tools that support remote MCP",
+        "steps": {
+          "add": "Add a remote MCP server in your tool and paste:",
+          "allow": "The tool registers itself and opens the SteamLoom authorization page; press \"Allow\"",
+          "manualClient": "If the tool asks you to enter a Client ID/Client Secret manually, it doesn't support auto-registration. Go back and choose Personal Access Token instead"
+        },
+        "patSnippet": "MCP client config example (JSON):"
+      }
+    }
+  },
+  "audit": {
+    "actor": {
+      "system": "System",
+      "unknown": "Unidentified user"
+    },
+    "errors": {
+      "load": "Couldn't load activity. Please try again later."
+    },
+    "autosaveGroup": "{{count}} autosaves",
+    "ranges": {
+      "24h": "Last 24 hours",
+      "7d": "Last 7 days",
+      "30d": "Last 30 days",
+      "custom": "Custom"
+    },
+    "panel": {
+      "title": "Activity",
+      "description": "Everything you did on the web and through MCP, plus security events for sign-ins, Personal Access Tokens, OAuth authorizations, and API keys.",
+      "developerSettings": "Developer settings",
+      "recent": "Recent",
+      "archive": "Archive",
+      "asyncNotice": "Activity is recorded asynchronously, so actions from the last few seconds may not appear yet. Refresh in a moment.",
+      "errors": {
+        "months": "Couldn't load archive months. Please try again later."
+      }
+    },
+    "list": {
+      "time": "Time",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "useArchive": "Use archive search",
+      "archivedNotice": "Records older than {{months}} months are archived. Please use archive search.",
+      "adjustRange": "Adjust the time range first",
+      "loadedCount": "Loaded {{count}} events ({{rows}} rows after grouping)",
+      "empty": "No matching records in this period",
+      "loadEarlier": "Load earlier records",
+      "errors": {
+        "selectDates": "Choose a start and end date",
+        "endBeforeStart": "End date can't be before start date",
+        "endAfterToday": "End date can't be after today",
+        "load": "Couldn't load activity."
+      }
+    },
+    "filters": {
+      "advanced": "Advanced filters",
+      "advancedWithCount": "Advanced filters ({{count}})",
+      "clear": "Clear filters",
+      "project": "Project",
+      "category": "Category",
+      "source": "Source",
+      "outcome": "Result",
+      "credential": "Credential",
+      "includeLowImportance": "Include low-importance events like reads and favorites"
+    },
+    "archive": {
+      "title": "Search archived records",
+      "description": "Records older than 3 months are archived. Searches run in the background and need a month range (up to {{months}} months).",
+      "notConfigured": "Archive search isn't available yet: archive storage hasn't been set up, so only the last 3 months can be searched.",
+      "noMonths": "No archived months to search yet.",
+      "startMonth": "Start month",
+      "endMonth": "End month",
+      "submit": "Search",
+      "submitting": "Submitting…",
+      "purged": "Deleted after the {{years}}-year retention period: {{months}}",
+      "running": "Search running…",
+      "queued": "Search queued…",
+      "runningHelp": "Archive searches usually take a few seconds to a minute. Please keep this page open.",
+      "expired": "These results have expired. Please search again.",
+      "resultTitle": "Results for {{from}} – {{to}}",
+      "scanned": " (scanned {{size}})",
+      "empty": "No matching records in this period",
+      "errors": {
+        "endBeforeStart": "End month can't be before start month",
+        "maxSpan": "You can search up to {{months}} months at a time",
+        "generic": "Search failed. Please try again later.",
+        "query_start_failed": "The search couldn't be submitted. Please try again later.",
+        "query_failed": "The search failed, possibly because the range exceeds the scan limit. Try a smaller month range."
+      }
+    },
+    "detail": {
+      "title": "Event details",
+      "close": "Close event details",
+      "empty": "(blank)",
+      "time": "Time",
+      "actor": "Actor",
+      "target": "Target",
+      "credential": "Credential used",
+      "changes": "Changes",
+      "deniedReason": "Denial reason",
+      "failedReason": "Failure reason",
+      "errorCategory": "Category",
+      "uncategorized": "Uncategorized",
+      "httpStatus": "HTTP status",
+      "errorCode": "Error code",
+      "summary": "Summary",
+      "connection": "Connection & tracing",
+      "ip": "IP address",
+      "eventId": "Event ID",
+      "projectFields": {
+        "name": "Name",
+        "slug": "URL slug",
+        "description": "Description",
+        "visibility": "Visibility",
+        "rating": "Rating",
+        "tags": "Tags",
+        "cover_asset_public_id": "Cover",
+        "cover_layout": "Cover layout",
+        "cover_focal_point": "Cover focal point"
+      },
+      "summaryFields": {
+        "version_id": "Version",
+        "latest_version_id": "Latest version",
+        "target_version_id": "Reverted to version",
+        "base_version_id": "Base version when editing",
+        "chat_id": "Chat",
+        "provider": "AI service",
+        "model": "Model",
+        "input_tokens": "Input tokens",
+        "output_tokens": "Output tokens",
+        "count": "Count",
+        "total_count": "Total count",
+        "label": "Name",
+        "secret_last4": "Key last 4",
+        "public_id": "ID",
+        "memory_public_id": "Memory",
+        "reason": "Reason",
+        "duration_ms": "Duration (ms)",
+        "client_name": "App",
+        "client_id": "App ID",
+        "revoked_by": "Revoked by"
+      },
+      "summaryValues": {
+        "revoked_by": {
+          "user": "User (OAuth Token page)",
+          "client": "Revoked by the app"
+        },
+        "reason": {
+          "expired": "Credential expired",
+          "revoked": "Authorization revoked",
+          "reused": "Used a rotated refresh token",
+          "client_mismatch": "App doesn't match the authorization",
+          "concurrent": "Two refresh requests at once"
+        }
+      },
+      "errorCategories": {
+        "authorization": "Permission or authentication",
+        "validation": "Invalid input",
+        "not_found": "Target not found",
+        "conflict": "Conflicts with current data",
+        "internal": "Internal server error",
+        "request": "Request couldn't be processed",
+        "tool_execution": "Tool execution failed"
+      }
+    },
+    "actions": {
+      "project_create": "Create project",
+      "project_update": "Update project",
+      "project_delete": "Delete project",
+      "project_visibility_change": "Change project visibility",
+      "project_share_token_regenerate": "Regenerate share link",
+      "story_create": "Create work",
+      "story_update": "Update work",
+      "story_delete": "Delete work",
+      "story_move": "Move work",
+      "story_reorder": "Reorder works",
+      "story_revert": "Revert work version",
+      "story_chapter_replace": "Rewrite work chapter",
+      "story_chapter_insert": "Insert work chapter",
+      "story_chapter_delete": "Delete work chapter",
+      "volume_create": "Create volume",
+      "volume_update": "Update volume",
+      "volume_delete": "Delete volume",
+      "volume_reorder": "Reorder volumes",
+      "lore_create": "Create lore",
+      "lore_update": "Update lore",
+      "lore_delete": "Delete lore",
+      "lore_move": "Move lore",
+      "lore_revert": "Revert lore version",
+      "lore_collection_create": "Create lore collection",
+      "lore_collection_update": "Update lore collection",
+      "lore_collection_delete": "Delete lore collection",
+      "lore_chapter_replace": "Rewrite lore chapter",
+      "lore_chapter_insert": "Insert lore chapter",
+      "lore_chapter_delete": "Delete lore chapter",
+      "asset_upload_confirm": "Upload asset",
+      "asset_replace_confirm": "Replace asset file",
+      "asset_update": "Update asset",
+      "asset_move": "Move asset",
+      "asset_delete": "Delete asset",
+      "asset_collection_create": "Create asset collection",
+      "asset_collection_update": "Update asset collection",
+      "asset_collection_delete": "Delete asset collection",
+      "agent_run": "Run AI assistant",
+      "agent_resend": "Resend AI assistant",
+      "agent_proposal_apply": "Apply AI proposal",
+      "agent_proposal_reject": "Reject AI proposal",
+      "agent_proposal_reset": "Reset AI proposal",
+      "memory_create": "Add Shuoshuo memory",
+      "memory_update": "Update Shuoshuo memory",
+      "memory_delete": "Delete Shuoshuo memory",
+      "memory_confirm": "Confirm Shuoshuo memory",
+      "memory_draft_generate": "Draft memories",
+      "memory_draft_retry": "Redraft memories",
+      "memory_draft_discard": "Discard memory draft",
+      "auth_login": "Sign in",
+      "auth_login_failed": "Sign-in failed",
+      "auth_logout": "Sign out",
+      "auth_pat_denied": "Personal Access Token rejected",
+      "auth_oauth_denied": "OAuth token rejected",
+      "auth_oauth_refresh_denied": "OAuth token refresh rejected",
+      "pat_create": "Create Personal Access Token",
+      "pat_revoke": "Revoke Personal Access Token",
+      "oauth_authorize": "Approve OAuth authorization",
+      "oauth_deny": "Deny OAuth authorization",
+      "oauth_grant_create": "App completed OAuth connection",
+      "oauth_token_refresh": "Refresh OAuth token",
+      "oauth_revoke": "Revoke OAuth authorization",
+      "provider_key_create": "Add API key",
+      "provider_key_update": "Update API key",
+      "provider_key_delete": "Delete API key",
+      "provider_key_test": "Test API key connection",
+      "profile_update": "Update profile",
+      "profile_delete": "Delete profile",
+      "author_profile_create": "Create author page",
+      "author_profile_update": "Update author page",
+      "author_profile_delete": "Delete author page",
+      "agent_skill_create": "Create Skill",
+      "agent_skill_update": "Update Skill",
+      "agent_skill_delete": "Delete Skill",
+      "favorite_add": "Follow",
+      "favorite_remove": "Unfollow",
+      "favorite_visibility_update": "Change follow list visibility",
+      "ranking_update": "Update ranking",
+      "ranking_delete": "Remove ranking",
+      "bookmark_add": "Add reading bookmark",
+      "bookmark_remove": "Remove reading bookmark",
+      "bookmark_create": "Create writing bookmark",
+      "bookmark_update": "Update writing bookmark",
+      "bookmark_delete": "Delete writing bookmark",
+      "notification_lock": "Lock notification",
+      "notification_unlock": "Unlock notification",
+      "notification_delete": "Delete notification",
+      "notification_follow_back": "Follow back from notification",
+      "post_create": "Publish post",
+      "post_delete": "Delete post",
+      "post_pin": "Pin post",
+      "post_unpin": "Unpin post",
+      "post_like": "Like post",
+      "post_unlike": "Unlike post",
+      "comment_create": "Comment",
+      "comment_delete": "Delete comment",
+      "author_block": "Block commenter",
+      "author_unblock": "Unblock",
+      "report_create": "Report",
+      "admin_report_remove": "Staff removed reported content",
+      "admin_report_dismiss": "Dismiss report",
+      "project_list": "Read project list",
+      "project_read": "Read project",
+      "story_list": "Read work list",
+      "story_read": "Read work",
+      "story_version_list": "Read work versions",
+      "story_chapter_list": "Read work chapters",
+      "story_chapter_read": "Read work chapter",
+      "volume_list": "Read volume list",
+      "lore_list": "Read lore list",
+      "lore_read": "Read lore",
+      "lore_version_list": "Read lore versions",
+      "lore_collection_list": "Read lore collections",
+      "lore_chapter_list": "Read lore chapters",
+      "lore_chapter_read": "Read lore chapter",
+      "asset_list": "Read asset list",
+      "asset_read": "Read asset",
+      "asset_collection_list": "Read asset collections",
+      "memory_list": "Read Shuoshuo memory",
+      "memory_search": "Search Shuoshuo memory",
+      "content_validate": "Validate content format",
+      "author_profile_list": "Read author pages",
+      "audit_archive_query_create": "Search archived audit records",
+      "system_audit_export": "Export audit archive",
+      "system_audit_mysql_purge": "Purge archived recent audit data",
+      "system_audit_archive_purge": "Delete archives past retention",
+      "system_notification_fanout": "Send work update notifications",
+      "system_notification_purge": "Purge notifications past retention",
+      "system_banned_account_purge": "Purge banned accounts' content"
+    },
+    "categories": {
+      "project": "Project",
+      "story": "Works",
+      "lore": "Lore",
+      "asset": "Assets",
+      "agent": "AI assistant",
+      "memory": "Shuoshuo memory",
+      "auth": "Sign-in",
+      "credential": "Credentials",
+      "profile": "Profile",
+      "social": "Favorites & follows",
+      "read": "Reads",
+      "audit": "Audit search",
+      "system": "System",
+      "admin": "Staff"
+    },
+    "sources": {
+      "web": "Web",
+      "mcp": "MCP",
+      "api": "API",
+      "cron": "Scheduled"
+    },
+    "outcomes": {
+      "success": "Success",
+      "denied": "Denied",
+      "failed": "Failed"
+    }
   }
 }

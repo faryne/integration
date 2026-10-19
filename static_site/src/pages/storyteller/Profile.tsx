@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import PersonIcon from "@mui/icons-material/Person";
 import SaveIcon from "@mui/icons-material/Save";
 import {
@@ -17,6 +18,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useSaveStorytellerUserProfile,
   useStorytellerUserProfile,
@@ -57,9 +59,10 @@ const INVALID_PEN_NAME_CHARS = /[/\\?#%\x00-\x1F]/;
 
 function penNameError(penName: string): string | undefined {
   const trimmed = penName.trim();
-  if (!trimmed) return "筆名不能是空白";
+  // 非元件 helper，取全域 i18next
+  if (!trimmed) return i18n.t("web.profile.errors.penNameEmpty");
   if (INVALID_PEN_NAME_CHARS.test(trimmed)) {
-    return "筆名不能包含 / \\ ? # % 或控制字元";
+    return i18n.t("web.profile.errors.penNameInvalid");
   }
   return undefined;
 }
@@ -96,6 +99,7 @@ function errorMessage(error: unknown, fallback: string) {
 // 「我的檔案」的內容——掛在 /my 工作台殼底下（見 Home.tsx），登入狀態已經由
 // Home.tsx 統一擋過，這裡不用再自己判斷 session。
 export function StorytellerProfileContent() {
+  const { t } = useTranslation();
   const { session, user } = useAuth();
   const profileQuery = useStorytellerUserProfile();
   const saveProfile = useSaveStorytellerUserProfile();
@@ -176,11 +180,11 @@ export function StorytellerProfileContent() {
       {
         onSuccess: () => {
           setSeverity("success");
-          setMessage("作者設定已儲存");
+          setMessage(t("web.profile.messages.saved"));
         },
         onError: (error) => {
           setSeverity("error");
-          setMessage(errorMessage(error, "作者設定儲存失敗，請確認欄位內容。"));
+          setMessage(errorMessage(error, t("web.profile.errors.save")));
         },
       },
     );
@@ -189,7 +193,7 @@ export function StorytellerProfileContent() {
   return (
     <>
       {profileQuery.isLoading ? (
-        <StorytellerLoading label="正在載入作者設定..." />
+        <StorytellerLoading label={t("web.profile.loading")} />
       ) : (
         <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}>
           <Stack spacing={3}>
@@ -210,31 +214,30 @@ export function StorytellerProfileContent() {
                   {displayName}
                 </Typography>
                 <Typography color="text.secondary">
-                  這些資料會用在公開故事閱讀頁的作者資訊。
+                  {t("web.profile.description")}
                 </Typography>
               </Box>
             </Stack>
             <Divider />
             <TextField
-              label="筆名"
+              label={t("web.onboarding.penName")}
               value={form.pen_name}
               onChange={(event) =>
                 setForm((value) => ({ ...value, pen_name: event.target.value }))
               }
               error={Boolean(penNameError(form.pen_name))}
               helperText={
-                penNameError(form.pen_name) ??
-                "會顯示在公開作者頁網址上，不能包含 / \\ ? # % 等符號。"
+                penNameError(form.pen_name) ?? t("web.profile.penNameHelp")
               }
               fullWidth
             />
             <TextField
-              label="自我介紹"
+              label={t("web.profile.bio")}
               value={form.bio}
               onChange={(event) =>
                 setForm((value) => ({ ...value, bio: event.target.value }))
               }
-              helperText="支援 Markdown 語法，會顯示在公開作者頁。"
+              helperText={t("web.profile.bioHelp")}
               fullWidth
               multiline
               minRows={4}
@@ -243,7 +246,7 @@ export function StorytellerProfileContent() {
             <Box>
               <FormControl>
                 <FormLabel id="storyteller-avatar-option-label">
-                  Avatar 來源
+                  {t("web.profile.avatar.source")}
                 </FormLabel>
                 <RadioGroup
                   aria-labelledby="storyteller-avatar-option-label"
@@ -261,18 +264,18 @@ export function StorytellerProfileContent() {
                   <FormControlLabel
                     value="gravatar"
                     control={<Radio />}
-                    label="使用 Gravatar"
+                    label={t("web.profile.avatar.gravatar")}
                     disabled={!gravatarUrl}
                   />
                   <FormControlLabel
                     value="default"
                     control={<Radio />}
-                    label="使用登入帳號的 avatar"
+                    label={t("web.profile.avatar.default")}
                   />
                   <FormControlLabel
                     value="custom"
                     control={<Radio />}
-                    label="自己填入網址"
+                    label={t("web.profile.avatar.custom")}
                   />
                 </RadioGroup>
               </FormControl>
@@ -294,7 +297,7 @@ export function StorytellerProfileContent() {
             <Divider />
             <Box>
               <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
-                SNS 連結
+                {t("web.profile.snsLinks")}
               </Typography>
               <StorytellerSnsLinksEditor rows={snsRows} onChange={setSnsRows} />
             </Box>
@@ -303,7 +306,7 @@ export function StorytellerProfileContent() {
             <Divider />
             <Box>
               <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
-                隱私設定
+                {t("web.profile.privacy.title")}
               </Typography>
               <Stack>
                 <FormControlLabel
@@ -318,7 +321,7 @@ export function StorytellerProfileContent() {
                       }
                     />
                   }
-                  label="隱藏我追蹤的作品"
+                  label={t("web.profile.privacy.hideFavoriteWorks")}
                 />
                 <FormControlLabel
                   control={
@@ -332,17 +335,17 @@ export function StorytellerProfileContent() {
                       }
                     />
                   }
-                  label="隱藏我追蹤的作家"
+                  label={t("web.profile.privacy.hideFavoriteAuthors")}
                 />
               </Stack>
             </Box>
             <Divider />
             <Box>
               <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
-                編輯器設定
+                {t("web.profile.editor.title")}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                這裡是故事與設定編輯頁的預設值，開啟編輯頁時仍可依當次需要另外調整。
+                {t("web.profile.editor.description")}
               </Typography>
               <Stack spacing={1.5}>
                 <FormControlLabel
@@ -357,11 +360,11 @@ export function StorytellerProfileContent() {
                       }
                     />
                   }
-                  label="自動存檔"
+                  label={t("web.documentEditor.autoSave.label")}
                 />
                 <TextField
                   type="number"
-                  label="自動存檔頻率（分鐘）"
+                  label={t("web.profile.editor.autoSaveInterval")}
                   size="small"
                   sx={{ width: 220 }}
                   value={form.auto_save_interval_minutes}
@@ -369,8 +372,13 @@ export function StorytellerProfileContent() {
                   error={hasAutoSaveIntervalError}
                   helperText={
                     hasAutoSaveIntervalError
-                      ? `請輸入 ${autoSaveIntervalMinutesMin} 到 ${autoSaveIntervalMinutesMax} 之間的整數`
-                      : `未填寫預設為 ${autoSaveIntervalMinutesDefault} 分鐘`
+                      ? t("web.profile.editor.intervalRange", {
+                          min: autoSaveIntervalMinutesMin,
+                          max: autoSaveIntervalMinutesMax,
+                        })
+                      : t("web.profile.editor.intervalDefault", {
+                          minutes: autoSaveIntervalMinutesDefault,
+                        })
                   }
                   slotProps={{
                     htmlInput: {
@@ -403,7 +411,7 @@ export function StorytellerProfileContent() {
                 }
                 onClick={save}
               >
-                儲存
+                {t("web.common.save")}
               </Button>
             </Stack>
           </Stack>

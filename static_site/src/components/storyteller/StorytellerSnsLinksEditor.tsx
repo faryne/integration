@@ -18,6 +18,7 @@ import {
   type SxProps,
   type Theme,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import {
   CUSTOM_SNS_TYPE,
   newSnsRow,
@@ -57,6 +58,7 @@ export function StorytellerSnsLinksEditor({
   // compact：對話框裡空間窄，一律直排、按鈕縮小
   compact?: boolean;
 }) {
+  const { t } = useTranslation();
   const update = (id: string, changes: Partial<SNSLinkRow>) =>
     onChange(rows.map((row) => (row.id === id ? { ...row, ...changes } : row)));
 
@@ -79,9 +81,9 @@ export function StorytellerSnsLinksEditor({
               size={compact ? "small" : "medium"}
               sx={{ minWidth: 150 }}
             >
-              <InputLabel>類型</InputLabel>
+              <InputLabel>{t("web.profile.sns.type")}</InputLabel>
               <Select
-                label="類型"
+                label={t("web.profile.sns.type")}
                 value={row.type}
                 onChange={(event) =>
                   update(row.id, { type: event.target.value })
@@ -92,13 +94,15 @@ export function StorytellerSnsLinksEditor({
                     {option.label}
                   </MenuItem>
                 ))}
-                <MenuItem value={CUSTOM_SNS_TYPE}>自訂類型</MenuItem>
+                <MenuItem value={CUSTOM_SNS_TYPE}>
+                  {t("web.profile.sns.customType")}
+                </MenuItem>
               </Select>
             </FormControl>
             {row.type === CUSTOM_SNS_TYPE && (
               <TextField
                 size={compact ? "small" : "medium"}
-                label="自訂類型名稱"
+                label={t("web.profile.sns.customTypeName")}
                 value={row.customLabel}
                 onChange={(event) =>
                   update(row.id, { customLabel: event.target.value })
@@ -109,7 +113,7 @@ export function StorytellerSnsLinksEditor({
           </Stack>
           <TextField
             size={compact ? "small" : "medium"}
-            label="網址"
+            label={t("web.profile.sns.url")}
             value={row.url}
             onChange={(event) => update(row.id, { url: event.target.value })}
             error={Boolean(snsUrlError(row.type, row.url))}
@@ -129,19 +133,19 @@ export function StorytellerSnsLinksEditor({
               onChange={(_, value: "public" | "private" | null) => {
                 if (value) update(row.id, { isPrivate: value === "private" });
               }}
-              aria-label="這個連結的可見性"
+              aria-label={t("web.profile.sns.visibility")}
             >
               <ToggleButton value="public" sx={publicToggleSx}>
                 <PublicIcon fontSize="small" />
-                公開
+                {t("web.profile.sns.public")}
               </ToggleButton>
               <ToggleButton value="private" sx={privateToggleSx}>
                 <LockOutlinedIcon fontSize="small" />
-                僅自己
+                {t("web.profile.sns.private")}
               </ToggleButton>
             </ToggleButtonGroup>
             <IconButton
-              aria-label="刪除這個 SNS 連結"
+              aria-label={t("web.profile.sns.remove")}
               onClick={() =>
                 onChange(rows.filter((item) => item.id !== row.id))
               }
@@ -158,10 +162,10 @@ export function StorytellerSnsLinksEditor({
         onClick={() => onChange([...rows, newSnsRow()])}
         sx={{ alignSelf: "flex-start" }}
       >
-        新增一列
+        {t("web.profile.sns.addRow")}
       </Button>
       <Typography variant="caption" color="text.secondary">
-        設成「僅自己」的連結不會出現在公開作者頁、作品作者欄與追蹤清單。
+        {t("web.profile.sns.privateHelp")}
       </Typography>
     </Stack>
   );

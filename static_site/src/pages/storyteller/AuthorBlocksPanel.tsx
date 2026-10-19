@@ -11,6 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import { Fragment, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useAuthorBlocks,
   useDeleteAuthorBlock,
@@ -26,6 +27,7 @@ import type { AuthorBlock } from "@/types/storytellerTimeline.ts";
 // 工作台「封鎖名單」：封鎖以身份為單位（本人、各筆名分開），在動態留言旁按「封鎖」就會加進來。
 // 被封鎖的人不能在這個身份的動態（以及之後的討論區）留言或回覆，但還是能閱讀與按讚。
 export function StorytellerAuthorBlocksPanel() {
+  const { t, i18n } = useTranslation();
   const profile = useStorytellerUserProfile();
   // 空字串＝本人身份；其餘是筆名
   const [as, setAs] = useState("");
@@ -39,20 +41,23 @@ export function StorytellerAuthorBlocksPanel() {
   const identities = [
     {
       value: "",
-      label: profile.data?.pen_name ? `本人 ${profile.data.pen_name}` : "本人",
+      label: profile.data?.pen_name
+        ? t("web.profile.blocks.self", { name: profile.data.pen_name })
+        : t("web.documentEditor.selfOnly"),
     },
     ...(profile.data?.profiles ?? []).map((p) => ({
       value: p.pen_name,
-      label: `筆名 ${p.pen_name}`,
+      label: t("web.profile.blocks.penName", { name: p.pen_name }),
     })),
   ];
-  const identityName = as || profile.data?.pen_name || "本人";
+  const identityName =
+    as || profile.data?.pen_name || t("web.documentEditor.selfOnly");
 
   return (
     <Stack spacing={2}>
       <Box>
         <Typography variant="h5" fontWeight={800}>
-          封鎖名單
+          {t("web.profile.blocks.title")}
         </Typography>
       </Box>
       {identities.length > 1 && (
@@ -69,11 +74,11 @@ export function StorytellerAuthorBlocksPanel() {
         </Stack>
       )}
       {blocks.isLoading ? (
-        <StorytellerLoading label="正在載入封鎖名單..." />
+        <StorytellerLoading label={t("web.profile.blocks.loading")} />
       ) : (blocks.data ?? []).length === 0 ? (
         <CustomEmptyState
           icon={<BlockOutlinedIcon fontSize="large" />}
-          title={`${identityName} 沒有封鎖任何人`}
+          title={t("web.profile.blocks.empty", { name: identityName })}
         />
       ) : (
         <Paper variant="outlined" sx={{ borderRadius: 1, overflow: "hidden" }}>
@@ -97,12 +102,15 @@ export function StorytellerAuthorBlocksPanel() {
                     {block.blocked.pen_name}
                   </Typography>
                   <Typography variant="caption" color="text.disabled">
-                    {new Date(block.created_at).toLocaleDateString("zh-TW")}{" "}
-                    封鎖
+                    {t("web.profile.blocks.blockedOn", {
+                      date: new Date(block.created_at).toLocaleDateString(
+                        i18n.resolvedLanguage,
+                      ),
+                    })}
                   </Typography>
                 </Box>
                 <Button variant="outlined" onClick={() => setTarget(block)}>
-                  解除封鎖
+                  {t("web.profile.blocks.unblock")}
                 </Button>
               </Stack>
             </Fragment>
@@ -112,13 +120,19 @@ export function StorytellerAuthorBlocksPanel() {
       <StorytellerMascotDialog
         open={Boolean(target)}
         state="neutral"
-        eyebrow="解除封鎖"
-        title={`解除封鎖 ${target?.blocked.pen_name ?? ""}？`}
-        description={`對方之後就可以在 ${identityName} 的動態留言了。`}
+        eyebrow={t("web.profile.blocks.unblock")}
+        title={t("web.profile.blocks.confirmTitle", {
+          name: target?.blocked.pen_name ?? "",
+        })}
+        description={t("web.profile.blocks.confirmDescription", {
+          name: identityName,
+        })}
         onClose={() => setTarget(null)}
         actions={
           <>
-            <Button onClick={() => setTarget(null)}>取消</Button>
+            <Button onClick={() => setTarget(null)}>
+              {t("web.common.cancel")}
+            </Button>
             <Button
               variant="contained"
               disabled={unblock.isPending}
@@ -127,20 +141,25 @@ export function StorytellerAuthorBlocksPanel() {
                 unblock.mutate(target.public_id, {
                   onSuccess: () => {
                     setSnack({
-                      message: `已解除封鎖 ${target.blocked.pen_name}`,
+                      message: t("web.profile.blocks.unblocked", {
+                        name: target.blocked.pen_name,
+                      }),
                       severity: "success",
                     });
                     setTarget(null);
                   },
                   onError: (error) =>
                     setSnack({
-                      message: apiErrorMessage(error, "解除封鎖失敗，請重試。"),
+                      message: apiErrorMessage(
+                        error,
+                        t("web.profile.blocks.errors.unblock"),
+                      ),
                       severity: "error",
                     }),
                 })
               }
             >
-              解除封鎖
+              {t("web.profile.blocks.unblock")}
             </Button>
           </>
         }

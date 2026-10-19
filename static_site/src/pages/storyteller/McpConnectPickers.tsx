@@ -7,6 +7,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { isSteamLoomSite } from "@/helpers/steamloom.ts";
 import {
   availableAuthMethods,
@@ -71,6 +72,7 @@ export function McpServicePicker({
   value: string | null;
   onChange: (service: McpService) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Grid container spacing={1.5}>
       {mcpServices.map((service) => {
@@ -78,11 +80,9 @@ export function McpServicePicker({
         return (
           <Grid key={service.key} size={{ xs: 6, md: 4 }}>
             <OptionCard
-              title={service.label}
+              title={t(service.label)}
               description={
-                blocked
-                  ? "需要 OAuth，請到 steamloom.works 設定"
-                  : service.description
+                blocked ? t("web.mcp.needsOAuth") : t(service.description)
               }
               selected={value === service.key}
               disabled={blocked}
@@ -105,16 +105,17 @@ export function McpAuthPicker({
   value: McpAuthMethod | null;
   onChange: (method: McpAuthMethod) => void;
 }) {
+  const { t } = useTranslation();
   const methods = availableAuthMethods(service);
   if (methods.length === 1) {
     const reason = isSteamLoomSite()
-      ? service.oauthOnlyReason
-      : "OAuth 只在 steamloom.works 開放，faryne.dev 的 MCP 位址只能用 Personal Access Token。";
+      ? service.oauthOnlyReason && t(service.oauthOnlyReason)
+      : t("web.mcp.oauthSteamLoomOnly");
     return (
       <Stack spacing={1}>
         <OptionCard
-          title={mcpAuthMeta[methods[0]].label}
-          description={mcpAuthMeta[methods[0]].description}
+          title={t(mcpAuthMeta[methods[0]].label)}
+          description={t(mcpAuthMeta[methods[0]].description)}
           selected
         />
         {reason && (
@@ -130,9 +131,9 @@ export function McpAuthPicker({
       {methods.map((method, index) => (
         <Grid key={method} size={{ xs: 12, md: 6 }}>
           <OptionCard
-            title={mcpAuthMeta[method].label}
-            description={mcpAuthMeta[method].description}
-            chip={index === 0 ? "推薦" : undefined}
+            title={t(mcpAuthMeta[method].label)}
+            description={t(mcpAuthMeta[method].description)}
+            chip={index === 0 ? t("web.mcp.recommended") : undefined}
             selected={value === method}
             onClick={() => onChange(method)}
           />

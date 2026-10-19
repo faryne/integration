@@ -11,6 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { CopyableCode } from "@/pages/storyteller/developerShared.tsx";
 import {
   detectSkillInstallerOs,
@@ -37,6 +38,7 @@ export function McpSkillInstall({
   onCopy: (value: string) => void;
   onPreview: () => void;
 }) {
+  const { t } = useTranslation();
   const { skill } = service;
   // 依瀏覽器預選 OS；作者自己切換後就不再顯示「已預先選好」
   const [detectedOs] = useState<McpSkillInstallerOs>(detectSkillInstallerOs);
@@ -57,7 +59,7 @@ export function McpSkillInstall({
   return (
     <Stack spacing={1.5}>
       <Typography variant="body2" color="text.secondary">
-        Skill 告訴 AI 怎麼在 SteamLoom 上寫作、改稿，以及寫入前後要檢查什麼。
+        {t("web.mcp.skill.description")}
       </Typography>
 
       {skill.kind === "installer" && (
@@ -85,33 +87,34 @@ export function McpSkillInstall({
             </ToggleButtonGroup>
             {os === detectedOs && (
               <Typography variant="caption" color="text.secondary">
-                已依你的瀏覽器預先選好
+                {t("web.mcp.installer.detected")}
               </Typography>
             )}
           </Stack>
           <CopyableCode
-            label={installer.runLabel}
+            label={t(installer.runLabel)}
             value={installer.command}
             onCopy={onCopy}
           />
           <Box>
-            <Typography variant="body2">這行指令會：</Typography>
+            <Typography variant="body2">
+              {t("web.mcp.installer.willDo")}
+            </Typography>
             <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
               <li>
                 <Typography variant="body2">
-                  偵測這台電腦有沒有裝 Claude Code、Codex，有哪個就裝到哪個
+                  {t("web.mcp.installer.detect")}
                 </Typography>
               </li>
               <li>
                 <Typography variant="body2">
-                  已經裝過的話，比對版本，有新版才更新
+                  {t("web.mcp.installer.update")}
                 </Typography>
               </li>
             </Box>
           </Box>
           <Typography variant="body2" color="text.secondary">
-            Skill 更新時，再執行一次同一行指令即可，{service.label}{" "}
-            會自動載入，不用重啟。
+            {t("web.mcp.installer.rerun", { service: t(service.label) })}
           </Typography>
         </>
       )}
@@ -120,7 +123,7 @@ export function McpSkillInstall({
         <Box component="ol" sx={{ m: 0, pl: 2.5, "& li + li": { mt: 0.75 } }}>
           {skill.steps.map((step) => (
             <li key={step}>
-              <Typography variant="body2">{step}</Typography>
+              <Typography variant="body2">{t(step)}</Typography>
             </li>
           ))}
         </Box>
@@ -128,22 +131,29 @@ export function McpSkillInstall({
 
       {skill.kind === "download" && (
         <Typography variant="body2">
-          下載後放進你的工具的 skill 目錄，資料夾名稱用{" "}
-          <code>{MCP_SKILL_NAME}</code>。
+          <Trans
+            i18nKey="web.mcp.skill.downloadPlace"
+            values={{ name: MCP_SKILL_NAME }}
+            components={{ code: <code /> }}
+          />
         </Typography>
       )}
 
       <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1}>
         {skill.kind === "upload" &&
-          downloadButton("下載 ZIP", mcpSkillZipUrl, true)}
+          downloadButton(
+            t("web.mcp.skill.downloadZipButton"),
+            mcpSkillZipUrl,
+            true,
+          )}
         {skill.kind === "installer" &&
-          downloadButton(installer.downloadLabel, installer.downloadUrl)}
+          downloadButton(t(installer.downloadLabel), installer.downloadUrl)}
         {skill.kind !== "upload" &&
-          downloadButton("下載 SKILL.md", mcpSkillMarkdownUrl)}
+          downloadButton(t("web.mcp.skill.downloadMd"), mcpSkillMarkdownUrl)}
         {skill.kind === "download" &&
-          downloadButton("下載 ZIP", mcpSkillZipUrl)}
+          downloadButton(t("web.mcp.skill.downloadZipButton"), mcpSkillZipUrl)}
         <Button variant="outlined" onClick={onPreview}>
-          預覽內容
+          {t("web.mcp.skill.preview")}
         </Button>
       </Stack>
 
@@ -155,11 +165,11 @@ export function McpSkillInstall({
             onClick={() => setInspectOpen((open) => !open)}
             endIcon={inspectOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           >
-            想先看過安裝程式再執行？
+            {t("web.mcp.installer.inspect")}
           </Button>
           <Collapse in={inspectOpen} unmountOnExit>
             <Typography variant="body2" color="text.secondary" sx={{ my: 1 }}>
-              下載後用文字編輯器打開確認內容，再執行：
+              {t("web.mcp.installer.inspectHelp")}
             </Typography>
             <CopyableCode value={installer.inspect} onCopy={onCopy} />
           </Collapse>
@@ -168,7 +178,7 @@ export function McpSkillInstall({
 
       {version && (
         <Typography variant="caption" color="text.secondary">
-          目前版本 v{version}・最後更新 {updatedAt}
+          {t("web.mcp.skill.version", { version, updatedAt })}
         </Typography>
       )}
     </Stack>

@@ -9,6 +9,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { useAuth } from "@/components/auth/AuthContext.ts";
@@ -36,15 +37,9 @@ const oauthParamKeys = [
 ] as const;
 
 // 授權卡片上的權限說明依現有 MCP tool 範圍列出；之後新增超出範圍的 tool 要同步更新。
-const allowedScopes = [
-  "讀取與修改你帳號下所有專案的作品、設定、資產",
-  "管理你的作者檔案、讀寫梭梭的記憶",
-  "建立、搬移與刪除上述內容",
-];
-const deniedScopes = [
-  "變更帳號設定、刪除帳號",
-  "查看或使用你的 Provider 金鑰、Personal Access Token 與其他授權",
-];
+// 授權範圍說明：web.developer.authorize.scopes.allowed.* ／ denied.*
+const allowedScopes = ["projects", "profile", "manage"];
+const deniedScopes = ["account", "credentials"];
 
 function apiErrorMessage(error: unknown, fallback: string) {
   if (axios.isAxiosError(error)) {
@@ -59,7 +54,13 @@ function apiErrorMessage(error: unknown, fallback: string) {
 // OAuth 授權同意頁（authorization_endpoint）。掛在 StorytellerLayout 底下，新使用者沒有
 // 筆名時會先被 layout 的 PenNameDialog 擋住，填完才看得到授權卡片，整個流程不換頁。
 export default function StorytellerOAuthAuthorize() {
-  useTitle(`${STORYTELLER_APP_NAME} 授權連線`, { robots: "noindex, nofollow" });
+  const { t } = useTranslation();
+  useTitle(
+    t("web.developer.authorize.pageTitle", { appName: STORYTELLER_APP_NAME }),
+    {
+      robots: "noindex, nofollow",
+    },
+  );
   const [searchParams] = useSearchParams();
   const params = Object.fromEntries(
     oauthParamKeys.map((key) => [key, searchParams.get(key) ?? ""]),
@@ -75,7 +76,8 @@ export default function StorytellerOAuthAuthorize() {
   const preview = useStorytellerOAuthAuthorizePreview(params);
   const authorize = useStorytellerOAuthAuthorize();
   const [redirecting, setRedirecting] = useState(false);
-  const clientName = preview.data?.client_name ?? "應用程式";
+  const clientName =
+    preview.data?.client_name ?? t("web.developer.authorize.app");
 
   // client 正確但其他參數有誤：依 OAuth 規範直接把錯誤帶回應用程式
   const errorRedirectTo = preview.data?.error_redirect_to;
@@ -102,19 +104,22 @@ export default function StorytellerOAuthAuthorize() {
 
   // 梭梭的姿勢與台詞跟著狀態走；授權頁對使用者一律稱「您」
   const [pose, line]: [StorytellerMascotPose, string] = redirecting
-    ? ["success", `好了，我送您回 ${clientName} 那邊。`]
+    ? [
+        "success",
+        t("web.developer.authorize.mascot.redirecting", { name: clientName }),
+      ]
     : preview.isError
-      ? ["error", "這個請求對不上，我先不放行。請您回原本的工具重新連一次。"]
+      ? ["error", t("web.developer.authorize.mascot.invalid")]
       : !session
         ? [
             "idle",
-            `${clientName} 想來讀您的文字。請您先登入，我才知道要替誰開門。`,
+            t("web.developer.authorize.mascot.login", { name: clientName }),
           ]
-        : ["thinking", "答應之後，它能讀、能改，也能刪。請您看清楚了再按。"];
+        : ["thinking", t("web.developer.authorize.mascot.confirm")];
 
   return (
     <WorkspaceChrome
-      title="授權連線"
+      title={t("web.developer.authorize.title")}
       titleDropdown={false}
       showHomeCrumb={false}
     >
@@ -127,27 +132,30 @@ export default function StorytellerOAuthAuthorize() {
               {redirecting ? (
                 <Stack spacing={1.5}>
                   <Typography variant="h6" fontWeight={800}>
-                    正在帶你回到 {clientName}…
+                    {t("web.developer.authorize.redirecting", {
+                      name: clientName,
+                    })}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    如果沒有自動跳轉，請回到原本的分頁確認連線狀態。
+                    {t("web.developer.authorize.redirectingHelp")}
                   </Typography>
                 </Stack>
               ) : preview.isError ? (
                 <Stack spacing={2} alignItems="flex-start">
                   <Typography variant="h6" fontWeight={800}>
-                    這個授權請求無效
+                    {t("web.developer.authorize.invalidTitle")}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    應用程式提供的 client_id
-                    或跳轉網址不正確。為了你的帳號安全，我們不會把你導回該應用程式，請回到原本的工具重新連線。
+                    {t("web.developer.authorize.invalidDescription")}
                   </Typography>
                   <Button
                     component={RouterLink}
                     to={steamloomPath()}
                     variant="outlined"
                   >
-                    回到 {STORYTELLER_APP_NAME} 首頁
+                    {t("web.developer.authorize.backHome", {
+                      appName: STORYTELLER_APP_NAME,
+                    })}
                   </Button>
                 </Stack>
               ) : (
@@ -155,13 +163,16 @@ export default function StorytellerOAuthAuthorize() {
                   <ClientChip name={clientName} />
                   <Typography variant="h6" fontWeight={800}>
                     {session
-                      ? `${clientName} 想要連線到你的 ${STORYTELLER_APP_NAME} 帳號`
-                      : "先登入，確認要授權的帳號"}
+                      ? t("web.developer.authorize.requestTitle", {
+                          name: clientName,
+                          appName: STORYTELLER_APP_NAME,
+                        })
+                      : t("web.developer.authorize.loginTitle")}
                   </Typography>
                   {!session ? (
                     <>
                       <Typography variant="body2" color="text.secondary">
-                        登入會以彈出視窗開啟，這個頁面不會離開。
+                        {t("web.developer.authorize.loginHelp")}
                       </Typography>
                       <Button
                         variant="contained"
@@ -169,7 +180,9 @@ export default function StorytellerOAuthAuthorize() {
                         disabled={submitting}
                         onClick={() => void login()}
                       >
-                        {submitting ? "登入中" : "使用 Google 帳號登入"}
+                        {submitting
+                          ? t("web.home.loggingIn")
+                          : t("web.home.googleLogin")}
                       </Button>
                     </>
                   ) : (
@@ -178,7 +191,7 @@ export default function StorytellerOAuthAuthorize() {
                         name={
                           profile?.pen_name ||
                           session.user.display_name ||
-                          "（尚未設定筆名）"
+                          t("web.developer.authorize.noPenName")
                         }
                         email={session.user.email ?? ""}
                         onSwitch={() => void logout()}
@@ -193,7 +206,7 @@ export default function StorytellerOAuthAuthorize() {
                           typography: "body2",
                         }}
                       >
-                        授權後將跳轉到{" "}
+                        {t("web.developer.authorize.redirectTo")}{" "}
                         <Box component="code" sx={{ fontWeight: 800 }}>
                           {preview.data?.redirect_host}
                         </Box>
@@ -205,7 +218,7 @@ export default function StorytellerOAuthAuthorize() {
                           disabled={authorize.isPending}
                           onClick={() => decide(false)}
                         >
-                          拒絕
+                          {t("web.developer.authorize.deny")}
                         </Button>
                         <Button
                           fullWidth
@@ -213,7 +226,7 @@ export default function StorytellerOAuthAuthorize() {
                           disabled={authorize.isPending}
                           onClick={() => decide(true)}
                         >
-                          允許
+                          {t("web.developer.authorize.allow")}
                         </Button>
                       </Stack>
                       <Typography
@@ -221,7 +234,7 @@ export default function StorytellerOAuthAuthorize() {
                         color="text.secondary"
                         textAlign="center"
                       >
-                        之後可以在「開發者 › OAuth Token」隨時撤銷。
+                        {t("web.developer.authorize.revokeLater")}
                       </Typography>
                     </>
                   )}
@@ -233,7 +246,10 @@ export default function StorytellerOAuthAuthorize() {
       </Box>
       <CustomSnackbar
         open={authorize.isError}
-        message={apiErrorMessage(authorize.error, "授權失敗，請稍後再試。")}
+        message={apiErrorMessage(
+          authorize.error,
+          t("web.developer.authorize.errors.authorize"),
+        )}
         severity="error"
         onClose={() => authorize.reset()}
       />
@@ -243,6 +259,7 @@ export default function StorytellerOAuthAuthorize() {
 
 // client_name 是應用程式自己填的，旁邊一定要標註，避免使用者把它當成經過驗證的身分。
 function ClientChip({ name }: { name: string }) {
+  const { t } = useTranslation();
   return (
     <Stack
       direction="row"
@@ -258,7 +275,11 @@ function ClientChip({ name }: { name: string }) {
         {name.slice(0, 1).toUpperCase()}
       </Avatar>
       <Typography fontWeight={800}>{name}</Typography>
-      <Chip size="small" variant="outlined" label="名稱由應用程式自行提供" />
+      <Chip
+        size="small"
+        variant="outlined"
+        label={t("web.developer.oauth.nameFromApp")}
+      />
     </Stack>
   );
 }
@@ -274,6 +295,7 @@ function AccountLine({
   email: string;
   onSwitch: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Stack
       direction="row"
@@ -297,13 +319,14 @@ function AccountLine({
         </Typography>
       </Box>
       <Button size="small" onClick={onSwitch}>
-        切換帳號
+        {t("web.developer.authorize.switchAccount")}
       </Button>
     </Stack>
   );
 }
 
 function ScopeList() {
+  const { t } = useTranslation();
   return (
     <Box
       sx={{
@@ -316,19 +339,23 @@ function ScopeList() {
       }}
     >
       <Typography variant="caption" color="text.secondary" fontWeight={800}>
-        授權後，這個應用程式可以：
+        {t("web.developer.authorize.scopes.allowedTitle")}
       </Typography>
       <ul>
         {allowedScopes.map((scope) => (
-          <li key={scope}>{scope}</li>
+          <li key={scope}>
+            {t(`web.developer.authorize.scopes.allowed.${scope}`)}
+          </li>
         ))}
       </ul>
       <Typography variant="caption" color="text.secondary" fontWeight={800}>
-        不能：
+        {t("web.developer.authorize.scopes.deniedTitle")}
       </Typography>
       <Box component="ul" sx={{ color: "text.secondary" }}>
         {deniedScopes.map((scope) => (
-          <li key={scope}>{scope}</li>
+          <li key={scope}>
+            {t(`web.developer.authorize.scopes.denied.${scope}`)}
+          </li>
         ))}
       </Box>
     </Box>

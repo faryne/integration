@@ -15,6 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
@@ -28,6 +29,7 @@ import type { StorytellerOAuthGrant } from "@/types/storyteller.ts";
 // 「開發者 › OAuth Token」分頁：列出透過 OAuth 授權連線的應用程式，可逐一撤銷。
 // 目前授權不分範圍（scope 之後再做），所以頁面最上方要講清楚應用程式能動到什麼。
 export function StorytellerOAuthGrantPanel() {
+  const { t } = useTranslation();
   const { data: grants = [], isLoading } = useStorytellerOAuthGrants();
   const revokeGrant = useRevokeStorytellerOAuthGrant();
   const [revoking, setRevoking] = useState<StorytellerOAuthGrant | null>(null);
@@ -36,13 +38,17 @@ export function StorytellerOAuthGrantPanel() {
   return (
     <Stack spacing={3}>
       <Alert severity="warning" variant="outlined">
-        <strong>目前授權不分範圍。</strong>
-        已授權的應用程式可以讀取與修改你帳號下所有專案（作品、設定、資產、作者檔案、梭梭的記憶），包含刪除。
+        <Trans
+          i18nKey="web.developer.oauth.scopeWarning"
+          components={{ strong: <strong /> }}
+        />
       </Alert>
 
       <Paper variant="outlined" sx={{ borderRadius: 1 }}>
         <Stack sx={{ p: { xs: 2, md: 3 } }} spacing={1}>
-          <Typography variant="h6">已授權的應用程式</Typography>
+          <Typography variant="h6">
+            {t("web.developer.oauth.listTitle")}
+          </Typography>
           {isLoading ? (
             <Stack alignItems="center" sx={{ py: 4 }}>
               <CircularProgress size={28} />
@@ -50,14 +56,15 @@ export function StorytellerOAuthGrantPanel() {
           ) : grants.length === 0 ? (
             <Stack alignItems="center" spacing={1.5} sx={{ py: 4 }}>
               <VerifiedUserOutlinedIcon color="primary" fontSize="large" />
-              <Typography fontWeight={800}>還沒有授權任何應用程式</Typography>
+              <Typography fontWeight={800}>
+                {t("web.developer.oauth.emptyTitle")}
+              </Typography>
               <Typography
                 variant="body2"
                 color="text.secondary"
                 textAlign="center"
               >
-                在 Claude.ai 或 ChatGPT 新增自訂 connector，貼上 MCP
-                網址後就會出現在這裡。
+                {t("web.developer.oauth.emptyDescription")}
               </Typography>
               <Button
                 component={RouterLink}
@@ -65,7 +72,7 @@ export function StorytellerOAuthGrantPanel() {
                 variant="outlined"
                 size="small"
               >
-                看連線方式
+                {t("web.developer.viewConnectGuide")}
               </Button>
             </Stack>
           ) : (
@@ -88,13 +95,19 @@ export function StorytellerOAuthGrantPanel() {
       <StorytellerMascotDialog
         open={revoking !== null}
         state="danger"
-        eyebrow="撤銷授權"
-        title={`確定要撤銷「${revoking?.client_name ?? ""}」？`}
-        description={`撤銷後 ${revoking?.client_name ?? "這個應用程式"} 會立刻失去存取權限，需要重新授權才能再次連線。`}
+        eyebrow={t("web.developer.oauth.revokeTitle")}
+        title={t("web.developer.oauth.confirmRevokeTitle", {
+          name: revoking?.client_name ?? "",
+        })}
+        description={t("web.developer.oauth.confirmRevokeDescription", {
+          name: revoking?.client_name ?? t("web.developer.oauth.thisApp"),
+        })}
         onClose={() => setRevoking(null)}
         actions={
           <>
-            <Button onClick={() => setRevoking(null)}>取消</Button>
+            <Button onClick={() => setRevoking(null)}>
+              {t("web.common.cancel")}
+            </Button>
             <Button
               color="error"
               variant="contained"
@@ -108,19 +121,19 @@ export function StorytellerOAuthGrantPanel() {
                 setRevoking(null);
               }}
             >
-              撤銷
+              {t("web.developer.oauth.revoke")}
             </Button>
           </>
         }
       />
       <CustomSnackbar
         open={revoked}
-        message="已撤銷授權"
+        message={t("web.developer.oauth.revoked")}
         onClose={() => setRevoked(false)}
       />
       <CustomSnackbar
         open={revokeGrant.isError}
-        message="撤銷授權失敗，請稍後再試。"
+        message={t("web.developer.oauth.errors.revoke")}
         severity="error"
         onClose={() => revokeGrant.reset()}
       />
@@ -137,6 +150,7 @@ function OAuthGrantRow({
   disabled: boolean;
   onRevoke: () => void;
 }) {
+  const { t, i18n } = useTranslation();
   return (
     <ListItem
       secondaryAction={
@@ -147,7 +161,7 @@ function OAuthGrantRow({
           disabled={disabled}
           onClick={onRevoke}
         >
-          撤銷
+          {t("web.developer.oauth.revoke")}
         </Button>
       }
       sx={{ pr: 12 }}
@@ -169,21 +183,40 @@ function OAuthGrantRow({
             flexWrap="wrap"
           >
             <span>{grant.client_name}</span>
-            <Chip size="small" variant="outlined" label="名稱由應用程式提供" />
+            <Chip
+              size="small"
+              variant="outlined"
+              label={t("web.developer.oauth.nameFromApp")}
+            />
           </Stack>
         }
         secondary={
           <Stack spacing={0.25} sx={{ mt: 0.25 }}>
             <span>
-              跳轉網域 {grant.redirect_host}・授權於{" "}
-              {new Date(grant.created_at).toLocaleString()}
+              {t("web.developer.oauth.redirectHost", {
+                host: grant.redirect_host,
+              })}
+              ・
+              {t("web.developer.oauth.grantedAt", {
+                date: new Date(grant.created_at).toLocaleString(
+                  i18n.resolvedLanguage,
+                ),
+              })}
             </span>
             <span>
               {grant.last_used_at
-                ? `上次使用於 ${new Date(grant.last_used_at).toLocaleString()}`
-                : "尚未使用過"}
-              ・30 天未使用將自動失效（目前至{" "}
-              {new Date(grant.refresh_expires_at).toLocaleDateString()}）
+                ? t("web.developer.lastUsed", {
+                    date: new Date(grant.last_used_at).toLocaleString(
+                      i18n.resolvedLanguage,
+                    ),
+                  })
+                : t("web.developer.neverUsed")}
+              ・
+              {t("web.developer.oauth.expiry", {
+                date: new Date(grant.refresh_expires_at).toLocaleDateString(
+                  i18n.resolvedLanguage,
+                ),
+              })}
             </span>
           </Stack>
         }

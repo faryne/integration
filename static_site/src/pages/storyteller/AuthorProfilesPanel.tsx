@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditIcon from "@mui/icons-material/Edit";
@@ -17,6 +18,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useCreateStorytellerAuthorProfile,
   useDeleteStorytellerAuthorProfile,
@@ -42,9 +44,10 @@ const INVALID_PEN_NAME_CHARS = /[/\\?#%\x00-\x1F]/;
 
 function penNameError(penName: string): string | undefined {
   const trimmed = penName.trim();
-  if (!trimmed) return "筆名不能是空白";
+  // 非元件 helper，取全域 i18next
+  if (!trimmed) return i18n.t("web.profile.errors.penNameEmpty");
   if (INVALID_PEN_NAME_CHARS.test(trimmed)) {
-    return "筆名不能包含 / \\ ? # % 或控制字元";
+    return i18n.t("web.profile.errors.penNameInvalid");
   }
   return undefined;
 }
@@ -77,6 +80,7 @@ export function AuthorProfilesPanel({
 }: {
   profiles: StorytellerAuthorProfile[];
 }) {
+  const { t } = useTranslation();
   const { data: accountLimits } = useStorytellerAccountLimits();
   const createProfile = useCreateStorytellerAuthorProfile();
   const updateProfile = useUpdateStorytellerAuthorProfile();
@@ -118,7 +122,7 @@ export function AuthorProfilesPanel({
     const payload = { ...form, ...snsPayloadFromRows(snsRows) };
     const onError = (error: unknown) => {
       setSeverity("error");
-      setMessage(errorMessage(error, "筆名儲存失敗，請確認欄位內容。"));
+      setMessage(errorMessage(error, t("web.profile.extra.errors.save")));
     };
     if (editing) {
       updateProfile.mutate(
@@ -127,7 +131,7 @@ export function AuthorProfilesPanel({
           onSuccess: () => {
             setDialogOpen(false);
             setSeverity("success");
-            setMessage("額外筆名已更新");
+            setMessage(t("web.profile.extra.messages.updated"));
           },
           onError,
         },
@@ -138,7 +142,7 @@ export function AuthorProfilesPanel({
       onSuccess: () => {
         setDialogOpen(false);
         setSeverity("success");
-        setMessage("額外筆名已建立");
+        setMessage(t("web.profile.extra.messages.created"));
       },
       onError,
     });
@@ -150,15 +154,16 @@ export function AuthorProfilesPanel({
   return (
     <Box>
       <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
-        額外筆名
+        {t("web.profile.extra.title")}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        可指定給個別故事作為署名。沒有建立時，故事一律使用上面的本人筆名。
+        {t("web.profile.extra.description")}
       </Typography>
       {atLimit && accountLimits && (
         <Alert severity="warning" sx={{ mb: 1.5 }}>
-          已達可建立的額外筆名數量上限（{accountLimits.max_profiles}{" "}
-          個），請刪除後再建立新的。
+          {t("web.profile.extra.limitReached", {
+            max: accountLimits.max_profiles,
+          })}
         </Alert>
       )}
       <Stack spacing={1.5}>
@@ -187,13 +192,17 @@ export function AuthorProfilesPanel({
               )}
             </Box>
             <IconButton
-              aria-label={`編輯筆名 ${profile.pen_name}`}
+              aria-label={t("web.profile.extra.editNamed", {
+                name: profile.pen_name,
+              })}
               onClick={() => openEdit(profile)}
             >
               <EditIcon />
             </IconButton>
             <IconButton
-              aria-label={`刪除筆名 ${profile.pen_name}`}
+              aria-label={t("web.profile.extra.deleteNamed", {
+                name: profile.pen_name,
+              })}
               onClick={() => setDeleteTarget(profile)}
             >
               <DeleteOutlineIcon />
@@ -207,7 +216,7 @@ export function AuthorProfilesPanel({
           onClick={openCreate}
           sx={{ alignSelf: "flex-start" }}
         >
-          新增筆名
+          {t("web.profile.extra.add")}
         </Button>
       </Stack>
       <Dialog
@@ -216,24 +225,23 @@ export function AuthorProfilesPanel({
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle>{editing ? "編輯筆名" : "新增筆名"}</DialogTitle>
+        <DialogTitle>
+          {editing ? t("web.profile.extra.edit") : t("web.profile.extra.add")}
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
-              label="筆名"
+              label={t("web.onboarding.penName")}
               value={form.pen_name}
               onChange={(event) =>
                 setForm((value) => ({ ...value, pen_name: event.target.value }))
               }
               error={Boolean(nameError)}
-              helperText={
-                nameError ??
-                "會顯示在公開作者頁網址上，全站不可與其他筆名重複。"
-              }
+              helperText={nameError ?? t("web.profile.extra.penNameHelp")}
               fullWidth
             />
             <TextField
-              label="自我介紹"
+              label={t("web.profile.bio")}
               value={form.bio}
               onChange={(event) =>
                 setForm((value) => ({ ...value, bio: event.target.value }))
@@ -252,12 +260,12 @@ export function AuthorProfilesPanel({
                   avatar_url: event.target.value,
                 }))
               }
-              helperText="留空時使用依筆名產生的 identicon。"
+              helperText={t("web.profile.extra.avatarHelp")}
               fullWidth
             />
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                SNS 連結
+                {t("web.profile.snsLinks")}
               </Typography>
               <StorytellerSnsLinksEditor
                 rows={snsRows}
@@ -268,26 +276,30 @@ export function AuthorProfilesPanel({
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>取消</Button>
+          <Button onClick={() => setDialogOpen(false)}>
+            {t("web.common.cancel")}
+          </Button>
           <Button
             variant="contained"
             disabled={saving || Boolean(nameError) || hasSnsRowError(snsRows)}
             onClick={save}
           >
-            {saving ? "儲存中" : "儲存"}
+            {saving ? t("web.assetManager.saving") : t("web.common.save")}
           </Button>
         </DialogActions>
       </Dialog>
       <StorytellerConfirmNameDialog
         open={Boolean(deleteTarget)}
-        title="刪除筆名"
-        description={`刪除後無法復原。若仍有故事署名此筆名，後端會拒絕刪除。${
+        title={t("web.profile.extra.delete")}
+        description={
           deleteTarget?.post_count
-            ? `這個筆名的 ${deleteTarget.post_count} 則動態、以它身份發的留言與它的封鎖名單也會一起刪除。`
-            : "以它身份發的留言與它的封鎖名單也會一起刪除。"
-        }`}
+            ? t("web.profile.extra.deleteDescriptionWithPosts", {
+                count: deleteTarget.post_count,
+              })
+            : t("web.profile.extra.deleteDescription")
+        }
         confirmName={deleteTarget?.pen_name ?? ""}
-        confirmLabel="刪除筆名"
+        confirmLabel={t("web.profile.extra.delete")}
         loading={deleteProfile.isPending}
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => {
@@ -296,11 +308,13 @@ export function AuthorProfilesPanel({
             onSuccess: () => {
               setDeleteTarget(null);
               setSeverity("success");
-              setMessage("額外筆名已刪除");
+              setMessage(t("web.profile.extra.messages.deleted"));
             },
             onError: (error) => {
               setSeverity("error");
-              setMessage(errorMessage(error, "刪除筆名失敗。"));
+              setMessage(
+                errorMessage(error, t("web.profile.extra.errors.delete")),
+              );
             },
           });
         }}

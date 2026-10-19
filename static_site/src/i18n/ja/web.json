@@ -1350,5 +1350,617 @@
         "workPenName": "この作品の名義は「{{name}}」です。フォローバックも「{{name}}」の名義で行われます。"
       }
     }
+  },
+  "visibility": {
+    "public": "公開",
+    "unlisted": "共有",
+    "private": "非公開"
+  },
+  "profile": {
+    "loading": "作者設定を読み込み中…",
+    "description": "この情報は公開の物語閲覧ページの作者情報に使われます。",
+    "penNameHelp": "公開作者ページの URL に表示されます。/ \\ ? # % などの記号は使えません。",
+    "bio": "自己紹介",
+    "bioHelp": "Markdown に対応しています。公開作者ページに表示されます。",
+    "snsLinks": "SNS リンク",
+    "avatar": {
+      "source": "アバターの取得元",
+      "gravatar": "Gravatar を使う",
+      "default": "ログインアカウントのアバターを使う",
+      "custom": "URL を入力する"
+    },
+    "privacy": {
+      "title": "プライバシー設定",
+      "hideFavoriteWorks": "フォロー中の作品を非表示",
+      "hideFavoriteAuthors": "フォロー中の作家を非表示"
+    },
+    "editor": {
+      "title": "エディター設定",
+      "description": "物語と設定の編集ページの既定値です。編集ページを開いたときに、その都度調整することもできます。",
+      "autoSaveInterval": "自動保存の間隔（分）",
+      "intervalRange": "{{min}} から {{max}} までの整数を入力してください",
+      "intervalDefault": "未入力の場合は {{minutes}} 分になります"
+    },
+    "messages": {
+      "saved": "作者設定を保存しました"
+    },
+    "errors": {
+      "save": "作者設定を保存できませんでした。入力内容を確認してください。",
+      "penNameEmpty": "ペンネームを空欄にはできません",
+      "penNameInvalid": "ペンネームに / \\ ? # % や制御文字は使えません"
+    },
+    "extra": {
+      "title": "追加のペンネーム",
+      "description": "個別の物語の名義として指定できます。作成しない場合、物語はすべて上の本人のペンネームを使います。",
+      "limitReached": "追加のペンネームは {{max}} 個までです。削除してから新しく作成してください。",
+      "add": "ペンネームを追加",
+      "edit": "ペンネームを編集",
+      "delete": "ペンネームを削除",
+      "editNamed": "ペンネーム {{name}} を編集",
+      "deleteNamed": "ペンネーム {{name}} を削除",
+      "penNameHelp": "公開作者ページの URL に表示されます。サイト全体でほかのペンネームと重複できません。",
+      "avatarHelp": "空欄の場合はペンネームから生成した identicon を使います。",
+      "deleteDescription": "削除すると元に戻せません。このペンネーム名義の物語が残っている場合は削除できません。この名義で投稿したコメントとブロックリストも一緒に削除されます。",
+      "deleteDescriptionWithPosts": "削除すると元に戻せません。このペンネーム名義の物語が残っている場合は削除できません。このペンネームの投稿 {{count}} 件、この名義で投稿したコメント、ブロックリストも一緒に削除されます。",
+      "messages": {
+        "created": "ペンネームを作成しました",
+        "updated": "ペンネームを更新しました",
+        "deleted": "ペンネームを削除しました"
+      },
+      "errors": {
+        "save": "ペンネームを保存できませんでした。入力内容を確認してください。",
+        "delete": "ペンネームを削除できませんでした。"
+      }
+    },
+    "sns": {
+      "type": "種類",
+      "customType": "カスタム",
+      "customTypeName": "カスタムの種類名",
+      "url": "URL",
+      "visibility": "このリンクの公開範囲",
+      "public": "公開",
+      "private": "自分のみ",
+      "remove": "この SNS リンクを削除",
+      "addRow": "行を追加",
+      "privateHelp": "「自分のみ」にしたリンクは、公開作者ページ、作品の作者欄、フォローリストに表示されません。"
+    },
+    "blocks": {
+      "title": "ブロックリスト",
+      "loading": "ブロックリストを読み込み中…",
+      "self": "本人 {{name}}",
+      "penName": "ペンネーム {{name}}",
+      "empty": "{{name}} は誰もブロックしていません",
+      "blockedOn": "{{date}} にブロック",
+      "unblock": "ブロック解除",
+      "confirmTitle": "{{name}} のブロックを解除しますか？",
+      "confirmDescription": "相手は再び {{name}} の投稿にコメントできるようになります。",
+      "unblocked": "{{name}} のブロックを解除しました",
+      "errors": {
+        "unblock": "ブロックを解除できませんでした。もう一度お試しください。"
+      }
+    }
+  },
+  "developer": {
+    "viewConnectGuide": "接続方法を見る",
+    "untitled": "（無題）",
+    "createdAt": "{{date}} に作成",
+    "lastUsed": "最終使用 {{date}}",
+    "neverUsed": "未使用",
+    "copied": "クリップボードにコピーしました",
+    "copyFailed": "コピーできませんでした。手動で選択してください。",
+    "pat": {
+      "webServicesHint": "Claude.ai や ChatGPT などの Web サービスにつなぐ場合は、Personal Access Token を作らずに MCP の URL を貼って OAuth で認可すれば OK です。",
+      "createTitle": "Personal Access Token を作成",
+      "createDescription": "Codex CLI などのローカルツール向けです。ツールの設定ファイルに貼り付けると接続できます。",
+      "name": "名前",
+      "namePlaceholder": "例：Codex、自分のノート PC",
+      "expiry": "有効期限",
+      "creating": "作成中",
+      "listTitle": "作成済みの Token",
+      "empty": "まだ Token がありません。上で作成してください。",
+      "created": "Token を作成しました",
+      "copiedClose": "コピーしたので閉じる",
+      "showOnce": "この Token は一度しか表示されません。大切に保管してください。このウィンドウを閉じると全体は二度と確認できません。",
+      "configExample": "MCP クライアントの設定例：",
+      "delete": "Token を削除",
+      "expiredAt": "{{date}} に期限切れ",
+      "expiresAt": "{{date}} に期限切れ予定",
+      "confirmDeleteTitle": "「{{name}}」を削除しますか？",
+      "confirmDeleteDescription": "この Token を使うツールはすぐに接続できなくなります。元に戻せません。",
+      "errors": {
+        "create": "Token を作成できませんでした。入力内容を確認して再試行してください。",
+        "delete": "Token を削除できませんでした。しばらくしてからお試しください。"
+      }
+    },
+    "oauth": {
+      "scopeWarning": "<strong>現在、認可の範囲は分かれていません。</strong>認可したアプリは、アカウント内のすべてのプロジェクト（作品、設定、アセット、作者プロフィール、シュオシュオの記憶）の読み取り・変更・削除ができます。",
+      "listTitle": "認可済みのアプリ",
+      "emptyTitle": "まだ認可したアプリはありません",
+      "emptyDescription": "Claude.ai や ChatGPT でカスタムコネクタを追加して MCP の URL を貼ると、ここに表示されます。",
+      "revokeTitle": "認可を取り消す",
+      "confirmRevokeTitle": "「{{name}}」の認可を取り消しますか？",
+      "confirmRevokeDescription": "取り消すと {{name}} はすぐにアクセスできなくなり、再接続には再度の認可が必要です。",
+      "thisApp": "このアプリ",
+      "revoke": "取り消す",
+      "revoked": "認可を取り消しました",
+      "errors": {
+        "revoke": "認可を取り消せませんでした。しばらくしてからお試しください。"
+      },
+      "nameFromApp": "名前はアプリが提供したものです",
+      "redirectHost": "リダイレクト先 {{host}}",
+      "grantedAt": "{{date}} に認可",
+      "expiry": "30 日間使われないと自動で無効になります（現在 {{date}} まで）"
+    },
+    "authorize": {
+      "pageTitle": "{{appName}} 接続の認可",
+      "title": "接続の認可",
+      "app": "アプリ",
+      "redirecting": "{{name}} に戻っています…",
+      "redirectingHelp": "自動で切り替わらない場合は、元のタブに戻って接続状態を確認してください。",
+      "invalidTitle": "この認可リクエストは無効です",
+      "invalidDescription": "アプリが提供した client_id またはリダイレクト URL が正しくありません。アカウントの安全のため、そのアプリには戻しません。元のツールから接続し直してください。",
+      "backHome": "{{appName}} のトップに戻る",
+      "requestTitle": "{{name}} があなたの {{appName}} アカウントへの接続を求めています",
+      "loginTitle": "まずログインして、認可するアカウントを確認してください",
+      "loginHelp": "ログインはポップアップで開くので、このページからは離れません。",
+      "noPenName": "（ペンネーム未設定）",
+      "redirectTo": "認可後のリダイレクト先",
+      "deny": "拒否",
+      "allow": "許可",
+      "revokeLater": "あとで「開発者 › OAuth Token」からいつでも取り消せます。",
+      "switchAccount": "アカウントを切り替え",
+      "errors": {
+        "authorize": "認可できませんでした。しばらくしてからお試しください。"
+      },
+      "mascot": {
+        "redirecting": "はい、{{name}} のほうへお送りしますね。",
+        "invalid": "このリクエストは辻褄が合わないので、通せません。元のツールからもう一度つなぎ直してください。",
+        "login": "{{name}} があなたの文章を読みたがっています。どなたのために扉を開けるのか知りたいので、先にログインしてください。",
+        "confirm": "許可すると、読むことも、書き換えることも、消すこともできるようになります。よく確かめてから押してくださいね。"
+      },
+      "scopes": {
+        "allowedTitle": "認可すると、このアプリは次のことができます：",
+        "deniedTitle": "できないこと：",
+        "allowed": {
+          "projects": "アカウント内のすべてのプロジェクトの作品・設定・アセットの読み取りと変更",
+          "profile": "作者プロフィールの管理、シュオシュオの記憶の読み書き",
+          "manage": "上記の内容の作成・移動・削除"
+        },
+        "denied": {
+          "account": "アカウント設定の変更、アカウントの削除",
+          "credentials": "Provider のキー、Personal Access Token、そのほかの認可の閲覧・使用"
+        }
+      }
+    }
+  },
+  "mcp": {
+    "intro": "MCP（Model Context Protocol）を使うと、Claude、ChatGPT、Codex などの AI サービスがあなたの創作プロジェクト、物語、世界観設定を直接読み書きできます。手作業でのコピー＆ペーストは不要です。",
+    "runInTerminal": "ターミナルで実行：",
+    "recommended": "おすすめ",
+    "needsOAuth": "OAuth が必要です。steamloom.works で設定してください",
+    "oauthSteamLoomOnly": "OAuth は steamloom.works でのみ利用できます。faryne.dev の MCP アドレスは Personal Access Token のみ対応しています。",
+    "createToken": "Token を作成",
+    "patShowOnce": "この Token は一度しか表示されません。すぐに設定へ貼り付けてください。このページを離れると全体は二度と確認できません。",
+    "patPending": "作成すると、ここに Token と {{service}} の設定方法が表示されます。",
+    "oauthDone": "「許可」を押せば完了です。<link>OAuth Token ページ</link>で確認や取り消しができます。",
+    "patDone": "設定したらツールを再起動すると接続できます。Token は <link>Personal Access Token ページ</link>で管理・取り消しできます。",
+    "endpointNote": "MCP 接続アドレス：<code>{{endpoint}}</code>・現在 SSE には対応していません。ツールの接続が止まる場合はこれが原因かもしれません。設定方法は <link>MCP 公式ドキュメント</link>を参照してください。",
+    "expiry": {
+      "days": "{{count}} 日",
+      "forever": "無期限"
+    },
+    "auth": {
+      "oauth": {
+        "label": "OAuth 認可",
+        "description": "ブラウザで「許可」を一度押すだけで接続できます。Token のコピーは不要です。OAuth Token ページからいつでも取り消せます。"
+      },
+      "pat": {
+        "label": "Personal Access Token",
+        "description": "Token を作成してツールの設定に貼り付けます。ブラウザを開けない環境（リモートサーバーなど）向けです。"
+      }
+    },
+    "steps": {
+      "service": "使っている AI サービスを選ぶ",
+      "auth": "認可方法を選ぶ",
+      "authPending": "先に AI サービスを選ぶと、対応している認可方法がここに表示されます。",
+      "setup": "接続設定",
+      "setupPending": "認可方法を選ぶと、ここに設定手順が表示されます。",
+      "optional": "任意",
+      "skill": "Skill をインストール",
+      "skillPending": "Skill は、SteamLoom での執筆や推敲の仕方、書き込み前後に確認すべきことを AI に伝えます。AI サービスを選ぶとインストール方法が表示されます。"
+    },
+    "installer": {
+      "runInPowerShell": "PowerShell で実行：",
+      "downloadSh": "インストーラーをダウンロード（.sh）",
+      "downloadPs1": "インストーラーをダウンロード（.ps1）",
+      "detected": "ブラウザに合わせて選択済み",
+      "willDo": "このコマンドは次のことを行います：",
+      "detect": "このパソコンに Claude Code や Codex が入っているかを調べ、入っているものにインストールします",
+      "update": "インストール済みならバージョンを比べ、新しい版があるときだけ更新します",
+      "rerun": "Skill が更新されたら、同じコマンドをもう一度実行するだけです。{{service}} は再起動なしで自動的に読み込みます。",
+      "inspect": "実行前にインストーラーの中身を確認したいですか？",
+      "inspectHelp": "ダウンロードしてテキストエディターで内容を確認してから実行してください："
+    },
+    "skill": {
+      "description": "Skill は、SteamLoom での執筆や推敲の仕方、書き込み前後に確認すべきことを AI に伝えます。",
+      "downloadZip": "Skill の ZIP ファイルをダウンロード（解凍は不要）",
+      "updateZip": "Skill が更新されたら、ZIP をダウンロードしてもう一度アップロードしてください。旧版（storyteller-mcp という名前）をアップロードしていた場合は、スキル一覧から削除してください。",
+      "downloadPlace": "ダウンロードしたら、ツールの skill ディレクトリに <code>{{name}}</code> というフォルダ名で置いてください。",
+      "downloadZipButton": "ZIP をダウンロード",
+      "downloadMd": "SKILL.md をダウンロード",
+      "preview": "内容をプレビュー",
+      "version": "現在のバージョン v{{version}}・最終更新 {{updatedAt}}",
+      "previewFailed": "Skill の内容を読み込めませんでした。しばらくしてからお試しください。",
+      "previewEyebrow": "SKILL.md プレビュー",
+      "previewTitle": "AI 向けの執筆・操作ガイド"
+    },
+    "services": {
+      "claudeai": {
+        "label": "Claude.ai",
+        "description": "Web 版、デスクトップ版、モバイルアプリ",
+        "oauthOnly": "Claude.ai のカスタムコネクタは OAuth のみ対応で、Token を自分で入力することはできません。",
+        "steps": {
+          "add": "Claude.ai の「設定 › コネクタ」でカスタムコネクタを追加します",
+          "url": "名前は SteamLoom、URL には次を貼り付けます：",
+          "allow": "「接続」を押すと SteamLoom の認可ページが開くので、アカウントを確認して「許可」を押します"
+        },
+        "skill": {
+          "enableCode": "先に「設定 › 機能」で「コード実行とファイル作成」をオンにします（Team／Enterprise プランは管理者がオンにする必要があります）",
+          "upload": "「カスタマイズ › スキル」で「＋」→「スキルをアップロード」を押し、ダウンロードした ZIP を選びます"
+        }
+      },
+      "chatgpt": {
+        "label": "ChatGPT",
+        "description": "開発者モードが必要です",
+        "oauthOnly": "ChatGPT のカスタムコネクタは OAuth のみ対応で、Token を自分で入力することはできません。",
+        "steps": {
+          "add": "ChatGPT の「設定 › アプリとコネクタ」で開発者モードをオンにしてコネクタを追加します",
+          "url": "URL に次のアドレスを貼り付け、認証方式は OAuth を選びます：",
+          "allow": "SteamLoom の認可ページが開いたら「許可」を押します"
+        },
+        "skill": {
+          "upload": "ChatGPT の Skills で「作成」→「コンピューターからアップロード」を選び、ダウンロードした ZIP を選びます。ChatGPT がスキャンし、終わればすぐ使えます"
+        }
+      },
+      "claudecode": {
+        "label": "Claude Code",
+        "description": "ターミナルと IDE",
+        "steps": {
+          "login": "Claude Code で /mcp と入力し、{{server}} を選んで認証します（または claude mcp login {{server}} を実行）",
+          "allow": "ブラウザで SteamLoom の認可ページが開くので「許可」を押します"
+        }
+      },
+      "codex": {
+        "label": "Codex",
+        "description": "Codex CLI と IDE 拡張",
+        "steps": {
+          "allow": "login を実行するとブラウザで SteamLoom の認可ページが開くので「許可」を押します"
+        },
+        "patSnippet": "~/.codex/config.toml に追加し、環境変数 {{env}} に Token を設定します："
+      },
+      "other": {
+        "label": "その他",
+        "description": "リモート MCP に対応したそのほかのツール",
+        "steps": {
+          "add": "ツールでリモート MCP サーバーを追加し、次を貼り付けます：",
+          "allow": "ツールが自動登録して SteamLoom の認可ページを開くので「許可」を押します",
+          "manualClient": "ツールが Client ID／Client Secret の手動入力を求める場合、自動登録に対応していません。前の手順に戻って Personal Access Token を選んでください"
+        },
+        "patSnippet": "MCP クライアントの設定例（JSON）："
+      }
+    }
+  },
+  "audit": {
+    "actor": {
+      "system": "システム",
+      "unknown": "不明なユーザー"
+    },
+    "errors": {
+      "load": "アクティビティを読み込めませんでした。しばらくしてからお試しください。"
+    },
+    "autosaveGroup": "自動保存 {{count}} 回",
+    "ranges": {
+      "24h": "過去 24 時間",
+      "7d": "過去 7 日",
+      "30d": "過去 30 日",
+      "custom": "カスタム"
+    },
+    "panel": {
+      "title": "アクティビティ",
+      "description": "Web と MCP で行ったすべての操作と、ログイン、Personal Access Token、OAuth 認可、API key のセキュリティイベントです。",
+      "developerSettings": "開発者設定",
+      "recent": "最近",
+      "archive": "アーカイブ",
+      "asyncNotice": "アクティビティは非同期で記録されるため、数秒以内の操作はまだ表示されないことがあります。少ししてから再読み込みしてください。",
+      "errors": {
+        "months": "アーカイブの月を読み込めませんでした。しばらくしてからお試しください。"
+      }
+    },
+    "list": {
+      "time": "期間",
+      "startDate": "開始日",
+      "endDate": "終了日",
+      "useArchive": "アーカイブ検索を使う",
+      "archivedNotice": "{{months}} か月より前の記録はアーカイブ済みです。アーカイブ検索を使ってください。",
+      "adjustRange": "先に期間を調整してください",
+      "loadedCount": "{{count}} 件読み込み済み（まとめて {{rows}} 行表示）",
+      "empty": "この期間に該当する記録はありません",
+      "loadEarlier": "さらに前の記録を読み込む",
+      "errors": {
+        "selectDates": "開始日と終了日を選んでください",
+        "endBeforeStart": "終了日を開始日より前にはできません",
+        "endAfterToday": "終了日を今日より後にはできません",
+        "load": "アクティビティを読み込めませんでした。"
+      }
+    },
+    "filters": {
+      "advanced": "詳細フィルター",
+      "advancedWithCount": "詳細フィルター（{{count}}）",
+      "clear": "フィルターをクリア",
+      "project": "プロジェクト",
+      "category": "カテゴリ",
+      "source": "経路",
+      "outcome": "結果",
+      "credential": "認証情報",
+      "includeLowImportance": "読み取りやお気に入りなど重要度の低いイベントも含める"
+    },
+    "archive": {
+      "title": "アーカイブ記録を検索",
+      "description": "3 か月より前の記録はアーカイブ済みです。検索はバックグラウンドで実行され、月の範囲（最大 {{months}} か月）の指定が必要です。",
+      "notConfigured": "アーカイブ検索はまだ利用できません。アーカイブの保存先が設定されていないため、直近 3 か月の記録のみ検索できます。",
+      "noMonths": "検索できるアーカイブ月はまだありません。",
+      "startMonth": "開始月",
+      "endMonth": "終了月",
+      "submit": "検索",
+      "submitting": "送信中…",
+      "purged": "{{years}} 年の保存期間を過ぎて削除済み：{{months}}",
+      "running": "検索を実行中…",
+      "queued": "検索の順番待ち…",
+      "runningHelp": "アーカイブ検索には通常数秒から数十秒かかります。このページを開いたままにしてください。",
+      "expired": "この検索結果は保持期間を過ぎました。もう一度検索してください。",
+      "resultTitle": "{{from}} ～ {{to}} の検索結果",
+      "scanned": "（スキャン {{size}}）",
+      "empty": "この期間に該当する記録はありません",
+      "errors": {
+        "endBeforeStart": "終了月を開始月より前にはできません",
+        "maxSpan": "一度に検索できるのは最大 {{months}} か月です",
+        "generic": "検索できませんでした。しばらくしてからお試しください。",
+        "query_start_failed": "検索を送信できませんでした。しばらくしてからお試しください。",
+        "query_failed": "検索の実行に失敗しました。範囲が広すぎて 1 回のスキャン上限を超えた可能性があります。月の範囲を狭めて再試行してください。"
+      }
+    },
+    "detail": {
+      "title": "イベントの詳細",
+      "close": "イベントの詳細を閉じる",
+      "empty": "（空白）",
+      "time": "日時",
+      "actor": "操作者",
+      "target": "対象",
+      "credential": "使用した認証情報",
+      "changes": "変更内容",
+      "deniedReason": "拒否の理由",
+      "failedReason": "失敗の理由",
+      "errorCategory": "理由の分類",
+      "uncategorized": "未分類",
+      "httpStatus": "HTTP ステータス",
+      "errorCode": "エラーコード",
+      "summary": "概要",
+      "connection": "接続と追跡",
+      "ip": "IP アドレス",
+      "eventId": "イベント ID",
+      "projectFields": {
+        "name": "名前",
+        "slug": "URL スラッグ",
+        "description": "紹介文",
+        "visibility": "公開範囲",
+        "rating": "レーティング",
+        "tags": "タグ",
+        "cover_asset_public_id": "表紙",
+        "cover_layout": "表紙のレイアウト",
+        "cover_focal_point": "表紙の焦点"
+      },
+      "summaryFields": {
+        "version_id": "バージョン",
+        "latest_version_id": "最新バージョン",
+        "target_version_id": "戻したバージョン",
+        "base_version_id": "編集時の基準バージョン",
+        "chat_id": "会話",
+        "provider": "AI サービス",
+        "model": "モデル",
+        "input_tokens": "入力 tokens",
+        "output_tokens": "出力 tokens",
+        "count": "件数",
+        "total_count": "総件数",
+        "label": "名前",
+        "secret_last4": "キーの末尾 4 桁",
+        "public_id": "識別子",
+        "memory_public_id": "記憶",
+        "reason": "理由",
+        "duration_ms": "所要時間（ミリ秒）",
+        "client_name": "アプリ",
+        "client_id": "アプリ ID",
+        "revoked_by": "取り消した人"
+      },
+      "summaryValues": {
+        "revoked_by": {
+          "user": "ユーザー（OAuth Token ページ）",
+          "client": "アプリ自身が取り消し"
+        },
+        "reason": {
+          "expired": "認証情報の期限切れ",
+          "revoked": "認可が取り消された",
+          "reused": "ローテーション済みの refresh token を使用",
+          "client_mismatch": "アプリが認可時と一致しない",
+          "concurrent": "更新リクエストが同時に 2 件あった"
+        }
+      },
+      "errorCategories": {
+        "authorization": "権限または本人確認",
+        "validation": "入力内容が規定に合わない",
+        "not_found": "対象が見つからない",
+        "conflict": "現在のデータと競合",
+        "internal": "サーバー内部エラー",
+        "request": "リクエストを処理できない",
+        "tool_execution": "ツールの実行に失敗"
+      }
+    },
+    "actions": {
+      "project_create": "プロジェクトを作成",
+      "project_update": "プロジェクトを更新",
+      "project_delete": "プロジェクトを削除",
+      "project_visibility_change": "プロジェクトの公開範囲を変更",
+      "project_share_token_regenerate": "共有リンクを再生成",
+      "story_create": "作品を作成",
+      "story_update": "作品を更新",
+      "story_delete": "作品を削除",
+      "story_move": "作品を移動",
+      "story_reorder": "作品の並び替え",
+      "story_revert": "作品のバージョンを戻す",
+      "story_chapter_replace": "作品の章を書き換え",
+      "story_chapter_insert": "作品の章を挿入",
+      "story_chapter_delete": "作品の章を削除",
+      "volume_create": "巻を作成",
+      "volume_update": "巻を更新",
+      "volume_delete": "巻を削除",
+      "volume_reorder": "巻の並び替え",
+      "lore_create": "設定を作成",
+      "lore_update": "設定を更新",
+      "lore_delete": "設定を削除",
+      "lore_move": "設定を移動",
+      "lore_revert": "設定のバージョンを戻す",
+      "lore_collection_create": "設定集を作成",
+      "lore_collection_update": "設定集を更新",
+      "lore_collection_delete": "設定集を削除",
+      "lore_chapter_replace": "設定の章を書き換え",
+      "lore_chapter_insert": "設定の章を挿入",
+      "lore_chapter_delete": "設定の章を削除",
+      "asset_upload_confirm": "アセットをアップロード",
+      "asset_replace_confirm": "アセットのファイルを差し替え",
+      "asset_update": "アセットを更新",
+      "asset_move": "アセットを移動",
+      "asset_delete": "アセットを削除",
+      "asset_collection_create": "アセット集を作成",
+      "asset_collection_update": "アセット集を更新",
+      "asset_collection_delete": "アセット集を削除",
+      "agent_run": "AI アシスタントを実行",
+      "agent_resend": "AI アシスタントを再送",
+      "agent_proposal_apply": "AI の提案を適用",
+      "agent_proposal_reject": "AI の提案を却下",
+      "agent_proposal_reset": "AI の提案をリセット",
+      "memory_create": "シュオシュオの記憶を追加",
+      "memory_update": "シュオシュオの記憶を更新",
+      "memory_delete": "シュオシュオの記憶を削除",
+      "memory_confirm": "シュオシュオの記憶を確定",
+      "memory_draft_generate": "記憶の下書きを作成",
+      "memory_draft_retry": "記憶の下書きを再作成",
+      "memory_draft_discard": "記憶の下書きを破棄",
+      "auth_login": "ログイン",
+      "auth_login_failed": "ログイン失敗",
+      "auth_logout": "ログアウト",
+      "auth_pat_denied": "Personal Access Token の認証が拒否された",
+      "auth_oauth_denied": "OAuth Token の認証が拒否された",
+      "auth_oauth_refresh_denied": "OAuth Token の更新が拒否された",
+      "pat_create": "Personal Access Token を作成",
+      "pat_revoke": "Personal Access Token を取り消し",
+      "oauth_authorize": "OAuth 認可に同意",
+      "oauth_deny": "OAuth 認可を拒否",
+      "oauth_grant_create": "アプリが OAuth 接続を完了",
+      "oauth_token_refresh": "OAuth Token を更新",
+      "oauth_revoke": "OAuth 認可を取り消し",
+      "provider_key_create": "API key を追加",
+      "provider_key_update": "API key を更新",
+      "provider_key_delete": "API key を削除",
+      "provider_key_test": "API key の接続テスト",
+      "profile_update": "プロフィールを更新",
+      "profile_delete": "プロフィールを削除",
+      "author_profile_create": "作者ページを作成",
+      "author_profile_update": "作者ページを更新",
+      "author_profile_delete": "作者ページを削除",
+      "agent_skill_create": "Skill を作成",
+      "agent_skill_update": "Skill を更新",
+      "agent_skill_delete": "Skill を削除",
+      "favorite_add": "フォロー",
+      "favorite_remove": "フォロー解除",
+      "favorite_visibility_update": "フォローリストの公開設定を変更",
+      "ranking_update": "ランキングを更新",
+      "ranking_delete": "ランキングを削除",
+      "bookmark_add": "読書ブックマークを追加",
+      "bookmark_remove": "読書ブックマークを削除",
+      "bookmark_create": "執筆ブックマークを作成",
+      "bookmark_update": "執筆ブックマークを更新",
+      "bookmark_delete": "執筆ブックマークを削除",
+      "notification_lock": "通知をロック",
+      "notification_unlock": "通知のロックを解除",
+      "notification_delete": "通知を削除",
+      "notification_follow_back": "通知からフォローバック",
+      "post_create": "投稿を公開",
+      "post_delete": "投稿を削除",
+      "post_pin": "投稿を固定",
+      "post_unpin": "投稿の固定を解除",
+      "post_like": "投稿にいいね",
+      "post_unlike": "投稿のいいねを取り消し",
+      "comment_create": "コメント",
+      "comment_delete": "コメントを削除",
+      "author_block": "コメント投稿者をブロック",
+      "author_unblock": "ブロック解除",
+      "report_create": "通報",
+      "admin_report_remove": "運営が通報された内容を削除",
+      "admin_report_dismiss": "通報を却下",
+      "project_list": "プロジェクト一覧を取得",
+      "project_read": "プロジェクトを取得",
+      "story_list": "作品一覧を取得",
+      "story_read": "作品を取得",
+      "story_version_list": "作品のバージョン一覧を取得",
+      "story_chapter_list": "作品の章一覧を取得",
+      "story_chapter_read": "作品の章を取得",
+      "volume_list": "巻一覧を取得",
+      "lore_list": "設定一覧を取得",
+      "lore_read": "設定を取得",
+      "lore_version_list": "設定のバージョン一覧を取得",
+      "lore_collection_list": "設定集一覧を取得",
+      "lore_chapter_list": "設定の章一覧を取得",
+      "lore_chapter_read": "設定の章を取得",
+      "asset_list": "アセット一覧を取得",
+      "asset_read": "アセットを取得",
+      "asset_collection_list": "アセット集一覧を取得",
+      "memory_list": "シュオシュオの記憶を取得",
+      "memory_search": "シュオシュオの記憶を検索",
+      "content_validate": "内容の形式をチェック",
+      "author_profile_list": "作者ページ一覧を取得",
+      "audit_archive_query_create": "アーカイブ済み監査記録を検索",
+      "system_audit_export": "監査アーカイブをエクスポート",
+      "system_audit_mysql_purge": "アーカイブ済みの直近監査データを削除",
+      "system_audit_archive_purge": "保存期間を過ぎたアーカイブを削除",
+      "system_notification_fanout": "作品更新通知を配信",
+      "system_notification_purge": "保持期間を過ぎた通知を削除",
+      "system_banned_account_purge": "停止アカウントのコンテンツを削除"
+    },
+    "categories": {
+      "project": "プロジェクト",
+      "story": "作品",
+      "lore": "設定",
+      "asset": "アセット",
+      "agent": "AI アシスタント",
+      "memory": "シュオシュオの記憶",
+      "auth": "ログイン",
+      "credential": "認証情報",
+      "profile": "プロフィール",
+      "social": "お気に入りとフォロー",
+      "read": "読み取り",
+      "audit": "監査検索",
+      "system": "システム",
+      "admin": "運営"
+    },
+    "sources": {
+      "web": "Web",
+      "mcp": "MCP",
+      "api": "API",
+      "cron": "スケジュール"
+    },
+    "outcomes": {
+      "success": "成功",
+      "denied": "拒否",
+      "failed": "失敗"
+    }
   }
 }

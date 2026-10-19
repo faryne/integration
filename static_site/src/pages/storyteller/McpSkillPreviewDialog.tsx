@@ -1,5 +1,6 @@
 import DownloadIcon from "@mui/icons-material/Download";
 import { Box, Button, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { StorytellerDialog } from "@/components/storyteller/StorytellerDialog.tsx";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { mcpSkillMarkdownUrl } from "@/pages/storyteller/mcpClientSetup.ts";
@@ -28,23 +29,24 @@ export function McpSkillPreviewDialog({
   version: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <StorytellerDialog
       open={open}
       maxWidth="md"
-      eyebrow={`SKILL.md 預覽${version ? ` · v${version}` : ""}`}
-      title="給 AI 的寫作與操作指南"
+      eyebrow={`${t("web.mcp.skill.previewEyebrow")}${version ? ` · v${version}` : ""}`}
+      title={t("web.mcp.skill.previewTitle")}
       onClose={onClose}
       actions={
         <>
-          <Button onClick={onClose}>關閉</Button>
+          <Button onClick={onClose}>{t("web.common.close")}</Button>
           <Button
             component="a"
             href={mcpSkillMarkdownUrl}
             variant="contained"
             startIcon={<DownloadIcon />}
           >
-            下載 SKILL.md
+            {t("web.mcp.skill.downloadMd")}
           </Button>
         </>
       }

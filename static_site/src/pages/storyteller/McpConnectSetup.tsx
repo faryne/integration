@@ -9,6 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { useCreateStorytellerPersonalAccessToken } from "@/apis/storyteller.ts";
@@ -18,6 +19,7 @@ import {
   mcpEndpoint,
   oauthMcpEndpoint,
   personalAccessTokenExpiryDays,
+  mcpTextParams,
   personalAccessTokenExpiryOptions,
   type McpAuthMethod,
   type McpService,
@@ -48,12 +50,15 @@ function OAuthSteps({
   service: McpService;
   onCopy: (value: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Stack spacing={1.5}>
       <Box component="ol" sx={{ m: 0, pl: 2.5, "& li + li": { mt: 1 } }}>
         {service.oauthSteps.map((step) => (
           <li key={step.text}>
-            <Typography variant="body2">{step.text}</Typography>
+            <Typography variant="body2">
+              {t(step.text, mcpTextParams)}
+            </Typography>
             {step.code && (
               <Box sx={{ mt: 0.75 }}>
                 <CopyableCode
@@ -66,11 +71,14 @@ function OAuthSteps({
         ))}
       </Box>
       <Typography variant="body2" color="text.secondary">
-        按下「允許」後就完成了，可以到{" "}
-        <Link component={RouterLink} to={steamloomPath("my/oauth")}>
-          OAuth Token 頁
-        </Link>
-        確認或撤銷。
+        <Trans
+          i18nKey="web.mcp.oauthDone"
+          components={{
+            link: (
+              <Link component={RouterLink} to={steamloomPath("my/oauth")} />
+            ),
+          }}
+        />
       </Typography>
     </Stack>
   );
@@ -84,8 +92,9 @@ function PatSetup({
   service: McpService;
   onCopy: (value: string) => void;
 }) {
+  const { t } = useTranslation();
   const createToken = useCreateStorytellerPersonalAccessToken();
-  const [label, setLabel] = useState(service.label);
+  const [label, setLabel] = useState(() => t(service.label));
   const [expiresIn, setExpiresIn] = useState("30");
   const [token, setToken] = useState<string | null>(null);
 
@@ -101,23 +110,25 @@ function PatSetup({
       {token ? (
         <>
           <Alert severity="warning" variant="outlined">
-            這組 token
-            只會顯示這一次，請馬上貼進設定；離開這一頁就無法再次查看完整內容。
+            {t("web.mcp.patShowOnce")}
           </Alert>
           <CopyableCode label="Token" value={token} onCopy={onCopy} />
           {service.pat && (
             <CopyableCode
-              label={service.pat.snippetLabel}
+              label={t(service.pat.snippetLabel, mcpTextParams)}
               value={service.pat.snippet(mcpEndpoint, token)}
               onCopy={onCopy}
             />
           )}
           <Typography variant="body2" color="text.secondary">
-            設定好後重新啟動工具即可連線；token 可以到{" "}
-            <Link component={RouterLink} to={steamloomPath("my/pat")}>
-              Personal Access Token 頁
-            </Link>
-            管理或撤銷。
+            <Trans
+              i18nKey="web.mcp.patDone"
+              components={{
+                link: (
+                  <Link component={RouterLink} to={steamloomPath("my/pat")} />
+                ),
+              }}
+            />
           </Typography>
         </>
       ) : (
@@ -127,22 +138,22 @@ function PatSetup({
               required
               fullWidth
               size="small"
-              label="名稱"
-              placeholder="例如：Codex、我的筆電"
+              label={t("web.developer.pat.name")}
+              placeholder={t("web.developer.pat.namePlaceholder")}
               value={label}
               onChange={(event) => setLabel(event.target.value)}
             />
             <TextField
               select
               size="small"
-              label="效期"
+              label={t("web.developer.pat.expiry")}
               value={expiresIn}
               onChange={(event) => setExpiresIn(event.target.value)}
               sx={{ minWidth: 160 }}
             >
               {personalAccessTokenExpiryOptions.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
-                  {option.label}
+                  {t(option.label, { count: option.days })}
                 </MenuItem>
               ))}
             </TextField>
@@ -152,17 +163,19 @@ function PatSetup({
               onClick={create}
               sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
             >
-              {createToken.isPending ? "建立中" : "建立 Token"}
+              {createToken.isPending
+                ? t("web.developer.pat.creating")
+                : t("web.mcp.createToken")}
             </Button>
           </Stack>
           <Typography variant="body2" color="text.secondary">
-            建立後會在這裡顯示 token 和 {service.label} 的設定方式。
+            {t("web.mcp.patPending", { service: t(service.label) })}
           </Typography>
         </>
       )}
       <CustomSnackbar
         open={createToken.isError}
-        message="建立 Token 失敗，請確認欄位內容後重試。"
+        message={t("web.developer.pat.errors.create")}
         severity="error"
         onClose={() => createToken.reset()}
       />

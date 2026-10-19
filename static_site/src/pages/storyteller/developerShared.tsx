@@ -1,5 +1,6 @@
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 // 程式碼／設定區塊加複製按鈕；label 是區塊上方的說明（例如「加到 config.toml」）。
 export function CopyableCode({
@@ -11,6 +12,7 @@ export function CopyableCode({
   label?: string;
   onCopy: (value: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Box>
       {label && (
@@ -34,7 +36,7 @@ export function CopyableCode({
         >
           {value}
         </Box>
-        <Tooltip title="複製">
+        <Tooltip title={t("web.common.copy")}>
           <IconButton size="small" onClick={() => onCopy(value)}>
             <ContentCopyIcon fontSize="small" />
           </IconButton>

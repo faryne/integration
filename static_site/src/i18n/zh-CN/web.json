@@ -1350,5 +1350,617 @@
         "workPenName": "这部作品署名「{{name}}」，回关会用「{{name}}」的身份。"
       }
     }
+  },
+  "visibility": {
+    "public": "公开",
+    "unlisted": "分享",
+    "private": "私密"
+  },
+  "profile": {
+    "loading": "正在加载作者设置...",
+    "description": "这些资料会用在公开故事阅读页的作者信息。",
+    "penNameHelp": "会显示在公开作者页网址上，不能包含 / \\ ? # % 等符号。",
+    "bio": "自我介绍",
+    "bioHelp": "支持 Markdown 语法，会显示在公开作者页。",
+    "snsLinks": "社交链接",
+    "avatar": {
+      "source": "头像来源",
+      "gravatar": "使用 Gravatar",
+      "default": "使用登录账号的头像",
+      "custom": "自己填写网址"
+    },
+    "privacy": {
+      "title": "隐私设置",
+      "hideFavoriteWorks": "隐藏我关注的作品",
+      "hideFavoriteAuthors": "隐藏我关注的作者"
+    },
+    "editor": {
+      "title": "编辑器设置",
+      "description": "这里是故事与设定编辑页的默认值，打开编辑页时仍可按当次需要另行调整。",
+      "autoSaveInterval": "自动保存频率（分钟）",
+      "intervalRange": "请输入 {{min}} 到 {{max}} 之间的整数",
+      "intervalDefault": "不填默认为 {{minutes}} 分钟"
+    },
+    "messages": {
+      "saved": "作者设置已保存"
+    },
+    "errors": {
+      "save": "作者设置保存失败，请检查字段内容。",
+      "penNameEmpty": "笔名不能为空",
+      "penNameInvalid": "笔名不能包含 / \\ ? # % 或控制字符"
+    },
+    "extra": {
+      "title": "额外笔名",
+      "description": "可指定给个别故事作为署名。没有创建时，故事一律使用上面的本人笔名。",
+      "limitReached": "已达可创建的额外笔名数量上限（{{max}} 个），请删除后再创建新的。",
+      "add": "新增笔名",
+      "edit": "编辑笔名",
+      "delete": "删除笔名",
+      "editNamed": "编辑笔名 {{name}}",
+      "deleteNamed": "删除笔名 {{name}}",
+      "penNameHelp": "会显示在公开作者页网址上，全站不可与其他笔名重复。",
+      "avatarHelp": "留空时使用根据笔名生成的 identicon。",
+      "deleteDescription": "删除后无法恢复。若仍有故事署名此笔名，后端会拒绝删除。以它身份发的评论与它的屏蔽名单也会一起删除。",
+      "deleteDescriptionWithPosts": "删除后无法恢复。若仍有故事署名此笔名，后端会拒绝删除。这个笔名的 {{count}} 条动态、以它身份发的评论与它的屏蔽名单也会一起删除。",
+      "messages": {
+        "created": "额外笔名已创建",
+        "updated": "额外笔名已更新",
+        "deleted": "额外笔名已删除"
+      },
+      "errors": {
+        "save": "笔名保存失败，请检查字段内容。",
+        "delete": "删除笔名失败。"
+      }
+    },
+    "sns": {
+      "type": "类型",
+      "customType": "自定义类型",
+      "customTypeName": "自定义类型名称",
+      "url": "网址",
+      "visibility": "这个链接的可见性",
+      "public": "公开",
+      "private": "仅自己",
+      "remove": "删除这个社交链接",
+      "addRow": "新增一行",
+      "privateHelp": "设为「仅自己」的链接不会出现在公开作者页、作品作者栏与关注列表。"
+    },
+    "blocks": {
+      "title": "屏蔽名单",
+      "loading": "正在加载屏蔽名单...",
+      "self": "本人 {{name}}",
+      "penName": "笔名 {{name}}",
+      "empty": "{{name}} 没有屏蔽任何人",
+      "blockedOn": "{{date}} 屏蔽",
+      "unblock": "解除屏蔽",
+      "confirmTitle": "解除屏蔽 {{name}}？",
+      "confirmDescription": "对方之后就可以在 {{name}} 的动态下评论了。",
+      "unblocked": "已解除屏蔽 {{name}}",
+      "errors": {
+        "unblock": "解除屏蔽失败，请重试。"
+      }
+    }
+  },
+  "developer": {
+    "viewConnectGuide": "查看连接方式",
+    "untitled": "（未命名）",
+    "createdAt": "创建于 {{date}}",
+    "lastUsed": "上次使用于 {{date}}",
+    "neverUsed": "尚未使用过",
+    "copied": "已复制到剪贴板",
+    "copyFailed": "复制失败，请手动选择内容。",
+    "pat": {
+      "webServicesHint": "要连接 Claude.ai、ChatGPT 这类网页版服务？不用创建 Personal Access Token，直接粘贴 MCP 网址走 OAuth 授权就好。",
+      "createTitle": "创建 Personal Access Token",
+      "createDescription": "供 Codex CLI 这类本地工具使用，粘贴进工具的配置文件即可连接。",
+      "name": "名称",
+      "namePlaceholder": "例如：Codex、我的笔记本",
+      "expiry": "有效期",
+      "creating": "创建中",
+      "listTitle": "已创建的 Token",
+      "empty": "尚未创建任何 token，请先在上方创建。",
+      "created": "Token 已创建",
+      "copiedClose": "我已复制，关闭",
+      "showOnce": "这个 token 只会显示这一次，请妥善保存，离开这个窗口后就无法再次查看完整内容。",
+      "configExample": "MCP client 配置示例：",
+      "delete": "删除 Token",
+      "expiredAt": "已于 {{date}} 过期",
+      "expiresAt": "将于 {{date}} 到期",
+      "confirmDeleteTitle": "确定要删除「{{name}}」？",
+      "confirmDeleteDescription": "删除后使用这个 Token 的工具会立即失去连接权限，此操作无法恢复。",
+      "errors": {
+        "create": "创建 Token 失败，请检查字段内容后重试。",
+        "delete": "Token 删除失败，请稍后再试。"
+      }
+    },
+    "oauth": {
+      "scopeWarning": "<strong>目前授权不分范围。</strong>已授权的应用可以读取与修改你账号下所有项目（作品、设定、资产、作者档案、梭梭的记忆），包括删除。",
+      "listTitle": "已授权的应用",
+      "emptyTitle": "还没有授权任何应用",
+      "emptyDescription": "在 Claude.ai 或 ChatGPT 新增自定义 connector，粘贴 MCP 网址后就会出现在这里。",
+      "revokeTitle": "撤销授权",
+      "confirmRevokeTitle": "确定要撤销「{{name}}」？",
+      "confirmRevokeDescription": "撤销后 {{name}} 会立即失去访问权限，需要重新授权才能再次连接。",
+      "thisApp": "这个应用",
+      "revoke": "撤销",
+      "revoked": "已撤销授权",
+      "errors": {
+        "revoke": "撤销授权失败，请稍后再试。"
+      },
+      "nameFromApp": "名称由应用提供",
+      "redirectHost": "跳转域名 {{host}}",
+      "grantedAt": "授权于 {{date}}",
+      "expiry": "30 天未使用将自动失效（目前至 {{date}}）"
+    },
+    "authorize": {
+      "pageTitle": "{{appName}} 授权连接",
+      "title": "授权连接",
+      "app": "应用",
+      "redirecting": "正在带你回到 {{name}}…",
+      "redirectingHelp": "如果没有自动跳转，请回到原本的标签页确认连接状态。",
+      "invalidTitle": "这个授权请求无效",
+      "invalidDescription": "应用提供的 client_id 或跳转网址不正确。为了你的账号安全，我们不会把你导回该应用，请回到原本的工具重新连接。",
+      "backHome": "回到 {{appName}} 首页",
+      "requestTitle": "{{name}} 想要连接到你的 {{appName}} 账号",
+      "loginTitle": "先登录，确认要授权的账号",
+      "loginHelp": "登录会以弹出窗口打开，这个页面不会离开。",
+      "noPenName": "（尚未设置笔名）",
+      "redirectTo": "授权后将跳转到",
+      "deny": "拒绝",
+      "allow": "允许",
+      "revokeLater": "之后可以在「开发者 › OAuth Token」随时撤销。",
+      "switchAccount": "切换账号",
+      "errors": {
+        "authorize": "授权失败，请稍后再试。"
+      },
+      "mascot": {
+        "redirecting": "好了，我送您回 {{name}} 那边。",
+        "invalid": "这个请求对不上，我先不放行。请您回原本的工具重新连一次。",
+        "login": "{{name}} 想来读您的文字。请您先登录，我才知道要替谁开门。",
+        "confirm": "答应之后，它能读、能改，也能删。请您看清楚了再按。"
+      },
+      "scopes": {
+        "allowedTitle": "授权后，这个应用可以：",
+        "deniedTitle": "不能：",
+        "allowed": {
+          "projects": "读取与修改你账号下所有项目的作品、设定、资产",
+          "profile": "管理你的作者档案、读写梭梭的记忆",
+          "manage": "创建、移动与删除上述内容"
+        },
+        "denied": {
+          "account": "更改账号设置、删除账号",
+          "credentials": "查看或使用你的 Provider 密钥、Personal Access Token 与其他授权"
+        }
+      }
+    }
+  },
+  "mcp": {
+    "intro": "通过 MCP（Model Context Protocol），你可以让 Claude、ChatGPT、Codex 等 AI 服务直接读写你的创作项目、故事内容与世界观设定，不需要手动复制粘贴。",
+    "runInTerminal": "在终端执行：",
+    "recommended": "推荐",
+    "needsOAuth": "需要 OAuth，请到 steamloom.works 设置",
+    "oauthSteamLoomOnly": "OAuth 只在 steamloom.works 开放，faryne.dev 的 MCP 地址只能用 Personal Access Token。",
+    "createToken": "创建 Token",
+    "patShowOnce": "这个 token 只会显示这一次，请马上粘贴进配置；离开这一页就无法再次查看完整内容。",
+    "patPending": "创建后会在这里显示 token 和 {{service}} 的配置方式。",
+    "oauthDone": "点击「允许」后就完成了，可以到 <link>OAuth Token 页</link>确认或撤销。",
+    "patDone": "配置好后重启工具即可连接；token 可以到 <link>Personal Access Token 页</link>管理或撤销。",
+    "endpointNote": "MCP 连接地址：<code>{{endpoint}}</code>・目前不支持 SSE，若工具连接卡住可能是这个原因。不确定怎么配置可参考 <link>MCP 官方文档</link>。",
+    "expiry": {
+      "days": "{{count}} 天",
+      "forever": "永久（不过期）"
+    },
+    "auth": {
+      "oauth": {
+        "label": "OAuth 授权",
+        "description": "在浏览器点一次「允许」就连上了，不用复制 token。随时可以到 OAuth Token 页撤销。"
+      },
+      "pat": {
+        "label": "Personal Access Token",
+        "description": "创建一个 token 粘贴进工具的配置。适合不能打开浏览器的环境（例如远程服务器）。"
+      }
+    },
+    "steps": {
+      "service": "选择你使用的 AI 服务",
+      "auth": "选择授权方式",
+      "authPending": "先选 AI 服务，这里会列出它支持的授权方式。",
+      "setup": "连接设置",
+      "setupPending": "选好授权方式后，这里会列出设置步骤。",
+      "optional": "可选",
+      "skill": "安装 Skill",
+      "skillPending": "Skill 告诉 AI 怎么在 SteamLoom 上写作、改稿，以及写入前后要检查什么。选好 AI 服务后会显示安装方式。"
+    },
+    "installer": {
+      "runInPowerShell": "在 PowerShell 执行：",
+      "downloadSh": "下载安装程序（.sh）",
+      "downloadPs1": "下载安装程序（.ps1）",
+      "detected": "已根据你的浏览器预先选好",
+      "willDo": "这行命令会：",
+      "detect": "检测这台电脑有没有装 Claude Code、Codex，装了哪个就装到哪个",
+      "update": "已经装过的话，比对版本，有新版才更新",
+      "rerun": "Skill 更新时，再执行一次同一行命令即可，{{service}} 会自动加载，不用重启。",
+      "inspect": "想先看过安装程序再执行？",
+      "inspectHelp": "下载后用文本编辑器打开确认内容，再执行："
+    },
+    "skill": {
+      "description": "Skill 告诉 AI 怎么在 SteamLoom 上写作、改稿，以及写入前后要检查什么。",
+      "downloadZip": "下载 Skill 的 ZIP 文件（不用解压）",
+      "updateZip": "Skill 更新时，重新下载 ZIP 再上传一次；之前上传过旧版（名称叫 storyteller-mcp）的话，请在技能列表把旧的移除。",
+      "downloadPlace": "下载后放进你的工具的 skill 目录，文件夹名称用 <code>{{name}}</code>。",
+      "downloadZipButton": "下载 ZIP",
+      "downloadMd": "下载 SKILL.md",
+      "preview": "预览内容",
+      "version": "当前版本 v{{version}}・最后更新 {{updatedAt}}",
+      "previewFailed": "读取 Skill 内容失败，请稍后再试。",
+      "previewEyebrow": "SKILL.md 预览",
+      "previewTitle": "给 AI 的写作与操作指南"
+    },
+    "services": {
+      "claudeai": {
+        "label": "Claude.ai",
+        "description": "网页版、桌面版与手机 App",
+        "oauthOnly": "Claude.ai 的自定义 connector 只能用 OAuth，不能自己填 token。",
+        "steps": {
+          "add": "到 Claude.ai 的「设置 › Connectors」，新增自定义 connector",
+          "url": "名称填 SteamLoom，网址粘贴：",
+          "allow": "点击「连接」后会跳到 SteamLoom 授权页，确认账号后点击「允许」"
+        },
+        "skill": {
+          "enableCode": "先到「设置 › 功能」开启「代码执行与文件创建」（Team／Enterprise 方案要由管理员开启）",
+          "upload": "到「自定义 › 技能」，点击「＋」→「上传技能」，选择刚才下载的 ZIP"
+        }
+      },
+      "chatgpt": {
+        "label": "ChatGPT",
+        "description": "需要开启开发者模式",
+        "oauthOnly": "ChatGPT 的自定义 connector 只能用 OAuth，不能自己填 token。",
+        "steps": {
+          "add": "到 ChatGPT 的「设置 › 应用与连接器」，开启开发者模式后新增 connector",
+          "url": "网址粘贴下面的地址，验证方式选 OAuth：",
+          "allow": "跳到 SteamLoom 授权页后点击「允许」"
+        },
+        "skill": {
+          "upload": "到 ChatGPT 的 Skills，选择创建 → 从电脑上传，选择刚才下载的 ZIP；ChatGPT 会先扫描，扫描完就能用"
+        }
+      },
+      "claudecode": {
+        "label": "Claude Code",
+        "description": "终端与 IDE",
+        "steps": {
+          "login": "在 Claude Code 里输入 /mcp，选 {{server}} 进行验证（或执行 claude mcp login {{server}}）",
+          "allow": "浏览器会跳到 SteamLoom 授权页，点击「允许」"
+        }
+      },
+      "codex": {
+        "label": "Codex",
+        "description": "Codex CLI 与 IDE 扩展",
+        "steps": {
+          "allow": "执行 login 后浏览器会跳到 SteamLoom 授权页，点击「允许」"
+        },
+        "patSnippet": "加到 ~/.codex/config.toml，并在环境变量 {{env}} 放入 token："
+      },
+      "other": {
+        "label": "其他",
+        "description": "其他支持远程 MCP 的工具",
+        "steps": {
+          "add": "在工具里新增远程 MCP server，粘贴：",
+          "allow": "工具会自动注册并打开 SteamLoom 授权页，点击「允许」",
+          "manualClient": "如果工具要求手动填写 Client ID／Client Secret，说明它不支持自动注册，请回上一步改选 Personal Access Token"
+        },
+        "patSnippet": "MCP client 配置示例（JSON）："
+      }
+    }
+  },
+  "audit": {
+    "actor": {
+      "system": "系统",
+      "unknown": "未识别的用户"
+    },
+    "errors": {
+      "load": "审计记录加载失败，请稍后再试。"
+    },
+    "autosaveGroup": "{{count}} 次自动保存",
+    "ranges": {
+      "24h": "最近 24 小时",
+      "7d": "最近 7 天",
+      "30d": "最近 30 天",
+      "custom": "自定义"
+    },
+    "panel": {
+      "title": "活动记录",
+      "description": "你在网页与 MCP 上的所有操作，以及登录、Personal Access Token、OAuth 授权与 API key 的安全事件。",
+      "developerSettings": "开发者设置",
+      "recent": "近期",
+      "archive": "归档",
+      "asyncNotice": "活动记录是异步写入的，最近几秒内的操作可能还没出现，稍后刷新即可。",
+      "errors": {
+        "months": "归档月份加载失败，请稍后再试。"
+      }
+    },
+    "list": {
+      "time": "时间",
+      "startDate": "开始日期",
+      "endDate": "结束日期",
+      "useArchive": "改用归档查询",
+      "archivedNotice": "{{months}} 个月以前的记录已归档，请改用归档查询。",
+      "adjustRange": "请先调整时间范围",
+      "loadedCount": "已加载 {{count}} 条（合并显示 {{rows}} 行）",
+      "empty": "这段时间没有符合条件的记录",
+      "loadEarlier": "加载更早的记录",
+      "errors": {
+        "selectDates": "请选择开始与结束日期",
+        "endBeforeStart": "结束日期不能早于开始日期",
+        "endAfterToday": "结束日期不能晚于今天",
+        "load": "活动记录加载失败。"
+      }
+    },
+    "filters": {
+      "advanced": "高级筛选",
+      "advancedWithCount": "高级筛选（{{count}}）",
+      "clear": "清除筛选",
+      "project": "项目",
+      "category": "类别",
+      "source": "入口",
+      "outcome": "结果",
+      "credential": "凭证",
+      "includeLowImportance": "包含读取与收藏等低重要度事件"
+    },
+    "archive": {
+      "title": "查询归档记录",
+      "description": "3 个月以前的记录已归档，查询会在后台执行，需要指定月份范围（最多 {{months}} 个月）。",
+      "notConfigured": "归档查询尚未开放：系统还没配置归档存储空间，目前只能查询近 3 个月的记录。",
+      "noMonths": "目前还没有可以查询的归档月份。",
+      "startMonth": "开始月份",
+      "endMonth": "结束月份",
+      "submit": "提交查询",
+      "submitting": "提交中…",
+      "purged": "已超过 {{years}} 年保存期限并已删除：{{months}}",
+      "running": "查询执行中…",
+      "queued": "查询排队中…",
+      "runningHelp": "归档查询通常需要几秒到几十秒，请保持这个页面打开。",
+      "expired": "这次查询的结果已超过保留时间，请重新提交查询。",
+      "resultTitle": "{{from}} ～ {{to}} 的查询结果",
+      "scanned": "（扫描 {{size}}）",
+      "empty": "这段期间没有符合条件的记录",
+      "errors": {
+        "endBeforeStart": "结束月份不能早于开始月份",
+        "maxSpan": "一次最多查询 {{months}} 个月",
+        "generic": "查询失败，请稍后再试。",
+        "query_start_failed": "查询没有成功提交，请稍后再试。",
+        "query_failed": "查询执行失败，可能是范围太大超过单次扫描上限，请缩小月份范围再试。"
+      }
+    },
+    "detail": {
+      "title": "事件详情",
+      "close": "关闭事件详情",
+      "empty": "（空白）",
+      "time": "时间",
+      "actor": "操作者",
+      "target": "目标",
+      "credential": "使用的凭证",
+      "changes": "变更内容",
+      "deniedReason": "拒绝原因",
+      "failedReason": "失败原因",
+      "errorCategory": "原因分类",
+      "uncategorized": "未分类",
+      "httpStatus": "HTTP 状态",
+      "errorCode": "错误代码",
+      "summary": "摘要",
+      "connection": "连接与追踪",
+      "ip": "IP 地址",
+      "eventId": "事件 ID",
+      "projectFields": {
+        "name": "名称",
+        "slug": "网址别名",
+        "description": "简介",
+        "visibility": "公开范围",
+        "rating": "分级",
+        "tags": "标签",
+        "cover_asset_public_id": "封面",
+        "cover_layout": "封面版式",
+        "cover_focal_point": "封面焦点"
+      },
+      "summaryFields": {
+        "version_id": "版本",
+        "latest_version_id": "最新版本",
+        "target_version_id": "还原到的版本",
+        "base_version_id": "编辑时的基准版本",
+        "chat_id": "对话",
+        "provider": "AI 服务",
+        "model": "模型",
+        "input_tokens": "输入 tokens",
+        "output_tokens": "输出 tokens",
+        "count": "条数",
+        "total_count": "总条数",
+        "label": "名称",
+        "secret_last4": "密钥末四位",
+        "public_id": "标识码",
+        "memory_public_id": "记忆",
+        "reason": "原因",
+        "duration_ms": "耗时（毫秒）",
+        "client_name": "应用",
+        "client_id": "应用 ID",
+        "revoked_by": "撤销者"
+      },
+      "summaryValues": {
+        "revoked_by": {
+          "user": "用户（OAuth Token 页）",
+          "client": "应用自行撤销"
+        },
+        "reason": {
+          "expired": "凭证已过期",
+          "revoked": "授权已撤销",
+          "reused": "使用已轮换掉的 refresh token",
+          "client_mismatch": "应用与授权时不符",
+          "concurrent": "同时有两个续期请求"
+        }
+      },
+      "errorCategories": {
+        "authorization": "权限或身份验证",
+        "validation": "输入内容不符合规定",
+        "not_found": "找不到目标",
+        "conflict": "与当前数据冲突",
+        "internal": "服务器内部错误",
+        "request": "请求无法处理",
+        "tool_execution": "工具执行失败"
+      }
+    },
+    "actions": {
+      "project_create": "创建项目",
+      "project_update": "更新项目",
+      "project_delete": "删除项目",
+      "project_visibility_change": "更改项目公开范围",
+      "project_share_token_regenerate": "重新生成分享链接",
+      "story_create": "创建作品",
+      "story_update": "更新作品",
+      "story_delete": "删除作品",
+      "story_move": "移动作品",
+      "story_reorder": "调整作品顺序",
+      "story_revert": "还原作品版本",
+      "story_chapter_replace": "改写作品章节",
+      "story_chapter_insert": "插入作品章节",
+      "story_chapter_delete": "删除作品章节",
+      "volume_create": "创建册",
+      "volume_update": "更新册",
+      "volume_delete": "删除册",
+      "volume_reorder": "调整册顺序",
+      "lore_create": "创建设定",
+      "lore_update": "更新设定",
+      "lore_delete": "删除设定",
+      "lore_move": "移动设定",
+      "lore_revert": "还原设定版本",
+      "lore_collection_create": "创建设定集",
+      "lore_collection_update": "更新设定集",
+      "lore_collection_delete": "删除设定集",
+      "lore_chapter_replace": "改写设定章节",
+      "lore_chapter_insert": "插入设定章节",
+      "lore_chapter_delete": "删除设定章节",
+      "asset_upload_confirm": "上传资产",
+      "asset_replace_confirm": "更换资产文件",
+      "asset_update": "更新资产",
+      "asset_move": "移动资产",
+      "asset_delete": "删除资产",
+      "asset_collection_create": "创建资产集",
+      "asset_collection_update": "更新资产集",
+      "asset_collection_delete": "删除资产集",
+      "agent_run": "运行 AI 助手",
+      "agent_resend": "重发 AI 助手",
+      "agent_proposal_apply": "套用 AI 提案",
+      "agent_proposal_reject": "拒绝 AI 提案",
+      "agent_proposal_reset": "重置 AI 提案",
+      "memory_create": "新增梭梭记忆",
+      "memory_update": "更新梭梭记忆",
+      "memory_delete": "删除梭梭记忆",
+      "memory_confirm": "确认梭梭记忆",
+      "memory_draft_generate": "整理记忆草稿",
+      "memory_draft_retry": "重新整理记忆草稿",
+      "memory_draft_discard": "舍弃记忆草稿",
+      "auth_login": "登录",
+      "auth_login_failed": "登录失败",
+      "auth_logout": "退出登录",
+      "auth_pat_denied": "Personal Access Token 验证被拒绝",
+      "auth_oauth_denied": "OAuth Token 验证被拒绝",
+      "auth_oauth_refresh_denied": "OAuth Token 续期被拒绝",
+      "pat_create": "创建 Personal Access Token",
+      "pat_revoke": "撤销 Personal Access Token",
+      "oauth_authorize": "同意 OAuth 授权",
+      "oauth_deny": "拒绝 OAuth 授权",
+      "oauth_grant_create": "应用完成 OAuth 连接",
+      "oauth_token_refresh": "OAuth Token 续期",
+      "oauth_revoke": "撤销 OAuth 授权",
+      "provider_key_create": "新增 API key",
+      "provider_key_update": "更新 API key",
+      "provider_key_delete": "删除 API key",
+      "provider_key_test": "测试 API key 连接",
+      "profile_update": "更新个人资料",
+      "profile_delete": "删除个人资料",
+      "author_profile_create": "创建作者页",
+      "author_profile_update": "更新作者页",
+      "author_profile_delete": "删除作者页",
+      "agent_skill_create": "创建 Skill",
+      "agent_skill_update": "更新 Skill",
+      "agent_skill_delete": "删除 Skill",
+      "favorite_add": "关注",
+      "favorite_remove": "取消关注",
+      "favorite_visibility_update": "更改关注列表可见性",
+      "ranking_update": "更新排名",
+      "ranking_delete": "移除排名",
+      "bookmark_add": "加入阅读书签",
+      "bookmark_remove": "移除阅读书签",
+      "bookmark_create": "创建写作书签",
+      "bookmark_update": "更新写作书签",
+      "bookmark_delete": "删除写作书签",
+      "notification_lock": "锁定通知",
+      "notification_unlock": "解除通知锁定",
+      "notification_delete": "删除通知",
+      "notification_follow_back": "从通知回关",
+      "post_create": "发布动态",
+      "post_delete": "删除动态",
+      "post_pin": "置顶动态",
+      "post_unpin": "取消置顶动态",
+      "post_like": "喜欢动态",
+      "post_unlike": "取消喜欢动态",
+      "comment_create": "评论",
+      "comment_delete": "删除评论",
+      "author_block": "屏蔽评论者",
+      "author_unblock": "解除屏蔽",
+      "report_create": "举报",
+      "admin_report_remove": "站方移除被举报的内容",
+      "admin_report_dismiss": "驳回举报",
+      "project_list": "读取项目列表",
+      "project_read": "读取项目",
+      "story_list": "读取作品列表",
+      "story_read": "读取作品",
+      "story_version_list": "读取作品版本列表",
+      "story_chapter_list": "读取作品章节列表",
+      "story_chapter_read": "读取作品章节",
+      "volume_list": "读取册列表",
+      "lore_list": "读取设定列表",
+      "lore_read": "读取设定",
+      "lore_version_list": "读取设定版本列表",
+      "lore_collection_list": "读取设定集列表",
+      "lore_chapter_list": "读取设定章节列表",
+      "lore_chapter_read": "读取设定章节",
+      "asset_list": "读取资产列表",
+      "asset_read": "读取资产",
+      "asset_collection_list": "读取资产集列表",
+      "memory_list": "读取梭梭记忆",
+      "memory_search": "搜索梭梭记忆",
+      "content_validate": "检查内容格式",
+      "author_profile_list": "读取作者页列表",
+      "audit_archive_query_create": "查询归档审计记录",
+      "system_audit_export": "导出审计归档",
+      "system_audit_mysql_purge": "清除已归档的近期审计数据",
+      "system_audit_archive_purge": "删除超过保存期限的归档",
+      "system_notification_fanout": "派发作品更新通知",
+      "system_notification_purge": "清除超过保留期的通知",
+      "system_banned_account_purge": "清除封禁账号的内容"
+    },
+    "categories": {
+      "project": "项目",
+      "story": "作品",
+      "lore": "设定",
+      "asset": "资产",
+      "agent": "AI 助手",
+      "memory": "梭梭记忆",
+      "auth": "登录",
+      "credential": "凭证",
+      "profile": "个人资料",
+      "social": "收藏与关注",
+      "read": "读取",
+      "audit": "审计查询",
+      "system": "系统",
+      "admin": "站方管理"
+    },
+    "sources": {
+      "web": "网页",
+      "mcp": "MCP",
+      "api": "API",
+      "cron": "定时任务"
+    },
+    "outcomes": {
+      "success": "成功",
+      "denied": "拒绝",
+      "failed": "失败"
+    }
   }
 }
