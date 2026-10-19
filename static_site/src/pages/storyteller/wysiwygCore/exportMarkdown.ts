@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import {
   computeFootnoteNumbering,
   groupParagraphsByBlockKind,
@@ -279,7 +280,8 @@ export function exportContentToMarkdown(content: string): string {
 
 /** 匯出檔名：`[標題]_[timestamp].md`，標題裡的檔名保留字元換成底線，空標題用「未命名」。 */
 export function buildExportFileName(title: string): string {
-  const safeTitle = title.trim().replace(/[\\/:*?"<>|]/g, "_") || "未命名";
+  const safeTitle =
+    title.trim().replace(/[\\/:*?"<>|]/g, "_") || i18n.t("web.common.untitled");
   const now = new Date();
   const pad = (value: number) => String(value).padStart(2, "0");
   const timestamp =

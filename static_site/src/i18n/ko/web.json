@@ -380,6 +380,15 @@
       "noLore": "이 작품에는 아직 공개 설정이 없습니다.",
       "itemUnit": "편",
       "loreUnit": "개"
+    },
+    "spoilerGate": {
+      "lockedTitle": "스포일러가 포함된 설정",
+      "requires": "먼저 읽어야 함: {{items}}",
+      "confirmHint": "스포일러가 포함되어 있어 열기 전에 확인합니다",
+      "dependency": {
+        "story": "이야기 〈{{title}}〉",
+        "lore": "설정 〈{{title}}〉"
+      }
     }
   },
   "projectWorkspace": {
@@ -1962,5 +1971,58 @@
       "denied": "거부",
       "failed": "실패"
     }
+  },
+  "versionDiff": {
+    "breadcrumb": "버전 비교",
+    "pageTitle": "{{title}} 버전 비교 - {{appName}}",
+    "changedLines": "차이 {{count}}줄",
+    "oldVersion": "이전 버전",
+    "newVersion": "새 버전",
+    "fields": {
+      "title": "제목",
+      "summary": "요약",
+      "content": "내용",
+      "footnotes": "각주"
+    },
+    "story": {
+      "title": "버전 차이 비교",
+      "description": "이야기 제목과 Markdown 내용을 좌우로 비교하고 추가·삭제·변경된 줄을 표시합니다.",
+      "loginDescription": "로그인하면 이야기 편집 기록을 비교할 수 있습니다.",
+      "loading": "버전 비교 데이터를 불러오는 중…",
+      "listBreadcrumb": "이야기",
+      "back": "편집 기록으로 돌아가기"
+    },
+    "lore": {
+      "title": "설정 버전 차이 비교",
+      "description": "설정 제목과 Markdown 내용을 좌우로 비교합니다.",
+      "loginDescription": "로그인하면 설정 편집 기록을 비교할 수 있습니다.",
+      "loading": "설정 버전 비교 데이터를 불러오는 중…",
+      "back": "설정으로 돌아가기"
+    },
+    "reader": {
+      "title": "버전 비교",
+      "pageTitle": "{{title}} 버전 비교 - {{appName}}",
+      "loading": "버전 비교를 불러오는 중…",
+      "description": "{{title}}의 버전 비교입니다. 내용 차이를 보는 용도이며 여기서는 북마크를 추가하거나 삭제할 수 없습니다.",
+      "back": "{{title}}(으)로 돌아가기",
+      "comparedWith": "{{date}} 버전과 비교",
+      "firstVersion": "첫 버전이라 비교할 이전 버전이 없습니다"
+    }
+  },
+  "loreLinkCheck": {
+    "title": "〈{{title}}〉",
+    "unpublished": "아직 공개하지 않은 설정 {{count}}개({{titles}})",
+    "missing": "삭제된 설정 링크 {{count}}개",
+    "and": ", 그리고 ",
+    "warning": "본문에 {{problems}}이(가) 있습니다. 독자에게는 이 부분이 일반 텍스트로만 보입니다."
+  },
+  "wysiwygMarkdown": {
+    "asset": "에셋: {{name}}"
+  },
+  "memoryManager": {
+    "open": "슈오슈오의 기억 관리"
+  },
+  "popover": {
+    "close": "{{title}} 닫기"
   }
 }

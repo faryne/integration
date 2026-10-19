@@ -8,29 +8,13 @@ import type { TFunction } from "i18next";
 
 export function storytellerVersionSourceLabel(
   source: string | null | undefined,
-  t?: TFunction,
+  t: TFunction,
 ) {
-  if (t) {
-    if (source === "web_auto") return t("writer:editor.history.sources.auto");
-    if (source === "web_agent_apply") return t("writer:editor.history.sources.agent");
-    if (source?.startsWith("mcp:")) {
-      const label = source.slice("mcp:".length);
-      return t(label ? "writer:editor.history.sources.mcpPat" : "writer:editor.history.sources.mcp", { label });
-    }
-    return t("writer:editor.history.sources.manual");
-  }
-  if (!source) {
-    return "手動存檔";
-  }
-  if (source === "web_auto") {
-    return "自動存檔";
-  }
-  if (source === "web_agent_apply") {
-    return "套用 AI 提案存檔";
-  }
-  if (source.startsWith("mcp:")) {
+  if (source === "web_auto") return t("writer:editor.history.sources.auto");
+  if (source === "web_agent_apply") return t("writer:editor.history.sources.agent");
+  if (source?.startsWith("mcp:")) {
     const label = source.slice("mcp:".length);
-    return label ? `透過 MCP 使用 PAT「${label}」操作` : "透過 MCP 操作";
+    return t(label ? "writer:editor.history.sources.mcpPat" : "writer:editor.history.sources.mcp", { label });
   }
-  return "手動存檔";
+  return t("writer:editor.history.sources.manual");
 }

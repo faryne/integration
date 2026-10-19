@@ -380,6 +380,15 @@
       "noLore": "這個作品還沒有公開的設定。",
       "itemUnit": "篇",
       "loreUnit": "則"
+    },
+    "spoilerGate": {
+      "lockedTitle": "含劇透的設定",
+      "requires": "需先讀過：{{items}}",
+      "confirmHint": "內容含劇透，點開前會先確認",
+      "dependency": {
+        "story": "故事〈{{title}}〉",
+        "lore": "設定〈{{title}}〉"
+      }
     }
   },
   "projectWorkspace": {
@@ -1962,5 +1971,58 @@
       "denied": "拒絕",
       "failed": "失敗"
     }
+  },
+  "versionDiff": {
+    "breadcrumb": "版本比對",
+    "pageTitle": "{{title}} 版本比對 - {{appName}}",
+    "changedLines": "{{count}} 行差異",
+    "oldVersion": "舊版本",
+    "newVersion": "新版本",
+    "fields": {
+      "title": "標題",
+      "summary": "摘要",
+      "content": "內容",
+      "footnotes": "腳注"
+    },
+    "story": {
+      "title": "版本差異比對",
+      "description": "左右對照故事標題與 Markdown 內容，並標示新增、移除與變更行。",
+      "loginDescription": "登入後即可查看故事編輯歷史比對。",
+      "loading": "正在載入版本比對資料...",
+      "listBreadcrumb": "故事",
+      "back": "返回編輯歷史"
+    },
+    "lore": {
+      "title": "設定版本差異比對",
+      "description": "左右對照設定標題與 Markdown 內容。",
+      "loginDescription": "登入後即可查看設定編輯歷史比對。",
+      "loading": "正在載入設定版本比對資料...",
+      "back": "回設定"
+    },
+    "reader": {
+      "title": "版本比較",
+      "pageTitle": "{{title}} 版本比較 - {{appName}}",
+      "loading": "正在載入版本比較...",
+      "description": "{{title}} 的版本比較，僅供查看內容差異，無法在此加入或移除書籤。",
+      "back": "返回 {{title}}",
+      "comparedWith": "與 {{date}} 的版本比較",
+      "firstVersion": "最初版本，無前一版可比較"
+    }
+  },
+  "loreLinkCheck": {
+    "title": "〈{{title}}〉",
+    "unpublished": "{{count}} 則還沒公開的設定（{{titles}}）",
+    "missing": "{{count}} 個已刪除設定的連結",
+    "and": "，以及 ",
+    "warning": "內文有 {{problems}}，讀者在這些地方只會看到純文字。"
+  },
+  "wysiwygMarkdown": {
+    "asset": "資產：{{name}}"
+  },
+  "memoryManager": {
+    "open": "管理梭梭的記憶"
+  },
+  "popover": {
+    "close": "關閉{{title}}"
   }
 }

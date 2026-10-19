@@ -1,6 +1,7 @@
 import PsychologyAltOutlinedIcon from "@mui/icons-material/PsychologyAltOutlined";
 import { IconButton, Tooltip } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { StorytellerUnsavedChangesDialog } from "@/components/storyteller/StorytellerUnsavedChangesDialog.tsx";
 import { steamloomPath } from "@/helpers/steamloom.ts";
@@ -17,6 +18,7 @@ export function StorytellerMemoryManagerButton({
   targetPublicId?: string;
   hasUnsavedChanges?: () => boolean;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -31,10 +33,10 @@ export function StorytellerMemoryManagerButton({
 
   return (
     <>
-      <Tooltip title="管理梭梭的記憶">
+      <Tooltip title={t("web.memoryManager.open")}>
         <IconButton
           size="small"
-          aria-label="管理梭梭的記憶"
+          aria-label={t("web.memoryManager.open")}
           onClick={() =>
             hasUnsavedChanges?.() ? setConfirmOpen(true) : navigateToManager()
           }

@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import type { StorytellerAsset } from "@/types/storyteller.ts";
 import {
   ASSET_URI_PREFIX,
@@ -7,7 +8,12 @@ import {
 export function storytellerAssetTitle(
   asset: Pick<StorytellerAsset, "title" | "original_filename">,
 ) {
-  return asset.title || asset.original_filename || "未命名資產";
+  // 非元件 helper，用全域 i18next
+  return (
+    asset.title ||
+    asset.original_filename ||
+    i18n.t("web.assetManager.untitled")
+  );
 }
 
 export function storytellerAssetMarkdown(

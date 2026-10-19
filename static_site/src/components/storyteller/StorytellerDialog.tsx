@@ -8,6 +8,7 @@ import {
   type DialogProps,
 } from "@mui/material";
 import { useId, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { storytellerDisplayFontFamily } from "@/data/storytellerTheme.ts";
 
 export interface StorytellerDialogProps {
@@ -34,6 +35,7 @@ export function StorytellerDialog({
   maxWidth = visual ? "md" : "xs",
   onClose,
 }: StorytellerDialogProps) {
+  const { t } = useTranslation();
   const titleId = useId();
   const descriptionId = useId();
 
@@ -85,7 +87,7 @@ export function StorytellerDialog({
         >
           {onClose && (
             <IconButton
-              aria-label="關閉"
+              aria-label={t("web.common.close")}
               onClick={onClose}
               size="small"
               sx={{ position: "absolute", top: 14, right: 14 }}

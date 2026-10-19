@@ -763,7 +763,7 @@ export default function StorytellerProjectWorkspacePreview() {
                   <WorkspaceCentered>
                     <CircularProgress size={24} />
                     <Typography color="text.secondary">
-                      載入資產中...
+                      {t("web.assetManager.loading")}
                     </Typography>
                   </WorkspaceCentered>
                 ) : isAssetRoute ? (

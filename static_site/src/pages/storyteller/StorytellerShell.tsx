@@ -1,9 +1,6 @@
-import AutoStoriesIcon from "@mui/icons-material/AutoStories";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
 import {
   Box,
   Breadcrumbs,
-  Button,
   CircularProgress,
   Link,
   Paper,
@@ -11,6 +8,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
@@ -18,7 +16,6 @@ import {
   STORYTELLER_MASCOT_LOADING_SPRITE_FRAMES,
   storytellerMascotLoadingSpriteSrc,
 } from "@/helpers/storytellerMascot.ts";
-import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useStorytellerAppearance } from "@/layouts/storytellerAppearanceMode.tsx";
 
 export interface StorytellerBreadcrumbItem {
@@ -153,34 +150,8 @@ export function StorytellerShell({
   );
 }
 
-export function StorytellerPrimaryActions() {
-  return (
-    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-      <Button
-        component={RouterLink}
-        to={steamloomPath("my/projects/new")}
-        variant="contained"
-        startIcon={<AutoStoriesIcon />}
-      >
-        建立專案
-      </Button>
-      <Button
-        component={RouterLink}
-        to={steamloomPath("my/agent/new")}
-        variant="outlined"
-        startIcon={<SmartToyIcon />}
-      >
-        建立 AI Agent
-      </Button>
-    </Stack>
-  );
-}
-
-export function StorytellerLoading({
-  label = "載入中...",
-}: {
-  label?: string;
-}) {
+export function StorytellerLoading({ label }: { label?: string }) {
+  const { t } = useTranslation();
   const { appearance } = useStorytellerAppearance();
   const frameSize = 40;
 
@@ -218,7 +189,9 @@ export function StorytellerLoading({
             }}
           />
         </Box>
-        <Typography color="text.secondary">{label}</Typography>
+        <Typography color="text.secondary">
+          {label ?? t("web.common.loading")}
+        </Typography>
       </Stack>
     </Paper>
   );

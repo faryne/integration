@@ -708,7 +708,8 @@
       "columnLeft": "Column left",
       "columnRight": "Column right",
       "deleteColumn": "Delete column",
-      "deleteTable": "Delete table"
+      "deleteTable": "Delete table",
+      "selectTable": "Select entire table"
     },
     "bookmarks": {
       "added": "Bookmark added.",

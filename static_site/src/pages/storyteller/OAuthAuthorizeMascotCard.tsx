@@ -1,6 +1,7 @@
 import { Box, Paper } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { useContext } from "react";
 import {
   storytellerMascotSrc,
@@ -20,6 +21,7 @@ export function OAuthAuthorizeMascotCard({
   line: string;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   const appearance =
     useContext(StorytellerAppearanceContext)?.appearance ?? "nocturne";
   return (
@@ -89,7 +91,7 @@ export function OAuthAuthorizeMascotCard({
         <Box
           component="img"
           src={storytellerMascotSrc(pose, appearance)}
-          alt="梭梭"
+          alt={t("web.footer.mascotAlt")}
           sx={{
             display: "block",
             width: { xs: 96, sm: "100%" },

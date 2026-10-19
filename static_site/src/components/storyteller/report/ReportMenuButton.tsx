@@ -14,7 +14,7 @@ export function ReportMenuButton({ target }: { target: ReportTarget }) {
   return (
     <>
       <IconButton
-        aria-label="更多動作"
+        aria-label={t("web.social.moreActions")}
         onClick={(event) => setAnchor(event.currentTarget)}
       >
         <MoreHorizIcon />

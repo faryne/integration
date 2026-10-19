@@ -10,6 +10,7 @@ import {
   useTheme,
 } from "@mui/material";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 /**
  * 手機（< sm）開 bottom sheet、桌機開 Popover 的共用彈出層。
@@ -38,6 +39,7 @@ export function StorytellerResponsivePopover({
   mobileMaxHeight?: string;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const open = Boolean(anchorEl);
@@ -64,7 +66,10 @@ export function StorytellerResponsivePopover({
             <Typography variant="subtitle1" fontWeight={800}>
               {title}
             </Typography>
-            <IconButton aria-label={`關閉${title}`} onClick={onClose}>
+            <IconButton
+              aria-label={t("web.popover.close", { title })}
+              onClick={onClose}
+            >
               <CloseIcon />
             </IconButton>
           </Stack>

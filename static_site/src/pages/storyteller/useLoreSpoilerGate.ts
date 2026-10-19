@@ -1,12 +1,14 @@
+import i18n from "i18next";
 import { useState } from "react";
-import { LORE_DEPENDENCY_TYPE_LABEL, type ReaderLore } from "./readerModel.ts";
+import type { ReaderLore } from "./readerModel.ts";
 import {
   readingTargetKey,
   type ReaderProgressMap,
 } from "./readingRecordStore.ts";
 
 // 鎖住的劇透設定在列表、麵包屑、分頁標題上的替代標題：設定標題本身常常就是劇透
-export const SPOILER_LORE_TITLE = "含劇透的設定";
+// （這支是 hook／helper，取字用全域 i18next，每次 render 呼叫拿得到目前語系）
+const spoilerLoreTitle = () => i18n.t("web.reader.spoilerGate.lockedTitle");
 
 const storageKey = (projectPublicId: string) =>
   `steamloom.spoiler-confirmed.${projectPublicId}`;
@@ -70,7 +72,7 @@ export function useLoreSpoilerGate(
     confirm,
     // 列表與標題用：鎖住時換成替代標題
     displayTitle: (lore: ReaderLore) =>
-      isLocked(lore) ? SPOILER_LORE_TITLE : lore.title,
+      isLocked(lore) ? spoilerLoreTitle() : lore.title,
   };
 }
 
@@ -79,11 +81,14 @@ export function spoilerLockHint(
   unmet: { type: "story" | "lore"; title: string }[],
 ) {
   return unmet.length > 0
-    ? `需先讀過：${unmet
-        .map(
-          (dependency) =>
-            `${LORE_DEPENDENCY_TYPE_LABEL[dependency.type]}〈${dependency.title}〉`,
-        )
-        .join("、")}`
-    : "內容含劇透，點開前會先確認";
+    ? i18n.t("web.reader.spoilerGate.requires", {
+        items: unmet
+          .map((dependency) =>
+            i18n.t(`web.reader.spoilerGate.dependency.${dependency.type}`, {
+              title: dependency.title,
+            }),
+          )
+          .join(i18n.t("web.notification.listSeparator")),
+      })
+    : i18n.t("web.reader.spoilerGate.confirmHint");
 }

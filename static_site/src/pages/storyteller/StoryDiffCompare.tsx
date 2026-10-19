@@ -1,6 +1,7 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Button, Chip, Stack, Typography } from "@mui/material";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import {
   useStorytellerProjects,
@@ -40,6 +41,7 @@ interface CompareDiff {
 }
 
 export default function StorytellerStoryDiffCompare() {
+  const { t, i18n } = useTranslation();
   const { id, storyId, diffId1, diffId2 } = useParams();
   const { session, loading, login, submitting } = useAuth();
   const { data: apiProjects = [], isPending: apiProjectsPending } =
@@ -76,7 +78,7 @@ export default function StorytellerStoryDiffCompare() {
         title: leftVersion.data.title,
         summary: leftVersion.data.summary,
         content: leftVersion.data.content,
-        source: storytellerVersionSourceLabel(leftVersion.data.source),
+        source: storytellerVersionSourceLabel(leftVersion.data.source, t),
         createdAt: leftVersion.data.created_at,
         words: leftVersion.data.word_count,
       }
@@ -87,7 +89,7 @@ export default function StorytellerStoryDiffCompare() {
         title: rightVersion.data.title,
         summary: rightVersion.data.summary,
         content: rightVersion.data.content,
-        source: storytellerVersionSourceLabel(rightVersion.data.source),
+        source: storytellerVersionSourceLabel(rightVersion.data.source, t),
         createdAt: rightVersion.data.created_at,
         words: rightVersion.data.word_count,
       }
@@ -98,17 +100,17 @@ export default function StorytellerStoryDiffCompare() {
         ? [
             {
               key: "title",
-              title: "標題",
+              title: t("web.versionDiff.fields.title"),
               lines: buildCustomLineDiff(leftDiff.title, rightDiff.title),
             },
             {
               key: "summary",
-              title: "摘要",
+              title: t("web.versionDiff.fields.summary"),
               lines: buildCustomLineDiff(leftDiff.summary, rightDiff.summary),
             },
             {
               key: "content",
-              title: "內容",
+              title: t("web.versionDiff.fields.content"),
               // 濾掉 marker/align/comment 屬性再比對，理由同 StoryVersionDiff.tsx：
               // 這個頁面是純文字 diff（不會經過我們的解析器渲染），不濾掉的話使用者會直接
               // 在畫面上看到 `⟦uuid⟧...⟦/uuid⟧` 這種內部語法，且無關的屬性異動會被誤判成內容變更。
@@ -119,7 +121,7 @@ export default function StorytellerStoryDiffCompare() {
             },
             {
               key: "footnotes",
-              title: "腳注",
+              title: t("web.versionDiff.fields.footnotes"),
               // 閱讀頁把腳注放在故事尾端渲染，這裡也把腳注拆成獨立區塊比對，不是讓腳注
               // 內文跟著本文那一行進入上面的「內容」diff（腳注內文本來就活在行內 marker
               // 的屬性值裡，不是段落可見文字的一部分）。
@@ -130,7 +132,7 @@ export default function StorytellerStoryDiffCompare() {
             },
           ]
         : [],
-    [leftDiff, rightDiff],
+    [leftDiff, rightDiff, t],
   );
   const changedCount = diffSections.reduce(
     (total, section) =>
@@ -139,7 +141,12 @@ export default function StorytellerStoryDiffCompare() {
   );
 
   useTitle(
-    story ? `${story.title} 版本比對 - ${STORYTELLER_APP_NAME}` : "版本比對",
+    story
+      ? t("web.versionDiff.pageTitle", {
+          title: story.title,
+          appName: STORYTELLER_APP_NAME,
+        })
+      : t("web.versionDiff.breadcrumb"),
     {
       path:
         id && storyId && diffId1 && diffId2
@@ -154,17 +161,22 @@ export default function StorytellerStoryDiffCompare() {
   if (loading) {
     return (
       <StorytellerShell
-        title="版本差異比對"
-        description="左右對照故事標題與 Markdown 內容，並標示新增、移除與變更行。"
+        title={t("web.versionDiff.story.title")}
+        description={t("web.versionDiff.story.description")}
         breadcrumbs={[
           { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-          { label: "我的工作台", to: steamloomPath("my") },
-          { label: "創作專案", to: steamloomPath("my/projects") },
-          { label: "版本比對" },
+          { label: t("web.home.workspace"), to: steamloomPath("my") },
+          {
+            label: t("web.projectWorkspace.projects"),
+            to: steamloomPath("my/projects"),
+          },
+          { label: t("web.versionDiff.breadcrumb") },
         ]}
       >
         <Stack alignItems="center" sx={{ py: 8 }}>
-          <Typography color="text.secondary">正在確認登入狀態...</Typography>
+          <Typography color="text.secondary">
+            {t("web.home.checkingLogin")}
+          </Typography>
         </Stack>
       </StorytellerShell>
     );
@@ -173,17 +185,20 @@ export default function StorytellerStoryDiffCompare() {
   if (!session) {
     return (
       <StorytellerShell
-        title="版本差異比對"
-        description="左右對照故事標題與 Markdown 內容，並標示新增、移除與變更行。"
+        title={t("web.versionDiff.story.title")}
+        description={t("web.versionDiff.story.description")}
         breadcrumbs={[
           { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-          { label: "我的工作台", to: steamloomPath("my") },
-          { label: "創作專案", to: steamloomPath("my/projects") },
-          { label: "版本比對" },
+          { label: t("web.home.workspace"), to: steamloomPath("my") },
+          {
+            label: t("web.projectWorkspace.projects"),
+            to: steamloomPath("my/projects"),
+          },
+          { label: t("web.versionDiff.breadcrumb") },
         ]}
       >
         <CustomLoginRequiredState
-          description="登入後即可查看故事編輯歷史比對。"
+          description={t("web.versionDiff.story.loginDescription")}
           onLogin={() => void login()}
           submitting={submitting}
         />
@@ -199,15 +214,18 @@ export default function StorytellerStoryDiffCompare() {
   ) {
     return (
       <StorytellerShell
-        title="版本差異比對"
+        title={t("web.versionDiff.story.title")}
         breadcrumbs={[
           { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-          { label: "我的工作台", to: steamloomPath("my") },
-          { label: "創作專案", to: steamloomPath("my/projects") },
-          { label: "版本比對" },
+          { label: t("web.home.workspace"), to: steamloomPath("my") },
+          {
+            label: t("web.projectWorkspace.projects"),
+            to: steamloomPath("my/projects"),
+          },
+          { label: t("web.versionDiff.breadcrumb") },
         ]}
       >
-        <StorytellerLoading label="正在載入版本比對資料..." />
+        <StorytellerLoading label={t("web.versionDiff.story.loading")} />
       </StorytellerShell>
     );
   }
@@ -224,35 +242,41 @@ export default function StorytellerStoryDiffCompare() {
 
   return (
     <StorytellerShell
-      title="版本差異比對"
-      description="左右對照故事標題與 Markdown 內容，並標示新增、移除與變更行。"
+      title={t("web.versionDiff.story.title")}
+      description={t("web.versionDiff.story.description")}
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-        { label: "我的工作台", to: steamloomPath("my") },
-        { label: "創作專案", to: steamloomPath("my/projects") },
+        { label: t("web.home.workspace"), to: steamloomPath("my") },
+        {
+          label: t("web.projectWorkspace.projects"),
+          to: steamloomPath("my/projects"),
+        },
         {
           label: project.name,
           to: steamloomPath(`my/project/${project.id}`),
         },
         {
-          label: "故事",
+          label: t("web.versionDiff.story.listBreadcrumb"),
           to: steamloomPath(`my/project/${project.id}/stories`),
         },
         {
           label: story.title,
           to: steamloomPath(`my/project/${project.id}/story/${story.id}`),
         },
-        { label: "版本比對" },
+        { label: t("web.versionDiff.breadcrumb") },
       ]}
       action={
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <Chip label={`${changedCount} 行差異`} color="warning" />
+          <Chip
+            label={t("web.versionDiff.changedLines", { count: changedCount })}
+            color="warning"
+          />
           <Button
             href={steamloomPath(`my/project/${project.id}/story/${story.id}`)}
             variant="outlined"
             startIcon={<ArrowBackIcon />}
           >
-            返回編輯歷史
+            {t("web.versionDiff.story.back")}
           </Button>
         </Stack>
       }
@@ -264,15 +288,15 @@ export default function StorytellerStoryDiffCompare() {
             key={section.key}
             title={section.title}
             lines={section.lines}
-            leftTitle="舊版本"
-            rightTitle="新版本"
+            leftTitle={t("web.versionDiff.oldVersion")}
+            rightTitle={t("web.versionDiff.newVersion")}
             leftMetadataLabels={[
               leftDiff.source,
-              formatStorytellerDate(leftDiff.createdAt),
+              formatStorytellerDate(leftDiff.createdAt, i18n.resolvedLanguage),
             ]}
             rightMetadataLabels={[
               rightDiff.source,
-              formatStorytellerDate(rightDiff.createdAt),
+              formatStorytellerDate(rightDiff.createdAt, i18n.resolvedLanguage),
             ]}
           />
         ))}

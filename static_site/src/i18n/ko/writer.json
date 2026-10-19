@@ -708,7 +708,8 @@
       "columnLeft": "왼쪽에 열",
       "columnRight": "오른쪽에 열",
       "deleteColumn": "열 삭제",
-      "deleteTable": "표 삭제"
+      "deleteTable": "표 삭제",
+      "selectTable": "표 전체 선택"
     },
     "bookmarks": {
       "added": "북마크를 추가했습니다.",

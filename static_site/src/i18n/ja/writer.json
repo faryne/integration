@@ -708,7 +708,8 @@
       "columnLeft": "左に列",
       "columnRight": "右に列",
       "deleteColumn": "列を削除",
-      "deleteTable": "表を削除"
+      "deleteTable": "表を削除",
+      "selectTable": "表全体を選択"
     },
     "bookmarks": {
       "added": "ブックマークを追加しました。",

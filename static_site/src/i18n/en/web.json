@@ -380,6 +380,15 @@
       "noLore": "This work has no public lore yet.",
       "itemUnit": "stories",
       "loreUnit": "entries"
+    },
+    "spoilerGate": {
+      "lockedTitle": "Lore with spoilers",
+      "requires": "Read first: {{items}}",
+      "confirmHint": "Contains spoilers; you'll be asked to confirm before opening",
+      "dependency": {
+        "story": "story “{{title}}”",
+        "lore": "lore “{{title}}”"
+      }
     }
   },
   "projectWorkspace": {
@@ -1962,5 +1971,58 @@
       "denied": "Denied",
       "failed": "Failed"
     }
+  },
+  "versionDiff": {
+    "breadcrumb": "Compare versions",
+    "pageTitle": "{{title}} version comparison - {{appName}}",
+    "changedLines": "{{count}} changed lines",
+    "oldVersion": "Old version",
+    "newVersion": "New version",
+    "fields": {
+      "title": "Title",
+      "summary": "Summary",
+      "content": "Content",
+      "footnotes": "Footnotes"
+    },
+    "story": {
+      "title": "Version diff",
+      "description": "Compare the story's title and Markdown side by side, with added, removed, and changed lines marked.",
+      "loginDescription": "Sign in to compare the story's edit history.",
+      "loading": "Loading version comparison…",
+      "listBreadcrumb": "Stories",
+      "back": "Back to edit history"
+    },
+    "lore": {
+      "title": "Lore version diff",
+      "description": "Compare the lore entry's title and Markdown side by side.",
+      "loginDescription": "Sign in to compare the lore entry's edit history.",
+      "loading": "Loading lore version comparison…",
+      "back": "Back to lore"
+    },
+    "reader": {
+      "title": "Version comparison",
+      "pageTitle": "{{title}} version comparison - {{appName}}",
+      "loading": "Loading version comparison…",
+      "description": "Version comparison for {{title}}. For viewing changes only; bookmarks can't be added or removed here.",
+      "back": "Back to {{title}}",
+      "comparedWith": "Compared with the version from {{date}}",
+      "firstVersion": "First version — nothing earlier to compare"
+    }
+  },
+  "loreLinkCheck": {
+    "title": "“{{title}}”",
+    "unpublished": "{{count}} unpublished lore entries ({{titles}})",
+    "missing": "{{count}} links to deleted lore",
+    "and": ", and ",
+    "warning": "The text has {{problems}}. Readers will only see plain text there."
+  },
+  "wysiwygMarkdown": {
+    "asset": "Asset: {{name}}"
+  },
+  "memoryManager": {
+    "open": "Manage Shuoshuo's memory"
+  },
+  "popover": {
+    "close": "Close {{title}}"
   }
 }

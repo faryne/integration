@@ -380,6 +380,15 @@
       "noLore": "这个作品还没有公开设定。",
       "itemUnit": "篇",
       "loreUnit": "则"
+    },
+    "spoilerGate": {
+      "lockedTitle": "含剧透的设定",
+      "requires": "需先读过：{{items}}",
+      "confirmHint": "内容含剧透，打开前会先确认",
+      "dependency": {
+        "story": "故事〈{{title}}〉",
+        "lore": "设定〈{{title}}〉"
+      }
     }
   },
   "projectWorkspace": {
@@ -1962,5 +1971,58 @@
       "denied": "拒绝",
       "failed": "失败"
     }
+  },
+  "versionDiff": {
+    "breadcrumb": "版本对比",
+    "pageTitle": "{{title}} 版本对比 - {{appName}}",
+    "changedLines": "{{count}} 行差异",
+    "oldVersion": "旧版本",
+    "newVersion": "新版本",
+    "fields": {
+      "title": "标题",
+      "summary": "摘要",
+      "content": "内容",
+      "footnotes": "脚注"
+    },
+    "story": {
+      "title": "版本差异对比",
+      "description": "左右对照故事标题与 Markdown 内容，并标示新增、移除与变更行。",
+      "loginDescription": "登录后即可查看故事编辑历史对比。",
+      "loading": "正在加载版本对比数据...",
+      "listBreadcrumb": "故事",
+      "back": "返回编辑历史"
+    },
+    "lore": {
+      "title": "设定版本差异对比",
+      "description": "左右对照设定标题与 Markdown 内容。",
+      "loginDescription": "登录后即可查看设定编辑历史对比。",
+      "loading": "正在加载设定版本对比数据...",
+      "back": "返回设定"
+    },
+    "reader": {
+      "title": "版本比较",
+      "pageTitle": "{{title}} 版本比较 - {{appName}}",
+      "loading": "正在加载版本比较...",
+      "description": "{{title}} 的版本比较，仅供查看内容差异，无法在此添加或移除书签。",
+      "back": "返回 {{title}}",
+      "comparedWith": "与 {{date}} 的版本比较",
+      "firstVersion": "最初版本，没有前一版可比较"
+    }
+  },
+  "loreLinkCheck": {
+    "title": "〈{{title}}〉",
+    "unpublished": "{{count}} 则还没公开的设定（{{titles}}）",
+    "missing": "{{count}} 个已删除设定的链接",
+    "and": "，以及 ",
+    "warning": "正文中有 {{problems}}，读者在这些地方只会看到纯文本。"
+  },
+  "wysiwygMarkdown": {
+    "asset": "资产：{{name}}"
+  },
+  "memoryManager": {
+    "open": "管理梭梭的记忆"
+  },
+  "popover": {
+    "close": "关闭{{title}}"
   }
 }

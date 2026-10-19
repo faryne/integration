@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import {
   Fragment,
   useContext,
@@ -6,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { Box, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 import {
   assetImageFrameSx,
@@ -170,7 +172,9 @@ function renderRun(run: ParsedRun, key: number): ReactNode {
             color="text.secondary"
             sx={{ display: "block", p: 2 }}
           >
-            資產：{run.assetAlt || run.assetPublicId}
+            {i18n.t("web.wysiwygMarkdown.asset", {
+              name: run.assetAlt || run.assetPublicId,
+            })}
           </Typography>
         )}
         {run.assetCaption ? (
@@ -353,6 +357,7 @@ export function StorytellerFootnoteSection({
   list: FootnoteListEntry[];
   idPrefix: string;
 }) {
+  const { t } = useTranslation();
   if (list.length === 0) return null;
   return (
     <Box
@@ -365,7 +370,7 @@ export function StorytellerFootnoteSection({
       }}
     >
       <Typography variant="subtitle2" component="h2" sx={{ mb: 1 }}>
-        腳注
+        {t("web.versionDiff.fields.footnotes")}
       </Typography>
       <Box component="ol" sx={{ m: 0, pl: 3 }}>
         {list.map(({ footnoteId, note }) => (

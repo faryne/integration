@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { mergeAttributes, Node } from "@tiptap/core";
 import {
   Fragment,
@@ -187,7 +188,8 @@ export const StorytellerTable = Node.create({
       const grip = document.createElement("button");
       grip.type = "button";
       grip.className = "storyteller-table-grip";
-      grip.setAttribute("aria-label", "選取整張表格");
+      // NodeView 不是 React 元件，用全域 i18next 取字
+      grip.setAttribute("aria-label", i18n.t("writer:editor.table.selectTable"));
       grip.setAttribute("contenteditable", "false");
       grip.addEventListener("mousedown", (event) => {
         // preventDefault 避免這個 mousedown 被 tableEditing() 自己的 cell

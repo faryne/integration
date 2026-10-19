@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { useEditorLores } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 import type { StorytellerLore } from "@/types/storyteller.ts";
 import {
@@ -31,16 +32,24 @@ export function publishLoreLinkWarning(
     if (!lore) {
       missing += 1;
     } else if (lore.status !== "completed") {
-      unpublished.push(`〈${lore.title}〉`);
+      unpublished.push(lore.title);
     }
   }
+  // 非元件 helper（在 render 中呼叫），用全域 i18next
   const problems = [
     unpublished.length > 0 &&
-      `${unpublished.length} 則還沒公開的設定（${unpublished.join("、")}）`,
-    missing > 0 && `${missing} 個已刪除設定的連結`,
+      i18n.t("web.loreLinkCheck.unpublished", {
+        count: unpublished.length,
+        titles: unpublished
+          .map((title) => i18n.t("web.loreLinkCheck.title", { title }))
+          .join(i18n.t("web.notification.listSeparator")),
+      }),
+    missing > 0 && i18n.t("web.loreLinkCheck.missing", { count: missing }),
   ].filter(Boolean);
   return problems.length > 0
-    ? `內文有 ${problems.join("，以及 ")}，讀者在這些地方只會看到純文字。`
+    ? i18n.t("web.loreLinkCheck.warning", {
+        problems: problems.join(i18n.t("web.loreLinkCheck.and")),
+      })
     : undefined;
 }
 

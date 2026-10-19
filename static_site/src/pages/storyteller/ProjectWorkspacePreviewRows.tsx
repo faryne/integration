@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useTranslation } from "react-i18next";
 import {
   useDeleteStorytellerAsset,
   useMoveStorytellerAsset,
@@ -22,6 +23,7 @@ export function WorkspaceAssetPanel({
   projectId: string;
   onDeleted: () => void;
 }) {
+  const { t } = useTranslation();
   const updateAsset = useUpdateStorytellerAsset(projectId);
   const moveAsset = useMoveStorytellerAsset(projectId);
   const deleteAsset = useDeleteStorytellerAsset(projectId);
@@ -41,8 +43,8 @@ export function WorkspaceAssetPanel({
           throw new Error(
             axios.isAxiosError(error)
               ? (error.response?.data as { message?: string } | undefined)
-                  ?.message || "資產刪除失敗，請重試。"
-              : "資產刪除失敗，請重試。",
+                  ?.message || t("web.assetManager.errors.assetDelete")
+              : t("web.assetManager.errors.assetDelete"),
           );
         })
       }

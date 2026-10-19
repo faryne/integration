@@ -8,6 +8,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import { buildCustomLineDiff } from "@/components/common/customDiff.ts";
 import {
@@ -38,6 +39,7 @@ import {
 } from "@/pages/storyteller/wysiwygCore/parser.ts";
 
 export default function StorytellerStoryVersionDiff() {
+  const { t, i18n } = useTranslation();
   const { projectPath, itemId, versionId } = useParams();
   const projectPublicId = projectPath?.split("-", 1)[0];
   const projectQuery = usePublicStorytellerProject(projectPath);
@@ -57,7 +59,12 @@ export default function StorytellerStoryVersionDiff() {
   const basePath = readerProjectBasePath(projectPath ?? "");
 
   useTitle(
-    story ? `${story.title} 版本比較 - ${STORYTELLER_APP_NAME}` : "版本比較",
+    story
+      ? t("web.versionDiff.reader.pageTitle", {
+          title: story.title,
+          appName: STORYTELLER_APP_NAME,
+        })
+      : t("web.versionDiff.reader.title"),
     {
       robots: "noindex, nofollow",
     },
@@ -66,10 +73,10 @@ export default function StorytellerStoryVersionDiff() {
   if (projectQuery.isLoading || versionsQuery.isLoading) {
     return (
       <StorytellerShell
-        title="版本比較"
+        title={t("web.versionDiff.reader.title")}
         breadcrumbs={[{ label: STORYTELLER_APP_NAME, to: steamloomPath() }]}
       >
-        <StorytellerLoading label="正在載入版本比較..." />
+        <StorytellerLoading label={t("web.versionDiff.reader.loading")} />
       </StorytellerShell>
     );
   }
@@ -145,8 +152,10 @@ export default function StorytellerStoryVersionDiff() {
 
   return (
     <StorytellerShell
-      title="版本比較"
-      description={`${story.title} 的版本比較，僅供查看內容差異，無法在此加入或移除書籤。`}
+      title={t("web.versionDiff.reader.title")}
+      description={t("web.versionDiff.reader.description", {
+        title: story.title,
+      })}
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         {
@@ -154,7 +163,7 @@ export default function StorytellerStoryVersionDiff() {
           to: basePath,
         },
         { label: story.title, to: readerStoryPath(basePath, story.public_id) },
-        { label: "版本比較" },
+        { label: t("web.versionDiff.reader.title") },
       ]}
       action={
         <Button
@@ -163,7 +172,7 @@ export default function StorytellerStoryVersionDiff() {
           variant="outlined"
           startIcon={<ArrowBackIcon />}
         >
-          返回 {story.title}
+          {t("web.versionDiff.reader.back", { title: story.title })}
         </Button>
       }
     >
@@ -186,12 +195,22 @@ export default function StorytellerStoryVersionDiff() {
                 color={previous ? "warning" : "default"}
                 label={
                   previous
-                    ? `與 ${formatStorytellerDate(previous.created_at)} 的版本比較`
-                    : "最初版本，無前一版可比較"
+                    ? t("web.versionDiff.reader.comparedWith", {
+                        date: formatStorytellerDate(
+                          previous.created_at,
+                          i18n.resolvedLanguage,
+                        ),
+                      })
+                    : t("web.versionDiff.reader.firstVersion")
                 }
               />
               {previous && (
-                <Chip size="small" label={`${changedCount} 行差異`} />
+                <Chip
+                  size="small"
+                  label={t("web.versionDiff.changedLines", {
+                    count: changedCount,
+                  })}
+                />
               )}
             </Stack>
           </Box>
@@ -265,7 +284,7 @@ export default function StorytellerStoryVersionDiff() {
             <>
               <Divider />
               <Typography variant="subtitle1" fontWeight={700}>
-                腳注
+                {t("web.versionDiff.fields.footnotes")}
               </Typography>
               <Stack spacing={0.25}>
                 {footnoteDiffLines.map((line) => {

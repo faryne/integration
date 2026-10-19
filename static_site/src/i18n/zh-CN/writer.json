@@ -708,7 +708,8 @@
       "columnLeft": "左侧列",
       "columnRight": "右侧列",
       "deleteColumn": "删除列",
-      "deleteTable": "删除表格"
+      "deleteTable": "删除表格",
+      "selectTable": "选中整张表格"
     },
     "bookmarks": {
       "added": "已加入书签。",

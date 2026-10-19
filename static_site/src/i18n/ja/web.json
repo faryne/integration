@@ -380,6 +380,15 @@
       "noLore": "この作品には公開設定がまだありません。",
       "itemUnit": "篇",
       "loreUnit": "件"
+    },
+    "spoilerGate": {
+      "lockedTitle": "ネタバレを含む設定",
+      "requires": "先に読む必要があります：{{items}}",
+      "confirmHint": "ネタバレを含みます。開く前に確認します",
+      "dependency": {
+        "story": "物語〈{{title}}〉",
+        "lore": "設定〈{{title}}〉"
+      }
     }
   },
   "projectWorkspace": {
@@ -1962,5 +1971,58 @@
       "denied": "拒否",
       "failed": "失敗"
     }
+  },
+  "versionDiff": {
+    "breadcrumb": "バージョン比較",
+    "pageTitle": "{{title}} バージョン比較 - {{appName}}",
+    "changedLines": "差分 {{count}} 行",
+    "oldVersion": "旧バージョン",
+    "newVersion": "新バージョン",
+    "fields": {
+      "title": "タイトル",
+      "summary": "あらすじ",
+      "content": "本文",
+      "footnotes": "脚注"
+    },
+    "story": {
+      "title": "バージョン差分比較",
+      "description": "物語のタイトルと Markdown を左右に並べ、追加・削除・変更された行を表示します。",
+      "loginDescription": "ログインすると物語の編集履歴を比較できます。",
+      "loading": "バージョン比較を読み込み中…",
+      "listBreadcrumb": "物語",
+      "back": "編集履歴に戻る"
+    },
+    "lore": {
+      "title": "設定のバージョン差分比較",
+      "description": "設定のタイトルと Markdown を左右に並べて比較します。",
+      "loginDescription": "ログインすると設定の編集履歴を比較できます。",
+      "loading": "設定のバージョン比較を読み込み中…",
+      "back": "設定に戻る"
+    },
+    "reader": {
+      "title": "バージョン比較",
+      "pageTitle": "{{title}} バージョン比較 - {{appName}}",
+      "loading": "バージョン比較を読み込み中…",
+      "description": "{{title}} のバージョン比較です。内容の差分を見るためのもので、ここではブックマークの追加や削除はできません。",
+      "back": "{{title}} に戻る",
+      "comparedWith": "{{date}} のバージョンと比較",
+      "firstVersion": "最初のバージョンのため、比較する前の版はありません"
+    }
+  },
+  "loreLinkCheck": {
+    "title": "〈{{title}}〉",
+    "unpublished": "まだ公開していない設定 {{count}} 件（{{titles}}）",
+    "missing": "削除済みの設定へのリンク {{count}} 件",
+    "and": "、さらに",
+    "warning": "本文に {{problems}} があります。読者にはその部分がプレーンテキストで表示されます。"
+  },
+  "wysiwygMarkdown": {
+    "asset": "アセット：{{name}}"
+  },
+  "memoryManager": {
+    "open": "シュオシュオの記憶を管理"
+  },
+  "popover": {
+    "close": "{{title}}を閉じる"
   }
 }

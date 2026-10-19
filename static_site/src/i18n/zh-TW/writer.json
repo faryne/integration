@@ -708,7 +708,8 @@
       "columnLeft": "左側欄",
       "columnRight": "右側欄",
       "deleteColumn": "刪除欄",
-      "deleteTable": "刪除表格"
+      "deleteTable": "刪除表格",
+      "selectTable": "選取整張表格"
     },
     "bookmarks": {
       "added": "已加入書籤。",
