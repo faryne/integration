@@ -15,6 +15,7 @@
     "prerender": "node scripts/prerender.mjs",
     "lint": "eslint -c eslint.config.js .",
     "test": "vitest run",
+    "check:i18n": "node scripts/check-i18n.mjs",
     "preview": "vite preview",
     "format": "prettier 'src/**/*.{js,ts,jsx,tsx,vue}' --write"
   },

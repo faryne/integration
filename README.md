@@ -128,6 +128,5 @@ SteamLoom（storyteller）網站與 SteamLoom Writer 共用一套 i18n 規則（
 ### 改完要檢查
 
 1. `static_site` 與 `apps/steamloom/writer/frontend` 兩邊都跑 `npx tsc -b`。注意 `tsc --noEmit -p .` 在 project references 模式下不會真的檢查。
-2. 確認五語系的 key 集合相同、佔位符一致。
-3. 確認程式碼裡引用的每個 key 在 zh-TW 都存在，包括 `` t(`web.x.${value}`) `` 這種動態 key 的前綴。
-4. 兩邊都跑一次 `npx vite build`。
+2. 在 `static_site` 執行 `pnpm check:i18n`（`scripts/check-i18n.mjs`）。它會檢查五語系的 key 集合是否與 zh-TW 相同、佔位符是否一致，以及程式碼引用的每個 key 在 zh-TW 是否存在。動態 key（`` t(`web.x.${value}`) ``）只檢查 `${` 之前的前綴，實際組出來的完整 key 仍要自己確認。
+3. 兩邊都跑一次 `npx vite build`。
