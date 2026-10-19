@@ -16,6 +16,7 @@ import { ChatTaskLanding } from "@writer/pages/workspace/ChatTaskLanding.tsx";
 import { ProposalRawOutputDialog } from "@writer/pages/workspace/ProposalRawOutputDialog.tsx";
 import { CodexExecutionControls, type CodexExecutionProfile } from "@writer/pages/workspace/CodexExecutionControls.tsx";
 import { ProposalReviewDialog } from "@writer/pages/workspace/ProposalReviewDialog.tsx";
+import { countSelectedProposalResults } from "@writer/pages/workspace/proposalSelection.ts";
 import { TaskRail } from "@writer/pages/workspace/TaskRail.tsx";
 import { ThreadDeleteDialog } from "@writer/pages/workspace/ThreadDeleteDialog.tsx";
 import { useChatLog, type ChatLine } from "@writer/pages/workspace/useChatLog.ts";
@@ -416,7 +417,7 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
         threadID={currentThreadID}
         proposal={review?.proposal ?? null}
         item={review?.item ?? null}
-        selectedCount={review?.selectedIDs.filter((id) => review.proposal.items.some((item) => item.id === id)).length ?? 0}
+        selectedCount={review ? countSelectedProposalResults(review.proposal, review.selectedIDs) : 0}
         itemSelected={review?.selectedIDs.includes(review.item.id) ?? false}
         selectedArtifactIDs={review?.selectedIDs.filter((id) => review.item.artifacts?.some((artifact) => artifact.id === id)) ?? []}
         onArtifactSelectionChange={(artifactIDs) => setReview((current) => current ? {
