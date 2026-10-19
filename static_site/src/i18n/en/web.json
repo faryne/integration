@@ -1137,7 +1137,8 @@
     "errors": {
       "comment": "Couldn't post the comment. Please try again.",
       "save": "Couldn't save. Please try again."
-    }
+    },
+    "locked": "Locked"
   },
   "commentRef": {
     "title": "References",
@@ -1206,7 +1207,9 @@
       "minutesAgo": "{{count}} min ago",
       "hoursAgo": "{{count}}h ago",
       "yesterday": "Yesterday"
-    }
+    },
+    "confirmDeleteBody": "This can't be undone.",
+    "loadMore": "Load more"
   },
   "notification": {
     "title": "Notifications",
@@ -1358,7 +1361,8 @@
         "workSelf": "This work is credited to your own identity. Following back will use your own identity.",
         "workPenName": "This work is credited to “{{name}}”. Following back will use “{{name}}”."
       }
-    }
+    },
+    "confirmDeleteBody": "This can't be undone."
   },
   "visibility": {
     "public": "Public",
@@ -1736,7 +1740,8 @@
         "generic": "Search failed. Please try again later.",
         "query_start_failed": "The search couldn't be submitted. Please try again later.",
         "query_failed": "The search failed, possibly because the range exceeds the scan limit. Try a smaller month range."
-      }
+      },
+      "loadMore": "Load more"
     },
     "detail": {
       "title": "Event details",

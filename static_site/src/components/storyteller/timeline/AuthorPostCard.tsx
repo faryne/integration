@@ -235,7 +235,7 @@ export function AuthorPostCard({
               ? t("web.timeline.confirmDeleteWithComments", {
                   count: post.comment_count,
                 })
-              : t("web.discussion.confirm.deleteBody")
+              : t("web.timeline.confirmDeleteBody")
           }
           onClose={() => setConfirmDelete(false)}
           actions={

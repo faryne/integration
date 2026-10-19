@@ -280,7 +280,7 @@ export function StorytellerAuditArchivePanel({
             >
               {results.isFetchingNextPage
                 ? t("web.common.loading")
-                : t("web.discussion.loadMore")}
+                : t("web.audit.archive.loadMore")}
             </Button>
           )}
         </Stack>

@@ -1137,7 +1137,8 @@
     "errors": {
       "comment": "留言失敗，請重試。",
       "save": "儲存失敗，請重試。"
-    }
+    },
+    "locked": "已鎖定"
   },
   "commentRef": {
     "title": "參照",
@@ -1206,7 +1207,9 @@
       "minutesAgo": "{{count}} 分鐘前",
       "hoursAgo": "{{count}} 小時前",
       "yesterday": "昨天"
-    }
+    },
+    "confirmDeleteBody": "刪除後無法復原。",
+    "loadMore": "載入更多"
   },
   "notification": {
     "title": "通知",
@@ -1358,7 +1361,8 @@
         "workSelf": "這部作品以本人身份署名，回追會用本人身份。",
         "workPenName": "這部作品署名「{{name}}」，回追會用「{{name}}」的身份。"
       }
-    }
+    },
+    "confirmDeleteBody": "刪除後無法復原。"
   },
   "visibility": {
     "public": "公開",
@@ -1736,7 +1740,8 @@
         "generic": "查詢失敗，請稍後再試。",
         "query_start_failed": "查詢沒有成功送出，請稍後再試。",
         "query_failed": "查詢執行失敗，可能是範圍太大超過單次掃描上限，請縮小月份範圍再試。"
-      }
+      },
+      "loadMore": "載入更多"
     },
     "detail": {
       "title": "事件詳情",

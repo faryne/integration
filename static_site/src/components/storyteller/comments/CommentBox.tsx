@@ -157,7 +157,7 @@ export function CommentGate({
 }) {
   const { t } = useTranslation();
   const content = locked
-    ? { text: `🔒 ${t("web.discussion.locked")}` }
+    ? { text: `🔒 ${t("web.social.locked")}` }
     : state === "login"
       ? {
           text: t("web.social.gate.login"),

@@ -64,7 +64,7 @@ export function AuthorTimeline({
                 disabled={query.isFetchingNextPage}
                 onClick={() => void query.fetchNextPage()}
               >
-                {t("web.discussion.loadMore")}
+                {t("web.timeline.loadMore")}
               </Button>
             </Box>
           )}

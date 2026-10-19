@@ -368,7 +368,7 @@ export function StorytellerNotificationsPanel() {
         description={
           pendingDelete?.locked
             ? t("web.notification.confirmDeleteLocked")
-            : t("web.discussion.confirm.deleteBody")
+            : t("web.notification.confirmDeleteBody")
         }
         onClose={() => setPendingDelete(null)}
         actions={

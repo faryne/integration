@@ -1137,7 +1137,8 @@
     "errors": {
       "comment": "评论失败，请重试。",
       "save": "保存失败，请重试。"
-    }
+    },
+    "locked": "已锁定"
   },
   "commentRef": {
     "title": "参照",
@@ -1206,7 +1207,9 @@
       "minutesAgo": "{{count}} 分钟前",
       "hoursAgo": "{{count}} 小时前",
       "yesterday": "昨天"
-    }
+    },
+    "confirmDeleteBody": "删除后无法恢复。",
+    "loadMore": "加载更多"
   },
   "notification": {
     "title": "通知",
@@ -1358,7 +1361,8 @@
         "workSelf": "这部作品以本人身份署名，回关会用本人身份。",
         "workPenName": "这部作品署名「{{name}}」，回关会用「{{name}}」的身份。"
       }
-    }
+    },
+    "confirmDeleteBody": "删除后无法恢复。"
   },
   "visibility": {
     "public": "公开",
@@ -1736,7 +1740,8 @@
         "generic": "查询失败，请稍后再试。",
         "query_start_failed": "查询没有成功提交，请稍后再试。",
         "query_failed": "查询执行失败，可能是范围太大超过单次扫描上限，请缩小月份范围再试。"
-      }
+      },
+      "loadMore": "加载更多"
     },
     "detail": {
       "title": "事件详情",
