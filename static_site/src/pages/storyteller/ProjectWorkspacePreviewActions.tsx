@@ -20,6 +20,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 import { useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import {
   useDeleteStorytellerAsset,
@@ -99,6 +100,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     onRefreshAssets,
     onItemDeleted,
   } = options;
+  const { t } = useTranslation();
   const [snack, setSnackState] = useState<{
     message: string;
     severity: "success" | "error" | "info";
@@ -218,8 +220,8 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         parent_id: nextParentId,
         sort: storyCountForVolume(nextParentId),
       },
-      (error) => setSnack(errorMessage(error, "作品移動失敗。"), "error"),
-      () => setSnack("作品已移動。"),
+      (error) => setSnack(errorMessage(error, t("web.projectWorkspace.errors.storyMove")), "error"),
+      () => setSnack(t("web.projectWorkspace.messages.storyMoved")),
     );
     setStoryMoveMenu(null);
   }
@@ -265,7 +267,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     remaining.forEach((story, index) => {
       if (story.sort !== index) {
         saveStoryPatch(story, { sort: index }, (error) =>
-          setSnack(errorMessage(error, "作品排序更新失敗。"), "error"),
+          setSnack(errorMessage(error, t("web.projectWorkspace.errors.storyReorder")), "error"),
         );
       }
     });
@@ -309,7 +311,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           input: { sort: index },
         })
         .catch((error: unknown) =>
-          setSnack(errorMessage(error, "冊排序更新失敗。"), "error"),
+          setSnack(errorMessage(error, t("web.projectWorkspace.errors.volumeReorder")), "error"),
         );
     });
   }
@@ -353,7 +355,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           },
         })
         .catch((error: unknown) =>
-          setSnack(errorMessage(error, "設定集排序更新失敗。"), "error"),
+          setSnack(errorMessage(error, t("web.workspacePreview.actions.loreCollectionReorderFailed")), "error"),
         );
     });
   }
@@ -369,10 +371,12 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       {
         onSuccess: () =>
           setSnack(
-            volume.status === "completed" ? "冊已設為未公開。" : "冊已公開。",
+            volume.status === "completed"
+              ? t("web.projectWorkspace.messages.volumeUnpublished")
+              : t("web.projectWorkspace.messages.volumePublished"),
           ),
         onError: (error) =>
-          setSnack(errorMessage(error, "冊狀態更新失敗。"), "error"),
+          setSnack(errorMessage(error, t("web.projectWorkspace.errors.volumeStatus")), "error"),
       },
     );
   }
@@ -405,9 +409,11 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       if (target === "new" && saved?.public_id)
         onSelect("lores", saved.public_id);
       setLoreCollectionTarget(null);
-      setSnack(target === "new" ? "設定集已建立。" : "設定集已更新。");
+      setSnack(target === "new"
+          ? t("web.loreManager.messages.collectionCreated")
+          : t("web.loreManager.messages.collectionUpdated"));
     } catch (error) {
-      setSnack(errorMessage(error, "設定集儲存失敗。"), "error");
+      setSnack(errorMessage(error, t("web.workspacePreview.actions.loreCollectionSaveFailed")), "error");
     }
   }
 
@@ -430,9 +436,11 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       if (target === "new" && saved?.public_id)
         onSelect("assets", saved.public_id);
       setAssetCollectionTarget(null);
-      setSnack(target === "new" ? "資產集已建立。" : "資產集已更新。");
+      setSnack(target === "new"
+          ? t("web.assetManager.messages.collectionCreated")
+          : t("web.assetManager.messages.collectionUpdated"));
     } catch (error) {
-      setSnack(errorMessage(error, "資產集儲存失敗。"), "error");
+      setSnack(errorMessage(error, t("web.assetManager.errors.collectionSave")), "error");
     }
   }
 
@@ -445,9 +453,9 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         collectionId,
       });
       setLoreMoveMenu(null);
-      setSnack("設定已移動。");
+      setSnack(t("web.workspacePreview.actions.loreMoved"));
     } catch (error) {
-      setSnack(errorMessage(error, "設定移動失敗。"), "error");
+      setSnack(errorMessage(error, t("web.workspacePreview.actions.loreMoveFailed")), "error");
     }
   }
 
@@ -460,9 +468,9 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         collectionId,
       });
       setAssetMoveMenu(null);
-      setSnack("資產已移動。");
+      setSnack(t("web.assetManager.messages.assetMoved"));
     } catch (error) {
-      setSnack(errorMessage(error, "資產移動失敗。"), "error");
+      setSnack(errorMessage(error, t("web.assetManager.errors.assetMove")), "error");
     }
   }
 
@@ -495,8 +503,8 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         <Tooltip
           title={
             currentVolume.status === "completed"
-              ? "目前公開，點擊改為草稿"
-              : "目前草稿，點擊公開"
+              ? t("web.projectWorkspace.volume.unpublishHint")
+              : t("web.projectWorkspace.volume.publishHint")
           }
         >
           <span>
@@ -518,11 +526,13 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
                 fontWeight: 800,
               }}
             >
-              {currentVolume.status === "completed" ? "公開冊" : "草稿冊"}
+              {currentVolume.status === "completed"
+                ? t("web.workspacePreview.actions.volumePublicChip")
+                : t("web.workspacePreview.actions.volumeDraftChip")}
             </Button>
           </span>
         </Tooltip>
-        <Tooltip title="重新命名冊">
+        <Tooltip title={t("web.workspacePreview.actions.renameVolume")}>
           <IconButton
             size="small"
             onClick={() => setVolumeDialogTarget(currentVolume)}
@@ -530,7 +540,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
             <EditIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-        <Tooltip title="刪除冊">
+        <Tooltip title={t("web.projectWorkspace.volume.delete")}>
           <IconButton
             size="small"
             color="error"
@@ -542,7 +552,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       </Stack>
     ) : currentLoreCollection && selected.section === "lores" ? (
       <Stack direction="row" spacing={0.5}>
-        <Tooltip title="編輯設定集">
+        <Tooltip title={t("web.loreManager.collection.edit")}>
           <IconButton
             size="small"
             onClick={() => openCollectionDialog("lore", currentLoreCollection)}
@@ -550,7 +560,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
             <EditIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-        <Tooltip title="刪除設定集">
+        <Tooltip title={t("web.loreManager.collection.delete")}>
           <IconButton
             size="small"
             color="error"
@@ -562,7 +572,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       </Stack>
     ) : currentAssetCollection && selected.section === "assets" ? (
       <Stack direction="row" spacing={0.5}>
-        <Tooltip title="編輯資產集">
+        <Tooltip title={t("web.assetManager.collection.edit")}>
           <IconButton
             size="small"
             onClick={() =>
@@ -572,7 +582,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
             <EditIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-        <Tooltip title="刪除資產集">
+        <Tooltip title={t("web.assetManager.collection.delete")}>
           <IconButton
             size="small"
             color="error"
@@ -593,7 +603,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           <Button
             onClick={() => setCreateMenuAnchor(createButtonGroupRef.current)}
           >
-            建立
+            {t("web.common.create")}
           </Button>
           <Button
             size="small"
@@ -611,14 +621,14 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           to={steamloomPath(`my/workspace/${projectId}/lore/new${fromQuery}`)}
           variant="contained"
         >
-          建立設定
+          {t("web.loreManager.createLore")}
         </Button>
       </Stack>
     ) : (
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         <TextField
           size="small"
-          label="搜尋資產"
+          label={t("web.assetManager.search")}
           value={assetKeyword}
           onChange={(event) => onAssetKeywordChange(event.target.value)}
         />
@@ -627,14 +637,14 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           startIcon={<RefreshIcon />}
           onClick={onRefreshAssets}
         >
-          重新整理
+          {t("web.assetManager.refresh")}
         </Button>
         <Button
           variant="contained"
           startIcon={<FileUploadIcon />}
           onClick={() => setUploadDrawerOpen(true)}
         >
-          上傳圖像
+          {t("web.workspacePreview.actions.uploadImage")}
         </Button>
       </Stack>
     );
@@ -647,7 +657,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   // dense：側邊列用的小尺寸；列表與側邊列打開的是同一份選單
   const renderStoryActions = (story: StorytellerStory, dense?: boolean) => (
     <WorkspaceRowActionButton
-      label="作品操作"
+      label={t("web.workspacePreview.actions.storyActions")}
       dense={dense}
       onOpen={(event) =>
         setStoryActionMenu({ anchorEl: event.currentTarget, story })
@@ -657,7 +667,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
 
   const renderLoreActions = (lore: StorytellerLore, dense?: boolean) => (
     <WorkspaceRowActionButton
-      label="設定操作"
+      label={t("web.workspacePreview.actions.loreActions")}
       dense={dense}
       onOpen={(event) =>
         setLoreActionMenu({ anchorEl: event.currentTarget, lore })
@@ -667,7 +677,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
 
   const renderAssetActions = (asset: StorytellerAsset) => (
     <Stack direction="row" spacing={{ xs: 1, sm: 0.25 }}>
-      <Tooltip title="移動資產">
+      <Tooltip title={t("web.workspacePreview.actions.moveAsset")}>
         <IconButton
           size="small"
           sx={touchTargetSx}
@@ -681,8 +691,8 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       <Tooltip
         title={
           asset.reference_count > 0
-            ? "資產仍被作品引用，請先移除引用"
-            : "刪除資產"
+            ? t("web.assetManager.deleteBlocked")
+            : t("web.assetManager.deleteAsset")
         }
       >
         <span>
@@ -718,7 +728,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           <ListItemIcon>
             <ArticleIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>故事</ListItemText>
+          <ListItemText>{t("web.projectWorkspace.story.text")}</ListItemText>
         </MenuItem>
         <MenuItem
           component={RouterLink}
@@ -728,13 +738,13 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           <ListItemIcon>
             <CollectionsIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>圖像</ListItemText>
+          <ListItemText>{t("web.projectWorkspace.story.image")}</ListItemText>
         </MenuItem>
       </Menu>
       <WorkspaceRowActionMenu
         anchorEl={storyActionMenu?.anchorEl ?? null}
-        moveLabel="移動到冊…"
-        deleteLabel="刪除作品"
+        moveLabel={t("web.workspacePreview.actions.moveToVolume")}
+        deleteLabel={t("web.projectWorkspace.story.delete")}
         status={storyActionMenu?.story.status}
         disabled={patchStory.isPending}
         onClose={() => setStoryActionMenu(null)}
@@ -745,8 +755,12 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
               storyActionMenu.story,
               { status: completed ? "completed" : "draft" },
               (error) =>
-                setSnack(errorMessage(error, "作品狀態更新失敗。"), "error"),
-              () => setSnack(completed ? "作品已公開。" : "作品已設為未公開。"),
+                setSnack(errorMessage(error, t("web.projectWorkspace.errors.storyStatus")), "error"),
+              () => setSnack(
+                  completed
+                    ? t("web.projectWorkspace.messages.storyPublished")
+                    : t("web.projectWorkspace.messages.storyUnpublished"),
+                ),
             );
           }
           setStoryActionMenu(null);
@@ -762,8 +776,8 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       />
       <WorkspaceRowActionMenu
         anchorEl={loreActionMenu?.anchorEl ?? null}
-        moveLabel="移動至設定集…"
-        deleteLabel="刪除設定"
+        moveLabel={t("web.workspacePreview.actions.moveToLoreCollection")}
+        deleteLabel={t("web.loreManager.deleteLore")}
         onClose={() => setLoreActionMenu(null)}
         onMove={() => {
           if (loreActionMenu) setLoreMoveMenu(loreActionMenu);
@@ -784,7 +798,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           publicId: volume.public_id,
           name: volume.title,
         }))}
-        ungroupedLabel="移到未分冊"
+        ungroupedLabel={t("web.projectWorkspace.story.moveUngrouped")}
         onClose={() => setStoryMoveMenu(null)}
         onMove={(collectionId) =>
           storyMoveMenu && moveStoryToVolume(storyMoveMenu.story, collectionId)
@@ -800,7 +814,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           publicId: collection.public_id,
           name: collection.name,
         }))}
-        ungroupedLabel="移到未歸類"
+        ungroupedLabel={t("web.loreManager.moveUncategorized")}
         onClose={() => setLoreMoveMenu(null)}
         onMove={(collectionId) =>
           loreMoveMenu && void moveLoreTo(loreMoveMenu.lore, collectionId)
@@ -816,7 +830,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           publicId: collection.public_id,
           name: collection.name,
         }))}
-        ungroupedLabel="移到未分類"
+        ungroupedLabel={t("web.assetManager.moveUncategorized")}
         onClose={() => setAssetMoveMenu(null)}
         onMove={(collectionId) =>
           assetMoveMenu && void moveAssetTo(assetMoveMenu.asset, collectionId)
@@ -868,18 +882,24 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
                   onSelect("stories", saved.public_id);
                 setVolumeDialogTarget(null);
                 setSnack(
-                  volumeDialogTarget === "new" ? "冊已建立。" : "冊已更新。",
+                  volumeDialogTarget === "new"
+                    ? t("web.projectWorkspace.messages.volumeCreated")
+                    : t("web.projectWorkspace.messages.volumeUpdated"),
                 );
               },
               onError: (error) =>
-                setSnack(errorMessage(error, "冊儲存失敗。"), "error"),
+                setSnack(errorMessage(error, t("web.projectWorkspace.errors.volumeSave")), "error"),
             },
           )
         }
       />
       <CollectionDialog
         open={Boolean(loreCollectionTarget || assetCollectionTarget)}
-        title={loreCollectionTarget ? "設定集" : "資產集"}
+        title={
+          loreCollectionTarget
+            ? t("web.projectWorkspace.tabs.lores")
+            : t("web.projectWorkspace.tabs.assets")
+        }
         name={collectionName}
         description={collectionDescription}
         loading={saveLoreCollection.isPending || saveAssetCollection.isPending}
@@ -899,11 +919,17 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         <StorytellerConfirmNameDialog
           open
           title={
-            deleteStoryTarget.content_type === "image" ? "刪除話" : "刪除故事"
+            deleteStoryTarget.content_type === "image"
+              ? t("web.projectWorkspace.story.deleteEpisode")
+              : t("web.projectWorkspace.story.deleteStory")
           }
-          description="刪除後會移除作品與版本資料。請輸入作品名稱確認。"
+          description={
+            deleteStoryTarget.content_type === "image"
+              ? t("web.projectWorkspace.story.deleteEpisodeDescription")
+              : t("web.projectWorkspace.story.deleteStoryDescription")
+          }
           confirmName={deleteStoryTarget.title}
-          confirmLabel="刪除作品"
+          confirmLabel={t("web.projectWorkspace.story.delete")}
           loading={deleteStory.isPending}
           onClose={() => setDeleteStoryTarget(null)}
           onConfirm={() =>
@@ -911,10 +937,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
               onSuccess: () => {
                 onItemDeleted?.("story", deleteStoryTarget.public_id);
                 setDeleteStoryTarget(null);
-                setSnack("作品已刪除。");
+                setSnack(t("web.workspacePreview.actions.storyDeleted"));
               },
               onError: (error) =>
-                setSnack(errorMessage(error, "作品刪除失敗。"), "error"),
+                setSnack(errorMessage(error, t("web.projectWorkspace.errors.storyDelete")), "error"),
             })
           }
         />
@@ -922,10 +948,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       {deleteVolumeTarget && (
         <StorytellerConfirmNameDialog
           open
-          title="刪除冊"
-          description="刪除後無法復原。請輸入冊名稱確認。"
+          title={t("web.projectWorkspace.volume.delete")}
+          description={t("web.projectWorkspace.volume.deleteDescription")}
           confirmName={deleteVolumeTarget.title}
-          confirmLabel="刪除冊"
+          confirmLabel={t("web.projectWorkspace.volume.delete")}
           loading={deleteStory.isPending}
           onClose={() => setDeleteVolumeTarget(null)}
           onConfirm={() =>
@@ -935,10 +961,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
                   onSelect("stories", "");
                 }
                 setDeleteVolumeTarget(null);
-                setSnack("冊已刪除。");
+                setSnack(t("web.workspacePreview.actions.volumeDeleted"));
               },
               onError: (error) =>
-                setSnack(errorMessage(error, "冊刪除失敗。"), "error"),
+                setSnack(errorMessage(error, t("web.projectWorkspace.errors.volumeDelete")), "error"),
             })
           }
         />
@@ -946,10 +972,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       {deleteLoreTarget && (
         <StorytellerConfirmNameDialog
           open
-          title="刪除設定"
-          description="刪除後會移除這則設定與版本資料。請輸入設定名稱確認。"
+          title={t("web.loreManager.deleteLore")}
+          description={t("web.loreManager.deleteLoreDescription")}
           confirmName={deleteLoreTarget.title}
-          confirmLabel="刪除設定"
+          confirmLabel={t("web.loreManager.deleteLore")}
           loading={deleteLore.isPending}
           onClose={() => setDeleteLoreTarget(null)}
           onConfirm={() =>
@@ -957,10 +983,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
               onSuccess: () => {
                 onItemDeleted?.("lore", deleteLoreTarget.public_id);
                 setDeleteLoreTarget(null);
-                setSnack("設定已刪除。");
+                setSnack(t("web.loreManager.messages.loreDeleted"));
               },
               onError: (error) =>
-                setSnack(errorMessage(error, "設定刪除失敗。"), "error"),
+                setSnack(errorMessage(error, t("web.workspacePreview.actions.loreDeleteFailed")), "error"),
             })
           }
         />
@@ -968,10 +994,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       {deleteAssetTarget && (
         <StorytellerConfirmNameDialog
           open
-          title="刪除資產"
-          description="刪除後無法復原。請輸入資產名稱確認。"
+          title={t("web.assetManager.deleteAsset")}
+          description={t("web.workspacePreview.actions.deleteAssetDescription")}
           confirmName={storytellerAssetTitle(deleteAssetTarget)}
-          confirmLabel="刪除資產"
+          confirmLabel={t("web.assetManager.deleteAsset")}
           loading={deleteAsset.isPending}
           error={deleteAssetError}
           onClose={() => {
@@ -982,10 +1008,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
             deleteAsset.mutate(deleteAssetTarget.public_id, {
               onSuccess: () => {
                 setDeleteAssetTarget(null);
-                setSnack("資產已刪除。");
+                setSnack(t("web.assetManager.messages.assetDeleted"));
               },
               onError: (error) => {
-                const message = errorMessage(error, "資產刪除失敗。");
+                const message = errorMessage(error, t("web.assetManager.errors.assetDelete"));
                 setDeleteAssetError(message);
                 setSnack(message, "error");
               },
@@ -996,10 +1022,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       {deleteLoreCollectionTarget && (
         <StorytellerConfirmNameDialog
           open
-          title="刪除設定集"
-          description="刪除後不會影響其他設定集。請輸入設定集名稱確認。"
+          title={t("web.loreManager.collection.delete")}
+          description={t("web.loreManager.collection.deleteDescription")}
           confirmName={deleteLoreCollectionTarget.name}
-          confirmLabel="刪除設定集"
+          confirmLabel={t("web.loreManager.collection.delete")}
           loading={deleteLoreCollection.isPending}
           onClose={() => setDeleteLoreCollectionTarget(null)}
           onConfirm={() =>
@@ -1011,10 +1037,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
                   onSelect("lores", "");
                 }
                 setDeleteLoreCollectionTarget(null);
-                setSnack("設定集已刪除。");
+                setSnack(t("web.loreManager.messages.collectionDeleted"));
               },
               onError: (error) =>
-                setSnack(errorMessage(error, "設定集刪除失敗。"), "error"),
+                setSnack(errorMessage(error, t("web.workspacePreview.actions.loreCollectionDeleteFailed")), "error"),
             })
           }
         />
@@ -1022,10 +1048,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       {deleteAssetCollectionTarget && (
         <StorytellerConfirmNameDialog
           open
-          title="刪除資產集"
-          description="刪除後不會影響其他資產集。請輸入資產集名稱確認。"
+          title={t("web.assetManager.collection.delete")}
+          description={t("web.workspacePreview.actions.deleteAssetCollectionDescription")}
           confirmName={deleteAssetCollectionTarget.name}
-          confirmLabel="刪除資產集"
+          confirmLabel={t("web.assetManager.collection.delete")}
           loading={deleteAssetCollection.isPending}
           onClose={() => setDeleteAssetCollectionTarget(null)}
           onConfirm={() =>
@@ -1040,10 +1066,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
                     onSelect("assets", "");
                   }
                   setDeleteAssetCollectionTarget(null);
-                  setSnack("資產集已刪除。");
+                  setSnack(t("web.assetManager.messages.collectionDeleted"));
                 },
                 onError: (error) =>
-                  setSnack(errorMessage(error, "資產集刪除失敗。"), "error"),
+                  setSnack(errorMessage(error, t("web.assetManager.errors.collectionDelete")), "error"),
               },
             )
           }

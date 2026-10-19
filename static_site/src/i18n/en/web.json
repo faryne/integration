@@ -68,9 +68,18 @@
     "title": "Appearance",
     "description": "Each theme includes its own light level and color palette",
     "options": {
-      "nocturne": { "label": "Nocturne", "description": "A dark studio with cool threads of light; the default" },
-      "ivory": { "label": "Ivory", "description": "Warm paper and dark ink for daytime reading" },
-      "prism": { "label": "Prism", "description": "A deep violet base with cyan and pink highlights" }
+      "nocturne": {
+        "label": "Nocturne",
+        "description": "A dark studio with cool threads of light; the default"
+      },
+      "ivory": {
+        "label": "Ivory",
+        "description": "Warm paper and dark ink for daytime reading"
+      },
+      "prism": {
+        "label": "Prism",
+        "description": "A deep violet base with cyan and pink highlights"
+      }
     }
   },
   "public": {
@@ -96,10 +105,26 @@
     "publicReading": "Public",
     "startReading": "Start reading",
     "copies": [
-      { "title": "Use the AI you prefer,", "accent": "and write directly into your story.", "lead": "Connect Claude, ChatGPT, or Codex to SteamLoom through MCP to read lore, continue chapters, edit, and save—without copying and pasting." },
-      { "title": "Switch AI tools,", "accent": "without explaining everything again.", "lead": "Your style preferences, writing rules, and confirmed plot points live in Shuoshuo's Memory. Any connected AI reads them before it starts." },
-      { "title": "As your world grows,", "accent": "AI can still find its way around.", "lead": "Keep characters, locations, chapters, and lore in one project. AI searches and cross-checks them before writing to avoid contradictions." },
-      { "title": "Stories need more than an ending,", "accent": "they need to be seen.", "lead": "Organize and publish anything from private drafts to public serials without breaking your creative flow, then keep writing." }
+      {
+        "title": "Use the AI you prefer,",
+        "accent": "and write directly into your story.",
+        "lead": "Connect Claude, ChatGPT, or Codex to SteamLoom through MCP to read lore, continue chapters, edit, and save—without copying and pasting."
+      },
+      {
+        "title": "Switch AI tools,",
+        "accent": "without explaining everything again.",
+        "lead": "Your style preferences, writing rules, and confirmed plot points live in Shuoshuo's Memory. Any connected AI reads them before it starts."
+      },
+      {
+        "title": "As your world grows,",
+        "accent": "AI can still find its way around.",
+        "lead": "Keep characters, locations, chapters, and lore in one project. AI searches and cross-checks them before writing to avoid contradictions."
+      },
+      {
+        "title": "Stories need more than an ending,",
+        "accent": "they need to be seen.",
+        "lead": "Organize and publish anything from private drafts to public serials without breaking your creative flow, then keep writing."
+      }
     ]
   },
   "search": {
@@ -107,7 +132,12 @@
     "description": "Search titles, summaries, text, and image captions across all public stories and image works.",
     "placeholder": "Enter a keyword…",
     "rating": "Rating",
-    "ratings": { "all": "All ratings", "general": "General", "guidance": "Guidance", "restricted": "Restricted" },
+    "ratings": {
+      "all": "All ratings",
+      "general": "General",
+      "guidance": "Guidance",
+      "restricted": "Restricted"
+    },
     "tag": "Tag: {{tag}}",
     "byStory": "By story",
     "byProject": "By project",
@@ -132,46 +162,225 @@
     "imageWork": "Images / comic",
     "textWork": "Text story"
   },
-  "footer": { "mascotAlt": "Shuoshuo", "tagline": "Write stories, organize lore, and keep your world growing." },
+  "footer": {
+    "mascotAlt": "Shuoshuo",
+    "tagline": "Write stories, organize lore, and keep your world growing."
+  },
   "onboarding": {
-    "penNameTitle": "Set your pen name", "penNameWelcome": "Welcome to {{appName}}! Set your pen name before you start creating.", "penName": "Pen name",
-    "welcomeTitle": "Welcome to {{appName}}", "welcomeDescription": "Your pen name is ready. Here are a few features you may want to know about:", "later": "Explore for now", "firstProject": "Create your first project",
+    "penNameTitle": "Set your pen name",
+    "penNameWelcome": "Welcome to {{appName}}! Set your pen name before you start creating.",
+    "penName": "Pen name",
+    "welcomeTitle": "Welcome to {{appName}}",
+    "welcomeDescription": "Your pen name is ready. Here are a few features you may want to know about:",
+    "later": "Explore for now",
+    "firstProject": "Create your first project",
     "features": {
-      "project": { "title": "Create a project", "description": "A project is the home for your stories, lore, characters, and other creative material." },
-      "editor": { "title": "WYSIWYG editor", "description": "Use headings, quotes, lists, tables, dividers, footnotes, private notes, and text colors as you type." },
-      "assets": { "title": "Asset library", "description": "Upload images to your library and insert them into stories or lore whenever you need them." },
-      "agent": { "title": "AI Agent (optional)", "description": "Bring your own model API key and configure an Agent to rewrite or continue your story." },
-      "mcp": { "title": "MCP connection (optional)", "description": "Let Claude, ChatGPT, Claude Code, Codex, and other AI tools read and write your stories and lore through MCP—without copying and pasting." },
-      "memory": { "title": "Shuoshuo's Memory", "description": "Save style preferences, writing rules, and confirmed plot points. Every connected AI reads them before writing, even when you switch tools." },
-      "history": { "title": "Version history and bookmarks", "description": "Every save creates a version you can restore. Readers can also bookmark favorite passages." },
-      "publish": { "title": "Publish", "description": "Make a project public, unlisted, or private—you decide who can see it." }
+      "project": {
+        "title": "Create a project",
+        "description": "A project is the home for your stories, lore, characters, and other creative material."
+      },
+      "editor": {
+        "title": "WYSIWYG editor",
+        "description": "Use headings, quotes, lists, tables, dividers, footnotes, private notes, and text colors as you type."
+      },
+      "assets": {
+        "title": "Asset library",
+        "description": "Upload images to your library and insert them into stories or lore whenever you need them."
+      },
+      "agent": {
+        "title": "AI Agent (optional)",
+        "description": "Bring your own model API key and configure an Agent to rewrite or continue your story."
+      },
+      "mcp": {
+        "title": "MCP connection (optional)",
+        "description": "Let Claude, ChatGPT, Claude Code, Codex, and other AI tools read and write your stories and lore through MCP—without copying and pasting."
+      },
+      "memory": {
+        "title": "Shuoshuo's Memory",
+        "description": "Save style preferences, writing rules, and confirmed plot points. Every connected AI reads them before writing, even when you switch tools."
+      },
+      "history": {
+        "title": "Version history and bookmarks",
+        "description": "Every save creates a version you can restore. Readers can also bookmark favorite passages."
+      },
+      "publish": {
+        "title": "Publish",
+        "description": "Make a project public, unlisted, or private—you decide who can see it."
+      }
     }
   },
   "home": {
-    "workspace": "My workspace", "checkingLogin": "Checking sign-in status…", "loginRequired": "Sign in required", "loginDescription": "Sign in to open your workspace.", "loggingIn": "Signing in", "googleLogin": "Sign in with Google",
-    "projectCount": "{{count}} projects", "skillCount": "{{count}} Skills", "recentProjects": "Recent projects", "availableSkills": "Available Skills", "createProject": "Create project", "createSkill": "Create Skill", "loadingProjects": "Loading projects…", "loadingSkills": "Loading Skills…", "navigation": "Workspace navigation", "closeNavigation": "Close workspace navigation",
-    "tabs": { "project": "Projects", "notifications": "Notifications", "blocks": "Blocked users", "agent": "Skills", "apikey": "API keys", "usage": "Usage", "pat": "Personal Access Token", "oauth": "OAuth Token", "mcp": "MCP connection", "activity": "Activity", "favorites": "Following", "profile": "My profile" },
-    "groups": { "workspace": "Workspace", "community": "Community", "security": "Account & security", "developer": "Developer" },
-    "cards": { "mascotAlt": "Shuoshuo", "noProjects": "No projects yet", "noProjectsDescription": "Use “Create project” above to start your first project.", "noSkills": "No Skills yet", "noSkillsDescription": "Use “Create Skill” above to add a Skill for the story editor.", "noPrompt": "No Prompt summary.", "updated": "Updated {{date}}", "deleteSkill": "Delete Skill", "deleteSkillDescription": "This Skill will no longer be available in the story editor. Enter its name to confirm.", "deleteSkillFailed": "Could not delete the Skill. Try again." }
+    "workspace": "My workspace",
+    "checkingLogin": "Checking sign-in status…",
+    "loginRequired": "Sign in required",
+    "loginDescription": "Sign in to open your workspace.",
+    "loggingIn": "Signing in",
+    "googleLogin": "Sign in with Google",
+    "projectCount": "{{count}} projects",
+    "skillCount": "{{count}} Skills",
+    "recentProjects": "Recent projects",
+    "availableSkills": "Available Skills",
+    "createProject": "Create project",
+    "createSkill": "Create Skill",
+    "loadingProjects": "Loading projects…",
+    "loadingSkills": "Loading Skills…",
+    "navigation": "Workspace navigation",
+    "closeNavigation": "Close workspace navigation",
+    "tabs": {
+      "project": "Projects",
+      "notifications": "Notifications",
+      "blocks": "Blocked users",
+      "agent": "Skills",
+      "apikey": "API keys",
+      "usage": "Usage",
+      "pat": "Personal Access Token",
+      "oauth": "OAuth Token",
+      "mcp": "MCP connection",
+      "activity": "Activity",
+      "favorites": "Following",
+      "profile": "My profile"
+    },
+    "groups": {
+      "workspace": "Workspace",
+      "community": "Community",
+      "security": "Account & security",
+      "developer": "Developer"
+    },
+    "cards": {
+      "mascotAlt": "Shuoshuo",
+      "noProjects": "No projects yet",
+      "noProjectsDescription": "Use “Create project” above to start your first project.",
+      "noSkills": "No Skills yet",
+      "noSkillsDescription": "Use “Create Skill” above to add a Skill for the story editor.",
+      "noPrompt": "No Prompt summary.",
+      "updated": "Updated {{date}}",
+      "deleteSkill": "Delete Skill",
+      "deleteSkillDescription": "This Skill will no longer be available in the story editor. Enter its name to confirm.",
+      "deleteSkillFailed": "Could not delete the Skill. Try again."
+    }
   },
   "reader": {
-    "story": "Story", "loadingStory": "Loading story…", "settings": "Lore", "discussions": "Discussions", "uncategorized": "Uncategorized", "empty": "There is no content yet.",
-    "previousItem": "Previous", "nextItem": "Next", "settingsList": "Lore list", "backToSettings": "Back to lore list",
-    "bookmarkAdded": "Bookmark added", "bookmarkRemoved": "Bookmark removed", "bookmarkUpdateFailed": "Could not update the bookmark. Try again.", "bookmarkDeleteFailed": "Could not delete the bookmark. Try again.", "addBookmark": "Add bookmark", "removeBookmark": "Remove bookmark", "bookmarked": "Bookmarked",
-    "followed": "Now following this work", "unfollowed": "No longer following this work", "followFailed": "Could not update follow status. Try again.", "followProject": "Follow project", "followingProject": "Following project",
-    "rating": "Rating", "ratingSaved": "Rating saved.", "ratingFailed": "Could not save the rating. Try again.", "ratingSummary": "{{count}} ratings · {{average}} average",
-    "privatePreview": "Private preview", "unlisted": "Unlisted link", "public": "Public", "author": "By {{name}}", "storyCount": "{{count}} stories", "episodeCount": "{{count}} episodes", "wordCount": "{{count}} words",
-    "pageAlt": "Page {{page}}", "pageOriginalAlt": "Page {{page}} (original)", "pagePreviewAlt": "Preview of page {{page}}", "page": "Page {{page}}", "pageProgress": "{{title}} (page {{page}} of {{total}})", "previousPage": "Previous page", "nextPage": "Next page",
-    "historical": "This is version {{version}}, not the latest. You can remove existing bookmarks but cannot add new ones.", "latest": "View latest version →",
-    "closeIndex": "Close index", "loginPrompt": "Sign in to follow projects or authors, rate stories, or add bookmarks. Sign in now?", "resumed": "Returned to your last reading position ({{progress}}%)", "startOver": "Start over",
-    "deleteBookmark": "Delete bookmark", "deleteBookmarkTitle": "Delete this bookmark?", "deleteBookmarkDescription": "It will be removed from your reading list. A bookmark to an old version or missing location may not be available to add again.", "deleting": "Deleting",
-    "restrictedDescription": "This project is marked as restricted. Confirm that you are at least 18 before continuing.", "restrictedTitle": "Restricted project",
-    "metaAuthor": "By {{name}}", "updated": "Updated {{date}}",
-    "index": "Work index", "uncollected": "Uncollected works", "outline": "Outline", "pageOverview": "Pages", "toc": "Contents", "bookmarks": "Bookmarks", "bookmarksLogin": "Sign in to see your bookmarks.", "bookmarksLoading": "Loading bookmarks…", "bookmarksEmpty": "No bookmarks yet. For text works, enable “Edit bookmarks”; for image works, use the bookmark button on a page.", "pageRemoved": "Page removed", "oldVersion": "Older version", "removedPage": "(The bookmarked page was deleted)", "blankParagraph": "(Blank paragraph)",
-    "spoilerTitle": "This lore contains events you have not read yet", "spoilerDependencies": "The author recommends reading these first:", "unread": "Unread", "spoilerDescription": "The author marked this lore as a spoiler. Confirm before viewing.", "continue": "I understand, continue", "fullLore": "View full lore", "lorePage": "Lore page", "loreEyebrow": "Lore · {{collection}}", "closeLorePanel": "Close lore panel", "openLorePage": "Open lore page", "completed": "Finished", "completedAria": "Finished reading", "progressAria": "{{progress}}% read",
-    "historyLoading": "Loading versions…", "historyEmpty": "No edit history.", "latestVersion": "Version {{version}} (latest)", "version": "Version {{version}}",
-    "toolbar": { "previous": "Previous chapter", "next": "Next chapter", "navigation": "Chapters", "navigationTooltip": "Contents and bookmarks", "done": "Done", "bookmark": "Bookmarks", "aria": "Reading toolbar", "noPrevious": "No {{label}}", "noNext": "No {{label}}", "progress": "Reading progress", "progressAria": "Reading progress: {{progress}}%", "projectInfo": "Work info: {{project}}", "work": "Work", "history": "Edit history", "historyShort": "History", "finishBookmarks": "Finish editing bookmarks", "editBookmarks": "Edit paragraph bookmarks", "readingSettings": "Reading settings", "reading": "Reading", "projectInfoTitle": "Work info", "settingsCaption": "The background and color mode follow the current site appearance." },
-    "landing": { "completed": "Completed {{completed}} of {{total}}", "stories": "{{count}} stories", "settings": "{{count}} lore entries", "discussions": "Discussions", "start": "Start reading", "startOver": "Read from the beginning", "continue": "Continue: {{title}}{{percent}}", "noContent": "This work has no public content yet.", "other": "Other", "noLore": "This work has no public lore yet.", "itemUnit": "stories", "loreUnit": "entries" }
+    "story": "Story",
+    "loadingStory": "Loading story…",
+    "settings": "Lore",
+    "discussions": "Discussions",
+    "uncategorized": "Uncategorized",
+    "empty": "There is no content yet.",
+    "previousItem": "Previous",
+    "nextItem": "Next",
+    "settingsList": "Lore list",
+    "backToSettings": "Back to lore list",
+    "bookmarkAdded": "Bookmark added",
+    "bookmarkRemoved": "Bookmark removed",
+    "bookmarkUpdateFailed": "Could not update the bookmark. Try again.",
+    "bookmarkDeleteFailed": "Could not delete the bookmark. Try again.",
+    "addBookmark": "Add bookmark",
+    "removeBookmark": "Remove bookmark",
+    "bookmarked": "Bookmarked",
+    "followed": "Now following this work",
+    "unfollowed": "No longer following this work",
+    "followFailed": "Could not update follow status. Try again.",
+    "followProject": "Follow project",
+    "followingProject": "Following project",
+    "rating": "Rating",
+    "ratingSaved": "Rating saved.",
+    "ratingFailed": "Could not save the rating. Try again.",
+    "ratingSummary": "{{count}} ratings · {{average}} average",
+    "privatePreview": "Private preview",
+    "unlisted": "Unlisted link",
+    "public": "Public",
+    "author": "By {{name}}",
+    "storyCount": "{{count}} stories",
+    "episodeCount": "{{count}} episodes",
+    "wordCount": "{{count}} words",
+    "pageAlt": "Page {{page}}",
+    "pageOriginalAlt": "Page {{page}} (original)",
+    "pagePreviewAlt": "Preview of page {{page}}",
+    "page": "Page {{page}}",
+    "pageProgress": "{{title}} (page {{page}} of {{total}})",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "historical": "This is version {{version}}, not the latest. You can remove existing bookmarks but cannot add new ones.",
+    "latest": "View latest version →",
+    "closeIndex": "Close index",
+    "loginPrompt": "Sign in to follow projects or authors, rate stories, or add bookmarks. Sign in now?",
+    "resumed": "Returned to your last reading position ({{progress}}%)",
+    "startOver": "Start over",
+    "deleteBookmark": "Delete bookmark",
+    "deleteBookmarkTitle": "Delete this bookmark?",
+    "deleteBookmarkDescription": "It will be removed from your reading list. A bookmark to an old version or missing location may not be available to add again.",
+    "deleting": "Deleting",
+    "restrictedDescription": "This project is marked as restricted. Confirm that you are at least 18 before continuing.",
+    "restrictedTitle": "Restricted project",
+    "metaAuthor": "By {{name}}",
+    "updated": "Updated {{date}}",
+    "index": "Work index",
+    "uncollected": "Uncollected works",
+    "outline": "Outline",
+    "pageOverview": "Pages",
+    "toc": "Contents",
+    "bookmarks": "Bookmarks",
+    "bookmarksLogin": "Sign in to see your bookmarks.",
+    "bookmarksLoading": "Loading bookmarks…",
+    "bookmarksEmpty": "No bookmarks yet. For text works, enable “Edit bookmarks”; for image works, use the bookmark button on a page.",
+    "pageRemoved": "Page removed",
+    "oldVersion": "Older version",
+    "removedPage": "(The bookmarked page was deleted)",
+    "blankParagraph": "(Blank paragraph)",
+    "spoilerTitle": "This lore contains events you have not read yet",
+    "spoilerDependencies": "The author recommends reading these first:",
+    "unread": "Unread",
+    "spoilerDescription": "The author marked this lore as a spoiler. Confirm before viewing.",
+    "continue": "I understand, continue",
+    "fullLore": "View full lore",
+    "lorePage": "Lore page",
+    "loreEyebrow": "Lore · {{collection}}",
+    "closeLorePanel": "Close lore panel",
+    "openLorePage": "Open lore page",
+    "completed": "Finished",
+    "completedAria": "Finished reading",
+    "progressAria": "{{progress}}% read",
+    "historyLoading": "Loading versions…",
+    "historyEmpty": "No edit history.",
+    "latestVersion": "Version {{version}} (latest)",
+    "version": "Version {{version}}",
+    "toolbar": {
+      "previous": "Previous chapter",
+      "next": "Next chapter",
+      "navigation": "Chapters",
+      "navigationTooltip": "Contents and bookmarks",
+      "done": "Done",
+      "bookmark": "Bookmarks",
+      "aria": "Reading toolbar",
+      "noPrevious": "No {{label}}",
+      "noNext": "No {{label}}",
+      "progress": "Reading progress",
+      "progressAria": "Reading progress: {{progress}}%",
+      "projectInfo": "Work info: {{project}}",
+      "work": "Work",
+      "history": "Edit history",
+      "historyShort": "History",
+      "finishBookmarks": "Finish editing bookmarks",
+      "editBookmarks": "Edit paragraph bookmarks",
+      "readingSettings": "Reading settings",
+      "reading": "Reading",
+      "projectInfoTitle": "Work info",
+      "settingsCaption": "The background and color mode follow the current site appearance."
+    },
+    "landing": {
+      "completed": "Completed {{completed}} of {{total}}",
+      "stories": "{{count}} stories",
+      "settings": "{{count}} lore entries",
+      "discussions": "Discussions",
+      "start": "Start reading",
+      "startOver": "Read from the beginning",
+      "continue": "Continue: {{title}}{{percent}}",
+      "noContent": "This work has no public content yet.",
+      "other": "Other",
+      "noLore": "This work has no public lore yet.",
+      "itemUnit": "stories",
+      "loreUnit": "entries"
+    }
   },
   "projectWorkspace": {
     "pageTitle": "{{appName}} Project",
@@ -186,52 +395,433 @@
     "editProject": "Edit project",
     "deleteProject": "Delete project",
     "deleteProjectDescription": "This will remove the project and all stories in it. Enter the project name to confirm.",
-    "tabs": { "stories": "Works & Volumes", "lores": "Lore", "assets": "Assets" },
-    "visibility": { "public": "Published", "unlisted": "Shared with friends", "private": "Private" },
-    "status": { "public": "Public", "published": "Published", "unpublished": "Unpublished" },
-    "meta": { "stories": "{{count}} stories", "episodes": "{{count}} episodes", "pages": "{{count}} pages", "words": "{{count}} words", "updated": "Updated {{date}}" },
+    "tabs": {
+      "stories": "Works & Volumes",
+      "lores": "Lore",
+      "assets": "Assets"
+    },
+    "visibility": {
+      "public": "Published",
+      "unlisted": "Shared with friends",
+      "private": "Private"
+    },
+    "status": {
+      "public": "Public",
+      "published": "Published",
+      "unpublished": "Unpublished"
+    },
+    "meta": {
+      "stories": "{{count}} stories",
+      "episodes": "{{count}} episodes",
+      "pages": "{{count}} pages",
+      "words": "{{count}} words",
+      "updated": "Updated {{date}}"
+    },
     "story": {
-      "text": "Story", "image": "Image", "move": "Move work", "edit": "Edit work", "delete": "Delete work", "moveUngrouped": "Move to ungrouped",
-      "dragHint": "Drag to reorder works or move one into a volume above", "publishHint": "Unpublished; click to publish", "unpublishHint": "Published; click to unpublish",
-      "deleteEpisode": "Delete episode", "deleteStory": "Delete story", "deleteEpisodeDescription": "This will remove the episode and its version history. Enter the episode name to confirm.", "deleteStoryDescription": "This will remove the story and its version history. Enter the story name to confirm."
+      "text": "Story",
+      "image": "Image",
+      "move": "Move work",
+      "edit": "Edit work",
+      "delete": "Delete work",
+      "moveUngrouped": "Move to ungrouped",
+      "dragHint": "Drag to reorder works or move one into a volume above",
+      "publishHint": "Unpublished; click to publish",
+      "unpublishHint": "Published; click to unpublish",
+      "deleteEpisode": "Delete episode",
+      "deleteStory": "Delete story",
+      "deleteEpisodeDescription": "This will remove the episode and its version history. Enter the episode name to confirm.",
+      "deleteStoryDescription": "This will remove the story and its version history. Enter the story name to confirm."
     },
     "volume": {
-      "add": "Add volume", "edit": "Edit volume", "delete": "Delete volume", "ungrouped": "Ungrouped", "ungroupedDropHint": "Drop a work here to move it out of a volume",
-      "dropHint": "Drop a work into “{{title}}”", "dropHintWithSummary": "Drop a work into “{{title}}”. Summary: {{summary}}",
-      "publishHint": "Unpublished; works inside are hidden. Click to publish", "unpublishHint": "Published; click to unpublish and hide all works inside",
-      "deleteBlocked": "Move all works out before deleting this volume", "deleteDescription": "This cannot be undone. Enter the volume name to confirm."
+      "add": "Add volume",
+      "edit": "Edit volume",
+      "delete": "Delete volume",
+      "ungrouped": "Ungrouped",
+      "ungroupedDropHint": "Drop a work here to move it out of a volume",
+      "dropHint": "Drop a work into “{{title}}”",
+      "dropHintWithSummary": "Drop a work into “{{title}}”. Summary: {{summary}}",
+      "publishHint": "Unpublished; works inside are hidden. Click to publish",
+      "unpublishHint": "Published; click to unpublish and hide all works inside",
+      "deleteBlocked": "Move all works out before deleting this volume",
+      "deleteDescription": "This cannot be undone. Enter the volume name to confirm."
     },
     "empty": {
-      "allTitle": "No works yet", "allDescription": "Use Create above and choose Story to start writing, or Image to create the first episode.",
-      "groupTitle": "No works here", "groupDescription": "Create a work above or drag another work into this category."
+      "allTitle": "No works yet",
+      "allDescription": "Use Create above and choose Story to start writing, or Image to create the first episode.",
+      "groupTitle": "No works here",
+      "groupDescription": "Create a work above or drag another work into this category."
     },
-    "messages": { "linkCopied": "Work page link copied", "storyPublished": "Work published.", "storyUnpublished": "Work unpublished.", "storyMoved": "Work moved.", "volumePublished": "Volume published.", "volumeUnpublished": "Volume unpublished.", "volumeCreated": "Volume created.", "volumeUpdated": "Volume updated." },
-    "errors": { "copyLink": "Could not copy the link. Try again.", "storyReorder": "Could not update the work order. Refresh and try again.", "volumeReorder": "Could not update the volume order. Refresh and try again.", "storyStatus": "Could not update the work status. Try again.", "volumeStatus": "Could not update the volume status. Try again.", "storyMove": "Could not move the work. Try again.", "storyDelete": "Could not delete the work. Try again.", "volumeSave": "Could not save the volume. Try again.", "volumeDelete": "Could not delete the volume. Try again.", "projectDelete": "Could not delete the project. Try again." }
+    "messages": {
+      "linkCopied": "Work page link copied",
+      "storyPublished": "Work published.",
+      "storyUnpublished": "Work unpublished.",
+      "storyMoved": "Work moved.",
+      "volumePublished": "Volume published.",
+      "volumeUnpublished": "Volume unpublished.",
+      "volumeCreated": "Volume created.",
+      "volumeUpdated": "Volume updated."
+    },
+    "errors": {
+      "copyLink": "Could not copy the link. Try again.",
+      "storyReorder": "Could not update the work order. Refresh and try again.",
+      "volumeReorder": "Could not update the volume order. Refresh and try again.",
+      "storyStatus": "Could not update the work status. Try again.",
+      "volumeStatus": "Could not update the volume status. Try again.",
+      "storyMove": "Could not move the work. Try again.",
+      "storyDelete": "Could not delete the work. Try again.",
+      "volumeSave": "Could not save the volume. Try again.",
+      "volumeDelete": "Could not delete the volume. Try again.",
+      "projectDelete": "Could not delete the project. Try again."
+    }
   },
   "loreManager": {
-    "title": "Lore", "createLore": "Create lore", "showAll": "Show all lore", "uncategorized": "Uncategorized", "uncategorizedDropHint": "Drop lore here to remove it from a collection", "loading": "Loading lore…", "emptyTitle": "No lore yet", "emptyDescription": "Use Create lore above to record your world, character rules, and story settings.", "dragHint": "Drag into a collection above to move", "moveLore": "Move lore", "moveUncategorized": "Move to uncategorized", "moveTo": "Move to “{{name}}”", "deleteLore": "Delete lore", "deleteLoreDescription": "This will remove the lore entry and its version history. Enter the lore title to confirm.",
-    "collection": { "create": "Create lore collection", "edit": "Edit lore collection", "delete": "Delete lore collection", "name": "Collection name", "description": "Purpose notes", "dropHint": "Drop lore into “{{name}}”", "dropHintWithDescription": "Drop lore into “{{name}}”. Purpose: {{description}}", "deleteBlocked": "Move all lore out before deleting this collection", "deleteDescription": "Other collections will not be affected. Enter the collection name to confirm." },
-    "messages": { "movedToCollection": "Lore moved into the collection.", "movedUncategorized": "Lore moved to uncategorized.", "collectionCreated": "Lore collection created.", "collectionUpdated": "Lore collection updated.", "collectionDeleted": "Lore collection deleted.", "loreDeleted": "Lore deleted." },
-    "errors": { "collectionNameRequired": "Collection name is required." }
+    "title": "Lore",
+    "createLore": "Create lore",
+    "showAll": "Show all lore",
+    "uncategorized": "Uncategorized",
+    "uncategorizedDropHint": "Drop lore here to remove it from a collection",
+    "loading": "Loading lore…",
+    "emptyTitle": "No lore yet",
+    "emptyDescription": "Use Create lore above to record your world, character rules, and story settings.",
+    "dragHint": "Drag into a collection above to move",
+    "moveLore": "Move lore",
+    "moveUncategorized": "Move to uncategorized",
+    "moveTo": "Move to “{{name}}”",
+    "deleteLore": "Delete lore",
+    "deleteLoreDescription": "This will remove the lore entry and its version history. Enter the lore title to confirm.",
+    "collection": {
+      "create": "Create lore collection",
+      "edit": "Edit lore collection",
+      "delete": "Delete lore collection",
+      "name": "Collection name",
+      "description": "Purpose notes",
+      "dropHint": "Drop lore into “{{name}}”",
+      "dropHintWithDescription": "Drop lore into “{{name}}”. Purpose: {{description}}",
+      "deleteBlocked": "Move all lore out before deleting this collection",
+      "deleteDescription": "Other collections will not be affected. Enter the collection name to confirm."
+    },
+    "messages": {
+      "movedToCollection": "Lore moved into the collection.",
+      "movedUncategorized": "Lore moved to uncategorized.",
+      "collectionCreated": "Lore collection created.",
+      "collectionUpdated": "Lore collection updated.",
+      "collectionDeleted": "Lore collection deleted.",
+      "loreDeleted": "Lore deleted."
+    },
+    "errors": {
+      "collectionNameRequired": "Collection name is required."
+    }
   },
   "assetManager": {
-    "title": "Assets", "search": "Search assets", "refresh": "Refresh", "uploading": "Uploading", "imageUploading": "Uploading images", "image": "Image", "loading": "Loading assets…", "emptyTitle": "No assets yet", "emptyDescription": "Upload images to manage titles, alt text, and notes here.", "untitled": "Untitled asset", "uncategorized": "Uncategorized", "uncategorizedDropHint": "Drop an asset here to remove it from a collection", "dragHint": "Drag into an asset collection above to move", "moveUncategorized": "Move to uncategorized", "replaceFile": "Replace file", "editAsset": "Edit asset details", "deleteAsset": "Delete asset", "deleteAssetDescription": "This removes the asset from the library. Assets still in use cannot be deleted.", "deleteBlocked": "This asset is still in use and cannot be deleted", "actions": "Asset actions", "unknownDimensions": "Dimensions unavailable", "references": "{{count}} references", "saving": "Saving",
-    "fields": { "title": "Title", "altText": "Alt text", "notes": "Notes" },
-    "collection": { "fallback": "Asset collection", "create": "Create asset collection", "edit": "Edit asset collection", "delete": "Delete asset collection", "name": "Name", "description": "Purpose notes", "sort": "Order", "dropHint": "Drop assets into “{{name}}”", "dropHintWithDescription": "Drop assets into “{{name}}”. Purpose: {{description}}", "deleteBlocked": "Move all assets out before deleting this collection", "deleteDescription": "Move all assets to another collection or uncategorized before deleting." },
-    "replace": { "tone": "The old file will be deleted", "eyebrow": "Replace file", "title": "Replace this file?", "description": "The old file will be permanently deleted and every reference to this asset will immediately show the new file. This cannot be undone.", "replacing": "Replacing", "confirm": "Replace file" },
-    "messages": { "collectionCreated": "Asset collection created.", "collectionUpdated": "Asset collection updated.", "collectionDeleted": "Asset collection deleted.", "assetMoved": "Asset moved.", "replaceUploaded": "The new file is uploaded. Confirm to replace the original asset.", "assetUpdated": "Asset details updated.", "assetDeleted": "Asset deleted.", "fileReplaced": "Asset file replaced." },
-    "errors": { "collectionSave": "Could not save the asset collection.", "collectionDelete": "Could not delete the asset collection.", "assetMove": "Could not move the asset.", "replaceImageOnly": "Only image assets can be replaced right now.", "invalidImageType": "Choose a JPEG, PNG, WebP, or GIF image.", "fileTooLarge": "Each file must be no larger than {{maxMB}}MB.", "replaceUpload": "Could not upload the replacement. The original asset was not changed.", "assetUpdate": "Could not update the asset details.", "assetDelete": "Could not delete the asset.", "fileReplace": "Could not replace the asset file. The original asset was not changed." }
+    "title": "Assets",
+    "search": "Search assets",
+    "refresh": "Refresh",
+    "uploading": "Uploading",
+    "imageUploading": "Uploading images",
+    "image": "Image",
+    "loading": "Loading assets…",
+    "emptyTitle": "No assets yet",
+    "emptyDescription": "Upload images to manage titles, alt text, and notes here.",
+    "untitled": "Untitled asset",
+    "uncategorized": "Uncategorized",
+    "uncategorizedDropHint": "Drop an asset here to remove it from a collection",
+    "dragHint": "Drag into an asset collection above to move",
+    "moveUncategorized": "Move to uncategorized",
+    "replaceFile": "Replace file",
+    "editAsset": "Edit asset details",
+    "deleteAsset": "Delete asset",
+    "deleteAssetDescription": "This removes the asset from the library. Assets still in use cannot be deleted.",
+    "deleteBlocked": "This asset is still in use and cannot be deleted",
+    "actions": "Asset actions",
+    "unknownDimensions": "Dimensions unavailable",
+    "references": "{{count}} references",
+    "saving": "Saving",
+    "fields": {
+      "title": "Title",
+      "altText": "Alt text",
+      "notes": "Notes"
+    },
+    "collection": {
+      "fallback": "Asset collection",
+      "create": "Create asset collection",
+      "edit": "Edit asset collection",
+      "delete": "Delete asset collection",
+      "name": "Name",
+      "description": "Purpose notes",
+      "sort": "Order",
+      "dropHint": "Drop assets into “{{name}}”",
+      "dropHintWithDescription": "Drop assets into “{{name}}”. Purpose: {{description}}",
+      "deleteBlocked": "Move all assets out before deleting this collection",
+      "deleteDescription": "Move all assets to another collection or uncategorized before deleting."
+    },
+    "replace": {
+      "tone": "The old file will be deleted",
+      "eyebrow": "Replace file",
+      "title": "Replace this file?",
+      "description": "The old file will be permanently deleted and every reference to this asset will immediately show the new file. This cannot be undone.",
+      "replacing": "Replacing",
+      "confirm": "Replace file"
+    },
+    "messages": {
+      "collectionCreated": "Asset collection created.",
+      "collectionUpdated": "Asset collection updated.",
+      "collectionDeleted": "Asset collection deleted.",
+      "assetMoved": "Asset moved.",
+      "replaceUploaded": "The new file is uploaded. Confirm to replace the original asset.",
+      "assetUpdated": "Asset details updated.",
+      "assetDeleted": "Asset deleted.",
+      "fileReplaced": "Asset file replaced."
+    },
+    "errors": {
+      "collectionSave": "Could not save the asset collection.",
+      "collectionDelete": "Could not delete the asset collection.",
+      "assetMove": "Could not move the asset.",
+      "replaceImageOnly": "Only image assets can be replaced right now.",
+      "invalidImageType": "Choose a JPEG, PNG, WebP, or GIF image.",
+      "fileTooLarge": "Each file must be no larger than {{maxMB}}MB.",
+      "replaceUpload": "Could not upload the replacement. The original asset was not changed.",
+      "assetUpdate": "Could not update the asset details.",
+      "assetDelete": "Could not delete the asset.",
+      "fileReplace": "Could not replace the asset file. The original asset was not changed."
+    }
   },
   "community": {
-    "author": "Author", "post": "Post", "authorWorks": "Works by {{name}}", "authorPosts": "Posts by {{name}}", "loadingAuthor": "Loading author…", "loadingPosts": "Loading posts…", "backToPosts": "Back to {{name}}'s posts",
-    "tabs": { "projects": "Works", "posts": "Posts", "favoriteProjects": "Followed works", "favoriteAuthors": "Followed authors", "penNameFavoriteAuthors": "Authors followed by this pen name" },
-    "joinedAsAuthor": "Telling stories since {{date}}", "joinedAsReader": "Reading stories since {{date}}", "followLogin": "Sign in to follow authors. Sign in now?", "interactionLogin": "Sign in to like or comment. Sign in now?", "home": "Back to home",
-    "stats": { "works": "Works", "stories": "Stories", "images": "Image works", "average": "Average rating", "followers": "Followers", "people": "{{count}}" },
-    "categoryAria": "Author content category", "publicReading": "Public", "startReading": "Start reading", "noWorks": "No public works", "noWorksDescription": "Public {{appName}} projects by this author will appear here.",
-    "loadingFavoriteProjects": "Loading followed works…", "noFavoriteProjects": "No public followed works", "noFavoriteProjectsDescription": "Public works followed by this author will appear here.", "loadingFavoriteAuthors": "Loading followed authors…", "noPenNameFavoriteAuthors": "This pen name does not follow any authors yet", "noFavoriteAuthors": "No public followed authors", "privateFavoriteAuthorsDescription": "Authors followed from notifications use the pen name that received the follow. Those follows are listed here and are visible only to you.", "favoriteAuthorsDescription": "Authors followed by this author will appear here.",
-    "favoritesAria": "Following category", "works": "Works", "authors": "Authors", "loadingFavoriteWorks": "Loading followed works…", "favoritesFailed": "Could not load your following list. Check your sign-in and try again.", "noFollowedWorks": "No followed works", "noFollowedWorksDescription": "Projects you follow from a reading page will appear here.", "noFollowedAuthors": "No followed authors", "noFollowedAuthorsDescription": "Authors you follow from a reading page will appear here.",
-    "makePublic": "Make public", "makePrivate": "Hide publicly", "madePublic": "Now public", "madePrivate": "Now hidden", "projectVisibilityFailed": "Could not update followed-work visibility.", "authorVisibilityFailed": "Could not update followed-author visibility.", "hidden": "Hidden publicly",
-    "followAuthor": "Follow {{target}}", "followingAuthor": "Following {{target}}", "followingAs": "Following as {{names}}", "unfollowedAs": "Stopped following as {{names}}", "unfollowFailed": "Could not unfollow. Try again later.", "followedName": "Now following {{name}}", "unfollowedName": "Stopped following {{name}}", "followUpdateFailed": "Could not update author follow status.", "unfollow": "Unfollow", "unfollowTitle": "Stop following {{name}} as {{names}}?", "unfollowDescription": "You follow this author with a pen name. Unfollowing will not switch the follow to your account identity.", "keep": "Keep following",
-    "unnamedAuthor": "Unnamed author", "followedAs": "Following as {{name}}", "projects": "{{count}} projects", "stories": "{{count}} stories", "episodes": "{{count}} episodes", "averageRating": "{{average}} average ({{count}} ratings)", "followerCount": "{{count}} followers", "viewAuthor": "View author", "cardUnfollowDescription": "You will no longer receive updates from this author unless another identity still follows them.", "expandBio": "Show full bio", "collapseBio": "Collapse bio"
+    "author": "Author",
+    "post": "Post",
+    "authorWorks": "Works by {{name}}",
+    "authorPosts": "Posts by {{name}}",
+    "loadingAuthor": "Loading author…",
+    "loadingPosts": "Loading posts…",
+    "backToPosts": "Back to {{name}}'s posts",
+    "tabs": {
+      "projects": "Works",
+      "posts": "Posts",
+      "favoriteProjects": "Followed works",
+      "favoriteAuthors": "Followed authors",
+      "penNameFavoriteAuthors": "Authors followed by this pen name"
+    },
+    "joinedAsAuthor": "Telling stories since {{date}}",
+    "joinedAsReader": "Reading stories since {{date}}",
+    "followLogin": "Sign in to follow authors. Sign in now?",
+    "interactionLogin": "Sign in to like or comment. Sign in now?",
+    "home": "Back to home",
+    "stats": {
+      "works": "Works",
+      "stories": "Stories",
+      "images": "Image works",
+      "average": "Average rating",
+      "followers": "Followers",
+      "people": "{{count}}"
+    },
+    "categoryAria": "Author content category",
+    "publicReading": "Public",
+    "startReading": "Start reading",
+    "noWorks": "No public works",
+    "noWorksDescription": "Public {{appName}} projects by this author will appear here.",
+    "loadingFavoriteProjects": "Loading followed works…",
+    "noFavoriteProjects": "No public followed works",
+    "noFavoriteProjectsDescription": "Public works followed by this author will appear here.",
+    "loadingFavoriteAuthors": "Loading followed authors…",
+    "noPenNameFavoriteAuthors": "This pen name does not follow any authors yet",
+    "noFavoriteAuthors": "No public followed authors",
+    "privateFavoriteAuthorsDescription": "Authors followed from notifications use the pen name that received the follow. Those follows are listed here and are visible only to you.",
+    "favoriteAuthorsDescription": "Authors followed by this author will appear here.",
+    "favoritesAria": "Following category",
+    "works": "Works",
+    "authors": "Authors",
+    "loadingFavoriteWorks": "Loading followed works…",
+    "favoritesFailed": "Could not load your following list. Check your sign-in and try again.",
+    "noFollowedWorks": "No followed works",
+    "noFollowedWorksDescription": "Projects you follow from a reading page will appear here.",
+    "noFollowedAuthors": "No followed authors",
+    "noFollowedAuthorsDescription": "Authors you follow from a reading page will appear here.",
+    "makePublic": "Make public",
+    "makePrivate": "Hide publicly",
+    "madePublic": "Now public",
+    "madePrivate": "Now hidden",
+    "projectVisibilityFailed": "Could not update followed-work visibility.",
+    "authorVisibilityFailed": "Could not update followed-author visibility.",
+    "hidden": "Hidden publicly",
+    "followAuthor": "Follow {{target}}",
+    "followingAuthor": "Following {{target}}",
+    "followingAs": "Following as {{names}}",
+    "unfollowedAs": "Stopped following as {{names}}",
+    "unfollowFailed": "Could not unfollow. Try again later.",
+    "followedName": "Now following {{name}}",
+    "unfollowedName": "Stopped following {{name}}",
+    "followUpdateFailed": "Could not update author follow status.",
+    "unfollow": "Unfollow",
+    "unfollowTitle": "Stop following {{name}} as {{names}}?",
+    "unfollowDescription": "You follow this author with a pen name. Unfollowing will not switch the follow to your account identity.",
+    "keep": "Keep following",
+    "unnamedAuthor": "Unnamed author",
+    "followedAs": "Following as {{name}}",
+    "projects": "{{count}} projects",
+    "stories": "{{count}} stories",
+    "episodes": "{{count}} episodes",
+    "averageRating": "{{average}} average ({{count}} ratings)",
+    "followerCount": "{{count}} followers",
+    "viewAuthor": "View author",
+    "cardUnfollowDescription": "You will no longer receive updates from this author unless another identity still follows them.",
+    "expandBio": "Show full bio",
+    "collapseBio": "Collapse bio"
+  },
+  "workspacePreview": {
+    "workspace": "Workspace",
+    "works": "Works",
+    "project": "Project",
+    "currentProject": "Current project",
+    "navigation": "Navigation",
+    "loading": "Loading workspace…",
+    "loginDescription": "Sign in to preview the project workspace.",
+    "memories": "Shuoshuo's Memory",
+    "allWorks": "All works",
+    "allLore": "All lore",
+    "allAssets": "All assets",
+    "projectActions": "Project actions",
+    "openReader": "Open reader",
+    "workspaceStatus": "Workspace / {{status}}",
+    "syncing": "Syncing",
+    "itemCount": "{{count}} items",
+    "switchView": "Switch item view",
+    "gridView": "Card view",
+    "listView": "List view",
+    "emptyWorks": "No works",
+    "emptyWorksDescription": "There are no works in this category yet.",
+    "emptyLore": "No lore",
+    "emptyLoreDescription": "This lore collection has no entries yet.",
+    "emptyAssets": "No assets",
+    "emptyAssetsDescription": "There are no assets in this category yet.",
+    "projectNavigation": "Project navigation",
+    "closeProjectNavigation": "Close project navigation",
+    "searchProject": "Search this project",
+    "searchProjectShortcut": "Search this project ({{shortcut}})",
+    "actions": {
+      "volumePublicChip": "Public volume",
+      "volumeDraftChip": "Draft volume",
+      "renameVolume": "Rename volume",
+      "uploadImage": "Upload images",
+      "storyActions": "Work actions",
+      "loreActions": "Lore actions",
+      "moveAsset": "Move asset",
+      "moveToVolume": "Move to volume…",
+      "moveToLoreCollection": "Move to lore collection…",
+      "storyDeleted": "Work deleted.",
+      "volumeDeleted": "Volume deleted.",
+      "loreMoved": "Lore moved.",
+      "loreMoveFailed": "Couldn't move the lore entry.",
+      "loreDeleteFailed": "Couldn't delete the lore entry.",
+      "loreCollectionSaveFailed": "Couldn't save the lore collection.",
+      "loreCollectionReorderFailed": "Couldn't update the lore collection order.",
+      "loreCollectionDeleteFailed": "Couldn't delete the lore collection.",
+      "deleteAssetDescription": "This can't be undone. Enter the asset name to confirm.",
+      "deleteAssetCollectionDescription": "Other asset collections won't be affected. Enter the collection name to confirm."
+    }
+  },
+  "agent": {
+    "scope": {
+      "selection": "Selection",
+      "block": "Current paragraph",
+      "document": "Whole document"
+    },
+    "emptySelection": "(blank)",
+    "skills": {
+      "rewrite": {
+        "label": "Rewrite",
+        "usage": "Rewrites the selection or paragraph in a different way while keeping the tone and style."
+      },
+      "expand": {
+        "label": "Expand",
+        "usage": "Builds on the existing content with more detail and length without changing its direction."
+      },
+      "translate": {
+        "label": "Translate",
+        "usage": "Translates into the language you specify; defaults to Traditional Chinese when none is given."
+      },
+      "continue": {
+        "label": "Continue",
+        "usage": "Keeps writing from where the content ends without repeating what's already there."
+      },
+      "custom": {
+        "label": "Custom",
+        "usage": "No fixed mode — follows whatever instruction you type."
+      }
+    },
+    "quickActions": {
+      "rewrite": {
+        "label": "Rewrite",
+        "prompt": ""
+      },
+      "expand": {
+        "label": "Expand",
+        "prompt": ""
+      },
+      "shorten": {
+        "label": "Shorten",
+        "prompt": "Please shorten this while keeping the essential information."
+      },
+      "tone": {
+        "label": "Adjust tone",
+        "prompt": "Please adjust the tone: "
+      }
+    },
+    "reference": {
+      "title": "Commands & references",
+      "commandsTitle": "Commands (start with /)",
+      "commandsDescription": "Only the first command is parsed; any later / is treated as plain text. With no command and no /Agent name, it's a plain Q&A with no persona applied.",
+      "skillsTitle": "Single-turn skills (this message only, no Agent persona)",
+      "skillsFormat": "The format is <code>/command [extra request]</code>; the brackets mean it's optional. For example, send <code>/rewrite</code> alone to use the default rewrite rules, or add details like <code>/rewrite make this passage steamier</code>.",
+      "command": "Command",
+      "usage": "When to use",
+      "agentsTitle": "/<Agent name> — switch persona (applies to this message only; you can also insert it from the Agent menu above instead of typing)",
+      "noAgents": "This project doesn't have any Agents yet.",
+      "promptExcerpt": "Persona prompt excerpt",
+      "emptyPrompt": "(This Agent has no persona prompt yet)",
+      "referencesTitle": "Reference tags (start with @)",
+      "referencesDescription": "When sent, reference tags expand into the matching story or lore content so the model can answer with context."
+    },
+    "references": {
+      "thisStory": {
+        "title": "Current story",
+        "description": "References the story you're editing on the story editor page."
+      },
+      "story": {
+        "title": "Specific story",
+        "description": "References a story in the same project by its title.",
+        "placeholder": "story title"
+      },
+      "thisLore": {
+        "title": "Current lore",
+        "description": "References the lore entry you're editing on the lore editor page."
+      },
+      "lore": {
+        "title": "Specific lore",
+        "description": "References a lore entry in the same project by its title.",
+        "placeholder": "lore title"
+      }
+    },
+    "thinkingAlt": "Shuoshuo is thinking",
+    "thinking": "Shuoshuo is thinking… waited {{seconds}}s",
+    "avatar": {
+      "user": "User avatar",
+      "assistant": "Shuoshuo avatar",
+      "system": "System message",
+      "assistantInitial": "S",
+      "systemInitial": "!"
+    },
+    "pendingReply": "No AI reply was received (possibly a connection issue or server interruption). Try sending the command again.",
+    "apply": {
+      "replace": "Replace selection",
+      "insert": "Insert at cursor",
+      "append": "Append to end",
+      "reply": "Reply"
+    },
+    "errors": {
+      "applyProposalSave": "Couldn't save after applying the AI proposal.",
+      "selectionChanged": "The selection has changed. Insert or copy instead."
+    },
+    "messages": {
+      "responseCopied": "AI response copied."
+    }
   }
 }

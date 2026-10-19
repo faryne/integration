@@ -68,9 +68,18 @@
     "title": "外観",
     "description": "各モードに明暗と配色が含まれています",
     "options": {
-      "nocturne": { "label": "夜織", "description": "寒色の光が差す暗い工房。デフォルト外観" },
-      "ivory": { "label": "紙本", "description": "昼間の読書に適した暖色の紙面と濃いインク" },
-      "prism": { "label": "稜光", "description": "暗い紫を基調にシアンとピンクの光沢" }
+      "nocturne": {
+        "label": "夜織",
+        "description": "寒色の光が差す暗い工房。デフォルト外観"
+      },
+      "ivory": {
+        "label": "紙本",
+        "description": "昼間の読書に適した暖色の紙面と濃いインク"
+      },
+      "prism": {
+        "label": "稜光",
+        "description": "暗い紫を基調にシアンとピンクの光沢"
+      }
     }
   },
   "public": {
@@ -96,10 +105,26 @@
     "publicReading": "公開中",
     "startReading": "読み始める",
     "copies": [
-      { "title": "使い慣れた AI で、", "accent": "物語へ直接書き込む。", "lead": "Claude、ChatGPT、Codex を MCP で SteamLoom につなげば、設定を読み、章を続け、編集後そのまま保存できます。コピー＆ペーストは不要です。" },
-      { "title": "AI を替えても、", "accent": "最初から説明する必要はありません。", "lead": "文体の好み、執筆ルール、確定した展開はシュオシュオの記憶に保存されます。どの AI も書き始める前に読み込みます。" },
-      { "title": "世界が大きくなっても、", "accent": "AI は必要な情報を探せます。", "lead": "人物、場所、章、設定集を一つのプロジェクトに整理。AI は執筆前に検索し、設定を照合して矛盾を防ぎます。" },
-      { "title": "物語は完成するだけでなく、", "accent": "誰かに届く必要があります。", "lead": "非公開の下書きから公開連載まで、創作の流れを止めずに整理・公開し、そのまま書き続けられます。" }
+      {
+        "title": "使い慣れた AI で、",
+        "accent": "物語へ直接書き込む。",
+        "lead": "Claude、ChatGPT、Codex を MCP で SteamLoom につなげば、設定を読み、章を続け、編集後そのまま保存できます。コピー＆ペーストは不要です。"
+      },
+      {
+        "title": "AI を替えても、",
+        "accent": "最初から説明する必要はありません。",
+        "lead": "文体の好み、執筆ルール、確定した展開はシュオシュオの記憶に保存されます。どの AI も書き始める前に読み込みます。"
+      },
+      {
+        "title": "世界が大きくなっても、",
+        "accent": "AI は必要な情報を探せます。",
+        "lead": "人物、場所、章、設定集を一つのプロジェクトに整理。AI は執筆前に検索し、設定を照合して矛盾を防ぎます。"
+      },
+      {
+        "title": "物語は完成するだけでなく、",
+        "accent": "誰かに届く必要があります。",
+        "lead": "非公開の下書きから公開連載まで、創作の流れを止めずに整理・公開し、そのまま書き続けられます。"
+      }
     ]
   },
   "search": {
@@ -107,7 +132,12 @@
     "description": "すべての公開プロジェクトから、タイトル、あらすじ、本文、画像説明を検索します。",
     "placeholder": "キーワードを入力…",
     "rating": "レーティング",
-    "ratings": { "all": "すべて", "general": "一般", "guidance": "要配慮", "restricted": "成人向け" },
+    "ratings": {
+      "all": "すべて",
+      "general": "一般",
+      "guidance": "要配慮",
+      "restricted": "成人向け"
+    },
     "tag": "タグ：{{tag}}",
     "byStory": "ストーリー別",
     "byProject": "プロジェクト別",
@@ -132,46 +162,225 @@
     "imageWork": "画像／コミック",
     "textWork": "テキストストーリー"
   },
-  "footer": { "mascotAlt": "シュオシュオ", "tagline": "物語を書き、設定を整理し、世界を育て続ける。" },
+  "footer": {
+    "mascotAlt": "シュオシュオ",
+    "tagline": "物語を書き、設定を整理し、世界を育て続ける。"
+  },
   "onboarding": {
-    "penNameTitle": "ペンネームを設定", "penNameWelcome": "{{appName}} へようこそ！創作を始める前にペンネームを設定してください。", "penName": "ペンネーム",
-    "welcomeTitle": "{{appName}} へようこそ", "welcomeDescription": "ペンネームを設定しました。主な機能を簡単にご紹介します：", "later": "先に見て回る", "firstProject": "最初のプロジェクトを作成",
+    "penNameTitle": "ペンネームを設定",
+    "penNameWelcome": "{{appName}} へようこそ！創作を始める前にペンネームを設定してください。",
+    "penName": "ペンネーム",
+    "welcomeTitle": "{{appName}} へようこそ",
+    "welcomeDescription": "ペンネームを設定しました。主な機能を簡単にご紹介します：",
+    "later": "先に見て回る",
+    "firstProject": "最初のプロジェクトを作成",
     "features": {
-      "project": { "title": "創作プロジェクトを作成", "description": "プロジェクトは創作の出発点です。物語、設定、人物資料を一か所にまとめられます。" },
-      "editor": { "title": "WYSIWYG エディター", "description": "見出し、引用、リスト、表、区切り線のほか、脚注、非公開メモ、文字色も使えます。" },
-      "assets": { "title": "素材ライブラリ", "description": "画像をアップロードし、物語や設定へいつでも挿入できます。" },
-      "agent": { "title": "AI Agent（任意）", "description": "自分のモデル API Key を使い、Agent に物語のリライトや続きを依頼できます。" },
-      "mcp": { "title": "MCP 接続（任意）", "description": "Claude、ChatGPT、Claude Code、Codex などから MCP 経由で物語や設定を直接読み書きできます。" },
-      "memory": { "title": "シュオシュオの記憶", "description": "文体の好み、執筆ルール、確定した展開を保存。接続した AI は書き始める前に読み込みます。" },
-      "history": { "title": "バージョン履歴とブックマーク", "description": "保存ごとに復元可能な履歴を残し、閲覧時には好きな段落をブックマークできます。" },
-      "publish": { "title": "公開", "description": "プロジェクトを公開、限定公開、非公開から選び、閲覧できる相手を決められます。" }
+      "project": {
+        "title": "創作プロジェクトを作成",
+        "description": "プロジェクトは創作の出発点です。物語、設定、人物資料を一か所にまとめられます。"
+      },
+      "editor": {
+        "title": "WYSIWYG エディター",
+        "description": "見出し、引用、リスト、表、区切り線のほか、脚注、非公開メモ、文字色も使えます。"
+      },
+      "assets": {
+        "title": "素材ライブラリ",
+        "description": "画像をアップロードし、物語や設定へいつでも挿入できます。"
+      },
+      "agent": {
+        "title": "AI Agent（任意）",
+        "description": "自分のモデル API Key を使い、Agent に物語のリライトや続きを依頼できます。"
+      },
+      "mcp": {
+        "title": "MCP 接続（任意）",
+        "description": "Claude、ChatGPT、Claude Code、Codex などから MCP 経由で物語や設定を直接読み書きできます。"
+      },
+      "memory": {
+        "title": "シュオシュオの記憶",
+        "description": "文体の好み、執筆ルール、確定した展開を保存。接続した AI は書き始める前に読み込みます。"
+      },
+      "history": {
+        "title": "バージョン履歴とブックマーク",
+        "description": "保存ごとに復元可能な履歴を残し、閲覧時には好きな段落をブックマークできます。"
+      },
+      "publish": {
+        "title": "公開",
+        "description": "プロジェクトを公開、限定公開、非公開から選び、閲覧できる相手を決められます。"
+      }
     }
   },
   "home": {
-    "workspace": "マイワークスペース", "checkingLogin": "ログイン状態を確認中…", "loginRequired": "ログインが必要です", "loginDescription": "ログインするとワークスペースを利用できます。", "loggingIn": "ログイン中", "googleLogin": "Google でログイン",
-    "projectCount": "{{count}} プロジェクト", "skillCount": "{{count}} Skill", "recentProjects": "最近のプロジェクト", "availableSkills": "利用可能な Skill", "createProject": "プロジェクトを作成", "createSkill": "Skill を作成", "loadingProjects": "プロジェクトを読み込み中…", "loadingSkills": "Skill を読み込み中…", "navigation": "ワークスペースナビゲーション", "closeNavigation": "ナビゲーションを閉じる",
-    "tabs": { "project": "創作プロジェクト", "notifications": "通知", "blocks": "ブロックリスト", "agent": "Skill", "apikey": "API キー", "usage": "使用量", "pat": "Personal Access Token", "oauth": "OAuth Token", "mcp": "MCP 接続", "activity": "アクティビティ", "favorites": "フォロー中", "profile": "プロフィール" },
-    "groups": { "workspace": "ワークスペース", "community": "コミュニティ", "security": "アカウントとセキュリティ", "developer": "開発者" },
-    "cards": { "mascotAlt": "シュオシュオ", "noProjects": "プロジェクトはまだありません", "noProjectsDescription": "上の「プロジェクトを作成」から最初のプロジェクトを始められます。", "noSkills": "Skill はまだありません", "noSkillsDescription": "上の「Skill を作成」からストーリーエディター用の Skill を追加できます。", "noPrompt": "Prompt の概要は未設定です。", "updated": "{{date}} 更新", "deleteSkill": "Skill を削除", "deleteSkillDescription": "削除するとストーリーエディターで使用できなくなります。Skill 名を入力して確認してください。", "deleteSkillFailed": "Skill を削除できませんでした。もう一度お試しください。" }
+    "workspace": "マイワークスペース",
+    "checkingLogin": "ログイン状態を確認中…",
+    "loginRequired": "ログインが必要です",
+    "loginDescription": "ログインするとワークスペースを利用できます。",
+    "loggingIn": "ログイン中",
+    "googleLogin": "Google でログイン",
+    "projectCount": "{{count}} プロジェクト",
+    "skillCount": "{{count}} Skill",
+    "recentProjects": "最近のプロジェクト",
+    "availableSkills": "利用可能な Skill",
+    "createProject": "プロジェクトを作成",
+    "createSkill": "Skill を作成",
+    "loadingProjects": "プロジェクトを読み込み中…",
+    "loadingSkills": "Skill を読み込み中…",
+    "navigation": "ワークスペースナビゲーション",
+    "closeNavigation": "ナビゲーションを閉じる",
+    "tabs": {
+      "project": "創作プロジェクト",
+      "notifications": "通知",
+      "blocks": "ブロックリスト",
+      "agent": "Skill",
+      "apikey": "API キー",
+      "usage": "使用量",
+      "pat": "Personal Access Token",
+      "oauth": "OAuth Token",
+      "mcp": "MCP 接続",
+      "activity": "アクティビティ",
+      "favorites": "フォロー中",
+      "profile": "プロフィール"
+    },
+    "groups": {
+      "workspace": "ワークスペース",
+      "community": "コミュニティ",
+      "security": "アカウントとセキュリティ",
+      "developer": "開発者"
+    },
+    "cards": {
+      "mascotAlt": "シュオシュオ",
+      "noProjects": "プロジェクトはまだありません",
+      "noProjectsDescription": "上の「プロジェクトを作成」から最初のプロジェクトを始められます。",
+      "noSkills": "Skill はまだありません",
+      "noSkillsDescription": "上の「Skill を作成」からストーリーエディター用の Skill を追加できます。",
+      "noPrompt": "Prompt の概要は未設定です。",
+      "updated": "{{date}} 更新",
+      "deleteSkill": "Skill を削除",
+      "deleteSkillDescription": "削除するとストーリーエディターで使用できなくなります。Skill 名を入力して確認してください。",
+      "deleteSkillFailed": "Skill を削除できませんでした。もう一度お試しください。"
+    }
   },
   "reader": {
-    "story": "ストーリー", "loadingStory": "ストーリーを読み込み中…", "settings": "設定", "discussions": "ディスカッション", "uncategorized": "未分類", "empty": "作品はまだありません。",
-    "previousItem": "前へ", "nextItem": "次へ", "settingsList": "設定一覧", "backToSettings": "設定一覧に戻る",
-    "bookmarkAdded": "ブックマークを追加しました", "bookmarkRemoved": "ブックマークを削除しました", "bookmarkUpdateFailed": "ブックマークを更新できませんでした。", "bookmarkDeleteFailed": "ブックマークを削除できませんでした。", "addBookmark": "ブックマークを追加", "removeBookmark": "ブックマークを削除", "bookmarked": "ブックマーク済み",
-    "followed": "この作品をフォローしました", "unfollowed": "この作品のフォローを解除しました", "followFailed": "フォロー状態を更新できませんでした。", "followProject": "プロジェクトをフォロー", "followingProject": "フォロー中",
-    "rating": "評価", "ratingSaved": "評価を保存しました。", "ratingFailed": "評価を保存できませんでした。", "ratingSummary": "評価 {{count}} 件・平均 {{average}}",
-    "privatePreview": "非公開プレビュー", "unlisted": "限定リンク", "public": "公開", "author": "作者 {{name}}", "storyCount": "{{count}} ストーリー", "episodeCount": "{{count}} 話", "wordCount": "{{count}} 文字",
-    "pageAlt": "{{page}} ページ目", "pageOriginalAlt": "{{page}} ページ目（原寸）", "pagePreviewAlt": "{{page}} ページ目のプレビュー", "page": "{{page}} ページ目", "pageProgress": "{{title}}（{{page}} / {{total}} ページ）", "previousPage": "前のページ", "nextPage": "次のページ",
-    "historical": "これは最新ではなく第 {{version}} 版です。既存のブックマークは削除できますが、新規追加はできません。", "latest": "最新バージョンを見る →",
-    "closeIndex": "索引を閉じる", "loginPrompt": "プロジェクトや作者のフォロー、評価、ブックマークにはログインが必要です。ログインしますか？", "resumed": "前回の位置に戻りました（{{progress}}%）", "startOver": "最初から",
-    "deleteBookmark": "ブックマークを削除", "deleteBookmarkTitle": "このブックマークを削除しますか？", "deleteBookmarkDescription": "読書リストから削除されます。古いバージョンや無効な位置では、再追加できない場合があります。", "deleting": "削除中",
-    "restrictedDescription": "このプロジェクトは成人向けです。18 歳以上であることを確認してから続けてください。", "restrictedTitle": "成人向けプロジェクト",
-    "metaAuthor": "作者 {{name}}", "updated": "{{date}} 更新",
-    "index": "作品索引", "uncollected": "未分類の作品", "outline": "アウトライン", "pageOverview": "ページ一覧", "toc": "目次", "bookmarks": "ブックマーク", "bookmarksLogin": "ログインするとブックマークを確認できます。", "bookmarksLoading": "ブックマークを読み込み中…", "bookmarksEmpty": "ブックマークはまだありません。テキスト作品では「ブックマークを編集」、画像作品では各ページのボタンを使用してください。", "pageRemoved": "ページ削除済み", "oldVersion": "古いバージョン", "removedPage": "（ブックマーク先のページは削除されました）", "blankParagraph": "（空の段落）",
-    "spoilerTitle": "この設定には未読の展開が含まれます", "spoilerDependencies": "先に以下を読むことを作者が推奨しています：", "unread": "未読", "spoilerDescription": "作者がこの設定をネタバレとして指定しています。確認してから表示してください。", "continue": "確認して続きを読む", "fullLore": "設定をすべて見る", "lorePage": "設定ページ", "loreEyebrow": "設定・{{collection}}", "closeLorePanel": "設定パネルを閉じる", "openLorePage": "設定ページで開く", "completed": "読了", "completedAria": "読了済み", "progressAria": "{{progress}}% 読了",
-    "historyLoading": "バージョンを読み込み中…", "historyEmpty": "編集履歴はありません。", "latestVersion": "第 {{version}} 版（最新）", "version": "第 {{version}} 版",
-    "toolbar": { "previous": "前の章", "next": "次の章", "navigation": "章", "navigationTooltip": "目次とブックマーク", "done": "完了", "bookmark": "ブックマーク", "aria": "読書ツールバー", "noPrevious": "{{label}}はありません", "noNext": "{{label}}はありません", "progress": "読書進捗", "progressAria": "読書進捗 {{progress}}%", "projectInfo": "作品情報：{{project}}", "work": "作品", "history": "編集履歴", "historyShort": "履歴", "finishBookmarks": "ブックマーク編集を完了", "editBookmarks": "段落ブックマークを編集", "readingSettings": "読書設定", "reading": "読書", "projectInfoTitle": "作品情報", "settingsCaption": "背景と明暗は現在のサイト外観に従います。" },
-    "landing": { "completed": "{{total}} 件中 {{completed}} 件を読了", "stories": "ストーリー {{count}}", "settings": "設定 {{count}}", "discussions": "ディスカッション", "start": "読み始める", "startOver": "最初から読む", "continue": "続きを読む：{{title}}{{percent}}", "noContent": "この作品には公開コンテンツがまだありません。", "other": "その他", "noLore": "この作品には公開設定がまだありません。", "itemUnit": "篇", "loreUnit": "件" }
+    "story": "ストーリー",
+    "loadingStory": "ストーリーを読み込み中…",
+    "settings": "設定",
+    "discussions": "ディスカッション",
+    "uncategorized": "未分類",
+    "empty": "作品はまだありません。",
+    "previousItem": "前へ",
+    "nextItem": "次へ",
+    "settingsList": "設定一覧",
+    "backToSettings": "設定一覧に戻る",
+    "bookmarkAdded": "ブックマークを追加しました",
+    "bookmarkRemoved": "ブックマークを削除しました",
+    "bookmarkUpdateFailed": "ブックマークを更新できませんでした。",
+    "bookmarkDeleteFailed": "ブックマークを削除できませんでした。",
+    "addBookmark": "ブックマークを追加",
+    "removeBookmark": "ブックマークを削除",
+    "bookmarked": "ブックマーク済み",
+    "followed": "この作品をフォローしました",
+    "unfollowed": "この作品のフォローを解除しました",
+    "followFailed": "フォロー状態を更新できませんでした。",
+    "followProject": "プロジェクトをフォロー",
+    "followingProject": "フォロー中",
+    "rating": "評価",
+    "ratingSaved": "評価を保存しました。",
+    "ratingFailed": "評価を保存できませんでした。",
+    "ratingSummary": "評価 {{count}} 件・平均 {{average}}",
+    "privatePreview": "非公開プレビュー",
+    "unlisted": "限定リンク",
+    "public": "公開",
+    "author": "作者 {{name}}",
+    "storyCount": "{{count}} ストーリー",
+    "episodeCount": "{{count}} 話",
+    "wordCount": "{{count}} 文字",
+    "pageAlt": "{{page}} ページ目",
+    "pageOriginalAlt": "{{page}} ページ目（原寸）",
+    "pagePreviewAlt": "{{page}} ページ目のプレビュー",
+    "page": "{{page}} ページ目",
+    "pageProgress": "{{title}}（{{page}} / {{total}} ページ）",
+    "previousPage": "前のページ",
+    "nextPage": "次のページ",
+    "historical": "これは最新ではなく第 {{version}} 版です。既存のブックマークは削除できますが、新規追加はできません。",
+    "latest": "最新バージョンを見る →",
+    "closeIndex": "索引を閉じる",
+    "loginPrompt": "プロジェクトや作者のフォロー、評価、ブックマークにはログインが必要です。ログインしますか？",
+    "resumed": "前回の位置に戻りました（{{progress}}%）",
+    "startOver": "最初から",
+    "deleteBookmark": "ブックマークを削除",
+    "deleteBookmarkTitle": "このブックマークを削除しますか？",
+    "deleteBookmarkDescription": "読書リストから削除されます。古いバージョンや無効な位置では、再追加できない場合があります。",
+    "deleting": "削除中",
+    "restrictedDescription": "このプロジェクトは成人向けです。18 歳以上であることを確認してから続けてください。",
+    "restrictedTitle": "成人向けプロジェクト",
+    "metaAuthor": "作者 {{name}}",
+    "updated": "{{date}} 更新",
+    "index": "作品索引",
+    "uncollected": "未分類の作品",
+    "outline": "アウトライン",
+    "pageOverview": "ページ一覧",
+    "toc": "目次",
+    "bookmarks": "ブックマーク",
+    "bookmarksLogin": "ログインするとブックマークを確認できます。",
+    "bookmarksLoading": "ブックマークを読み込み中…",
+    "bookmarksEmpty": "ブックマークはまだありません。テキスト作品では「ブックマークを編集」、画像作品では各ページのボタンを使用してください。",
+    "pageRemoved": "ページ削除済み",
+    "oldVersion": "古いバージョン",
+    "removedPage": "（ブックマーク先のページは削除されました）",
+    "blankParagraph": "（空の段落）",
+    "spoilerTitle": "この設定には未読の展開が含まれます",
+    "spoilerDependencies": "先に以下を読むことを作者が推奨しています：",
+    "unread": "未読",
+    "spoilerDescription": "作者がこの設定をネタバレとして指定しています。確認してから表示してください。",
+    "continue": "確認して続きを読む",
+    "fullLore": "設定をすべて見る",
+    "lorePage": "設定ページ",
+    "loreEyebrow": "設定・{{collection}}",
+    "closeLorePanel": "設定パネルを閉じる",
+    "openLorePage": "設定ページで開く",
+    "completed": "読了",
+    "completedAria": "読了済み",
+    "progressAria": "{{progress}}% 読了",
+    "historyLoading": "バージョンを読み込み中…",
+    "historyEmpty": "編集履歴はありません。",
+    "latestVersion": "第 {{version}} 版（最新）",
+    "version": "第 {{version}} 版",
+    "toolbar": {
+      "previous": "前の章",
+      "next": "次の章",
+      "navigation": "章",
+      "navigationTooltip": "目次とブックマーク",
+      "done": "完了",
+      "bookmark": "ブックマーク",
+      "aria": "読書ツールバー",
+      "noPrevious": "{{label}}はありません",
+      "noNext": "{{label}}はありません",
+      "progress": "読書進捗",
+      "progressAria": "読書進捗 {{progress}}%",
+      "projectInfo": "作品情報：{{project}}",
+      "work": "作品",
+      "history": "編集履歴",
+      "historyShort": "履歴",
+      "finishBookmarks": "ブックマーク編集を完了",
+      "editBookmarks": "段落ブックマークを編集",
+      "readingSettings": "読書設定",
+      "reading": "読書",
+      "projectInfoTitle": "作品情報",
+      "settingsCaption": "背景と明暗は現在のサイト外観に従います。"
+    },
+    "landing": {
+      "completed": "{{total}} 件中 {{completed}} 件を読了",
+      "stories": "ストーリー {{count}}",
+      "settings": "設定 {{count}}",
+      "discussions": "ディスカッション",
+      "start": "読み始める",
+      "startOver": "最初から読む",
+      "continue": "続きを読む：{{title}}{{percent}}",
+      "noContent": "この作品には公開コンテンツがまだありません。",
+      "other": "その他",
+      "noLore": "この作品には公開設定がまだありません。",
+      "itemUnit": "篇",
+      "loreUnit": "件"
+    }
   },
   "projectWorkspace": {
     "pageTitle": "{{appName}} プロジェクト",
@@ -186,52 +395,433 @@
     "editProject": "プロジェクトを編集",
     "deleteProject": "プロジェクトを削除",
     "deleteProjectDescription": "プロジェクトと配下のストーリーデータが削除されます。確認のためプロジェクト名を入力してください。",
-    "tabs": { "stories": "作品と巻", "lores": "設定集", "assets": "アセット集" },
-    "visibility": { "public": "公開済み", "unlisted": "限定共有", "private": "非公開" },
-    "status": { "public": "公開", "published": "公開中", "unpublished": "非公開" },
-    "meta": { "stories": "ストーリー {{count}} 件", "episodes": "{{count}} 話", "pages": "{{count}} ページ", "words": "{{count}} 文字", "updated": "{{date}} 更新" },
+    "tabs": {
+      "stories": "作品と巻",
+      "lores": "設定集",
+      "assets": "アセット集"
+    },
+    "visibility": {
+      "public": "公開済み",
+      "unlisted": "限定共有",
+      "private": "非公開"
+    },
+    "status": {
+      "public": "公開",
+      "published": "公開中",
+      "unpublished": "非公開"
+    },
+    "meta": {
+      "stories": "ストーリー {{count}} 件",
+      "episodes": "{{count}} 話",
+      "pages": "{{count}} ページ",
+      "words": "{{count}} 文字",
+      "updated": "{{date}} 更新"
+    },
     "story": {
-      "text": "ストーリー", "image": "画像", "move": "作品を移動", "edit": "作品を編集", "delete": "作品を削除", "moveUngrouped": "巻から外す",
-      "dragHint": "ドラッグして作品を並べ替えるか、上の巻へ移動できます", "publishHint": "非公開です。クリックして公開", "unpublishHint": "公開中です。クリックして非公開に変更",
-      "deleteEpisode": "話を削除", "deleteStory": "ストーリーを削除", "deleteEpisodeDescription": "この話とバージョン履歴が削除されます。確認のため話の名前を入力してください。", "deleteStoryDescription": "このストーリーとバージョン履歴が削除されます。確認のためストーリー名を入力してください。"
+      "text": "ストーリー",
+      "image": "画像",
+      "move": "作品を移動",
+      "edit": "作品を編集",
+      "delete": "作品を削除",
+      "moveUngrouped": "巻から外す",
+      "dragHint": "ドラッグして作品を並べ替えるか、上の巻へ移動できます",
+      "publishHint": "非公開です。クリックして公開",
+      "unpublishHint": "公開中です。クリックして非公開に変更",
+      "deleteEpisode": "話を削除",
+      "deleteStory": "ストーリーを削除",
+      "deleteEpisodeDescription": "この話とバージョン履歴が削除されます。確認のため話の名前を入力してください。",
+      "deleteStoryDescription": "このストーリーとバージョン履歴が削除されます。確認のためストーリー名を入力してください。"
     },
     "volume": {
-      "add": "巻を追加", "edit": "巻を編集", "delete": "巻を削除", "ungrouped": "巻なし", "ungroupedDropHint": "ここにドロップして作品を巻から外します",
-      "dropHint": "作品を「{{title}}」へ移動", "dropHintWithSummary": "作品を「{{title}}」へ移動。概要：{{summary}}",
-      "publishHint": "非公開です。配下の作品も表示されません。クリックして公開", "unpublishHint": "公開中です。クリックすると配下の作品も非公開になります",
-      "deleteBlocked": "配下の作品をすべて移動してから巻を削除してください", "deleteDescription": "この操作は元に戻せません。確認のため巻名を入力してください。"
+      "add": "巻を追加",
+      "edit": "巻を編集",
+      "delete": "巻を削除",
+      "ungrouped": "巻なし",
+      "ungroupedDropHint": "ここにドロップして作品を巻から外します",
+      "dropHint": "作品を「{{title}}」へ移動",
+      "dropHintWithSummary": "作品を「{{title}}」へ移動。概要：{{summary}}",
+      "publishHint": "非公開です。配下の作品も表示されません。クリックして公開",
+      "unpublishHint": "公開中です。クリックすると配下の作品も非公開になります",
+      "deleteBlocked": "配下の作品をすべて移動してから巻を削除してください",
+      "deleteDescription": "この操作は元に戻せません。確認のため巻名を入力してください。"
     },
     "empty": {
-      "allTitle": "作品がまだありません", "allDescription": "上の「作成」から「ストーリー」を選んで執筆するか、「画像」を選んで最初の話を作成してください。",
-      "groupTitle": "ここには作品がありません", "groupDescription": "上から作品を作成するか、ほかの作品をこの分類へドラッグできます。"
+      "allTitle": "作品がまだありません",
+      "allDescription": "上の「作成」から「ストーリー」を選んで執筆するか、「画像」を選んで最初の話を作成してください。",
+      "groupTitle": "ここには作品がありません",
+      "groupDescription": "上から作品を作成するか、ほかの作品をこの分類へドラッグできます。"
     },
-    "messages": { "linkCopied": "作品ページのリンクをコピーしました", "storyPublished": "作品を公開しました。", "storyUnpublished": "作品を非公開にしました。", "storyMoved": "作品を移動しました。", "volumePublished": "巻を公開しました。", "volumeUnpublished": "巻を非公開にしました。", "volumeCreated": "巻を作成しました。", "volumeUpdated": "巻を更新しました。" },
-    "errors": { "copyLink": "リンクをコピーできませんでした。もう一度お試しください。", "storyReorder": "作品の並び順を更新できませんでした。再読み込みしてお試しください。", "volumeReorder": "巻の並び順を更新できませんでした。再読み込みしてお試しください。", "storyStatus": "作品の公開状態を更新できませんでした。", "volumeStatus": "巻の公開状態を更新できませんでした。", "storyMove": "作品を移動できませんでした。", "storyDelete": "作品を削除できませんでした。", "volumeSave": "巻を保存できませんでした。", "volumeDelete": "巻を削除できませんでした。", "projectDelete": "プロジェクトを削除できませんでした。" }
+    "messages": {
+      "linkCopied": "作品ページのリンクをコピーしました",
+      "storyPublished": "作品を公開しました。",
+      "storyUnpublished": "作品を非公開にしました。",
+      "storyMoved": "作品を移動しました。",
+      "volumePublished": "巻を公開しました。",
+      "volumeUnpublished": "巻を非公開にしました。",
+      "volumeCreated": "巻を作成しました。",
+      "volumeUpdated": "巻を更新しました。"
+    },
+    "errors": {
+      "copyLink": "リンクをコピーできませんでした。もう一度お試しください。",
+      "storyReorder": "作品の並び順を更新できませんでした。再読み込みしてお試しください。",
+      "volumeReorder": "巻の並び順を更新できませんでした。再読み込みしてお試しください。",
+      "storyStatus": "作品の公開状態を更新できませんでした。",
+      "volumeStatus": "巻の公開状態を更新できませんでした。",
+      "storyMove": "作品を移動できませんでした。",
+      "storyDelete": "作品を削除できませんでした。",
+      "volumeSave": "巻を保存できませんでした。",
+      "volumeDelete": "巻を削除できませんでした。",
+      "projectDelete": "プロジェクトを削除できませんでした。"
+    }
   },
   "loreManager": {
-    "title": "設定一覧", "createLore": "設定を作成", "showAll": "すべての設定を表示", "uncategorized": "未分類", "uncategorizedDropHint": "ここにドロップして設定を未分類へ移動", "loading": "設定を読み込み中…", "emptyTitle": "設定がまだありません", "emptyDescription": "上の「設定を作成」から世界観、キャラクターのルール、脚本設定を記録できます。", "dragHint": "上の設定集へドラッグして移動", "moveLore": "設定を移動", "moveUncategorized": "未分類へ移動", "moveTo": "「{{name}}」へ移動", "deleteLore": "設定を削除", "deleteLoreDescription": "この設定とバージョン履歴が削除されます。確認のため設定名を入力してください。",
-    "collection": { "create": "設定集を作成", "edit": "設定集を編集", "delete": "設定集を削除", "name": "設定集名", "description": "用途メモ", "dropHint": "設定を「{{name}}」へ移動", "dropHintWithDescription": "設定を「{{name}}」へ移動。用途：{{description}}", "deleteBlocked": "設定集内に設定が残っているため削除できません", "deleteDescription": "ほかの設定集には影響しません。確認のため設定集名を入力してください。" },
-    "messages": { "movedToCollection": "設定を設定集へ移動しました。", "movedUncategorized": "設定を未分類へ移動しました。", "collectionCreated": "設定集を作成しました。", "collectionUpdated": "設定集を更新しました。", "collectionDeleted": "設定集を削除しました。", "loreDeleted": "設定を削除しました。" },
-    "errors": { "collectionNameRequired": "設定集名を入力してください。" }
+    "title": "設定一覧",
+    "createLore": "設定を作成",
+    "showAll": "すべての設定を表示",
+    "uncategorized": "未分類",
+    "uncategorizedDropHint": "ここにドロップして設定を未分類へ移動",
+    "loading": "設定を読み込み中…",
+    "emptyTitle": "設定がまだありません",
+    "emptyDescription": "上の「設定を作成」から世界観、キャラクターのルール、脚本設定を記録できます。",
+    "dragHint": "上の設定集へドラッグして移動",
+    "moveLore": "設定を移動",
+    "moveUncategorized": "未分類へ移動",
+    "moveTo": "「{{name}}」へ移動",
+    "deleteLore": "設定を削除",
+    "deleteLoreDescription": "この設定とバージョン履歴が削除されます。確認のため設定名を入力してください。",
+    "collection": {
+      "create": "設定集を作成",
+      "edit": "設定集を編集",
+      "delete": "設定集を削除",
+      "name": "設定集名",
+      "description": "用途メモ",
+      "dropHint": "設定を「{{name}}」へ移動",
+      "dropHintWithDescription": "設定を「{{name}}」へ移動。用途：{{description}}",
+      "deleteBlocked": "設定集内に設定が残っているため削除できません",
+      "deleteDescription": "ほかの設定集には影響しません。確認のため設定集名を入力してください。"
+    },
+    "messages": {
+      "movedToCollection": "設定を設定集へ移動しました。",
+      "movedUncategorized": "設定を未分類へ移動しました。",
+      "collectionCreated": "設定集を作成しました。",
+      "collectionUpdated": "設定集を更新しました。",
+      "collectionDeleted": "設定集を削除しました。",
+      "loreDeleted": "設定を削除しました。"
+    },
+    "errors": {
+      "collectionNameRequired": "設定集名を入力してください。"
+    }
   },
   "assetManager": {
-    "title": "アセット集", "search": "アセットを検索", "refresh": "再読み込み", "uploading": "アップロード中", "imageUploading": "画像をアップロード中", "image": "画像", "loading": "アセットを読み込み中…", "emptyTitle": "アセットがまだありません", "emptyDescription": "画像をアップロードすると、タイトル、代替テキスト、メモをここで管理できます。", "untitled": "無題のアセット", "uncategorized": "未分類", "uncategorizedDropHint": "ここにドロップしてアセットを未分類へ移動", "dragHint": "上のアセット集へドラッグして移動", "moveUncategorized": "未分類へ移動", "replaceFile": "ファイルを置換", "editAsset": "アセット情報を編集", "deleteAsset": "アセットを削除", "deleteAssetDescription": "このアセットをアセット集から削除します。使用中のアセットは削除できません。", "deleteBlocked": "作品で使用中のため削除できません", "actions": "アセット操作", "unknownDimensions": "サイズ未記録", "references": "参照 {{count}} 件", "saving": "保存中",
-    "fields": { "title": "タイトル", "altText": "代替テキスト", "notes": "メモ" },
-    "collection": { "fallback": "アセット集", "create": "アセット集を作成", "edit": "アセット集を編集", "delete": "アセット集を削除", "name": "名前", "description": "用途メモ", "sort": "並び順", "dropHint": "アセットを「{{name}}」へ移動", "dropHintWithDescription": "アセットを「{{name}}」へ移動。用途：{{description}}", "deleteBlocked": "アセット集内にアセットが残っているため削除できません", "deleteDescription": "削除する前に、アセットをほかのアセット集または未分類へ移動してください。" },
-    "replace": { "tone": "古いファイルは削除されます", "eyebrow": "ファイルを置換", "title": "このファイルを置換しますか？", "description": "確認すると古いファイルは完全に削除され、このアセットを参照するすべての場所に新しいファイルが即時反映されます。元に戻せません。", "replacing": "置換中", "confirm": "置換を確定" },
-    "messages": { "collectionCreated": "アセット集を作成しました。", "collectionUpdated": "アセット集を更新しました。", "collectionDeleted": "アセット集を削除しました。", "assetMoved": "アセットを移動しました。", "replaceUploaded": "新しいファイルをアップロードしました。確認後に元のアセットを置換します。", "assetUpdated": "アセット情報を更新しました。", "assetDeleted": "アセットを削除しました。", "fileReplaced": "アセットファイルを置換しました。" },
-    "errors": { "collectionSave": "アセット集を保存できませんでした。", "collectionDelete": "アセット集を削除できませんでした。", "assetMove": "アセットを移動できませんでした。", "replaceImageOnly": "現在は画像アセットのみ置換できます。", "invalidImageType": "JPEG／PNG／WebP／GIF の画像を選択してください。", "fileTooLarge": "1ファイルは {{maxMB}}MB 以下にしてください。", "replaceUpload": "置換ファイルをアップロードできませんでした。元のアセットは変更されていません。", "assetUpdate": "アセット情報を更新できませんでした。", "assetDelete": "アセットを削除できませんでした。", "fileReplace": "アセットファイルを置換できませんでした。元のアセットは変更されていません。" }
+    "title": "アセット集",
+    "search": "アセットを検索",
+    "refresh": "再読み込み",
+    "uploading": "アップロード中",
+    "imageUploading": "画像をアップロード中",
+    "image": "画像",
+    "loading": "アセットを読み込み中…",
+    "emptyTitle": "アセットがまだありません",
+    "emptyDescription": "画像をアップロードすると、タイトル、代替テキスト、メモをここで管理できます。",
+    "untitled": "無題のアセット",
+    "uncategorized": "未分類",
+    "uncategorizedDropHint": "ここにドロップしてアセットを未分類へ移動",
+    "dragHint": "上のアセット集へドラッグして移動",
+    "moveUncategorized": "未分類へ移動",
+    "replaceFile": "ファイルを置換",
+    "editAsset": "アセット情報を編集",
+    "deleteAsset": "アセットを削除",
+    "deleteAssetDescription": "このアセットをアセット集から削除します。使用中のアセットは削除できません。",
+    "deleteBlocked": "作品で使用中のため削除できません",
+    "actions": "アセット操作",
+    "unknownDimensions": "サイズ未記録",
+    "references": "参照 {{count}} 件",
+    "saving": "保存中",
+    "fields": {
+      "title": "タイトル",
+      "altText": "代替テキスト",
+      "notes": "メモ"
+    },
+    "collection": {
+      "fallback": "アセット集",
+      "create": "アセット集を作成",
+      "edit": "アセット集を編集",
+      "delete": "アセット集を削除",
+      "name": "名前",
+      "description": "用途メモ",
+      "sort": "並び順",
+      "dropHint": "アセットを「{{name}}」へ移動",
+      "dropHintWithDescription": "アセットを「{{name}}」へ移動。用途：{{description}}",
+      "deleteBlocked": "アセット集内にアセットが残っているため削除できません",
+      "deleteDescription": "削除する前に、アセットをほかのアセット集または未分類へ移動してください。"
+    },
+    "replace": {
+      "tone": "古いファイルは削除されます",
+      "eyebrow": "ファイルを置換",
+      "title": "このファイルを置換しますか？",
+      "description": "確認すると古いファイルは完全に削除され、このアセットを参照するすべての場所に新しいファイルが即時反映されます。元に戻せません。",
+      "replacing": "置換中",
+      "confirm": "置換を確定"
+    },
+    "messages": {
+      "collectionCreated": "アセット集を作成しました。",
+      "collectionUpdated": "アセット集を更新しました。",
+      "collectionDeleted": "アセット集を削除しました。",
+      "assetMoved": "アセットを移動しました。",
+      "replaceUploaded": "新しいファイルをアップロードしました。確認後に元のアセットを置換します。",
+      "assetUpdated": "アセット情報を更新しました。",
+      "assetDeleted": "アセットを削除しました。",
+      "fileReplaced": "アセットファイルを置換しました。"
+    },
+    "errors": {
+      "collectionSave": "アセット集を保存できませんでした。",
+      "collectionDelete": "アセット集を削除できませんでした。",
+      "assetMove": "アセットを移動できませんでした。",
+      "replaceImageOnly": "現在は画像アセットのみ置換できます。",
+      "invalidImageType": "JPEG／PNG／WebP／GIF の画像を選択してください。",
+      "fileTooLarge": "1ファイルは {{maxMB}}MB 以下にしてください。",
+      "replaceUpload": "置換ファイルをアップロードできませんでした。元のアセットは変更されていません。",
+      "assetUpdate": "アセット情報を更新できませんでした。",
+      "assetDelete": "アセットを削除できませんでした。",
+      "fileReplace": "アセットファイルを置換できませんでした。元のアセットは変更されていません。"
+    }
   },
   "community": {
-    "author": "作者", "post": "投稿", "authorWorks": "{{name}} の作品", "authorPosts": "{{name}} の投稿", "loadingAuthor": "作者情報を読み込み中…", "loadingPosts": "投稿を読み込み中…", "backToPosts": "{{name}} の投稿に戻る",
-    "tabs": { "projects": "作品", "posts": "投稿", "favoriteProjects": "フォロー中の作品", "favoriteAuthors": "フォロー中の作者", "penNameFavoriteAuthors": "このペンネームでフォロー中の作者" },
-    "joinedAsAuthor": "{{date}} から物語を執筆", "joinedAsReader": "{{date}} から物語を閲覧", "followLogin": "作者をフォローするにはログインが必要です。ログインしますか？", "interactionLogin": "いいねやコメントにはログインが必要です。ログインしますか？", "home": "ホームに戻る",
-    "stats": { "works": "作品", "stories": "ストーリー数", "images": "画像作品数", "average": "平均評価", "followers": "フォロワー", "people": "{{count}} 人" },
-    "categoryAria": "作者コンテンツ分類", "publicReading": "公開", "startReading": "読み始める", "noWorks": "公開作品はありません", "noWorksDescription": "この作者が公開した {{appName}} プロジェクトがここに表示されます。",
-    "loadingFavoriteProjects": "フォロー中の作品を読み込み中…", "noFavoriteProjects": "公開されているフォロー作品はありません", "noFavoriteProjectsDescription": "この作者がフォローしている公開作品がここに表示されます。", "loadingFavoriteAuthors": "フォロー中の作者を読み込み中…", "noPenNameFavoriteAuthors": "このペンネームでは作者をまだフォローしていません", "noFavoriteAuthors": "公開されているフォロー作者はいません", "privateFavoriteAuthorsDescription": "通知からフォローを返すと、その通知を受け取ったペンネームが使われます。ここに表示される情報は自分だけが確認できます。", "favoriteAuthorsDescription": "この作者がフォローしている作者がここに表示されます。",
-    "favoritesAria": "フォロー分類", "works": "作品", "authors": "作者", "loadingFavoriteWorks": "フォロー中の作品を読み込み中…", "favoritesFailed": "フォロー一覧を読み込めませんでした。ログイン状態を確認してください。", "noFollowedWorks": "フォロー中の作品はありません", "noFollowedWorksDescription": "閲覧ページでフォローしたプロジェクトがここに表示されます。", "noFollowedAuthors": "フォロー中の作者はいません", "noFollowedAuthorsDescription": "閲覧ページでフォローした作者がここに表示されます。",
-    "makePublic": "公開する", "makePrivate": "非公開にする", "madePublic": "公開しました", "madePrivate": "非公開にしました", "projectVisibilityFailed": "フォロー作品の公開状態を更新できませんでした。", "authorVisibilityFailed": "フォロー作者の公開状態を更新できませんでした。", "hidden": "外部には非公開",
-    "followAuthor": "{{target}}をフォロー", "followingAuthor": "{{target}}をフォロー中", "followingAs": "{{names}} としてフォロー中", "unfollowedAs": "{{names}} としてのフォローを解除しました", "unfollowFailed": "フォローを解除できませんでした。", "followedName": "{{name}} をフォローしました", "unfollowedName": "{{name}} のフォローを解除しました", "followUpdateFailed": "作者のフォロー状態を更新できませんでした。", "unfollow": "フォロー解除", "unfollowTitle": "{{names}} として {{name}} のフォローを解除しますか？", "unfollowDescription": "この作者はペンネームでフォローしています。解除しても本人名義でのフォローには切り替わりません。", "keep": "維持する",
-    "unnamedAuthor": "名前のない作者", "followedAs": "{{name}} としてフォロー", "projects": "{{count}} プロジェクト", "stories": "{{count}} ストーリー", "episodes": "{{count}} 話", "averageRating": "平均 {{average}}（評価 {{count}} 件）", "followerCount": "フォロワー {{count}} 人", "viewAuthor": "作者を見る", "cardUnfollowDescription": "別の名義でフォローしていない限り、この作者の更新通知は届かなくなります。", "expandBio": "プロフィールをすべて表示", "collapseBio": "プロフィールを折りたたむ"
+    "author": "作者",
+    "post": "投稿",
+    "authorWorks": "{{name}} の作品",
+    "authorPosts": "{{name}} の投稿",
+    "loadingAuthor": "作者情報を読み込み中…",
+    "loadingPosts": "投稿を読み込み中…",
+    "backToPosts": "{{name}} の投稿に戻る",
+    "tabs": {
+      "projects": "作品",
+      "posts": "投稿",
+      "favoriteProjects": "フォロー中の作品",
+      "favoriteAuthors": "フォロー中の作者",
+      "penNameFavoriteAuthors": "このペンネームでフォロー中の作者"
+    },
+    "joinedAsAuthor": "{{date}} から物語を執筆",
+    "joinedAsReader": "{{date}} から物語を閲覧",
+    "followLogin": "作者をフォローするにはログインが必要です。ログインしますか？",
+    "interactionLogin": "いいねやコメントにはログインが必要です。ログインしますか？",
+    "home": "ホームに戻る",
+    "stats": {
+      "works": "作品",
+      "stories": "ストーリー数",
+      "images": "画像作品数",
+      "average": "平均評価",
+      "followers": "フォロワー",
+      "people": "{{count}} 人"
+    },
+    "categoryAria": "作者コンテンツ分類",
+    "publicReading": "公開",
+    "startReading": "読み始める",
+    "noWorks": "公開作品はありません",
+    "noWorksDescription": "この作者が公開した {{appName}} プロジェクトがここに表示されます。",
+    "loadingFavoriteProjects": "フォロー中の作品を読み込み中…",
+    "noFavoriteProjects": "公開されているフォロー作品はありません",
+    "noFavoriteProjectsDescription": "この作者がフォローしている公開作品がここに表示されます。",
+    "loadingFavoriteAuthors": "フォロー中の作者を読み込み中…",
+    "noPenNameFavoriteAuthors": "このペンネームでは作者をまだフォローしていません",
+    "noFavoriteAuthors": "公開されているフォロー作者はいません",
+    "privateFavoriteAuthorsDescription": "通知からフォローを返すと、その通知を受け取ったペンネームが使われます。ここに表示される情報は自分だけが確認できます。",
+    "favoriteAuthorsDescription": "この作者がフォローしている作者がここに表示されます。",
+    "favoritesAria": "フォロー分類",
+    "works": "作品",
+    "authors": "作者",
+    "loadingFavoriteWorks": "フォロー中の作品を読み込み中…",
+    "favoritesFailed": "フォロー一覧を読み込めませんでした。ログイン状態を確認してください。",
+    "noFollowedWorks": "フォロー中の作品はありません",
+    "noFollowedWorksDescription": "閲覧ページでフォローしたプロジェクトがここに表示されます。",
+    "noFollowedAuthors": "フォロー中の作者はいません",
+    "noFollowedAuthorsDescription": "閲覧ページでフォローした作者がここに表示されます。",
+    "makePublic": "公開する",
+    "makePrivate": "非公開にする",
+    "madePublic": "公開しました",
+    "madePrivate": "非公開にしました",
+    "projectVisibilityFailed": "フォロー作品の公開状態を更新できませんでした。",
+    "authorVisibilityFailed": "フォロー作者の公開状態を更新できませんでした。",
+    "hidden": "外部には非公開",
+    "followAuthor": "{{target}}をフォロー",
+    "followingAuthor": "{{target}}をフォロー中",
+    "followingAs": "{{names}} としてフォロー中",
+    "unfollowedAs": "{{names}} としてのフォローを解除しました",
+    "unfollowFailed": "フォローを解除できませんでした。",
+    "followedName": "{{name}} をフォローしました",
+    "unfollowedName": "{{name}} のフォローを解除しました",
+    "followUpdateFailed": "作者のフォロー状態を更新できませんでした。",
+    "unfollow": "フォロー解除",
+    "unfollowTitle": "{{names}} として {{name}} のフォローを解除しますか？",
+    "unfollowDescription": "この作者はペンネームでフォローしています。解除しても本人名義でのフォローには切り替わりません。",
+    "keep": "維持する",
+    "unnamedAuthor": "名前のない作者",
+    "followedAs": "{{name}} としてフォロー",
+    "projects": "{{count}} プロジェクト",
+    "stories": "{{count}} ストーリー",
+    "episodes": "{{count}} 話",
+    "averageRating": "平均 {{average}}（評価 {{count}} 件）",
+    "followerCount": "フォロワー {{count}} 人",
+    "viewAuthor": "作者を見る",
+    "cardUnfollowDescription": "別の名義でフォローしていない限り、この作者の更新通知は届かなくなります。",
+    "expandBio": "プロフィールをすべて表示",
+    "collapseBio": "プロフィールを折りたたむ"
+  },
+  "workspacePreview": {
+    "workspace": "ワークスペース",
+    "works": "作品",
+    "project": "プロジェクト",
+    "currentProject": "現在のプロジェクト",
+    "navigation": "ナビゲーション",
+    "loading": "ワークスペースを読み込み中…",
+    "loginDescription": "ログインするとプロジェクトのワークスペースをプレビューできます。",
+    "memories": "シュオシュオの記憶",
+    "allWorks": "すべての作品",
+    "allLore": "すべての設定",
+    "allAssets": "すべてのアセット",
+    "projectActions": "プロジェクト操作",
+    "openReader": "閲覧ページを開く",
+    "workspaceStatus": "ワークスペース / {{status}}",
+    "syncing": "同期中",
+    "itemCount": "{{count}} 件",
+    "switchView": "表示方法を切り替え",
+    "gridView": "カード表示",
+    "listView": "リスト表示",
+    "emptyWorks": "作品がありません",
+    "emptyWorksDescription": "この分類にはまだ作品がありません。",
+    "emptyLore": "設定がありません",
+    "emptyLoreDescription": "この設定集にはまだ設定がありません。",
+    "emptyAssets": "アセットがありません",
+    "emptyAssetsDescription": "この分類にはまだアセットがありません。",
+    "projectNavigation": "プロジェクトナビ",
+    "closeProjectNavigation": "プロジェクトナビを閉じる",
+    "searchProject": "このプロジェクトを検索",
+    "searchProjectShortcut": "このプロジェクトを検索（{{shortcut}}）",
+    "actions": {
+      "volumePublicChip": "公開中の巻",
+      "volumeDraftChip": "下書きの巻",
+      "renameVolume": "巻の名前を変更",
+      "uploadImage": "画像をアップロード",
+      "storyActions": "作品の操作",
+      "loreActions": "設定の操作",
+      "moveAsset": "アセットを移動",
+      "moveToVolume": "巻へ移動…",
+      "moveToLoreCollection": "設定集へ移動…",
+      "storyDeleted": "作品を削除しました。",
+      "volumeDeleted": "巻を削除しました。",
+      "loreMoved": "設定を移動しました。",
+      "loreMoveFailed": "設定を移動できませんでした。",
+      "loreDeleteFailed": "設定を削除できませんでした。",
+      "loreCollectionSaveFailed": "設定集を保存できませんでした。",
+      "loreCollectionReorderFailed": "設定集の並び順を更新できませんでした。",
+      "loreCollectionDeleteFailed": "設定集を削除できませんでした。",
+      "deleteAssetDescription": "削除すると元に戻せません。確認のためアセット名を入力してください。",
+      "deleteAssetCollectionDescription": "ほかのアセット集には影響しません。確認のためアセット集名を入力してください。"
+    }
+  },
+  "agent": {
+    "scope": {
+      "selection": "選択テキスト",
+      "block": "現在の段落",
+      "document": "全文"
+    },
+    "emptySelection": "（空白）",
+    "skills": {
+      "rewrite": {
+        "label": "書き直し",
+        "usage": "選択範囲や段落を、口調や作風をできるだけ保ったまま別の書き方に書き直します。"
+      },
+      "expand": {
+        "label": "加筆",
+        "usage": "今ある内容を広げ、描写を足して長くします。流れは変えません。"
+      },
+      "translate": {
+        "label": "翻訳",
+        "usage": "指定した言語に翻訳します。指定がなければ繁体字中国語に訳します。"
+      },
+      "continue": {
+        "label": "続きを書く",
+        "usage": "今の内容の続きを書きます。既にある部分は繰り返しません。"
+      },
+      "custom": {
+        "label": "自由指示",
+        "usage": "決まったモードを使わず、入力した指示どおりに処理します。"
+      }
+    },
+    "quickActions": {
+      "rewrite": {
+        "label": "書き直す",
+        "prompt": ""
+      },
+      "expand": {
+        "label": "加筆する",
+        "prompt": ""
+      },
+      "shorten": {
+        "label": "短くする",
+        "prompt": "必要な情報は残して短くしてください。"
+      },
+      "tone": {
+        "label": "口調を調整",
+        "prompt": "口調を調整してください："
+      }
+    },
+    "reference": {
+      "title": "コマンドと参照の使い方",
+      "commandsTitle": "コマンド（/ で始める）",
+      "commandsDescription": "解析されるのは先頭のコマンド 1 つだけで、後ろに入力した / は普通の文字として扱われます。コマンドも /Agent 名もなければ、ペルソナなしの普通の質問になります。",
+      "skillsTitle": "単発 skill（このメッセージだけ、Agent のペルソナは使いません）",
+      "skillsFormat": "形式は <code>/コマンド [追加の要望]</code> で、角かっこは省略できます。たとえば <code>/rewrite</code> だけ送ると標準の書き直しルールが使われ、<code>/rewrite この部分をもっと色っぽく</code> のように具体的な要望も足せます。",
+      "command": "コマンド",
+      "usage": "使いどころ",
+      "agentsTitle": "/<Agent 名> — ペルソナを切り替え（このメッセージだけに適用され、以降には影響しません。上の Agent メニューから挿入することもできます）",
+      "noAgents": "このプロジェクトにはまだ Agent がありません。",
+      "promptExcerpt": "ペルソナ prompt の抜粋",
+      "emptyPrompt": "（この Agent にはまだペルソナ prompt がありません）",
+      "referencesTitle": "参照タグ（@ で始める）",
+      "referencesDescription": "送信時に参照タグが対応する物語や設定の内容に展開され、モデルが文脈を踏まえて答えられます。"
+    },
+    "references": {
+      "thisStory": {
+        "title": "現在の物語",
+        "description": "物語の編集ページで、編集中の物語の内容を参照します。"
+      },
+      "story": {
+        "title": "物語を指定",
+        "description": "同じプロジェクト内の物語をタイトルで指定して参照します。",
+        "placeholder": "物語のタイトル"
+      },
+      "thisLore": {
+        "title": "現在の設定",
+        "description": "設定の編集ページで、編集中の設定の内容を参照します。"
+      },
+      "lore": {
+        "title": "設定を指定",
+        "description": "同じプロジェクト内の設定をタイトルで指定して参照します。",
+        "placeholder": "設定のタイトル"
+      }
+    },
+    "thinkingAlt": "シュオシュオが考え中",
+    "thinking": "シュオシュオが考え中……{{seconds}} 秒経過",
+    "avatar": {
+      "user": "ユーザーのアバター",
+      "assistant": "シュオシュオのアバター",
+      "system": "システムメッセージ",
+      "assistantInitial": "シ",
+      "systemInitial": "系"
+    },
+    "pendingReply": "AI の返信を受け取れませんでした（接続の問題やサーバーの中断かもしれません）。もう一度コマンドを送ってみてください。",
+    "apply": {
+      "replace": "選択範囲を置き換え",
+      "insert": "カーソル位置に挿入",
+      "append": "末尾に追加",
+      "reply": "返信"
+    },
+    "errors": {
+      "applyProposalSave": "AI の提案を適用して保存できませんでした。",
+      "selectionChanged": "選択範囲が変わりました。挿入かコピーを使ってください。"
+    },
+    "messages": {
+      "responseCopied": "AI の返信をコピーしました。"
+    }
   }
 }

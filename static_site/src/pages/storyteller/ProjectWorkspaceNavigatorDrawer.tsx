@@ -12,6 +12,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import {
   WorkspaceSidebar,
   type WorkspaceSidebarProps,
@@ -31,6 +32,7 @@ export function WorkspaceMobileNavigatorDrawer({
   onClose,
   ...sidebarProps
 }: WorkspaceMobileNavigatorDrawerProps) {
+  const { t } = useTranslation();
   return (
     <Drawer
       open={open}
@@ -61,13 +63,13 @@ export function WorkspaceMobileNavigatorDrawer({
           <MenuBookOutlinedIcon color="primary" />
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography variant="caption" color="text.secondary">
-              專案導覽
+              {t("web.workspacePreview.projectNavigation")}
             </Typography>
             <Typography fontWeight={800} noWrap>
-              {sidebarProps.project?.name ?? "工作台"}
+              {sidebarProps.project?.name ?? t("web.workspacePreview.workspace")}
             </Typography>
           </Box>
-          <IconButton aria-label="關閉專案導覽" onClick={onClose}>
+          <IconButton aria-label={t("web.workspacePreview.closeProjectNavigation")} onClick={onClose}>
             <CloseIcon />
           </IconButton>
         </Stack>
@@ -119,23 +121,26 @@ export function WorkspaceSidebarRail({
 > & {
   onSearch: () => void;
 }) {
+  const { t } = useTranslation();
   const items = [
     {
       section: "stories" as const,
-      label: "作品與冊",
+      label: t("web.projectWorkspace.tabs.stories"),
       icon: <AutoStoriesIcon />,
     },
-    { section: "lores" as const, label: "設定集", icon: <SettingsIcon /> },
-    { section: "assets" as const, label: "資產集", icon: <CollectionsIcon /> },
+    { section: "lores" as const, label: t("web.projectWorkspace.tabs.lores"), icon: <SettingsIcon /> },
+    { section: "assets" as const, label: t("web.projectWorkspace.tabs.assets"), icon: <CollectionsIcon /> },
   ];
 
   return (
     <Stack alignItems="center" spacing={0.5} sx={{ py: 5.5 }}>
       {/* 收合時沒有空間放輸入框，改成直接開搜尋對話框的圖示。 */}
-      <Tooltip title={`搜尋此專案（${shortcutLabel("K")}）`} placement="right">
+      <Tooltip title={t("web.workspacePreview.searchProjectShortcut", {
+          shortcut: shortcutLabel("K"),
+        })} placement="right">
         <IconButton
           size="small"
-          aria-label="搜尋此專案"
+          aria-label={t("web.workspacePreview.searchProject")}
           onClick={onSearch}
           sx={{ borderRadius: 1, mb: 1 }}
         >
@@ -156,7 +161,7 @@ export function WorkspaceSidebarRail({
           <WorkspaceRailButton
             key={page.key}
             icon={page.icon()}
-            label={page.label}
+            label={t(page.labelKey)}
             selected={activeToolPage === page.key}
             onClick={() => onOpenToolPage(page.key)}
           />

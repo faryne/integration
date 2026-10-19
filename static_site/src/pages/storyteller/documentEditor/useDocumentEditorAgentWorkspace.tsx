@@ -1,5 +1,6 @@
 import type { AlertColor } from "@mui/material";
 import { useState, type ComponentProps } from "react";
+import { useTranslation } from "react-i18next";
 import { StorytellerAgenticPanel } from "@/pages/storyteller/StorytellerAgenticPanel.tsx";
 import {
   applyStorytellerAgentText,
@@ -55,6 +56,7 @@ export function useDocumentEditorAgentWorkspace({
   penName?: string;
   notify: (message: string, severity?: AlertColor) => void;
 }): Partial<ComponentProps<typeof StorytellerWysiwygEditor>> | undefined {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [anchorMarkerId, setAnchorMarkerId] = useState<string | null>(null);
   // 選取觸發要保留到 AI 面板完成 mount，關閉工作區時才清除；在 child effect 立即消費的話，
@@ -107,7 +109,7 @@ export function useDocumentEditorAgentWorkspace({
       return;
     }
     const result = await editing.save("agent_apply", patch);
-    if (!result) throw new Error("套用 AI 提案存檔失敗。");
+    if (!result) throw new Error(t("web.agent.errors.applyProposalSave"));
   };
   const applyText = (
     result: string,
@@ -125,9 +127,9 @@ export function useDocumentEditorAgentWorkspace({
         editing.setDraft({
           content: typeof value === "function" ? value(draft.content) : value,
         }),
-      onCopy: () => notify("AI 回應已複製。"),
+      onCopy: () => notify(t("web.agent.messages.responseCopied")),
       onSelectionMismatch: () =>
-        notify("選取範圍已變更，請改用插入或複製。", "error"),
+        notify(t("web.agent.errors.selectionChanged"), "error"),
       onAfterApply: () => {},
     });
 

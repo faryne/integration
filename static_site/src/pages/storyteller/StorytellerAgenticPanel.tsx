@@ -33,6 +33,7 @@ import {
 } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import { useStorytellerUserProfile } from "@/apis/storyteller.ts";
 import {
@@ -879,6 +880,7 @@ export function StorytellerAgenticPanel({
   presentation?: "inline" | "floatingDock" | "workspace";
   onClose?: () => void;
 }) {
+  const { t } = useTranslation();
   const { appearance } = useStorytellerAppearance();
   const floatingDock = presentation === "floatingDock";
   const workspace = presentation === "workspace";
@@ -2463,9 +2465,10 @@ export function StorytellerAgenticPanel({
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {STORYTELLER_AI_SCOPE_LABELS[selectionAgentTarget.scope]}:{" "}
+                  {t(STORYTELLER_AI_SCOPE_LABELS[selectionAgentTarget.scope])}:{" "}
                   {truncateStorytellerSelectionPreview(
                     selectionAgentTarget.selectedText,
+                    t("web.agent.emptySelection"),
                   )}
                 </Typography>
               </Box>

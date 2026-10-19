@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import type { ButtonProps } from "@mui/material";
 import { useEffect, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   STORYTELLER_ASSISTANT_AVATAR_SRC,
   STORYTELLER_ASSISTANT_THINKING_GIF_SRC,
@@ -56,24 +57,16 @@ export interface StorytellerAgentPanelMessage {
   chatStatus?: "pending" | "in_progress" | "completed";
 }
 
-// /rewrite／/expand 等 skill 指令的完整 mode 值 -> 中文短標籤，給訊息泡泡上的
-// 「這則走了哪個指令」標籤用。跟 StorytellerAgenticPanel.tsx 的
-// SKILL_SLASH_COMMAND_LABELS（短指令字 -> 中文）是同一份語意，只是這裡的 key
-// 是完整 mode 值（存進 metadata 的就是這個），兩邊分別維護，改的時候要記得對照。
-const AGENT_RUN_MODE_LABELS: Record<StorytellerAgentRunMode, string> = {
-  rewrite_selection: "/rewrite 改寫",
-  expand_selection: "/expand 擴寫",
-  translate_selection: "/translate 翻譯",
-  continue_chapter: "/continue 續寫",
-  custom_selection: "/custom 自訂指令",
+// /rewrite／/expand 等 skill 指令的完整 mode 值 -> skill 名稱，給訊息泡泡上的
+// 「這則走了哪個指令」標籤用；標籤文字取 web.agent.skills.<skill>.label，
+// 跟「指令與引用說明」抽屜共用同一份翻譯。key 是完整 mode 值（存進 metadata 的就是這個）。
+const AGENT_RUN_MODE_SKILLS: Record<StorytellerAgentRunMode, string> = {
+  rewrite_selection: "rewrite",
+  expand_selection: "expand",
+  translate_selection: "translate",
+  continue_chapter: "continue",
+  custom_selection: "custom",
 };
-
-export function agentRunModeLabel(mode?: StorytellerAgentRunMode | string) {
-  if (!mode) {
-    return null;
-  }
-  return AGENT_RUN_MODE_LABELS[mode as StorytellerAgentRunMode] ?? null;
-}
 
 export type StorytellerAgentApplyAction =
   "replace" | "insert" | "append" | "copy";
@@ -81,6 +74,7 @@ export type StorytellerAgentApplyAction =
 // Provider 與多輪工具呼叫可能需要一段時間；動畫表達梭梭仍在思考，秒數則明確告訴
 // 使用者已經等了多久，不再用隨機文案猜測目前進度。
 export function StorytellerAgentLoadingState() {
+  const { t } = useTranslation();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   useEffect(() => {
     setElapsedSeconds(0);
@@ -94,11 +88,11 @@ export function StorytellerAgentLoadingState() {
       <Box
         component="img"
         src={STORYTELLER_ASSISTANT_THINKING_GIF_SRC}
-        alt="梭梭正在思考"
+        alt={t("web.agent.thinkingAlt")}
         sx={{ width: 112, height: 112, objectFit: "contain" }}
       />
       <Typography variant="body2" color="text.secondary">
-        梭梭正在想……已等待 {elapsedSeconds} 秒
+        {t("web.agent.thinking", { seconds: elapsedSeconds })}
       </Typography>
     </Stack>
   );
@@ -241,10 +235,12 @@ export function StorytellerChatBadges({
 }: {
   mode?: StorytellerAgentRunMode | string;
 }) {
-  const modeLabel = agentRunModeLabel(mode);
-  if (!modeLabel) {
+  const { t } = useTranslation();
+  const skill = mode ? AGENT_RUN_MODE_SKILLS[mode as StorytellerAgentRunMode] : undefined;
+  if (!skill) {
     return null;
   }
+  const modeLabel = `/${skill} ${t(`web.agent.skills.${skill}.label`)}`;
   return (
     <Chip
       size="small"
@@ -286,6 +282,7 @@ export interface StorytellerAgentMessageProps {
 // 由 StorytellerAgenticPanel.tsx（「AI 助理」面板）在渲染 skill（slash command）
 // 觸發的訊息時複用，維持一套訊息泡泡樣式與套用按鈕邏輯，不重複刻一份。
 export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
+  const { t } = useTranslation();
   const { message } = props;
   const isUser = message.role === "user";
   const canApply = !isUser && message.content.trim() !== "";
@@ -319,17 +316,17 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
       }
       avatarAlt={
         isUser
-          ? "使用者頭像"
+          ? t("web.agent.avatar.user")
           : message.role === "assistant"
-            ? "梭梭頭像"
-            : "系統訊息"
+            ? t("web.agent.avatar.assistant")
+            : t("web.agent.avatar.system")
       }
       avatarFallback={
         isUser
           ? props.userAvatarFallback
           : message.role === "assistant"
-            ? "梭"
-            : "系"
+            ? t("web.agent.avatar.assistantInitial")
+            : t("web.agent.avatar.systemInitial")
       }
       hideAvatar={message.isLoading}
       badge={<StorytellerChatBadges mode={message.mode} />}
@@ -364,8 +361,7 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
       )}
       {isUser && message.chatStatus === "pending" && (
         <Alert severity="warning" variant="outlined" sx={{ mt: 1 }}>
-          沒有拿到 AI
-          回覆（可能是連線問題或伺服器中斷），可以重新打一次指令試試。
+          {t("web.agent.pendingReply")}
         </Alert>
       )}
       {!isUser && message.usage?.total_tokens ? (
@@ -400,7 +396,7 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
                   )
                 }
               >
-                取代選取
+                {t("web.agent.apply.replace")}
               </Button>
             )}
           {props.enableInsert && (
@@ -408,21 +404,21 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
               {...storytellerChatActionButtonProps}
               onClick={() => props.onApplyText(message.content, "insert", null)}
             >
-              插入游標
+              {t("web.agent.apply.insert")}
             </Button>
           )}
           <Button
             {...storytellerChatActionButtonProps}
             onClick={() => props.onApplyText(message.content, "append", null)}
           >
-            附加末尾
+            {t("web.agent.apply.append")}
           </Button>
           <Button
             {...storytellerChatActionButtonProps}
             startIcon={<ContentCopyIcon />}
             onClick={() => props.onApplyText(message.content, "copy", null)}
           >
-            複製
+            {t("web.common.copy")}
           </Button>
           {props.onReply && (
             <Button
@@ -430,7 +426,7 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
               startIcon={<ReplyIcon />}
               onClick={() => props.onReply?.(message)}
             >
-              回覆
+              {t("web.agent.apply.reply")}
             </Button>
           )}
           {props.additionalActions}

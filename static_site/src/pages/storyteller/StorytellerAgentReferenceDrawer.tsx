@@ -13,6 +13,7 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
+import { Trans, useTranslation } from "react-i18next";
 import type { StorytellerAgentPanelAgent } from "@/pages/storyteller/StorytellerAgentPanel.tsx";
 import { STORYTELLER_SKILL_USAGE_TEXT } from "@/pages/storyteller/storytellerSelectionAgentTrigger.ts";
 
@@ -22,20 +23,15 @@ interface StorytellerAgentReferenceDrawerProps {
   agents: StorytellerAgentPanelAgent[];
 }
 
-const skillCommandRows = [
-  { token: "/rewrite", label: "改寫", usage: STORYTELLER_SKILL_USAGE_TEXT.rewrite },
-  { token: "/expand", label: "擴寫", usage: STORYTELLER_SKILL_USAGE_TEXT.expand },
-  { token: "/translate", label: "翻譯", usage: STORYTELLER_SKILL_USAGE_TEXT.translate },
-  { token: "/continue", label: "續寫", usage: STORYTELLER_SKILL_USAGE_TEXT.continue },
-  { token: "/custom", label: "自訂指令", usage: STORYTELLER_SKILL_USAGE_TEXT.custom },
-];
+// 指令名稱即翻譯 key：web.agent.skills.<skill>.label／.usage
+const skillCommands = ["rewrite", "expand", "translate", "continue", "custom"];
 
 const agentPromptExcerptMaxLength = 60;
 
-function agentPromptExcerpt(prompt: string) {
+function agentPromptExcerpt(prompt: string, emptyLabel: string) {
   const trimmed = prompt.trim();
   if (!trimmed) {
-    return "（這個 Agent 還沒設定人設 prompt）";
+    return emptyLabel;
   }
   if (trimmed.length <= agentPromptExcerptMaxLength) {
     return trimmed;
@@ -43,32 +39,18 @@ function agentPromptExcerpt(prompt: string) {
   return `${trimmed.slice(0, agentPromptExcerptMaxLength)}…`;
 }
 
+// key 對應 web.agent.references.<key>.*；token 中括號內的佔位文字也走翻譯（placeholder）
 const referenceExamples = [
-  {
-    token: "@thisStory",
-    title: "目前故事",
-    description: "在故事編輯頁引用目前正在編輯的故事內容。",
-  },
-  {
-    token: "@story:[故事標題]",
-    title: "指定故事",
-    description: "引用同一個專案內指定標題的故事。",
-  },
-  {
-    token: "@thisLore",
-    title: "目前設定",
-    description: "在設定編輯頁引用目前正在編輯的設定內容。",
-  },
-  {
-    token: "@lore:[設定標題]",
-    title: "指定設定",
-    description: "引用同一個專案內指定標題的設定。",
-  },
+  { key: "thisStory", token: () => "@thisStory" },
+  { key: "story", token: (placeholder: string) => `@story:[${placeholder}]` },
+  { key: "thisLore", token: () => "@thisLore" },
+  { key: "lore", token: (placeholder: string) => `@lore:[${placeholder}]` },
 ];
 
 export function StorytellerAgentReferenceDrawer(
   props: StorytellerAgentReferenceDrawerProps,
 ) {
+  const { t } = useTranslation();
   return (
     <Drawer anchor="right" open={props.open} onClose={props.onClose}>
       <Box sx={{ width: { xs: 320, sm: 420 }, p: 2 }}>
@@ -79,54 +61,59 @@ export function StorytellerAgentReferenceDrawer(
             justifyContent="space-between"
           >
             <Typography variant="h6" fontWeight={800}>
-              指令與引用說明
+              {t("web.agent.reference.title")}
             </Typography>
-            <IconButton size="small" onClick={props.onClose}>
+            <IconButton
+              size="small"
+              aria-label={t("web.common.close")}
+              onClick={props.onClose}
+            >
               <CloseIcon fontSize="small" />
             </IconButton>
           </Stack>
 
           <Typography variant="subtitle2" fontWeight={800}>
-            指令（打 / 開頭）
+            {t("web.agent.reference.commandsTitle")}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            一次只會解析最前面那一個指令，後面再打的 / 一律當成一般文字。沒有指令、也沒有 /Agent
-            名稱時，就是直接問答，不套用任何人設。
+            {t("web.agent.reference.commandsDescription")}
           </Typography>
 
           <Typography variant="caption" color="text.secondary" fontWeight={700}>
-            單輪 skill（只處理這一次，不套用任何 Agent 人設）
+            {t("web.agent.reference.skillsTitle")}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            格式是 <code>/指令 [額外需求]</code>，中括號代表可省略——例如直接打{" "}
-            <code>/rewrite</code> 送出就套用預設改寫規則；也可以加字說明具體想怎麼改，例如{" "}
-            <code>/rewrite 這段話改寫再色一些</code>。
+            {/* 說明文字中的 <code> 由 Trans 的 components 對應 */}
+            <Trans
+              i18nKey="web.agent.reference.skillsFormat"
+              components={{ code: <code /> }}
+            />
           </Typography>
           <TableContainer sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>指令</TableCell>
-                  <TableCell>使用時機</TableCell>
+                  <TableCell>{t("web.agent.reference.command")}</TableCell>
+                  <TableCell>{t("web.agent.reference.usage")}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {skillCommandRows.map((row) => (
-                  <TableRow key={row.token}>
+                {skillCommands.map((skill) => (
+                  <TableRow key={skill}>
                     <TableCell sx={{ whiteSpace: "nowrap" }}>
                       <Chip
                         size="small"
-                        label={row.token}
+                        label={`/${skill}`}
                         sx={{
                           fontFamily:
                             '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
                         }}
                       />
                       <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-                        {row.label}
+                        {t(`web.agent.skills.${skill}.label`)}
                       </Typography>
                     </TableCell>
-                    <TableCell>{row.usage}</TableCell>
+                    <TableCell>{t(STORYTELLER_SKILL_USAGE_TEXT[skill])}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -134,20 +121,19 @@ export function StorytellerAgentReferenceDrawer(
           </TableContainer>
 
           <Typography variant="caption" color="text.secondary" fontWeight={700}>
-            /&lt;Agent 名稱&gt;——切換人設（只有這一則訊息套用，後續訊息不受影響；也可以直接點上方
-            Agent 選單插入，不用自己打字）
+            {t("web.agent.reference.agentsTitle")}
           </Typography>
           {props.agents.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
-              這個專案還沒有建立任何 Agent。
+              {t("web.agent.reference.noAgents")}
             </Typography>
           ) : (
             <TableContainer sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>指令</TableCell>
-                    <TableCell>人設 prompt 摘錄</TableCell>
+                    <TableCell>{t("web.agent.reference.command")}</TableCell>
+                    <TableCell>{t("web.agent.reference.promptExcerpt")}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -163,7 +149,12 @@ export function StorytellerAgentReferenceDrawer(
                           }}
                         />
                       </TableCell>
-                      <TableCell>{agentPromptExcerpt(agent.prompt)}</TableCell>
+                      <TableCell>
+                        {agentPromptExcerpt(
+                          agent.prompt,
+                          t("web.agent.reference.emptyPrompt"),
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -172,16 +163,16 @@ export function StorytellerAgentReferenceDrawer(
           )}
 
           <Typography variant="subtitle2" fontWeight={800}>
-            引用標籤（打 @ 開頭）
+            {t("web.agent.reference.referencesTitle")}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            送出時會把引用標籤展開成對應故事或設定內容，讓模型可以根據上下文回覆。
+            {t("web.agent.reference.referencesDescription")}
           </Typography>
 
           <Stack spacing={1.5}>
             {referenceExamples.map((item) => (
               <Box
-                key={item.token}
+                key={item.key}
                 sx={{
                   border: "1px solid",
                   borderColor: "divider",
@@ -192,7 +183,11 @@ export function StorytellerAgentReferenceDrawer(
                 <Stack spacing={1}>
                   <Chip
                     size="small"
-                    label={item.token}
+                    label={item.token(
+                      t(`web.agent.references.${item.key}.placeholder`, {
+                        defaultValue: "",
+                      }),
+                    )}
                     sx={{
                       alignSelf: "flex-start",
                       fontFamily:
@@ -200,10 +195,10 @@ export function StorytellerAgentReferenceDrawer(
                     }}
                   />
                   <Typography variant="subtitle2" fontWeight={800}>
-                    {item.title}
+                    {t(`web.agent.references.${item.key}.title`)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {item.description}
+                    {t(`web.agent.references.${item.key}.description`)}
                   </Typography>
                 </Stack>
               </Box>
