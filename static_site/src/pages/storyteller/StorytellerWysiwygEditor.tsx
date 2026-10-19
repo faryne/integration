@@ -20,6 +20,7 @@ import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import {
   type MouseEvent,
   type ReactNode,
@@ -133,14 +134,6 @@ const COMMENT_COLOR_STYLES: Record<
   blue: { background: "rgba(66, 165, 245, 0.16)", border: "#42a5f5" },
   green: { background: "rgba(102, 187, 106, 0.16)", border: "#66bb6a" },
   purple: { background: "rgba(171, 71, 188, 0.16)", border: "#ab47bc" },
-};
-
-const COMMENT_COLOR_LABELS: Record<CommentColorValue, string> = {
-  yellow: "黃",
-  pink: "粉紅",
-  blue: "藍",
-  green: "綠",
-  purple: "紫",
 };
 
 // 只在編輯區生效的高亮樣式，刻意不放進 typographySx.ts 共用——
@@ -543,6 +536,7 @@ export const StorytellerWysiwygEditor = forwardRef<
   },
   ref,
 ) {
+  const { t } = useTranslation();
   const isFeatureEnabled = (feature: "footnote" | "comment" | "asset") =>
     enabledFeatures === undefined || enabledFeatures.includes(feature);
   const assetEnabled = isFeatureEnabled("asset");
@@ -636,6 +630,7 @@ export const StorytellerWysiwygEditor = forwardRef<
   const editor = useEditor({
     extensions: [
       ...createWysiwygCoreExtensions({
+        placeholder: t("writer:editor.placeholder"),
         slashCommand: {
           getCommandContext: slashCommandContextStore.get,
         },
@@ -1400,9 +1395,9 @@ export const StorytellerWysiwygEditor = forwardRef<
         isCurrentParagraphBookmarked={isCurrentParagraphBookmarked}
         writingBookmarkDisabledReason={
           !canBookmark
-            ? "先存檔後才能加入書籤"
+            ? t("writer:editor.bookmarkSaveFirst")
             : !editorState.currentMarkerId
-              ? "游標不在可加書籤的段落"
+              ? t("writer:editor.bookmarkUnavailable")
               : undefined
         }
         onToggleWritingBookmark={() => handleToggleWritingBookmark()}
@@ -1416,12 +1411,14 @@ export const StorytellerWysiwygEditor = forwardRef<
         maxWidth="sm"
       >
         <DialogTitle>
-          {pendingHadExistingComment ? "編輯註解" : "加註解"}
+          {pendingHadExistingComment
+            ? t("writer:editor.editComment")
+            : t("writer:editor.addComment")}
         </DialogTitle>
         <DialogContent>
           {pendingSnippet && (
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              這則註解會掛在這段文字上：「{pendingSnippet}」
+              {t("writer:editor.commentAttached", { text: pendingSnippet })}
             </Typography>
           )}
           <TextField
@@ -1429,7 +1426,7 @@ export const StorytellerWysiwygEditor = forwardRef<
             fullWidth
             multiline
             minRows={3}
-            label="註解內容"
+            label={t("writer:editor.commentContent")}
             value={commentDraft}
             onChange={(event) => setCommentDraft(event.target.value)}
           />
@@ -1446,15 +1443,18 @@ export const StorytellerWysiwygEditor = forwardRef<
             color="text.secondary"
             sx={{ display: "block", mt: 2, mb: 1 }}
           >
-            底色
+            {t("writer:editor.backgroundColor")}
           </Typography>
           <Stack direction="row" spacing={1}>
             {COMMENT_COLOR_VALUES.map((color) => (
-              <Tooltip key={color} title={COMMENT_COLOR_LABELS[color]}>
+              <Tooltip
+                key={color}
+                title={t(`writer:editor.colors.${color}`)}
+              >
                 <Box
                   component="button"
                   type="button"
-                  aria-label={COMMENT_COLOR_LABELS[color]}
+                  aria-label={t(`writer:editor.colors.${color}`)}
                   aria-pressed={pendingCommentColor === color}
                   onClick={() => setPendingCommentColor(color)}
                   sx={{
@@ -1482,16 +1482,20 @@ export const StorytellerWysiwygEditor = forwardRef<
               onClick={handleRemoveComment}
               sx={{ mr: "auto" }}
             >
-              移除註解
+              {t("writer:editor.removeComment")}
             </Button>
           )}
-          <Button onClick={() => setCommentDialogOpen(false)}>取消</Button>
+          <Button onClick={() => setCommentDialogOpen(false)}>
+            {t("writer:common.cancel")}
+          </Button>
           <Button
             variant="contained"
             onClick={handleConfirmComment}
             disabled={!canConfirmComment}
           >
-            {pendingHadExistingComment ? "更新註解" : "新增註解"}
+            {pendingHadExistingComment
+              ? t("writer:editor.updateComment")
+              : t("writer:editor.createComment")}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1515,7 +1519,9 @@ export const StorytellerWysiwygEditor = forwardRef<
         maxWidth="sm"
       >
         <DialogTitle>
-          {pendingHadExistingFootnote ? "編輯腳注" : "加腳注"}
+          {pendingHadExistingFootnote
+            ? t("writer:editor.editFootnote")
+            : t("writer:editor.addFootnote")}
         </DialogTitle>
         <DialogContent>
           <TextField
@@ -1523,7 +1529,7 @@ export const StorytellerWysiwygEditor = forwardRef<
             fullWidth
             multiline
             minRows={3}
-            label="腳注內容"
+            label={t("writer:editor.footnoteContent")}
             value={footnoteDraft}
             onChange={(event) => setFootnoteDraft(event.target.value)}
           />
@@ -1532,7 +1538,7 @@ export const StorytellerWysiwygEditor = forwardRef<
             color="text.secondary"
             sx={{ display: "block", mt: 1 }}
           >
-            只支援 **粗體**、*斜體*、++底線++，其餘格式不會被套用
+            {t("writer:editor.footnoteHelp")}
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -1542,16 +1548,20 @@ export const StorytellerWysiwygEditor = forwardRef<
               onClick={handleRemoveFootnote}
               sx={{ mr: "auto" }}
             >
-              移除腳注
+              {t("writer:editor.removeFootnote")}
             </Button>
           )}
-          <Button onClick={() => setFootnoteDialogOpen(false)}>取消</Button>
+          <Button onClick={() => setFootnoteDialogOpen(false)}>
+            {t("writer:common.cancel")}
+          </Button>
           <Button
             variant="contained"
             onClick={handleConfirmFootnote}
             disabled={footnoteDraft.trim() === ""}
           >
-            {pendingHadExistingFootnote ? "更新腳注" : "新增腳注"}
+            {pendingHadExistingFootnote
+              ? t("writer:editor.updateFootnote")
+              : t("writer:editor.createFootnote")}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1580,10 +1590,10 @@ export const StorytellerWysiwygEditor = forwardRef<
         <Tooltip
           title={
             !canBookmark
-              ? "先存檔後才能加入書籤"
+              ? t("writer:editor.bookmarkSaveFirst")
               : bookmarkedIds.has(hoveredParagraph.markerId)
-                ? "編輯書籤筆記"
-                : "加入書籤"
+                ? t("writer:editor.editBookmark")
+                : t("writer:editor.addBookmark")
           }
         >
           <IconButton
@@ -1592,8 +1602,8 @@ export const StorytellerWysiwygEditor = forwardRef<
             disabled={!canBookmark}
             aria-label={
               bookmarkedIds.has(hoveredParagraph.markerId)
-                ? "編輯書籤筆記"
-                : "加入書籤"
+                ? t("writer:editor.editBookmark")
+                : t("writer:editor.addBookmark")
             }
             onMouseEnter={cancelHoveredParagraphHide}
             onMouseLeave={() => setHoveredParagraph(null)}
@@ -1643,19 +1653,21 @@ export const StorytellerWysiwygEditor = forwardRef<
       <StorytellerMascotDialog
         open={pendingRemoveMarkerId !== null}
         state="danger"
-        eyebrow="移除書籤"
-        title="確定要移除這筆書籤？"
-        description="這筆書籤移除後無法復原。"
+        eyebrow={t("writer:editor.removeBookmark")}
+        title={t("writer:editor.removeBookmarkTitle")}
+        description={t("writer:editor.removeBookmarkDescription")}
         onClose={() => setPendingRemoveMarkerId(null)}
         actions={
           <>
-            <Button onClick={() => setPendingRemoveMarkerId(null)}>取消</Button>
+            <Button onClick={() => setPendingRemoveMarkerId(null)}>
+              {t("writer:common.cancel")}
+            </Button>
             <Button
               color="error"
               variant="contained"
               onClick={handleConfirmRemoveBookmark}
             >
-              移除
+              {t("writer:common.delete")}
             </Button>
           </>
         }
@@ -1680,7 +1692,7 @@ export const StorytellerWysiwygEditor = forwardRef<
               variant="caption"
               sx={{ color: "grey.400", display: "block", mt: 0.5 }}
             >
-              右鍵，或選取文字後用格式列可編輯／移除腳注
+              {t("writer:editor.footnoteEditHelp")}
             </Typography>
           </Paper>
         </Box>

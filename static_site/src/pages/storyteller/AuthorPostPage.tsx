@@ -1,5 +1,6 @@
 import { Button, Paper } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Link as RouterLink,
   useLocation,
@@ -30,6 +31,7 @@ import {
 // 作者動態單頁：貼文＋留言串。分享連結、通知連結都指這裡；只靠 postId 查，
 // 網址裡的筆名過時（作者改過名）時換成目前的筆名，舊連結不會壞。
 export default function StorytellerAuthorPostPage() {
+  const { t } = useTranslation();
   const { username = "", postId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -68,14 +70,14 @@ export default function StorytellerAuthorPostPage() {
   const breadcrumbs = [
     { label: STORYTELLER_APP_NAME, to: steamloomPath() },
     { label: penName, to: steamloomCreatorPath(penName) },
-    { label: "動態", to: steamloomPostsPath(penName) },
-    { label: "貼文" },
+    { label: t("web.community.tabs.posts"), to: steamloomPostsPath(penName) },
+    { label: t("web.community.post") },
   ];
 
   if (isLoading) {
     return (
-      <StorytellerShell title={`${penName} 的動態`} breadcrumbs={breadcrumbs}>
-        <StorytellerLoading label="正在載入動態..." />
+      <StorytellerShell title={t("web.community.authorPosts", { name: penName })} breadcrumbs={breadcrumbs}>
+        <StorytellerLoading label={t("web.community.loadingPosts")} />
       </StorytellerShell>
     );
   }
@@ -83,7 +85,7 @@ export default function StorytellerAuthorPostPage() {
 
   return (
     <StorytellerShell
-      title={`${penName} 的動態`}
+      title={t("web.community.authorPosts", { name: penName })}
       breadcrumbs={breadcrumbs}
       action={
         <Button
@@ -91,14 +93,14 @@ export default function StorytellerAuthorPostPage() {
           to={steamloomPostsPath(penName)}
           variant="outlined"
         >
-          回 {penName} 的動態
+          {t("web.community.backToPosts", { name: penName })}
         </Button>
       }
     >
       <LoginPromptDialog
         open={loginOpen}
         onClose={() => setLoginOpen(false)}
-        description="按讚和留言需要登入。是否要現在登入？"
+        description={t("web.community.interactionLogin")}
       />
       <CustomSnackbar
         open={Boolean(snack)}

@@ -1,5 +1,5 @@
-// 日期時間統一用台灣格式顯示（專案卡片、編輯區、編輯歷史共用）。
-export const dateTimeFormat = new Intl.DateTimeFormat("zh-TW", { dateStyle: "medium", timeStyle: "short" });
+// 日期時間依目前介面語系顯示；不要在模組載入時固定 formatter，切換語言後才會立即更新。
+export const formatDateTime = (value: Date, language: string) => new Intl.DateTimeFormat(language, { dateStyle: "medium", timeStyle: "short" }).format(value);
 
 // 媒體提案與一般資產資訊共用相同的檔案大小格式。
 export function formatBytes(value?: number) {

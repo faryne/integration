@@ -17,6 +17,7 @@ import {
   useParams,
 } from "react-router-dom";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useStorytellerAgents,
   useStorytellerProjects,
@@ -35,7 +36,7 @@ import {
 } from "@/pages/storyteller/HomeSidebar.tsx";
 import {
   isStorytellerHomeTabEnabled,
-  tabBreadcrumbLabel,
+  tabBreadcrumbKey,
   tabPath,
   type StorytellerHomeTab,
 } from "@/pages/storyteller/homeTabs.ts";
@@ -61,6 +62,7 @@ import {
 } from "@/pages/storyteller/WorkspaceChrome.tsx";
 
 export default function StorytellerHome() {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const params = useParams();
@@ -120,16 +122,16 @@ export default function StorytellerHome() {
                         : "project";
 
   const homeTitle = isProjectFormRoute
-    ? `建立 ${STORYTELLER_APP_NAME} 專案`
+    ? `${t("web.common.create")} ${STORYTELLER_APP_NAME} ${t("web.home.tabs.project")}`
     : isAgentFormRoute
-      ? `${params.agentId ? "編輯" : "建立"} ${STORYTELLER_APP_NAME} Skill`
+      ? `${params.agentId ? t("web.common.edit") : t("web.common.create")} ${STORYTELLER_APP_NAME} Skill`
       : activeTab === "favorites" ||
           activeTab === "profile" ||
           activeTab === "activity" ||
           activeTab === "notifications" ||
           activeTab === "blocks"
-        ? `${STORYTELLER_APP_NAME} ${tabBreadcrumbLabel[activeTab]}`
-        : `${STORYTELLER_APP_NAME} 我的工作台`;
+        ? `${STORYTELLER_APP_NAME} ${t(tabBreadcrumbKey[activeTab])}`
+        : `${STORYTELLER_APP_NAME} ${t("web.home.workspace")}`;
   useTitle(homeTitle, {
     path: location.pathname,
     robots: "noindex, nofollow",
@@ -154,13 +156,13 @@ export default function StorytellerHome() {
   if (loading) {
     return (
       <WorkspaceChrome
-        title="我的工作台"
+        title={t("web.home.workspace")}
         titleDropdown={false}
         showHomeCrumb={false}
       >
         <WorkspaceCentered>
           <CircularProgress size={24} />
-          <Typography color="text.secondary">確認登入狀態...</Typography>
+          <Typography color="text.secondary">{t("web.home.checkingLogin")}</Typography>
         </WorkspaceCentered>
       </WorkspaceChrome>
     );
@@ -168,20 +170,20 @@ export default function StorytellerHome() {
   if (!session) {
     return (
       <WorkspaceChrome
-        title="我的工作台"
+        title={t("web.home.workspace")}
         titleDropdown={false}
         showHomeCrumb={false}
       >
         <WorkspaceCentered>
           <AutoStoriesIcon color="primary" />
           <Box>
-            <Typography fontWeight={900}>需要登入</Typography>
+            <Typography fontWeight={900}>{t("web.home.loginRequired")}</Typography>
             <Typography variant="body2" color="text.secondary">
-              登入後即可查看我的工作台。
+              {t("web.home.loginDescription")}
             </Typography>
           </Box>
           <Button variant="contained" onClick={() => void login()}>
-            {submitting ? "登入中" : "使用 Google 登入"}
+            {submitting ? t("web.home.loggingIn") : t("web.home.googleLogin")}
           </Button>
         </WorkspaceCentered>
       </WorkspaceChrome>
@@ -190,10 +192,10 @@ export default function StorytellerHome() {
 
   return (
     <WorkspaceChrome
-      title="我的工作台"
+      title={t("web.home.workspace")}
       titleDropdown={false}
       showHomeCrumb={false}
-      trail={[tabBreadcrumbLabel[activeTab]]}
+      trail={[t(tabBreadcrumbKey[activeTab])]}
       action={
         activeTab !== "favorites" &&
         activeTab !== "profile" &&
@@ -203,9 +205,9 @@ export default function StorytellerHome() {
         !projectsLoading &&
         !agentsLoading && (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip size="small" label={`${projects.length} 個創作專案`} />
+            <Chip size="small" label={t("web.home.projectCount", { count: projects.length })} />
             {STORYTELLER_AI_ASSISTANT_ENABLED && (
-              <Chip size="small" label={`${agents.length} 個 Skill`} />
+              <Chip size="small" label={t("web.home.skillCount", { count: agents.length })} />
             )}
           </Stack>
         )
@@ -257,8 +259,8 @@ export default function StorytellerHome() {
                   >
                     <Typography variant="h6" fontWeight={800}>
                       {activeTab === "project"
-                        ? "最近的創作專案"
-                        : "可用的 Skill"}
+                        ? t("web.home.recentProjects")
+                        : t("web.home.availableSkills")}
                     </Typography>
                     <Button
                       component={RouterLink}
@@ -269,16 +271,16 @@ export default function StorytellerHome() {
                       )}
                       variant="contained"
                     >
-                      {activeTab === "project" ? "建立專案" : "建立 Skill"}
+                      {activeTab === "project" ? t("web.home.createProject") : t("web.home.createSkill")}
                     </Button>
                   </Stack>
                 ) : null}
                 {activeTab === "project" && projectsLoading ? (
-                  <StorytellerLoading label="正在載入創作專案..." />
+                  <StorytellerLoading label={t("web.home.loadingProjects")} />
                 ) : activeTab === "project" ? (
                   <ProjectCards projects={projects} />
                 ) : activeTab === "agent" && agentsLoading ? (
-                  <StorytellerLoading label="正在載入 Skill..." />
+                  <StorytellerLoading label={t("web.home.loadingSkills")} />
                 ) : activeTab === "agent" ? (
                   <AgentCards agents={agents} />
                 ) : activeTab === "apikey" ? (

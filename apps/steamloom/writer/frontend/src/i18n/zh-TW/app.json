@@ -11,6 +11,7 @@
     "upToDate": "已是最新版 {{version}}",
     "close": "關閉"
   },
+  "apiProxy": { "unsupportedUrl": "Writer 不支援轉發這個網址：{{url}}", "jsonOnly": "Writer 轉發 API 只支援 JSON body" },
   "update": {
     "title": "有新的 Writer 版本",
     "message": "SteamLoom Writer {{latest}} 已經可以使用，目前版本是 {{current}}。",

@@ -11,6 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import type { ReaderLandingTab } from "./readerModel.ts";
 import {
@@ -62,6 +63,7 @@ export function ReaderWorkLanding({
   // 公開與不公開作品才有討論分頁（私人作品沒有），內容由閱讀頁組好傳進來
   discussionBoard?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const loreCount = loreGroups.reduce(
     (total, group) => total + group.lores.length,
     0,
@@ -72,7 +74,7 @@ export function ReaderWorkLanding({
     (tab === "discussions" && discussionBoard)
       ? tab
       : "stories";
-  const { startHref, startLabel } = continueReadingTarget(items);
+  const { startHref, startLabel } = continueReadingTarget(items, t);
   const completedCount = items.filter(
     (item) => item.progress?.completed,
   ).length;
@@ -91,7 +93,7 @@ export function ReaderWorkLanding({
         startLabel={startLabel}
         readingSummary={
           hasProgress
-            ? `已讀完 ${completedCount} / ${items.length} 篇`
+            ? t("web.reader.landing.completed", { completed: completedCount, total: items.length })
             : undefined
         }
       />
@@ -116,14 +118,14 @@ export function ReaderWorkLanding({
           >
             <Tab
               value="stories"
-              label={`故事 ${items.length}`}
+              label={t("web.reader.landing.stories", { count: items.length })}
               component={RouterLink}
               to={storiesHref}
             />
             {loreCount > 0 && (
               <Tab
                 value="lores"
-                label={`設定 ${loreCount}`}
+                label={t("web.reader.landing.settings", { count: loreCount })}
                 component={RouterLink}
                 to={loresHref}
               />
@@ -131,7 +133,7 @@ export function ReaderWorkLanding({
             {discussionBoard && (
               <Tab
                 value="discussions"
-                label="討論"
+                label={t("web.reader.landing.discussions")}
                 component={RouterLink}
                 to={discussionsHref}
               />
@@ -175,9 +177,10 @@ export function WorkLandingHero({
   coverFocalPoint,
   meta,
   startHref,
-  startLabel = "開始閱讀",
+  startLabel,
   readingSummary,
 }: WorkLandingHeroProps) {
+  const { t } = useTranslation();
   const immersive = Boolean(coverUrl && coverLayout === "immersive");
   const split = Boolean(coverUrl && coverLayout === "split");
   // 焦點只有沉浸式版型才生效，圖文分區統一置中——見 storytellerCoverObjectPosition。
@@ -266,7 +269,7 @@ export function WorkLandingHero({
               size="large"
               startIcon={<PlayArrowIcon />}
             >
-              {startLabel}
+              {startLabel ?? t("web.reader.landing.start")}
             </Button>
           </Box>
         )}
@@ -278,7 +281,7 @@ export function WorkLandingHero({
 // 「開始閱讀」按鈕要去哪：找最近讀過的那篇（以進度最後推進的時間為準），還沒讀完就回到那篇；
 // 已經讀完就往下一篇；後面沒有了（例如跳著讀、最後一篇先讀完）就找第一篇還沒讀完的；
 // 全部讀完才從頭開始。完全沒讀過時維持從第一篇開始。
-function continueReadingTarget(items: WorkLandingItem[]) {
+function continueReadingTarget(items: WorkLandingItem[], t: ReturnType<typeof useTranslation>["t"]) {
   const first = items[0];
   const latest = items.reduce<WorkLandingItem | undefined>(
     (found, item) =>
@@ -291,20 +294,20 @@ function continueReadingTarget(items: WorkLandingItem[]) {
     undefined,
   );
   if (!latest?.progress) {
-    return { startHref: first?.href, startLabel: "開始閱讀" };
+    return { startHref: first?.href, startLabel: t("web.reader.landing.start") };
   }
   const target = !latest.progress.completed
     ? latest
     : (items[items.indexOf(latest) + 1] ??
       items.find((item) => !item.progress?.completed));
   if (!target) {
-    return { startHref: first?.href, startLabel: "從頭開始閱讀" };
+    return { startHref: first?.href, startLabel: t("web.reader.landing.startOver") };
   }
   const percent = target.progress?.progress
     ? `（${target.progress.progress}%）`
     : "";
   return {
     startHref: target.href,
-    startLabel: `繼續閱讀：${target.title}${percent}`,
+    startLabel: t("web.reader.landing.continue", { title: target.title, percent }),
   };
 }

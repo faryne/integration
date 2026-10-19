@@ -11,11 +11,8 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import {
-  storytellerMemoryKindDescriptions,
-  storytellerMemoryKindLabels,
-  storytellerMemoryTargetLabel,
-} from "@/pages/storyteller/storytellerMemoryUI.ts";
+import { useTranslation } from "react-i18next";
+import { useStorytellerMemoryUI } from "@/pages/storyteller/storytellerMemoryUI.ts";
 import type { StorytellerAssistantMemory } from "@/types/storyteller.ts";
 
 export function MemoryCard({
@@ -33,6 +30,9 @@ export function MemoryCard({
   onDelete: () => void;
   onTagClick: (tag: string) => void;
 }) {
+  const { t, i18n } = useTranslation();
+  const memoryUI = useStorytellerMemoryUI();
+
   return (
     <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 } }}>
       <Stack direction="row" alignItems="flex-start" spacing={1}>
@@ -49,7 +49,7 @@ export function MemoryCard({
           >
             <Chip
               size="small"
-              label={storytellerMemoryTargetLabel(
+              label={memoryUI.targetLabel(
                 memory.scope_type,
                 memory.target_name,
               )}
@@ -64,23 +64,31 @@ export function MemoryCard({
               />
             ))}
             <Tooltip
-              title={storytellerMemoryKindDescriptions[memory.kind]}
+              title={memoryUI.kindDescriptions[memory.kind]}
               arrow
             >
               <Chip
                 size="small"
                 variant="outlined"
-                label={storytellerMemoryKindLabels[memory.kind]}
+                label={memoryUI.kindLabels[memory.kind]}
               />
             </Tooltip>
             <Chip
               size="small"
               variant="outlined"
-              label={`優先度 ${memory.priority}`}
+              label={t("writer:memory.priorityValue", {
+                value: memory.priority,
+              })}
             />
           </Stack>
         </Box>
-        <Tooltip title={memory.is_pinned ? "取消釘選" : "釘選"}>
+        <Tooltip
+          title={
+            memory.is_pinned
+              ? t("writer:memory.unpin")
+              : t("writer:memory.pin")
+          }
+        >
           <IconButton size="small" disabled={mutating} onClick={onTogglePinned}>
             {memory.is_pinned ? (
               <PushPinIcon fontSize="small" />
@@ -89,12 +97,12 @@ export function MemoryCard({
             )}
           </IconButton>
         </Tooltip>
-        <Tooltip title="編輯">
+        <Tooltip title={t("writer:common.edit")}>
           <IconButton size="small" onClick={onEdit}>
             <EditOutlinedIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-        <Tooltip title="刪除">
+        <Tooltip title={t("writer:common.delete")}>
           <IconButton size="small" color="error" onClick={onDelete}>
             <DeleteOutlineIcon fontSize="small" />
           </IconButton>
@@ -112,7 +120,11 @@ export function MemoryCard({
         color="text.disabled"
         sx={{ display: "block", mt: 1 }}
       >
-        更新於 {new Date(memory.updated_at).toLocaleString("zh-TW")}
+        {t("writer:memory.updated", {
+          date: new Date(memory.updated_at).toLocaleString(
+            i18n.resolvedLanguage,
+          ),
+        })}
       </Typography>
     </Paper>
   );

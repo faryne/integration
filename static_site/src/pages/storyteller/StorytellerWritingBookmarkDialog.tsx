@@ -7,6 +7,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 interface StorytellerWritingBookmarkDialogProps {
   open: boolean;
@@ -33,14 +34,15 @@ export function StorytellerWritingBookmarkDialog({
   onConfirm,
   onRemove,
 }: StorytellerWritingBookmarkDialogProps) {
+  const { t } = useTranslation();
   const isEdit = mode === "edit";
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>{isEdit ? "編輯書籤筆記" : "加入書籤"}</DialogTitle>
+      <DialogTitle>{t(isEdit ? "writer:editor.bookmark.edit" : "writer:editor.bookmark.add")}</DialogTitle>
       <DialogContent>
         {snippet && (
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            這則書籤掛在這段：「{snippet}」
+            {t("writer:editor.bookmark.attached", { text: snippet })}
           </Typography>
         )}
         <TextField
@@ -49,8 +51,8 @@ export function StorytellerWritingBookmarkDialog({
           multiline
           minRows={3}
           margin="dense"
-          label="筆記（可留空）"
-          placeholder="例如：寫到這、這裡之後要改"
+          label={t("writer:editor.bookmark.note")}
+          placeholder={t("writer:editor.bookmark.placeholder")}
           value={note}
           onChange={(event) => onNoteChange(event.target.value)}
         />
@@ -58,12 +60,12 @@ export function StorytellerWritingBookmarkDialog({
       <DialogActions>
         {isEdit && onRemove && (
           <Button color="error" onClick={onRemove} sx={{ marginRight: "auto" }}>
-            移除書籤
+            {t("writer:editor.bookmark.remove")}
           </Button>
         )}
-        <Button onClick={onClose}>取消</Button>
+        <Button onClick={onClose}>{t("writer:common.cancel")}</Button>
         <Button variant="contained" onClick={onConfirm}>
-          {isEdit ? "儲存" : "加入書籤"}
+          {t(isEdit ? "writer:common.save" : "writer:editor.bookmark.add")}
         </Button>
       </DialogActions>
     </Dialog>

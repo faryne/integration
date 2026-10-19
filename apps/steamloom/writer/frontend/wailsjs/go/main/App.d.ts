@@ -6,12 +6,15 @@ import {updater} from '../models';
 import {mediaworker} from '../models';
 import {skillupdate} from '../models';
 import {main} from '../models';
+import {appsettings} from '../models';
 
 export function Agents():Promise<Array<agent.Installed>>;
 
 export function ApiProxy(arg1:string,arg2:string,arg3:string):Promise<api.ProxyResponse>;
 
 export function AppVersion():Promise<string>;
+
+export function ApplicationSettings():Promise<appsettings.Settings>;
 
 export function Asset(arg1:string,arg2:string):Promise<api.EditorAsset>;
 
@@ -104,6 +107,8 @@ export function Reorder(arg1:string,arg2:string,arg3:Array<string>):Promise<void
 export function ResolveWorkerCatalogItem(arg1:string,arg2:string,arg3:string):Promise<mediaworker.CatalogItem>;
 
 export function SaveDocument(arg1:string,arg2:string,arg3:string,arg4:api.SaveInput):Promise<api.SaveResult>;
+
+export function SaveApplicationSettings(arg1:appsettings.Settings):Promise<appsettings.Settings>;
 
 export function SaveWorker(arg1:mediaworker.SaveInput):Promise<mediaworker.Worker>;
 

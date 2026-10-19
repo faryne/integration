@@ -17,6 +17,7 @@ import {
   alpha,
 } from "@mui/material";
 import { useState, type MouseEvent, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import { StorytellerResponsivePopover } from "@/pages/storyteller/StorytellerResponsivePopover.tsx";
 import { StorytellerTypographySettings } from "@/pages/storyteller/StorytellerTypographySettings.tsx";
@@ -28,13 +29,6 @@ interface ReaderToolbarLabels {
   navigation: string;
   navigationTooltip: string;
 }
-
-const STORY_TOOLBAR_LABELS: ReaderToolbarLabels = {
-  previous: "上一章",
-  next: "下一章",
-  navigation: "章節",
-  navigationTooltip: "目錄與已加入的書籤",
-};
 
 interface ReaderChapterLink {
   title: string;
@@ -56,7 +50,7 @@ export function StorytellerReaderToolbar({
   onChangePreferences,
   previousChapter,
   nextChapter,
-  labels = STORY_TOOLBAR_LABELS,
+  labels,
   navigationHref,
   discussionButton,
   reportButton,
@@ -86,6 +80,13 @@ export function StorytellerReaderToolbar({
   // 檢舉按鈕（作者本人看自己的作品時不傳）
   reportButton?: ReactNode;
 }) {
+  const { t } = useTranslation();
+  const resolvedLabels = labels ?? {
+    previous: t("web.reader.toolbar.previous"),
+    next: t("web.reader.toolbar.next"),
+    navigation: t("web.reader.toolbar.navigation"),
+    navigationTooltip: t("web.reader.toolbar.navigationTooltip"),
+  };
   const [projectAnchor, setProjectAnchor] = useState<HTMLElement | null>(null);
   const [historyAnchor, setHistoryAnchor] = useState<HTMLElement | null>(null);
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(
@@ -126,7 +127,7 @@ export function StorytellerReaderToolbar({
       }}
     >
       <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-        {bookmarkEditing ? "完成" : "書籤"}
+        {bookmarkEditing ? t("web.reader.toolbar.done") : t("web.reader.toolbar.bookmark")}
       </Box>
     </Button>
   );
@@ -135,7 +136,7 @@ export function StorytellerReaderToolbar({
     <>
       <Paper
         component="nav"
-        aria-label="閱讀工具列"
+        aria-label={t("web.reader.toolbar.aria")}
         variant="outlined"
         sx={(theme) => ({
           position: "fixed",
@@ -162,7 +163,7 @@ export function StorytellerReaderToolbar({
           spacing={{ xs: 0.125, sm: 0.25 }}
           alignItems="center"
         >
-          <Tooltip title={previousChapter?.title ?? `沒有${labels.previous}`}>
+          <Tooltip title={previousChapter?.title ?? t("web.reader.toolbar.noPrevious", { label: resolvedLabels.previous })}>
             <span>
               <Button
                 component={RouterLink}
@@ -181,12 +182,12 @@ export function StorytellerReaderToolbar({
                   component="span"
                   sx={{ display: { xs: "none", sm: "inline" } }}
                 >
-                  {labels.previous}
+                  {resolvedLabels.previous}
                 </Box>
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title={labels.navigationTooltip}>
+          <Tooltip title={resolvedLabels.navigationTooltip}>
             <Button
               size="small"
               color="inherit"
@@ -207,11 +208,11 @@ export function StorytellerReaderToolbar({
                 component="span"
                 sx={{ display: { xs: "none", sm: "inline" } }}
               >
-                {labels.navigation}
+                {resolvedLabels.navigation}
               </Box>
             </Button>
           </Tooltip>
-          <Tooltip title={currentTitle ?? "閱讀進度"}>
+          <Tooltip title={currentTitle ?? t("web.reader.toolbar.progress")}>
             <Box
               sx={{
                 flex: 1,
@@ -222,7 +223,7 @@ export function StorytellerReaderToolbar({
               <LinearProgress
                 variant="determinate"
                 value={progress}
-                aria-label={`本篇閱讀進度 ${progress}%`}
+                aria-label={t("web.reader.toolbar.progressAria", { progress })}
                 sx={{ height: "2px" }}
               />
             </Box>
@@ -230,7 +231,7 @@ export function StorytellerReaderToolbar({
           <Typography
             variant="caption"
             color="primary.main"
-            aria-label={`本篇閱讀進度 ${progress}%`}
+            aria-label={t("web.reader.toolbar.progressAria", { progress })}
             sx={{
               minWidth: { xs: 28, sm: 34 },
               textAlign: "right",
@@ -240,7 +241,7 @@ export function StorytellerReaderToolbar({
           >
             {progress}%
           </Typography>
-          <Tooltip title={`作品資訊：${projectName}`}>
+          <Tooltip title={t("web.reader.toolbar.projectInfo", { project: projectName })}>
             <Button
               size="small"
               color="inherit"
@@ -257,17 +258,17 @@ export function StorytellerReaderToolbar({
                 component="span"
                 sx={{ display: { xs: "none", md: "inline" } }}
               >
-                作品
+                {t("web.reader.toolbar.work")}
               </Box>
             </Button>
           </Tooltip>
           {renderHistory && (
-            <Tooltip title="編輯歷史">
+            <Tooltip title={t("web.reader.toolbar.history")}>
               <Button
                 size="small"
                 color="inherit"
                 startIcon={<HistoryIcon />}
-                aria-label="編輯歷史"
+                aria-label={t("web.reader.toolbar.history")}
                 aria-expanded={Boolean(historyAnchor)}
                 onClick={openHistory}
                 sx={{
@@ -280,21 +281,21 @@ export function StorytellerReaderToolbar({
                   component="span"
                   sx={{ display: { xs: "none", md: "inline" } }}
                 >
-                  歷史
+                  {t("web.reader.toolbar.historyShort")}
                 </Box>
               </Button>
             </Tooltip>
           )}
-          <Tooltip title={bookmarkEditing ? "完成編輯書籤" : "編輯段落書籤"}>
+          <Tooltip title={bookmarkEditing ? t("web.reader.toolbar.finishBookmarks") : t("web.reader.toolbar.editBookmarks")}>
             <span>{bookmarkButton}</span>
           </Tooltip>
           {discussionButton}
-          <Tooltip title="閱讀設定">
+          <Tooltip title={t("web.reader.toolbar.readingSettings")}>
             <Button
               size="small"
               color="inherit"
               startIcon={<TextFieldsIcon />}
-              aria-label="閱讀設定"
+              aria-label={t("web.reader.toolbar.readingSettings")}
               aria-expanded={Boolean(settingsAnchor)}
               onClick={openSettings}
               sx={{
@@ -307,12 +308,12 @@ export function StorytellerReaderToolbar({
                 component="span"
                 sx={{ display: { xs: "none", sm: "inline" } }}
               >
-                閱讀
+                {t("web.reader.toolbar.reading")}
               </Box>
             </Button>
           </Tooltip>
           {reportButton}
-          <Tooltip title={nextChapter?.title ?? `沒有${labels.next}`}>
+          <Tooltip title={nextChapter?.title ?? t("web.reader.toolbar.noNext", { label: resolvedLabels.next })}>
             <span>
               <Button
                 component={RouterLink}
@@ -331,7 +332,7 @@ export function StorytellerReaderToolbar({
                   component="span"
                   sx={{ display: { xs: "none", sm: "inline" } }}
                 >
-                  {labels.next}
+                  {resolvedLabels.next}
                 </Box>
               </Button>
             </span>
@@ -342,7 +343,7 @@ export function StorytellerReaderToolbar({
       <StorytellerResponsivePopover
         anchorEl={projectAnchor}
         onClose={() => setProjectAnchor(null)}
-        title="作品資訊"
+        title={t("web.reader.toolbar.projectInfoTitle")}
         width={440}
         horizontal="left"
         mobileMaxHeight="78vh"
@@ -353,7 +354,7 @@ export function StorytellerReaderToolbar({
       <StorytellerResponsivePopover
         anchorEl={historyAnchor}
         onClose={() => setHistoryAnchor(null)}
-        title="編輯歷史"
+        title={t("web.reader.toolbar.history")}
         showTitleOnDesktop
         width={380}
         horizontal="center"
@@ -367,13 +368,13 @@ export function StorytellerReaderToolbar({
       <StorytellerResponsivePopover
         anchorEl={settingsAnchor}
         onClose={() => setSettingsAnchor(null)}
-        title="閱讀設定"
+        title={t("web.reader.toolbar.readingSettings")}
         width={360}
       >
         <StorytellerTypographySettings
           preferences={preferences}
           onChange={onChangePreferences}
-          caption="背景與深淺色沿用網站目前色系。"
+          caption={t("web.reader.toolbar.settingsCaption")}
         />
       </StorytellerResponsivePopover>
     </>

@@ -20,6 +20,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { useUploadStorytellerAssets } from "@/apis/storyteller.ts";
 import {
   STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES,
@@ -105,6 +106,7 @@ function CoverPreview({
   coverFocalPoint: CoverFocalPoint;
   onFocalPointChange: (point: CoverFocalPoint) => void;
 }) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
   const [naturalSize, setNaturalSize] = useState<{
@@ -184,14 +186,14 @@ function CoverPreview({
   return (
     <Box sx={{ position: "relative" }}>
       <WorkLandingHero
-        name="作品標題"
-        description="作品簡介與作者資訊固定顯示在這裡。"
+        name={t("writer.projectCover.sampleTitle")}
+        description={t("writer.projectCover.sampleDescription")}
         coverUrl={coverUrl}
         coverLayout={coverLayout}
         coverFocalPoint={coverFocalPoint}
         meta={
           <Typography variant="body2" color="text.secondary">
-            作品類型・連載狀態
+            {t("writer.projectCover.sampleMeta")}
           </Typography>
         }
       />
@@ -229,6 +231,7 @@ export function StorytellerProjectCoverEditor({
   onFocalPointChange,
   onNotify,
 }: StorytellerProjectCoverEditorProps) {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadAssets = useUploadStorytellerAssets(projectPublicId);
   const { pickAndUploadImage } = useEditorData();
@@ -252,9 +255,9 @@ export function StorytellerProjectCoverEditor({
       const asset = await pickAndUploadImage(projectPublicId);
       if (!asset) return;
       onChange(asset.public_id, asset.preview_url);
-      onNotify("已上傳並設為封面，請記得儲存專案。", "success");
+      onNotify(t("writer.projectCover.uploaded"), "success");
     } catch (error) {
-      onNotify(errorMessage(error, "上傳封面失敗，請重試。"), "error");
+      onNotify(errorMessage(error, t("writer.projectCover.uploadFailed")), "error");
     } finally {
       setHostUploading(false);
     }
@@ -269,31 +272,31 @@ export function StorytellerProjectCoverEditor({
       fileInputRef.current.value = "";
     }
     if (!STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES.includes(file.type)) {
-      onNotify("封面只接受 JPEG／PNG／WebP／GIF 圖片檔。", "error");
+      onNotify(t("writer.projectCover.invalidType"), "error");
       return;
     }
     if (file.size > STORYTELLER_IMAGE_PAGE_MAX_BYTES) {
-      onNotify(`封面圖片不能超過 ${maxMB}MB。`, "error");
+      onNotify(t("writer.projectCover.maxSize", { size: maxMB }), "error");
       return;
     }
     try {
       const uploaded = await uploadAssets.mutateAsync({ files: [file] });
       const asset = uploaded[0];
       if (!asset) {
-        onNotify("上傳完成但沒有取得資產資料，請重試。", "error");
+        onNotify(t("writer.projectCover.missingAsset"), "error");
         return;
       }
       onChange(asset.public_id, asset.preview_url);
-      onNotify("已上傳並設為封面，請記得儲存專案。", "success");
+      onNotify(t("writer.projectCover.uploaded"), "success");
     } catch (error) {
-      onNotify(errorMessage(error, "上傳封面失敗，請重試。"), "error");
+      onNotify(errorMessage(error, t("writer.projectCover.uploadFailed")), "error");
     }
   }
 
   return (
     <Stack spacing={1.5}>
       <Typography variant="subtitle2" fontWeight={700}>
-        封面
+        {t("writer.projectCover.title")}
       </Typography>
       {coverUrl ? (
         // 不另外包一層 border——WorkLandingHero 自己就有跟閱讀頁一致的邊框，
@@ -319,14 +322,13 @@ export function StorytellerProjectCoverEditor({
         >
           <ImageIcon color="disabled" />
           <Typography variant="body2" color="text.secondary">
-            尚未設定封面
+            {t("writer.projectCover.empty")}
           </Typography>
         </Stack>
       )}
       {coverUrl && coverLayout === "immersive" && (
         <Typography variant="caption" color="text.secondary">
-          在上方封面圖點擊或拖曳準星，標記要保留可見的焦點；這裡看到的就是套用目前
-          版型後實際會裁成的樣子。
+          {t("writer.projectCover.focusHelp")}
         </Typography>
       )}
       <ToggleButtonGroup
@@ -336,10 +338,10 @@ export function StorytellerProjectCoverEditor({
         onChange={(_, value: CoverLayout | null) =>
           value && onLayoutChange(value)
         }
-        aria-label="作品首頁封面版型"
+        aria-label={t("writer.projectCover.layout")}
       >
-        <ToggleButton value="split">圖文分區</ToggleButton>
-        <ToggleButton value="immersive">沉浸式封面</ToggleButton>
+        <ToggleButton value="split">{t("writer.projectCover.split")}</ToggleButton>
+        <ToggleButton value="immersive">{t("writer.projectCover.immersive")}</ToggleButton>
       </ToggleButtonGroup>
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         <Button
@@ -348,7 +350,7 @@ export function StorytellerProjectCoverEditor({
           startIcon={<ImageIcon />}
           onClick={() => setPickerOpen(true)}
         >
-          從資產選取
+          {t("writer.projectCover.pick")}
         </Button>
         <Button
           size="small"
@@ -361,7 +363,7 @@ export function StorytellerProjectCoverEditor({
               : fileInputRef.current?.click()
           }
         >
-          {uploading ? "上傳中" : "上傳圖片"}
+          {t(uploading ? "writer.projectCover.uploading" : "writer.projectCover.upload")}
         </Button>
         {hasCover && (
           <Button
@@ -371,7 +373,7 @@ export function StorytellerProjectCoverEditor({
             startIcon={<DeleteOutlineIcon />}
             onClick={() => setRemoveOpen(true)}
           >
-            移除封面
+            {t("writer.projectCover.remove")}
           </Button>
         )}
       </Stack>
@@ -385,7 +387,7 @@ export function StorytellerProjectCoverEditor({
       <StorytellerAssetPickerDialog
         open={pickerOpen}
         projectPublicId={projectPublicId}
-        title="選擇封面"
+        title={t("writer.projectCover.pickerTitle")}
         onClose={() => setPickerOpen(false)}
         onSelect={handleSelect}
       />
@@ -395,14 +397,14 @@ export function StorytellerProjectCoverEditor({
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle>移除封面</DialogTitle>
+        <DialogTitle>{t("writer.projectCover.remove")}</DialogTitle>
         <DialogContent>
           <Typography color="text.secondary">
-            確定要移除這個專案的封面嗎？資產本身不會被刪除。
+            {t("writer.projectCover.removeDescription")}
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setRemoveOpen(false)}>取消</Button>
+          <Button onClick={() => setRemoveOpen(false)}>{t("writer.common.cancel")}</Button>
           <Button
             color="error"
             variant="contained"
@@ -411,7 +413,7 @@ export function StorytellerProjectCoverEditor({
               setRemoveOpen(false);
             }}
           >
-            移除封面
+            {t("writer.projectCover.remove")}
           </Button>
         </DialogActions>
       </Dialog>

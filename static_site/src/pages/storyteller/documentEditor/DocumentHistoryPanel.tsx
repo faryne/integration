@@ -1,5 +1,6 @@
 import { Box } from "@mui/material";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useRevertStorytellerLoreVersion,
   useRevertStorytellerStoryVersion,
@@ -51,6 +52,7 @@ export function DocumentHistoryPanel({
   // 回復成功，帶回後端回傳的文件（編輯分頁要換上這份內容）
   onReverted: (document: StorytellerStory | StorytellerLore) => void;
 }) {
+  const { t } = useTranslation();
   const storyVersions = useStorytellerStoryVersions(
     projectPublicId,
     kind === "story" ? publicId : undefined,
@@ -79,7 +81,7 @@ export function DocumentHistoryPanel({
       versions.map((version) => ({
         id: String(version.id),
         title: version.title,
-        source: storytellerVersionSourceLabel(version.source),
+        source: storytellerVersionSourceLabel(version.source, t),
         createdAt: version.created_at,
         words: version.word_count,
         revertedFromVersionId: version.reverted_from_version_id
@@ -89,7 +91,7 @@ export function DocumentHistoryPanel({
           ? String(version.conflicted_with_version_id)
           : null,
       })),
-    [versions],
+    [versions, t],
   );
   const selection = useVersionCompareSelection(items);
   const [page, setPage] = useState(1);
@@ -105,7 +107,7 @@ export function DocumentHistoryPanel({
       // 設定的版本沒有摘要，留 undefined 比對視窗就不會出現摘要區塊
       summary: "summary" in version ? version.summary : undefined,
       content: version.content,
-      source: storytellerVersionSourceLabel(version.source),
+      source: storytellerVersionSourceLabel(version.source, t),
       createdAt: version.created_at,
     };
   };

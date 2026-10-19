@@ -17,6 +17,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useConfirmStorytellerAssistantMemory,
   useDeleteStorytellerAssistantMemoryDraft,
@@ -26,13 +27,7 @@ import {
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import { StorytellerMemoryTagField } from "@/pages/storyteller/StorytellerMemoryTagField.tsx";
-import {
-  storytellerMemoryContextScopeLabels,
-  storytellerMemoryErrorMessage,
-  storytellerMemoryKindDescriptions,
-  storytellerMemoryKindLabels,
-  storytellerMemoryTargetLabel,
-} from "@/pages/storyteller/storytellerMemoryUI.ts";
+import { useStorytellerMemoryUI } from "@/pages/storyteller/storytellerMemoryUI.ts";
 import type {
   StorytellerAssistantMemoryKind,
   StorytellerAssistantMemoryScope,
@@ -55,6 +50,8 @@ export function StorytellerMemoryDraftDialog({
   onSaved: () => void;
   onRetried: (publicId: string) => void;
 }) {
+  const { t } = useTranslation();
+  const memoryUI = useStorytellerMemoryUI();
   const draftQuery = useStorytellerAssistantMemoryDraft(publicId);
   const confirmMemory = useConfirmStorytellerAssistantMemory();
   const deleteDraft = useDeleteStorytellerAssistantMemoryDraft();
@@ -90,7 +87,7 @@ export function StorytellerMemoryDraftDialog({
     if (publicId && draft?.status !== "confirmed") {
       deleteDraft.mutate(publicId, {
         onError: (error) =>
-          setErrorMessage(storytellerMemoryErrorMessage(error)),
+          setErrorMessage(memoryUI.errorMessage(error)),
       });
     }
     onClose();
@@ -115,7 +112,7 @@ export function StorytellerMemoryDraftDialog({
       {
         onSuccess: onSaved,
         onError: (error) =>
-          setErrorMessage(storytellerMemoryErrorMessage(error)),
+          setErrorMessage(memoryUI.errorMessage(error)),
       },
     );
   }
@@ -132,7 +129,7 @@ export function StorytellerMemoryDraftDialog({
           if (next?.public_id) onRetried(next.public_id);
         },
         onError: (error) =>
-          setErrorMessage(storytellerMemoryErrorMessage(error)),
+          setErrorMessage(memoryUI.errorMessage(error)),
       },
     );
   }
@@ -150,31 +147,39 @@ export function StorytellerMemoryDraftDialog({
         state={
           loading ? "thinking" : failed || noCandidate ? "neutral" : "success"
         }
-        toneLabel={loading ? "整理對話中" : "記憶候選"}
-        eyebrow="梭梭的記憶"
+        toneLabel={
+          loading
+            ? t("writer:memory.draft.organizing")
+            : t("writer:memory.draft.candidate")
+        }
+        eyebrow={t("writer:memory.title")}
         title={
           loading
-            ? "我正在找值得留下來的事……"
+            ? t("writer:memory.draft.loadingTitle")
             : failed
-              ? "這次沒有整理成功"
+              ? t("writer:memory.draft.failedTitle")
               : noCandidate
-                ? "這輪沒有需要長期記住的事"
-                : "確認要記住的內容"
+                ? t("writer:memory.draft.emptyTitle")
+                : t("writer:memory.draft.confirmTitle")
         }
         description={
           loading
-            ? "整理完成後會先讓你檢查，不會自動寫進記憶。"
+            ? t("writer:memory.draft.loadingDescription")
             : failed || noCandidate
               ? undefined
-              : "你可以修改內容與適用範圍；按下「存進記憶」後，之後的對話才會讀到它。"
+              : t("writer:memory.draft.confirmDescription")
         }
         onClose={closeAndDiscard}
         actions={
           loading || noCandidate ? (
-            <Button onClick={closeAndDiscard}>關閉</Button>
+            <Button onClick={closeAndDiscard}>
+              {t("writer:common.close")}
+            </Button>
           ) : failed ? (
             <>
-              <Button onClick={closeAndDiscard}>關閉</Button>
+              <Button onClick={closeAndDiscard}>
+                {t("writer:common.close")}
+              </Button>
               <Button
                 variant="contained"
                 onClick={retry}
@@ -187,7 +192,7 @@ export function StorytellerMemoryDraftDialog({
                   ) : undefined
                 }
               >
-                重新整理
+                {t("writer:memory.draft.retry")}
               </Button>
             </>
           ) : (
@@ -196,7 +201,7 @@ export function StorytellerMemoryDraftDialog({
                 onClick={closeAndDiscard}
                 disabled={confirmMemory.isPending}
               >
-                不儲存
+                {t("writer:memory.draft.discard")}
               </Button>
               <Button
                 variant="contained"
@@ -208,7 +213,7 @@ export function StorytellerMemoryDraftDialog({
                   ) : undefined
                 }
               >
-                存進記憶
+                {t("writer:memory.draft.save")}
               </Button>
             </>
           )
@@ -218,33 +223,34 @@ export function StorytellerMemoryDraftDialog({
           <Stack alignItems="center" spacing={1.5} sx={{ py: 4 }}>
             <CircularProgress size={30} />
             <Typography color="text.secondary" variant="body2">
-              梭梭正在把這輪對話整理成一件清楚、之後看得懂的事。
+              {t("writer:memory.draft.loading")}
             </Typography>
           </Stack>
         ) : failed ? (
           <Alert severity="error">
-            {draft?.error_message ?? "記憶整理失敗，請稍後再試。"}
+            {draft?.error_message ?? t("writer:memory.draft.failed")}
           </Alert>
         ) : noCandidate ? (
           <Alert severity="info">
-            這輪比較像一次性的請求，沒有找到適合長期記住的內容。
+            {t("writer:memory.draft.empty")}
           </Alert>
         ) : (
           <Stack spacing={2}>
             {draft?.supersedes_public_id && (
               <Paper variant="outlined" sx={{ p: 1.5 }}>
                 <Alert severity="warning" sx={{ mb: 1.25 }}>
-                  這筆候選原本會取代下面的舊記憶。如果你改了適用範圍，或想保留兩筆，請選擇「不取代，另存一筆」。
+                  {t("writer:memory.draft.supersedeWarning")}
                 </Alert>
                 {draft.superseded_memory ? (
                   <Stack spacing={0.75}>
                     <Typography fontWeight={800} variant="body2">
-                      {draft.superseded_memory.memory_name || "舊記憶"}
+                      {draft.superseded_memory.memory_name ||
+                        t("writer:memory.draft.oldMemory")}
                     </Typography>
                     <Stack direction="row" spacing={0.75}>
                       <Chip
                         size="small"
-                        label={storytellerMemoryTargetLabel(
+                        label={memoryUI.targetLabel(
                           draft.superseded_memory.scope_type,
                           draft.superseded_memory.target_name,
                         )}
@@ -253,7 +259,7 @@ export function StorytellerMemoryDraftDialog({
                         size="small"
                         variant="outlined"
                         label={
-                          storytellerMemoryKindLabels[
+                          memoryUI.kindLabels[
                             draft.superseded_memory.kind
                           ]
                         }
@@ -269,7 +275,7 @@ export function StorytellerMemoryDraftDialog({
                   </Stack>
                 ) : (
                   <Typography variant="body2" color="text.secondary">
-                    舊記憶已不在目前可讀範圍，建議另存一筆。
+                    {t("writer:memory.draft.oldUnavailable")}
                   </Typography>
                 )}
                 <FormControlLabel
@@ -282,12 +288,12 @@ export function StorytellerMemoryDraftDialog({
                       }
                     />
                   }
-                  label="不取代，另存一筆"
+                  label={t("writer:memory.draft.skipSupersede")}
                 />
               </Paper>
             )}
             <TextField
-              label="記憶名稱"
+              label={t("writer:memory.name")}
               value={memoryName}
               onChange={(event) => setMemoryName(event.target.value)}
               slotProps={{ htmlInput: { maxLength: 255 } }}
@@ -295,7 +301,7 @@ export function StorytellerMemoryDraftDialog({
               fullWidth
             />
             <TextField
-              label="要記住的內容"
+              label={t("writer:memory.draft.content")}
               value={content}
               onChange={(event) => setContent(event.target.value)}
               slotProps={{ htmlInput: { maxLength: 2000 } }}
@@ -313,10 +319,12 @@ export function StorytellerMemoryDraftDialog({
               }}
             >
               <FormControl fullWidth>
-                <InputLabel id="memory-scope-label">適用範圍</InputLabel>
+                <InputLabel id="memory-scope-label">
+                  {t("writer:memory.scope")}
+                </InputLabel>
                 <Select
                   labelId="memory-scope-label"
-                  label="適用範圍"
+                  label={t("writer:memory.scope")}
                   value={scope}
                   onChange={(event) => {
                     const nextScope = event.target
@@ -331,19 +339,21 @@ export function StorytellerMemoryDraftDialog({
                   }}
                 >
                   <MenuItem value="project">
-                    {storytellerMemoryContextScopeLabels.project}
+                    {memoryUI.contextScopeLabels.project}
                   </MenuItem>
                   <MenuItem value={targetKind}>
-                    {storytellerMemoryContextScopeLabels[targetKind]}
+                    {memoryUI.contextScopeLabels[targetKind]}
                   </MenuItem>
                 </Select>
               </FormControl>
-              <Tooltip title={storytellerMemoryKindDescriptions[kind]} arrow>
+              <Tooltip title={memoryUI.kindDescriptions[kind]} arrow>
                 <FormControl fullWidth>
-                  <InputLabel id="memory-kind-label">記憶類型</InputLabel>
+                  <InputLabel id="memory-kind-label">
+                    {t("writer:memory.memoryType")}
+                  </InputLabel>
                   <Select
                     labelId="memory-kind-label"
-                    label="記憶類型"
+                    label={t("writer:memory.memoryType")}
                     value={kind}
                     onChange={(event) =>
                       setKind(
@@ -351,12 +361,12 @@ export function StorytellerMemoryDraftDialog({
                       )
                     }
                   >
-                    {Object.entries(storytellerMemoryKindLabels).map(
+                    {Object.entries(memoryUI.kindLabels).map(
                       ([value, label]) => (
                         <MenuItem key={value} value={value}>
                           <Tooltip
                             title={
-                              storytellerMemoryKindDescriptions[
+                              memoryUI.kindDescriptions[
                                 value as StorytellerAssistantMemoryKind
                               ]
                             }
@@ -377,7 +387,7 @@ export function StorytellerMemoryDraftDialog({
             <StorytellerMemoryTagField value={tags} onChange={setTags} />
             <TextField
               type="number"
-              label="優先度"
+              label={t("writer:memory.priority")}
               value={priority}
               onChange={(event) =>
                 setPriority(
@@ -385,7 +395,7 @@ export function StorytellerMemoryDraftDialog({
                 )
               }
               slotProps={{ htmlInput: { min: 0, max: 100 } }}
-              helperText="0–100，數字越高越優先提供給梭梭"
+              helperText={t("writer:memory.priorityHelp")}
             />
             <FormControlLabel
               control={
@@ -394,7 +404,7 @@ export function StorytellerMemoryDraftDialog({
                   onChange={(event) => setIsPinned(event.target.checked)}
                 />
               }
-              label="釘選這筆記憶，避免日後被自動取代"
+              label={t("writer:memory.draft.pin")}
             />
           </Stack>
         )}

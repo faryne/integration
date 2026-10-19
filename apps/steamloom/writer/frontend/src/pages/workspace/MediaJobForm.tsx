@@ -1,5 +1,6 @@
 import { Box, Chip, FormControlLabel, MenuItem, Stack, Switch, TextField, Typography } from "@mui/material";
 import type { AgentProposal, AgentProposalItem, WorkerJobSpec } from "@writer/lib/backend.ts";
+import { useWorkerI18n } from "@writer/pages/settings/workerI18n.ts";
 
 // canRetryMedia：生成失敗的媒體需求可以調整參數重跑；ProposalCard 與 ReviewDialog 共用同一判斷。
 export const canRetryMedia = (proposal: AgentProposal) => proposal.status === "apply_failed" && proposal.items.length === 1 && proposal.items[0].proposal_type === "media.brief";
@@ -47,6 +48,7 @@ export function MediaJobForm({ spec, values, disabled, onChange }: {
   disabled: boolean;
   onChange: (values: Record<string, unknown>) => void;
 }) {
+  const workerText = useWorkerI18n();
   const update = (key: string, value: unknown) => onChange({ ...values, [key]: value });
   return (
     <Stack spacing={2}>
@@ -57,12 +59,12 @@ export function MediaJobForm({ spec, values, disabled, onChange }: {
         <FormControlLabel
           key={field.key}
           control={<Switch checked={Boolean(values[field.key])} disabled={disabled} onChange={(event) => update(field.key, event.target.checked)} />}
-          label={field.label}
+          label={workerText.jobLabel(field)}
         />
       ) : (
         <TextField
           key={field.key}
-          label={field.label}
+          label={workerText.jobLabel(field)}
           value={values[field.key] ?? ""}
           required={field.required}
           disabled={disabled}
@@ -70,12 +72,12 @@ export function MediaJobForm({ spec, values, disabled, onChange }: {
           minRows={field.kind === "textarea" ? 3 : undefined}
           select={field.kind === "select"}
           type={field.kind === "number" ? "number" : "text"}
-          helperText={field.description}
+          helperText={workerText.jobDescription(field)}
           slotProps={field.kind === "number" ? { htmlInput: { min: field.min, max: field.max, step: field.step } } : undefined}
           // 數字欄清空時送 undefined 而不是 Number("") 的 0，讓後端套用預設值（例如 seed 留空＝隨機）。
           onChange={(event) => update(field.key, field.kind !== "number" ? event.target.value : event.target.value === "" ? undefined : Number(event.target.value))}
         >
-          {field.kind === "select" && field.options?.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
+          {field.kind === "select" && field.options?.map((option) => <MenuItem key={option.value} value={option.value}>{workerText.optionLabel(field, option.value, option.label)}</MenuItem>)}
         </TextField>
       ))}
     </Stack>
@@ -84,18 +86,19 @@ export function MediaJobForm({ spec, values, disabled, onChange }: {
 
 // MultiSelectChips 以可點選的 Chip 呈現多選欄位；達到 field.max 時未選的項目停用。
 function MultiSelectChips({ field, value, disabled, onChange }: { field: JobField; value: string[]; disabled: boolean; onChange: (value: string[]) => void }) {
+  const workerText = useWorkerI18n();
   const full = field.max != null && value.length >= field.max;
   const toggle = (option: string) => onChange(value.includes(option) ? value.filter((item) => item !== option) : [...value, option]);
   return (
     <Box>
-      <Typography variant="caption" color="text.secondary">{field.label}{field.max != null ? ` (${value.length}/${field.max})` : ""}</Typography>
+      <Typography variant="caption" color="text.secondary">{workerText.jobLabel(field)}{field.max != null ? ` (${value.length}/${field.max})` : ""}</Typography>
       <Stack direction="row" flexWrap="wrap" gap={0.75} sx={{ mt: 0.5 }}>
         {field.options?.map((option) => {
           const selected = value.includes(option.value);
           return (
             <Chip
               key={option.value}
-              label={option.label}
+              label={workerText.optionLabel(field, option.value, option.label)}
               color={selected ? "primary" : "default"}
               variant={selected ? "filled" : "outlined"}
               disabled={disabled || (full && !selected)}
@@ -104,7 +107,7 @@ function MultiSelectChips({ field, value, disabled, onChange }: { field: JobFiel
           );
         })}
       </Stack>
-      {field.description && <Typography variant="caption" color="text.secondary">{field.description}</Typography>}
+      {field.description && <Typography variant="caption" color="text.secondary">{workerText.jobDescription(field)}</Typography>}
     </Box>
   );
 }

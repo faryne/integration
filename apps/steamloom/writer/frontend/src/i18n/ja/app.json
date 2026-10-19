@@ -3,6 +3,7 @@
   "account": {
     "logout": "ログアウト"
   },
+  "apiProxy": { "unsupportedUrl": "Writer はこの URL を転送できません：{{url}}", "jsonOnly": "Writer の API 転送は JSON body のみ対応しています" },
   "update": {
     "title": "Writer の新しいバージョンがあります",
     "message": "SteamLoom Writer {{latest}} が利用できます。現在のバージョンは {{current}} です。",

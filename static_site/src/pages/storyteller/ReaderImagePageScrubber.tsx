@@ -1,6 +1,7 @@
 import type { ReaderImagePage } from "@/pages/storyteller/readerModel.ts";
 import { Box, Paper, Typography } from "@mui/material";
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 // 比照 YouTube 播放器的進度列：滑鼠移到軌道上的某個位置會浮出該頁的縮圖預覽，點擊
 // 直接跳到那一頁。頁面是離散的（不是連續時間），滑鼠位置會吸附到最近的一頁，不會有
@@ -14,6 +15,7 @@ export function ImagePageScrubber({
   currentIndex: number;
   onJump: (index: number) => void;
 }) {
+  const { t } = useTranslation();
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const total = pages.length;
@@ -62,7 +64,7 @@ export function ImagePageScrubber({
             <Box
               component="img"
               src={hoverPage.imageUrl}
-              alt={`第 ${hoverIndex + 1} 頁預覽`}
+              alt={t("web.reader.pagePreviewAlt", { page: hoverIndex + 1 })}
               sx={{
                 width: "100%",
                 height: 112,
@@ -79,7 +81,7 @@ export function ImagePageScrubber({
                 bgcolor: "background.paper",
               }}
             >
-              第 {hoverIndex + 1} 頁
+              {t("web.reader.page", { page: hoverIndex + 1 })}
             </Typography>
           </Paper>
         </Box>

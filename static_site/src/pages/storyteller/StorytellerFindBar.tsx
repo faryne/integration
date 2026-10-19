@@ -16,6 +16,7 @@ import {
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   clearFind,
   getFindState,
@@ -48,6 +49,7 @@ export function StorytellerFindBar({
   initialQuery: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState(initialQuery);
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [replaceOpen, setReplaceOpen] = useState(false);
@@ -97,12 +99,12 @@ export function StorytellerFindBar({
 
   const countLabel =
     replacedCount !== null
-      ? `已取代 ${replacedCount} 處`
+      ? t("writer:editor.find.replaced", { count: replacedCount })
       : !query
         ? ""
         : total
           ? `${current + 1} / ${total}`
-          : "沒有符合";
+          : t("writer:editor.find.noMatch");
 
   return (
     <Paper
@@ -121,7 +123,7 @@ export function StorytellerFindBar({
         {canReplace ? (
           <IconButton
             size="small"
-            aria-label={replaceOpen ? "收起取代" : "展開取代"}
+            aria-label={t(replaceOpen ? "writer:editor.find.collapseReplace" : "writer:editor.find.expandReplace")}
             onClick={() => setReplaceOpen((open) => !open)}
           >
             {replaceOpen ? (
@@ -134,7 +136,7 @@ export function StorytellerFindBar({
         <InputBase
           inputRef={queryRef}
           autoFocus
-          placeholder="尋找"
+          placeholder={t("writer:editor.find.search")}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -143,7 +145,7 @@ export function StorytellerFindBar({
           onKeyDown={onQueryKeyDown}
           sx={FIELD_SX}
           endAdornment={
-            <Tooltip title="區分大小寫（英文）">
+            <Tooltip title={t("writer:editor.find.caseSensitive")}>
               <Box
                 component="button"
                 type="button"
@@ -182,7 +184,7 @@ export function StorytellerFindBar({
         </Typography>
         <IconButton
           size="small"
-          aria-label="上一個"
+          aria-label={t("writer:editor.find.previous")}
           disabled={total < 2}
           onClick={() => stepFindMatch(editor, -1)}
         >
@@ -190,13 +192,13 @@ export function StorytellerFindBar({
         </IconButton>
         <IconButton
           size="small"
-          aria-label="下一個"
+          aria-label={t("writer:editor.find.next")}
           disabled={total < 2}
           onClick={() => stepFindMatch(editor, 1)}
         >
           <ArrowDownwardIcon fontSize="small" />
         </IconButton>
-        <IconButton size="small" aria-label="關閉" onClick={close}>
+        <IconButton size="small" aria-label={t("writer:common.close")} onClick={close}>
           <CloseIcon fontSize="small" />
         </IconButton>
       </Stack>
@@ -208,7 +210,7 @@ export function StorytellerFindBar({
           sx={{ mt: 0.75, pl: 4.5 }}
         >
           <InputBase
-            placeholder="取代為"
+            placeholder={t("writer:editor.find.replaceWith")}
             value={replacement}
             onChange={(event) => setReplacement(event.target.value)}
             onKeyDown={onReplaceKeyDown}
@@ -220,7 +222,7 @@ export function StorytellerFindBar({
             disabled={!total}
             onClick={() => replaceCurrentMatch(editor, replacement)}
           >
-            取代
+            {t("writer:editor.find.replace")}
           </Button>
           <Button
             size="small"
@@ -230,7 +232,7 @@ export function StorytellerFindBar({
               setReplacedCount(replaceAllMatches(editor, replacement))
             }
           >
-            全部取代
+            {t("writer:editor.find.replaceAll")}
           </Button>
         </Stack>
       )}

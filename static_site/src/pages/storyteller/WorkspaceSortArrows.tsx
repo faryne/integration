@@ -3,6 +3,7 @@ import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import DoneIcon from "@mui/icons-material/Done";
 import SwapVertIcon from "@mui/icons-material/SwapVert";
 import { IconButton, Tooltip } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 // 側邊列排序相關的按鈕，網站與 SteamLoom Writer 共用（Writer 透過 alias 直接 import，改這支也會影響 Writer）。
 
@@ -17,14 +18,18 @@ const iconSx = workspaceSidebarIconButtonSx;
 export function WorkspaceSortToggle({
   sorting,
   onToggle,
-  label = "調整順序",
-  doneLabel = "完成排序",
+  label,
+  doneLabel,
 }: {
   sorting: boolean;
   onToggle: () => void;
   label?: string;
   doneLabel?: string;
 }) {
+  const { t } = useTranslation();
+  label ??= t("writer:sidebar.sort");
+  doneLabel ??= t("writer:sidebar.sortDone");
+
   return (
     <Tooltip title={sorting ? doneLabel : label}>
       <IconButton
@@ -49,8 +54,8 @@ export function WorkspaceSortArrows({
   index,
   count,
   onMove,
-  upLabel = "往上移",
-  downLabel = "往下移",
+  upLabel,
+  downLabel,
 }: {
   index: number;
   count: number;
@@ -58,6 +63,10 @@ export function WorkspaceSortArrows({
   upLabel?: string;
   downLabel?: string;
 }) {
+  const { t } = useTranslation();
+  upLabel ??= t("writer:sidebar.moveUp");
+  downLabel ??= t("writer:sidebar.moveDown");
+
   return (
     <>
       <IconButton

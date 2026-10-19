@@ -1,6 +1,7 @@
 import { Box, Chip } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useContext, type SyntheticEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   storytellerDialogMascotSrc,
   storytellerMascotSrc,
@@ -15,26 +16,22 @@ import {
 
 const stateMeta: Record<
   StorytellerDialogMascotState,
-  { label: string; alt: string; fallback: StorytellerMascotPose }
+  { key: string; fallback: StorytellerMascotPose }
 > = {
   danger: {
-    label: "不可復原",
-    alt: "梭梭提醒這是不可復原的操作",
+    key: "danger",
     fallback: "error",
   },
   success: {
-    label: "準備好了",
-    alt: "梭梭為工作完成感到開心",
+    key: "success",
     fallback: "success",
   },
   thinking: {
-    label: "處理中",
-    alt: "梭梭正在思考與處理工作",
+    key: "thinking",
     fallback: "thinking",
   },
   neutral: {
-    label: "請再確認",
-    alt: "梭梭提醒你確認目前的選擇",
+    key: "neutral",
     fallback: "idle",
   },
 };
@@ -53,6 +50,7 @@ export function StorytellerMascotDialog({
   toneLabel,
   ...props
 }: StorytellerMascotDialogProps) {
+  const { t } = useTranslation();
   // 編輯器 demo 路由沒有 StorytellerLayout；正式頁面仍由 context 即時跟隨外觀。
   const appearance =
     useContext(StorytellerAppearanceContext)?.appearance ?? "nocturne";
@@ -105,7 +103,7 @@ export function StorytellerMascotDialog({
           }}
         >
           <Chip
-            label={toneLabel ?? meta.label}
+            label={toneLabel ?? t(`writer:mascot.${meta.key}Label`)}
             size="small"
             sx={{
               position: "absolute",
@@ -132,7 +130,7 @@ export function StorytellerMascotDialog({
           <Box
             component="img"
             src={storytellerDialogMascotSrc(state, appearance)}
-            alt={meta.alt}
+            alt={t(`writer:mascot.${meta.key}Alt`)}
             onError={(event: SyntheticEvent<HTMLImageElement>) => {
               // S3/CDN 尚未同步新圖時維持可用介面；新圖可讀取後不會走這條 fallback。
               event.currentTarget.onerror = null;

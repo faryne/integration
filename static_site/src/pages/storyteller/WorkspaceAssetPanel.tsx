@@ -16,6 +16,7 @@ import {
 import type { AlertColor } from "@mui/material";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
 import { formatStorytellerDate } from "@/data/storytellerDate.ts";
@@ -80,6 +81,8 @@ export function AssetCard({
   collectionChip?: ReactNode;
   viewMode?: WorkspaceViewMode;
 }) {
+  const { t } = useTranslation();
+
   return (
     <Paper
       elevation={0}
@@ -118,7 +121,10 @@ export function AssetCard({
               {storytellerAssetTitle(asset)}
             </Typography>
             <Typography variant="body2" color="text.secondary" noWrap>
-              引用 {asset.reference_count} 次 · {asset.mime_type}
+              {t("writer:assets.references", {
+                count: asset.reference_count,
+              })}{" "}
+              · {asset.mime_type}
             </Typography>
             {collectionChip && <Box sx={{ mt: 0.5 }}>{collectionChip}</Box>}
           </Box>
@@ -155,6 +161,7 @@ export function AssetDetailPanel({
   onDelete: () => Promise<unknown>;
   onDeleted: () => void;
 }) {
+  const { t, i18n } = useTranslation();
   const [title, setTitle] = useState(asset.title);
   const [altText, setAltText] = useState(asset.alt_text);
   const [description, setDescription] = useState(asset.description);
@@ -172,7 +179,11 @@ export function AssetDetailPanel({
   const [deleting, setDeleting] = useState(false);
 
   const collectionOptions = [
-    { value: "", label: "未分類", icon: <FolderIcon fontSize="small" /> },
+    {
+      value: "",
+      label: t("writer:assets.uncategorized"),
+      icon: <FolderIcon fontSize="small" />,
+    },
     ...assetCollections.map((collection) => ({
       value: collection.public_id,
       label: collection.name,
@@ -204,7 +215,10 @@ export function AssetDetailPanel({
           metadata: asset.metadata ?? {},
         });
       } catch {
-        setSnack({ message: "資產資訊更新失敗，請重試。", severity: "error" });
+        setSnack({
+          message: t("writer:assets.updateFailed"),
+          severity: "error",
+        });
         return;
       }
       // 資訊與分類是兩次獨立儲存；第二步失敗要說明第一步已成功，避免誤導使用者。
@@ -213,13 +227,13 @@ export function AssetDetailPanel({
           await onMove(collectionId);
         } catch {
           setSnack({
-            message: "資產資訊已儲存，但移動到資產集失敗，請重試。",
+            message: t("writer:assets.moveFailed"),
             severity: "error",
           });
           return;
         }
       }
-      setSnack({ message: "資產已更新。", severity: "success" });
+      setSnack({ message: t("writer:assets.updated"), severity: "success" });
     } finally {
       setSaving(false);
     }
@@ -233,7 +247,8 @@ export function AssetDetailPanel({
       onDeleted();
     } catch (error) {
       const message =
-        (error instanceof Error && error.message) || "資產刪除失敗，請重試。";
+        (error instanceof Error && error.message) ||
+        t("writer:assets.deleteFailed");
       setDeleteError(message);
       setSnack({ message, severity: "error" });
     } finally {
@@ -243,18 +258,22 @@ export function AssetDetailPanel({
 
   const assetActionContent = (
     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-      <Chip label={`引用 ${asset.reference_count} 次 · ${asset.mime_type}`} />
+      <Chip
+        label={`${t("writer:assets.references", {
+          count: asset.reference_count,
+        })} · ${asset.mime_type}`}
+      />
       <Button
         size="small"
         variant={metadataOpen ? "contained" : "outlined"}
         startIcon={<InfoOutlinedIcon fontSize="small" />}
         onClick={() => setMetadataOpen((value) => !value)}
       >
-        詳細資訊
+        {t("writer:assets.details")}
       </Button>
       <Tooltip
         title={
-          asset.reference_count > 0 ? "資產仍被作品引用，請先移除引用" : ""
+          asset.reference_count > 0 ? t("writer:assets.referenced") : ""
         }
       >
         <span>
@@ -269,7 +288,7 @@ export function AssetDetailPanel({
               setDeleteOpen(true);
             }}
           >
-            刪除
+            {t("writer:common.delete")}
           </Button>
         </span>
       </Tooltip>
@@ -280,7 +299,7 @@ export function AssetDetailPanel({
         disabled={saving}
         onClick={handleSave}
       >
-        {saving ? "儲存中" : "儲存"}
+        {saving ? t("writer:common.saving") : t("writer:common.save")}
       </Button>
     </Stack>
   );
@@ -292,7 +311,7 @@ export function AssetDetailPanel({
           <WorkspaceEditableTitle
             value={title}
             onChange={setTitle}
-            placeholder="未命名資產"
+            placeholder={t("writer:assets.untitled")}
           />
         }
         actions={assetActionContent}
@@ -308,28 +327,37 @@ export function AssetDetailPanel({
           }}
         >
           <MetadataRow
-            label="原始檔名"
+            label={t("writer:assets.originalName")}
             value={asset.original_filename || "—"}
           />
           <MetadataRow
-            label="類型"
+            label={t("writer:assets.type")}
             value={`${asset.asset_type} · ${asset.mime_type}${asset.file_ext ? ` · .${asset.file_ext}` : ""}`}
           />
           <MetadataRow
-            label="檔案大小"
+            label={t("writer:assets.fileSize")}
             value={formatAssetFileSize(asset.file_size)}
           />
           {dimensionLabel && (
-            <MetadataRow label="尺寸" value={dimensionLabel} />
+            <MetadataRow
+              label={t("writer:assets.dimensions")}
+              value={dimensionLabel}
+            />
           )}
           <MetadataRow label="Public ID" value={asset.public_id} />
           <MetadataRow
-            label="建立時間"
-            value={formatStorytellerDate(asset.created_at)}
+            label={t("writer:assets.createdAt")}
+            value={formatStorytellerDate(
+              asset.created_at,
+              i18n.resolvedLanguage,
+            )}
           />
           <MetadataRow
-            label="更新時間"
-            value={formatStorytellerDate(asset.updated_at)}
+            label={t("writer:assets.updatedAt")}
+            value={formatStorytellerDate(
+              asset.updated_at,
+              i18n.resolvedLanguage,
+            )}
           />
           {extraMetadataEntries.length > 0 && (
             <>
@@ -349,7 +377,7 @@ export function AssetDetailPanel({
       </Collapse>
       <WorkspaceEditorSelectButton
         icon={<FolderIcon fontSize="small" />}
-        label="資產集"
+        label={t("writer:assets.collection")}
         value={collectionId}
         options={collectionOptions}
         // 沒有資產集（只剩未分類）時沒得選
@@ -370,22 +398,22 @@ export function AssetDetailPanel({
       />
       <Box>
         <Typography variant="caption" color="text.secondary">
-          替代文字
+          {t("writer:assets.altText")}
         </Typography>
         <WorkspaceEditableSummary
           value={altText}
           onChange={setAltText}
-          placeholder="給無法看到圖片的讀者的簡短描述"
+          placeholder={t("writer:assets.altHelp")}
         />
       </Box>
       <Box>
         <Typography variant="caption" color="text.secondary">
-          描述
+          {t("writer:assets.description")}
         </Typography>
         <WorkspaceEditableSummary
           value={description}
           onChange={setDescription}
-          placeholder="這個資產的補充說明（選填）"
+          placeholder={t("writer:assets.descriptionHelp")}
         />
       </Box>
       <CustomSnackbar
@@ -396,10 +424,10 @@ export function AssetDetailPanel({
       />
       <StorytellerConfirmNameDialog
         open={deleteOpen}
-        title="刪除資產"
-        description="刪除後無法復原。請輸入資產名稱確認。"
+        title={t("writer:assets.deleteTitle")}
+        description={t("writer:assets.deleteDescription")}
         confirmName={storytellerAssetTitle(asset)}
-        confirmLabel="刪除資產"
+        confirmLabel={t("writer:assets.deleteTitle")}
         loading={deleting}
         error={deleteError}
         onClose={() => {

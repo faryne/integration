@@ -1,11 +1,13 @@
 import { Box, Button, Collapse } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 
 // 作者自介：超過門檻就先收合，作者頁、追蹤卡片共用
 const BIO_COLLAPSE_THRESHOLD = 160;
 
 export function AuthorBio({ bio }: { bio: string }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const isLong = bio.length > BIO_COLLAPSE_THRESHOLD;
 
@@ -22,7 +24,7 @@ export function AuthorBio({ bio }: { bio: string }) {
           onClick={() => setExpanded((value) => !value)}
           sx={{ mt: 0.5, minWidth: 0, px: 0 }}
         >
-          {expanded ? "收合簡介" : "顯示完整簡介"}
+          {t(expanded ? "web.community.collapseBio" : "web.community.expandBio")}
         </Button>
       )}
     </Box>

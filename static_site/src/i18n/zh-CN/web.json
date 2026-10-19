@@ -1,0 +1,237 @@
+{
+  "language": {
+    "buttonLabel": "界面语言",
+    "current": "界面语言，当前为{{language}}",
+    "title": "界面语言",
+    "options": {
+      "zh-TW": "正體中文",
+      "zh-CN": "简体中文",
+      "en": "English",
+      "ja": "日本語",
+      "ko": "한국어"
+    }
+  },
+  "common": {
+    "user": "用户",
+    "cancel": "取消",
+    "close": "关闭",
+    "confirm": "确认",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "create": "创建",
+    "add": "新增",
+    "back": "返回",
+    "next": "下一步",
+    "previous": "上一步",
+    "retry": "重试",
+    "loading": "加载中…",
+    "search": "搜索",
+    "clear": "清除",
+    "copy": "复制",
+    "copied": "已复制",
+    "open": "打开",
+    "download": "下载",
+    "upload": "上传",
+    "all": "全部",
+    "none": "无",
+    "unknown": "未知",
+    "untitled": "未命名",
+    "required": "必填",
+    "optional": "选填",
+    "enabled": "已启用",
+    "disabled": "已停用",
+    "notSet": "未设置",
+    "noResults": "找不到符合条件的结果",
+    "operationFailed": "操作失败：{{message}}"
+  },
+  "layout": {
+    "searchPlaceholder": "搜索作品…",
+    "submitSearch": "提交搜索",
+    "closeSearch": "关闭搜索",
+    "siteSearch": "全站搜索",
+    "readingNow": "当前阅读内容",
+    "createProject": "创建创作项目",
+    "accountMenu": "账号菜单",
+    "login": "登录",
+    "logout": "退出登录",
+    "menu": {
+      "workspace": "我的工作台",
+      "favorites": "我的关注",
+      "profile": "我的资料",
+      "admin": "管理后台"
+    }
+  },
+  "appearance": {
+    "buttonLabel": "外观：{{appearance}}",
+    "current": "外观设置，当前为{{appearance}}",
+    "title": "外观",
+    "description": "三种模式均包含完整的明暗与配色",
+    "options": {
+      "nocturne": { "label": "夜织", "description": "深色工坊与冷色光丝，默认外观" },
+      "ivory": { "label": "纸本", "description": "暖灰纸面与深墨色，适合日间阅读" },
+      "prism": { "label": "棱光", "description": "暗紫底色与青粉双色光泽" }
+    }
+  },
+  "public": {
+    "title": "{{appName}} 公开故事",
+    "heroEyebrow": "STORIES / WORLDS / LIVING THREADS",
+    "projectCount": "目前已有 {{count}} 部作品公开发布。",
+    "startCreating": "开始创作",
+    "openWorkspace": "打开我的工作台",
+    "meetMascot": "认识梭梭",
+    "searchPlaceholder": "搜索项目名称、标题、正文……",
+    "advancedSearch": "高级搜索",
+    "searchResults": "搜索结果",
+    "curatedStories": "正在发生的故事",
+    "projectCountShort": "{{count}} 个项目",
+    "workCountShort": "{{count}} 部作品",
+    "searching": "正在搜索…",
+    "noProjectsFound": "没有符合的项目",
+    "noProjectsFoundDescription": "换个关键词试试，或清空搜索框查看全部公开作品。",
+    "loadMore": "加载更多结果",
+    "loadingPublic": "正在加载公开故事…",
+    "noPublicProjects": "目前还没有公开创作项目",
+    "noPublicProjectsDescription": "公开的 {{appName}} 项目会显示在这里。",
+    "publicReading": "公开阅读",
+    "startReading": "开始阅读",
+    "copies": [
+      { "title": "用你习惯的 AI，", "accent": "直接写进故事里。", "lead": "Claude、ChatGPT、Codex 通过 MCP 连接 SteamLoom，就能读取设定、续写章节、修改并直接保存，无需再复制粘贴。" },
+      { "title": "换一个 AI，", "accent": "也不用从头交代。", "lead": "文风偏好、写作规则、定案的剧情都存进梭梭的记忆，无论从哪个 AI 连接，动笔前都会先读过。" },
+      { "title": "世界观越长越大，", "accent": "AI 也查得到。", "lead": "人物、场景、章节和设定集收在同一个项目里，AI 写作前会自行搜索、对照设定，不会越写越矛盾。" },
+      { "title": "故事不只需要完成，", "accent": "还需要被看见。", "lead": "从私人草稿到公开连载，在不打断创作节奏的地方整理、发布，然后继续写下去。" }
+    ]
+  },
+  "search": {
+    "pageTitle": "全站作品搜索",
+    "description": "在所有公开项目的文字故事与图像作品中搜索标题、简介、正文和图片说明。",
+    "placeholder": "输入关键词，例如“共鸣”“驾驶舱”……",
+    "rating": "分级",
+    "ratings": { "all": "所有分级", "general": "普通级", "guidance": "辅导级", "restricted": "限制级" },
+    "tag": "标签：{{tag}}",
+    "byStory": "按故事",
+    "byProject": "按项目",
+    "storyCount": "共找到 {{count}} 篇故事",
+    "projectCount": "共找到 {{count}} 个项目",
+    "searching": "正在搜索…",
+    "emptyTitle": "没有符合的作品",
+    "emptyDescription": "换个关键词，或移除一些筛选条件试试。",
+    "loadMore": "加载更多结果"
+  },
+  "projectCard": {
+    "noDescription": "尚未填写项目描述。",
+    "stories": "{{count}} 篇故事",
+    "imageEpisodes": "{{count}} 话",
+    "words": "{{count}} 字",
+    "ratingSummary": "{{ratingCount}} 人评分 · 平均 {{average}} · {{favoriteCount}} 人关注",
+    "authorUpdated": "作者 {{authors}} · 更新于 {{date}}",
+    "updated": "更新于 {{date}}",
+    "matchedStories": "{{count}} 篇故事符合",
+    "matchedStoriesBy": "{{count}} 篇故事符合 · 作者 {{authors}}",
+    "moreMatches": "还有 {{count}} 篇故事符合……",
+    "imageWork": "图片／漫画",
+    "textWork": "文字故事"
+  },
+  "footer": { "mascotAlt": "梭梭", "tagline": "写故事、整理设定，让世界持续生长。" },
+  "onboarding": {
+    "penNameTitle": "设置笔名", "penNameWelcome": "欢迎使用 {{appName}}！开始创作前，请先设置你的笔名。", "penName": "笔名",
+    "welcomeTitle": "欢迎加入 {{appName}}", "welcomeDescription": "笔名设置好了，这里快速介绍几个常用功能：", "later": "先逛逛，稍后再说", "firstProject": "创建第一个项目",
+    "features": {
+      "project": { "title": "创建创作项目", "description": "项目是所有创作的起点，故事、设定与角色资料都收在同一个项目中。" },
+      "editor": { "title": "所见即所得编辑器", "description": "输入时可使用标题、引用、列表、表格与分隔线，也支持脚注、私人批注和文字颜色。" },
+      "assets": { "title": "素材库", "description": "上传图片建立素材库，随时插入故事或设定。" },
+      "agent": { "title": "AI Agent（可选）", "description": "使用你自己的模型 API Key，让 Agent 协助改写或延伸故事。" },
+      "mcp": { "title": "MCP 连接（可选）", "description": "让 Claude、ChatGPT、Claude Code、Codex 等 AI 工具通过 MCP 直接读写故事与设定，无需手动复制粘贴。" },
+      "memory": { "title": "梭梭的记忆", "description": "保存文风偏好、写作规则与定案剧情，连接的 AI 动笔前都会先阅读，切换工具也无需从头交代。" },
+      "history": { "title": "版本历史与书签", "description": "每次保存都会留下版本记录，可随时恢复；阅读时也能为喜欢的段落添加书签。" },
+      "publish": { "title": "公开发布", "description": "项目可设为公开、链接可见或私密，由你决定谁能看到作品。" }
+    }
+  },
+  "home": {
+    "workspace": "我的工作台", "checkingLogin": "确认登录状态…", "loginRequired": "需要登录", "loginDescription": "登录后即可查看我的工作台。", "loggingIn": "登录中", "googleLogin": "使用 Google 登录",
+    "projectCount": "{{count}} 个创作项目", "skillCount": "{{count}} 个 Skill", "recentProjects": "最近的创作项目", "availableSkills": "可用的 Skill", "createProject": "创建项目", "createSkill": "创建 Skill", "loadingProjects": "正在加载创作项目…", "loadingSkills": "正在加载 Skill…", "navigation": "工作台导航", "closeNavigation": "关闭工作台导航",
+    "tabs": { "project": "创作项目", "notifications": "通知", "blocks": "屏蔽名单", "agent": "Skill", "apikey": "密钥管理", "usage": "用量报表", "pat": "Personal Access Token", "oauth": "OAuth Token", "mcp": "MCP 连接", "activity": "活动记录", "favorites": "我的关注", "profile": "我的资料" },
+    "groups": { "workspace": "我的工作台", "community": "社区", "security": "账号与安全", "developer": "开发者" },
+    "cards": { "mascotAlt": "梭梭", "noProjects": "目前还没有创作项目", "noProjectsDescription": "可以使用上方的“创建项目”开始创建第一个创作项目。", "noSkills": "目前还没有 Skill", "noSkillsDescription": "可以使用上方的“创建 Skill”新增可在故事编辑器中使用的 Skill。", "noPrompt": "未设置 Prompt 摘要。", "updated": "更新于 {{date}}", "deleteSkill": "删除 Skill", "deleteSkillDescription": "删除后此 Skill 将无法在故事编辑器中使用。请输入 Skill 名称确认。", "deleteSkillFailed": "删除 Skill 失败，请重试。" }
+  },
+  "reader": {
+    "story": "故事", "loadingStory": "正在加载故事…", "settings": "设定", "discussions": "讨论", "uncategorized": "未分类", "empty": "目前还没有任何作品。",
+    "previousItem": "上一则", "nextItem": "下一则", "settingsList": "设定列表", "backToSettings": "返回设定列表",
+    "bookmarkAdded": "书签已添加", "bookmarkRemoved": "书签已删除", "bookmarkUpdateFailed": "书签更新失败，请重试。", "bookmarkDeleteFailed": "书签删除失败，请重试。", "addBookmark": "添加书签", "removeBookmark": "移除书签", "bookmarked": "已添加书签",
+    "followed": "已关注此作品", "unfollowed": "已取消关注此作品", "followFailed": "作品关注状态更新失败，请重试。", "followProject": "关注项目", "followingProject": "已关注项目",
+    "rating": "评分", "ratingSaved": "评分已保存。", "ratingFailed": "评分保存失败，请重试。", "ratingSummary": "{{count}} 人・平均 {{average}}",
+    "privatePreview": "私密预览", "unlisted": "专用链接", "public": "公开阅读", "author": "作者 {{name}}", "storyCount": "{{count}} 篇故事", "episodeCount": "{{count}} 话", "wordCount": "{{count}} 字",
+    "pageAlt": "第 {{page}} 页", "pageOriginalAlt": "第 {{page}} 页（原图）", "pagePreviewAlt": "第 {{page}} 页预览", "page": "第 {{page}} 页", "pageProgress": "{{title}}（第 {{page}} / {{total}} 页）", "previousPage": "上一页", "nextPage": "下一页",
+    "historical": "这不是最新版本（第 {{version}} 版），内容为当时保存的版本，只能移除已有书签，无法新增", "latest": "查看最新版本 →",
+    "closeIndex": "关闭索引", "loginPrompt": "关注项目、关注作者、评分故事或添加书签需要登录。现在登录吗？", "resumed": "已回到上次阅读的位置（{{progress}}%）", "startOver": "从头开始",
+    "deleteBookmark": "删除书签", "deleteBookmarkTitle": "确定删除这条书签？", "deleteBookmarkDescription": "这条书签会从阅读列表移除；若是旧版本或已失效的位置，之后可能无法重新添加。", "deleting": "删除中",
+    "restrictedDescription": "此创作项目标记为限制级，请确认你已年满 18 岁后再继续阅读。", "restrictedTitle": "限制级创作项目",
+    "metaAuthor": "作者 {{name}}", "updated": "更新于 {{date}}",
+    "index": "作品索引", "uncollected": "未分册作品", "outline": "本篇大纲", "pageOverview": "页面一览", "toc": "目录", "bookmarks": "书签", "bookmarksLogin": "登录后即可查看你的书签。", "bookmarksLoading": "正在加载书签…", "bookmarksEmpty": "还没有添加任何书签。文字作品请开启“编辑书签”，图像作品可使用页面上的书签按钮。", "pageRemoved": "页面已移除", "oldVersion": "非最新版本", "removedPage": "（书签指向的页面已被删除）", "blankParagraph": "（空白段落）",
+    "spoilerTitle": "这条设定包含尚未读到的剧情", "spoilerDependencies": "作者建议先读完以下内容：", "unread": "尚未阅读", "spoilerDescription": "作者将这条设定标记为含剧透，确认后再看。", "continue": "我了解，继续阅读", "fullLore": "查看完整设定", "lorePage": "设定页", "loreEyebrow": "设定・{{collection}}", "closeLorePanel": "关闭设定面板", "openLorePage": "在设定页打开", "completed": "读完", "completedAria": "已读完", "progressAria": "已读 {{progress}}%",
+    "historyLoading": "正在加载版本…", "historyEmpty": "暂无编辑历史。", "latestVersion": "第 {{version}} 版（最新）", "version": "第 {{version}} 版",
+    "toolbar": { "previous": "上一章", "next": "下一章", "navigation": "章节", "navigationTooltip": "目录与已添加的书签", "done": "完成", "bookmark": "书签", "aria": "阅读工具栏", "noPrevious": "没有{{label}}", "noNext": "没有{{label}}", "progress": "阅读进度", "progressAria": "本篇阅读进度 {{progress}}%", "projectInfo": "作品信息：{{project}}", "work": "作品", "history": "编辑历史", "historyShort": "历史", "finishBookmarks": "完成编辑书签", "editBookmarks": "编辑段落书签", "readingSettings": "阅读设置", "reading": "阅读", "projectInfoTitle": "作品信息", "settingsCaption": "背景与深浅色沿用网站当前外观。" },
+    "landing": { "completed": "已读完 {{completed}} / {{total}} 篇", "stories": "故事 {{count}}", "settings": "设定 {{count}}", "discussions": "讨论", "start": "开始阅读", "startOver": "从头开始阅读", "continue": "继续阅读：{{title}}{{percent}}", "noContent": "这个作品还没有公开内容。", "other": "其他", "noLore": "这个作品还没有公开设定。", "itemUnit": "篇", "loreUnit": "则" }
+  },
+  "projectWorkspace": {
+    "pageTitle": "{{appName}} 项目",
+    "projects": "创作项目",
+    "loginDescription": "登录后即可查看这个创作项目。",
+    "loadingProject": "正在加载项目…",
+    "loadingStories": "正在加载作品列表…",
+    "readerLink": "作品页链接",
+    "shareLink": "亲友分享链接",
+    "copyLink": "复制到剪贴板",
+    "openLink": "前往",
+    "editProject": "编辑项目",
+    "deleteProject": "删除项目",
+    "deleteProjectDescription": "删除后会移除项目及其下的故事数据。请输入项目名称确认。",
+    "tabs": { "stories": "作品与卷", "lores": "设定集", "assets": "资产集" },
+    "visibility": { "public": "已公开", "unlisted": "与亲友分享", "private": "完全不公开" },
+    "status": { "public": "公开", "published": "公开中", "unpublished": "未公开" },
+    "meta": { "stories": "{{count}} 篇故事", "episodes": "{{count}} 话", "pages": "{{count}} 页", "words": "{{count}} 字", "updated": "更新于 {{date}}" },
+    "story": {
+      "text": "故事", "image": "图像", "move": "移动作品", "edit": "编辑作品", "delete": "删除作品", "moveUngrouped": "移到未分卷",
+      "dragHint": "可拖动调整作品顺序，或拖到上方卷分类", "publishHint": "未公开，点击改为公开中", "unpublishHint": "公开中，点击改为未公开",
+      "deleteEpisode": "删除话", "deleteStory": "删除故事", "deleteEpisodeDescription": "删除后会移除这话及其版本数据。请输入话名称确认。", "deleteStoryDescription": "删除后会移除这篇故事及其版本数据。请输入故事名称确认。"
+    },
+    "volume": {
+      "add": "新增卷", "edit": "编辑卷", "delete": "删除卷", "ungrouped": "未分卷", "ungroupedDropHint": "可将作品拖到这里，移到未分卷",
+      "dropHint": "可将作品拖到“{{title}}”", "dropHintWithSummary": "可将作品拖到“{{title}}”。摘要：{{summary}}",
+      "publishHint": "未公开，下面故事目前一律不对外显示，点击改为公开中", "unpublishHint": "公开中，点击改为未公开（下面故事会一并隐藏）",
+      "deleteBlocked": "卷非空不能删除，请先移出下面的故事", "deleteDescription": "删除后无法恢复。请输入卷名称确认。"
+    },
+    "empty": {
+      "allTitle": "尚未建立任何作品", "allDescription": "使用上方的“建立”选择“故事”开始写作，或选择“图像”建立第一话。",
+      "groupTitle": "目前没有作品", "groupDescription": "可以从上方建立作品，或把其他作品拖到这个分类。"
+    },
+    "messages": { "linkCopied": "已复制故事页链接", "storyPublished": "作品已公开。", "storyUnpublished": "作品已设为未公开。", "storyMoved": "作品已移动。", "volumePublished": "卷已公开。", "volumeUnpublished": "卷已设为未公开。", "volumeCreated": "卷已建立。", "volumeUpdated": "卷已更新。" },
+    "errors": { "copyLink": "复制链接失败，请重试。", "storyReorder": "作品排序更新失败，请刷新后重试。", "volumeReorder": "卷排序更新失败，请刷新后重试。", "storyStatus": "作品状态更新失败，请重试。", "volumeStatus": "卷状态更新失败，请重试。", "storyMove": "作品移动失败，请重试。", "storyDelete": "作品删除失败，请重试。", "volumeSave": "卷保存失败，请重试。", "volumeDelete": "卷删除失败，请重试。", "projectDelete": "项目删除失败，请重试。" }
+  },
+  "loreManager": {
+    "title": "设定列表", "createLore": "建立设定", "showAll": "显示全部设定", "uncategorized": "未分类", "uncategorizedDropHint": "可将设定拖到这里，移到未分类", "loading": "正在加载设定…", "emptyTitle": "尚未建立设定", "emptyDescription": "使用上方的“建立设定”记录世界观、角色规则与剧本设定。", "dragHint": "可拖到上方设定集移动", "moveLore": "移动设定", "moveUncategorized": "移到未分类", "moveTo": "移到“{{name}}”", "deleteLore": "删除设定", "deleteLoreDescription": "删除后会移除这条设定与版本数据。请输入设定名称确认。",
+    "collection": { "create": "建立设定集", "edit": "编辑设定集", "delete": "删除设定集", "name": "设定集名称", "description": "用途备注", "dropHint": "可将设定拖到“{{name}}”", "dropHintWithDescription": "可将设定拖到“{{name}}”。用途：{{description}}", "deleteBlocked": "设定集内仍有设定，不能删除", "deleteDescription": "删除后不会影响其他设定集。请输入设定集名称确认。" },
+    "messages": { "movedToCollection": "设定已移入设定集。", "movedUncategorized": "设定已移到未分类。", "collectionCreated": "设定集已建立。", "collectionUpdated": "设定集已更新。", "collectionDeleted": "设定集已删除。", "loreDeleted": "设定已删除。" },
+    "errors": { "collectionNameRequired": "设定集名称不能为空。" }
+  },
+  "assetManager": {
+    "title": "资产集", "search": "搜索资产", "refresh": "刷新", "uploading": "上传中", "imageUploading": "图片上传中", "image": "图像", "loading": "正在加载资产…", "emptyTitle": "尚无资产", "emptyDescription": "上传图片后，可在这里管理标题、替代文字与备注。", "untitled": "未命名资产", "uncategorized": "未分类", "uncategorizedDropHint": "可将资产拖到这里，移到未分类", "dragHint": "可拖到上方资产集移动", "moveUncategorized": "移到未分类", "replaceFile": "替换文件", "editAsset": "编辑资产信息", "deleteAsset": "删除资产", "deleteAssetDescription": "删除后该资产会从资产集中移除；已被引用的资产不能删除。", "deleteBlocked": "仍被作品引用，不能删除", "actions": "资产操作", "unknownDimensions": "未记录尺寸", "references": "引用 {{count}}", "saving": "保存中",
+    "fields": { "title": "标题", "altText": "替代文字", "notes": "备注" },
+    "collection": { "fallback": "资产集", "create": "建立资产集", "edit": "编辑资产集", "delete": "删除资产集", "name": "名称", "description": "用途备注", "sort": "排序", "dropHint": "可将资产拖到“{{name}}”", "dropHintWithDescription": "可将资产拖到“{{name}}”。用途：{{description}}", "deleteBlocked": "资产集内仍有资产，不能删除", "deleteDescription": "删除前请先将资产集内的资产移到其他资产集或未分类。" },
+    "replace": { "tone": "旧文件会被删除", "eyebrow": "替换文件", "title": "确定要替换这个文件吗？", "description": "确认后旧文件会被永久删除，所有引用此资产的位置都会立即显示新文件。此操作无法恢复。", "replacing": "替换中", "confirm": "确认替换" },
+    "messages": { "collectionCreated": "资产集已建立。", "collectionUpdated": "资产集已更新。", "collectionDeleted": "资产集已删除。", "assetMoved": "资产已移动。", "replaceUploaded": "新文件已上传，确认后才会替换原资产。", "assetUpdated": "资产信息已更新。", "assetDeleted": "资产已删除。", "fileReplaced": "资产文件已替换。" },
+    "errors": { "collectionSave": "资产集保存失败。", "collectionDelete": "资产集删除失败。", "assetMove": "资产移动失败。", "replaceImageOnly": "目前只支持替换图片资产。", "invalidImageType": "请选择 JPEG／PNG／WebP／GIF 图片文件。", "fileTooLarge": "单个文件不能超过 {{maxMB}}MB。", "replaceUpload": "替换文件上传失败，原资产未变更。", "assetUpdate": "资产信息更新失败。", "assetDelete": "资产删除失败。", "fileReplace": "资产文件替换失败，原资产未变更。" }
+  },
+  "community": {
+    "author": "作者", "post": "帖子", "authorWorks": "{{name}} 的作品", "authorPosts": "{{name}} 的动态", "loadingAuthor": "正在加载作者信息…", "loadingPosts": "正在加载动态…", "backToPosts": "返回 {{name}} 的动态",
+    "tabs": { "projects": "作品", "posts": "动态", "favoriteProjects": "关注的作品", "favoriteAuthors": "关注的作者", "penNameFavoriteAuthors": "此笔名关注的作者" },
+    "joinedAsAuthor": "从 {{date}} 开始讲故事", "joinedAsReader": "从 {{date}} 开始读故事", "followLogin": "关注作者需要登录。现在登录吗？", "interactionLogin": "点赞和留言需要登录。现在登录吗？", "home": "返回首页",
+    "stats": { "works": "作品", "stories": "故事数量", "images": "图像作品数量", "average": "平均评分", "followers": "被关注", "people": "{{count}} 人" },
+    "categoryAria": "作者内容分类", "publicReading": "公开阅读", "startReading": "开始阅读", "noWorks": "目前没有公开作品", "noWorksDescription": "这位作者公开的 {{appName}} 项目会显示在这里。",
+    "loadingFavoriteProjects": "正在加载关注的作品…", "noFavoriteProjects": "没有公开的关注作品", "noFavoriteProjectsDescription": "这位作者关注的公开作品会显示在这里。", "loadingFavoriteAuthors": "正在加载关注的作者…", "noPenNameFavoriteAuthors": "这个笔名还没有关注作者", "noFavoriteAuthors": "没有公开的关注作者", "privateFavoriteAuthorsDescription": "从通知回关时使用的是被关注的笔名，以笔名进行的关注会列在这里，只有你能看到。", "favoriteAuthorsDescription": "这位作者关注的作者会显示在这里。",
+    "favoritesAria": "关注分类", "works": "作品", "authors": "作者", "loadingFavoriteWorks": "正在加载关注作品…", "favoritesFailed": "读取关注列表失败，请确认登录状态后重试。", "noFollowedWorks": "尚未关注作品", "noFollowedWorksDescription": "在作品阅读页点击关注后，会在这里列出创作项目。", "noFollowedAuthors": "尚未关注作者", "noFollowedAuthorsDescription": "在作品阅读页点击关注作者后，会在这里列出作者。",
+    "makePublic": "设为公开", "makePrivate": "设为隐藏", "madePublic": "已设为公开", "madePrivate": "已设为隐藏", "projectVisibilityFailed": "关注作品公开状态更新失败。", "authorVisibilityFailed": "关注作者公开状态更新失败。", "hidden": "对外隐藏中",
+    "followAuthor": "关注{{target}}", "followingAuthor": "已关注{{target}}", "followingAs": "已以 {{names}} 关注", "unfollowedAs": "已取消以 {{names}} 关注", "unfollowFailed": "取消关注失败，请稍后再试。", "followedName": "已关注 {{name}}", "unfollowedName": "已取消关注 {{name}}", "followUpdateFailed": "作者关注状态更新失败，请重试。", "unfollow": "取消关注", "unfollowTitle": "要取消以 {{names}} 关注 {{name}} 吗？", "unfollowDescription": "你使用笔名关注这位作者，取消后不会改用本人身份关注。", "keep": "保留",
+    "unnamedAuthor": "未命名作者", "followedAs": "以 {{name}} 关注", "projects": "{{count}} 个项目", "stories": "{{count}} 篇故事", "episodes": "{{count}} 话", "averageRating": "平均 {{average}}（{{count}} 人评分）", "followerCount": "{{count}} 人关注", "viewAuthor": "查看作者", "cardUnfollowDescription": "之后不会再收到这位作者的更新通知（除非你使用其他身份关注）。", "expandBio": "显示完整简介", "collapseBio": "收起简介"
+  }
+}

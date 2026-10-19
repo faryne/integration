@@ -1,14 +1,15 @@
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import NetworkCheckIcon from "@mui/icons-material/NetworkCheck";
-import SaveIcon from "@mui/icons-material/Save";
 import {
   Alert, Box, Button, Checkbox, Chip, CircularProgress, FormControlLabel, Stack, Switch, TextField, Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { MediaWorker, WorkerAdapter, WorkerSaveInput } from "@writer/lib/backend.ts";
 import { CatalogField } from "@writer/pages/settings/CatalogField.tsx";
 import { workerInputErrors } from "@writer/pages/settings/workerValidation.ts";
+import { useSettingsForm } from "@writer/pages/settings/settingsForm.tsx";
+import { useWorkerI18n } from "@writer/pages/settings/workerI18n.ts";
 
 const blankInput = (adapter: WorkerAdapter, worker?: MediaWorker): WorkerSaveInput => ({
   id: worker?.id ?? "",
@@ -24,18 +25,20 @@ export function WorkerDetail({ adapter, worker, busy, onSave, onTest, onDelete }
   adapter: WorkerAdapter;
   worker?: MediaWorker;
   busy: "save" | "test" | "delete" | null;
-  onSave: (input: WorkerSaveInput) => void;
+  onSave: (input: WorkerSaveInput) => Promise<void>;
   onTest: (input: WorkerSaveInput) => void;
   onDelete?: () => void;
 }) {
   const { t } = useTranslation();
-  const [input, setInput] = useState<WorkerSaveInput>(() => blankInput(adapter, worker));
+  const workerText = useWorkerI18n();
+  const initialInput = useMemo(() => blankInput(adapter, worker), [adapter, worker]);
+  const [input, setInput] = useState<WorkerSaveInput>(initialInput);
   // touched 記錄作者碰過的欄位：一開表單不先滿版紅字，離開欄位後才顯示該欄錯誤。
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   useEffect(() => {
-    setInput(blankInput(adapter, worker));
+    setInput(initialInput);
     setTouched({});
-  }, [adapter, worker]);
+  }, [initialInput]);
   const errors = useMemo(() => workerInputErrors(adapter, input, worker), [adapter, input, worker]);
   const invalid = Object.keys(errors).length > 0;
   const fieldError = (key: string) => touched[key] && errors[key] ? t(errors[key]) : undefined;
@@ -45,13 +48,22 @@ export function WorkerDetail({ adapter, worker, busy, onSave, onTest, onDelete }
     [secret ? "secrets" : "settings"]: { ...current[secret ? "secrets" : "settings"], [key]: value },
     clear_secrets: secret ? current.clear_secrets.filter((item) => item !== key) : current.clear_secrets,
   }));
+  const save = useCallback(() => onSave(input), [input, onSave]);
+  const controller = useMemo(() => ({
+    dirty: !worker || JSON.stringify(input) !== JSON.stringify(initialInput),
+    canSave: !invalid && busy === null,
+    saving: busy === "save",
+    save,
+    discard: () => { setInput(initialInput); setTouched({}); },
+  }), [busy, initialInput, input, invalid, save, worker]);
+  useSettingsForm(controller);
 
   return (
-    <Box sx={{ flex: 1, overflow: "auto", p: 3, maxWidth: 820 }}>
+    <Box sx={{ flex: 1, overflow: "auto", p: 3, pb: 12, maxWidth: 820 }}>
       <Stack direction="row" alignItems="flex-start" justifyContent="space-between" sx={{ mb: 3 }}>
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="h5" sx={{ fontSize: 19 }}>{input.name || adapter.name}</Typography>
-          <Typography color="text.secondary" variant="body2">{adapter.description}</Typography>
+          <Typography variant="h5" sx={{ fontSize: 19 }}>{input.name || workerText.adapterName(adapter)}</Typography>
+          <Typography color="text.secondary" variant="body2">{workerText.adapterDescription(adapter)}</Typography>
         </Box>
         <FormControlLabel sx={{ flex: "none", ml: 2, mr: 0, whiteSpace: "nowrap" }} control={<Switch checked={input.enabled} onChange={(_, enabled) => setInput({ ...input, enabled })} />} label={t("settings.workers.enabled")} />
       </Stack>
@@ -61,7 +73,7 @@ export function WorkerDetail({ adapter, worker, busy, onSave, onTest, onDelete }
 
       <Stack spacing={2.25}>
         <TextField label={t("settings.workers.name")} value={input.name} required error={Boolean(fieldError("name"))} helperText={fieldError("name")} onBlur={() => touch("name")} onChange={(event) => setInput({ ...input, name: event.target.value })} />
-        <TextField label={t("settings.workers.adapter")} value={adapter.name} disabled />
+        <TextField label={t("settings.workers.adapter")} value={workerText.adapterName(adapter)} disabled />
         <Typography fontWeight={600} sx={{ pt: 1 }}>{t("settings.workers.connection")}</Typography>
         {adapter.fields.filter((field) => field.kind !== "catalog").map((field) => (
           <Box key={field.key}>
@@ -69,8 +81,8 @@ export function WorkerDetail({ adapter, worker, busy, onSave, onTest, onDelete }
               fullWidth
               required={field.required}
               type={field.secret ? "password" : field.kind === "url" ? "url" : "text"}
-              label={field.label}
-              placeholder={field.secret && worker?.has_secrets[field.key] ? t("settings.workers.secretStored") : field.placeholder}
+              label={workerText.settingLabel(adapter.id, field)}
+              placeholder={field.secret && worker?.has_secrets[field.key] ? t("settings.workers.secretStored") : workerText.settingPlaceholder(adapter.id, field)}
               value={field.secret ? input.secrets[field.key] ?? "" : input.settings[field.key] ?? ""}
               error={Boolean(fieldError(field.key))}
               helperText={fieldError(field.key)}
@@ -81,7 +93,7 @@ export function WorkerDetail({ adapter, worker, busy, onSave, onTest, onDelete }
               <FormControlLabel
                 sx={{ mt: 0.5 }}
                 control={<Checkbox size="small" checked={input.clear_secrets.includes(field.key)} onChange={(_, checked) => { touch(field.key); setInput({ ...input, clear_secrets: checked ? [...input.clear_secrets, field.key] : input.clear_secrets.filter((item) => item !== field.key), secrets: { ...input.secrets, [field.key]: "" } }); }} />}
-                label={<Typography variant="caption">{t("settings.workers.clearSecret", { label: field.label })}</Typography>}
+                label={<Typography variant="caption">{t("settings.workers.clearSecret", { label: workerText.settingLabel(adapter.id, field) })}</Typography>}
               />
             )}
           </Box>
@@ -116,9 +128,6 @@ export function WorkerDetail({ adapter, worker, busy, onSave, onTest, onDelete }
         </Box>
 
         <Stack direction="row" gap={1.25} sx={{ pt: 2 }}>
-          <Button variant="contained" startIcon={busy === "save" ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />} disabled={busy !== null || invalid} onClick={() => onSave(input)}>
-            {busy === "save" ? t("settings.workers.saving") : t("settings.workers.save")}
-          </Button>
           <Button variant="outlined" startIcon={busy === "test" ? <CircularProgress size={16} /> : <NetworkCheckIcon />} disabled={busy !== null || invalid} onClick={() => onTest(input)}>
             {busy === "test" ? t("settings.workers.testing") : t("settings.workers.test")}
           </Button>

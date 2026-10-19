@@ -24,6 +24,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Link as RouterLink,
   useLocation,
@@ -65,9 +66,9 @@ const SNS_TYPE_LABEL: Record<string, string> = {
   facebook: "Facebook",
   instagram: "Instagram",
   threads: "Threads",
-  website: "個人網站",
+  website: "Website",
   plurk: "Plurk",
-  bahamut: "巴哈姆特",
+  bahamut: "Bahamut",
   discord: "Discord",
   youtube: "YouTube",
 };
@@ -81,8 +82,8 @@ const SNS_TYPE_ICON: Record<string, typeof LanguageIcon> = {
   youtube: YouTubeIcon,
 };
 
-function formatJoinedMonth(input: string) {
-  return new Intl.DateTimeFormat("zh-TW", {
+function formatJoinedMonth(input: string, language?: string) {
+  return new Intl.DateTimeFormat(language, {
     year: "numeric",
     month: "long",
   }).format(new Date(input));
@@ -91,14 +92,15 @@ function formatJoinedMonth(input: string) {
 type ProfileTab =
   "projects" | "posts" | "favorite-projects" | "favorite-authors";
 
-const tabBreadcrumbLabel: Record<ProfileTab, string> = {
-  projects: "作品",
-  posts: "動態",
-  "favorite-projects": "追蹤的作品",
-  "favorite-authors": "追蹤的作家",
+const tabBreadcrumbKey: Record<ProfileTab, string> = {
+  projects: "web.community.tabs.projects",
+  posts: "web.community.tabs.posts",
+  "favorite-projects": "web.community.tabs.favoriteProjects",
+  "favorite-authors": "web.community.tabs.favoriteAuthors",
 };
 
 export default function StorytellerUserProjects() {
+  const { t, i18n } = useTranslation();
   const { username } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -175,13 +177,13 @@ export default function StorytellerUserProjects() {
   if (isLoading) {
     return (
       <StorytellerShell
-        title={`${username} 的作品`}
+        title={t("web.community.authorWorks", { name: username })}
         breadcrumbs={[
           { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-          { label: username || "作者" },
+          { label: username || t("web.community.author") },
         ]}
       >
-        <StorytellerLoading label="正在載入作者資訊..." />
+        <StorytellerLoading label={t("web.community.loadingAuthor")} />
       </StorytellerShell>
     );
   }
@@ -193,11 +195,11 @@ export default function StorytellerUserProjects() {
   const items = data?.items || [];
 
   const totalPages = Math.ceil((data?.total || 0) / pageSize);
-  const displayName = author?.pen_name || username || "作者";
+  const displayName = author?.pen_name || username || t("web.community.author");
   const joinedLabel = author?.created_at
     ? (author.story_count ?? 0) > 0
-      ? `開始說起故事於 ${formatJoinedMonth(author.created_at)}`
-      : `開始讀起故事於 ${formatJoinedMonth(author.created_at)}`
+      ? t("web.community.joinedAsAuthor", { date: formatJoinedMonth(author.created_at, i18n.resolvedLanguage) })
+      : t("web.community.joinedAsReader", { date: formatJoinedMonth(author.created_at, i18n.resolvedLanguage) })
     : undefined;
   const snsEntries = Object.entries(author?.sns_links ?? {});
 
@@ -211,8 +213,8 @@ export default function StorytellerUserProjects() {
         {
           label:
             isPenNameOwner && activeTab === "favorite-authors"
-              ? "此筆名追蹤的作家"
-              : tabBreadcrumbLabel[activeTab],
+              ? t("web.community.tabs.penNameFavoriteAuthors")
+              : t(tabBreadcrumbKey[activeTab]),
         },
       ]}
       action={
@@ -222,7 +224,7 @@ export default function StorytellerUserProjects() {
               penName={author.pen_name}
               disabled={isOwner}
               onLoginRequired={() =>
-                setLoginPrompt("追蹤作者需要登入。是否要現在登入？")
+                setLoginPrompt(t("web.community.followLogin"))
               }
               onNotify={notify}
             />
@@ -232,7 +234,7 @@ export default function StorytellerUserProjects() {
             to={steamloomPath()}
             variant="outlined"
           >
-            回首頁
+            {t("web.community.home")}
           </Button>
           {author?.pen_name && !isOwner && (
             <ReportMenuButton
@@ -306,33 +308,33 @@ export default function StorytellerUserProjects() {
               )}
               <Stack spacing={1}>
                 <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">作品</Typography>
+                  <Typography color="text.secondary">{t("web.community.stats.works")}</Typography>
                   <Typography fontWeight={700}>
                     {author?.project_count ?? 0}
                   </Typography>
                 </Stack>
                 <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">故事數目</Typography>
+                  <Typography color="text.secondary">{t("web.community.stats.stories")}</Typography>
                   <Typography fontWeight={700}>
                     {author?.story_count ?? 0}
                   </Typography>
                 </Stack>
                 <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">圖像作品數目</Typography>
+                  <Typography color="text.secondary">{t("web.community.stats.images")}</Typography>
                   <Typography fontWeight={700}>
                     {author?.image_story_count ?? 0}
                   </Typography>
                 </Stack>
                 <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">平均評分</Typography>
+                  <Typography color="text.secondary">{t("web.community.stats.average")}</Typography>
                   <Typography fontWeight={700}>
                     {(author?.average_rating ?? 0).toFixed(1)}
                   </Typography>
                 </Stack>
                 <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">被追蹤</Typography>
+                  <Typography color="text.secondary">{t("web.community.stats.followers")}</Typography>
                   <Typography fontWeight={700}>
-                    {author?.follower_count ?? 0} 人
+                    {t("web.community.stats.people", { count: author?.follower_count ?? 0 })}
                   </Typography>
                 </Stack>
               </Stack>
@@ -345,19 +347,19 @@ export default function StorytellerUserProjects() {
             <Tabs
               value={activeTab}
               onChange={(_, value: ProfileTab) => handleTabChange(value)}
-              aria-label="作者內容分類"
+              aria-label={t("web.community.categoryAria")}
               variant="scrollable"
               allowScrollButtonsMobile
             >
-              <Tab value="projects" label="作品" />
-              <Tab value="posts" label="動態" />
+              <Tab value="projects" label={t("web.community.tabs.projects")} />
+              <Tab value="posts" label={t("web.community.tabs.posts")} />
               {showFavoriteTabs && (
-                <Tab value="favorite-projects" label="追蹤的作品" />
+                <Tab value="favorite-projects" label={t("web.community.tabs.favoriteProjects")} />
               )}
               {(showFavoriteTabs || isPenNameOwner) && (
                 <Tab
                   value="favorite-authors"
-                  label={isPenNameOwner ? "此筆名追蹤的作家" : "追蹤的作家"}
+                  label={t(isPenNameOwner ? "web.community.tabs.penNameFavoriteAuthors" : "web.community.tabs.favoriteAuthors")}
                 />
               )}
             </Tabs>
@@ -374,7 +376,7 @@ export default function StorytellerUserProjects() {
                             <Chip
                               size="small"
                               icon={<LockOpenIcon />}
-                              label="公開閱讀"
+                              label={t("web.community.publicReading")}
                             />
                           }
                           actions={
@@ -383,7 +385,7 @@ export default function StorytellerUserProjects() {
                               to={storytellerReaderPath(project)}
                               variant="contained"
                             >
-                              開始閱讀
+                              {t("web.community.startReading")}
                             </Button>
                           }
                         />
@@ -406,8 +408,8 @@ export default function StorytellerUserProjects() {
               ) : (
                 <CustomEmptyState
                   icon={<LockOpenIcon fontSize="large" />}
-                  title="目前沒有公開的作品"
-                  description={`這位作者公開的 ${STORYTELLER_APP_NAME} 專案會顯示在這裡。`}
+                  title={t("web.community.noWorks")}
+                  description={t("web.community.noWorksDescription", { appName: STORYTELLER_APP_NAME })}
                 />
               ))}
 
@@ -417,19 +419,19 @@ export default function StorytellerUserProjects() {
                 isOwner={isOwner}
                 onNotify={notify}
                 onLoginRequired={() =>
-                  setLoginPrompt("按讚和留言需要登入。是否要現在登入？")
+                  setLoginPrompt(t("web.community.interactionLogin"))
                 }
               />
             )}
 
             {activeTab === "favorite-projects" &&
               (favoriteProjectsQuery.isLoading ? (
-                <StorytellerLoading label="正在載入追蹤的作品..." />
+                <StorytellerLoading label={t("web.community.loadingFavoriteProjects")} />
               ) : (favoriteProjectsQuery.data ?? []).length === 0 ? (
                 <CustomEmptyState
                   icon={<FavoriteIcon fontSize="large" />}
-                  title="沒有公開的追蹤作品"
-                  description="這位作者追蹤的公開作品會顯示在這裡。"
+                  title={t("web.community.noFavoriteProjects")}
+                  description={t("web.community.noFavoriteProjectsDescription")}
                 />
               ) : (
                 <Grid container spacing={2}>
@@ -447,19 +449,19 @@ export default function StorytellerUserProjects() {
 
             {activeTab === "favorite-authors" &&
               (favoriteAuthorsQuery.isLoading ? (
-                <StorytellerLoading label="正在載入追蹤的作家..." />
+                <StorytellerLoading label={t("web.community.loadingFavoriteAuthors")} />
               ) : (favoriteAuthorsQuery.data ?? []).length === 0 ? (
                 <CustomEmptyState
                   icon={<PersonIcon fontSize="large" />}
                   title={
                     isPenNameOwner
-                      ? "這個筆名還沒有追蹤作家"
-                      : "沒有公開的追蹤作家"
+                      ? t("web.community.noPenNameFavoriteAuthors")
+                      : t("web.community.noFavoriteAuthors")
                   }
                   description={
                     isPenNameOwner
-                      ? "從通知回追時用的是被追蹤的筆名，以筆名做的追蹤會列在這裡，只有你看得到。"
-                      : "這位作者追蹤的作家會顯示在這裡。"
+                      ? t("web.community.privateFavoriteAuthorsDescription")
+                      : t("web.community.favoriteAuthorsDescription")
                   }
                 />
               ) : (
@@ -500,6 +502,7 @@ function FavoriteProjectCard({
     severity?: "success" | "error",
   ) => void;
 }) {
+  const { t } = useTranslation();
   const saveVisibility = useSaveFavoriteProjectVisibility(project.public_id);
   const hidden = project.favorite_hidden ?? false;
 
@@ -508,23 +511,23 @@ function FavoriteProjectCard({
       project={project}
       headerAction={
         isOwner && (
-          <Tooltip title={hidden ? "設為公開" : "設為隱藏"}>
+          <Tooltip title={hidden ? t("web.community.makePublic") : t("web.community.makePrivate")}>
             <span>
               <IconButton
                 size="small"
-                aria-label={hidden ? "設為公開" : "設為隱藏"}
+                aria-label={hidden ? t("web.community.makePublic") : t("web.community.makePrivate")}
                 disabled={saveVisibility.isPending}
                 onClick={() =>
                   saveVisibility.mutate(!hidden, {
                     onSuccess: () =>
                       onVisibilityChanged(
                         hidden
-                          ? "追蹤作品已設為公開。"
-                          : "追蹤作品已設為隱藏。",
+                          ? t("web.community.madePublic")
+                          : t("web.community.madePrivate"),
                       ),
                     onError: () =>
                       onVisibilityChanged(
-                        "追蹤作品公開狀態更新失敗。",
+                        t("web.community.projectVisibilityFailed"),
                         "error",
                       ),
                   })
@@ -537,7 +540,7 @@ function FavoriteProjectCard({
         )
       }
       extraChips={
-        hidden && <Chip size="small" color="warning" label="對外隱藏中" />
+        hidden && <Chip size="small" color="warning" label={t("web.community.hidden")} />
       }
       actions={
         <Button
@@ -545,7 +548,7 @@ function FavoriteProjectCard({
           to={storytellerReaderPath(project)}
           variant="contained"
         >
-          開始閱讀
+          {t("web.community.startReading")}
         </Button>
       }
     />

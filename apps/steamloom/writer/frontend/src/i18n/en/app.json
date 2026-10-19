@@ -3,6 +3,7 @@
   "account": {
     "logout": "Sign out"
   },
+  "apiProxy": { "unsupportedUrl": "Writer cannot proxy this URL: {{url}}", "jsonOnly": "The Writer API proxy only supports JSON request bodies" },
   "update": {
     "title": "A new Writer version is available",
     "message": "SteamLoom Writer {{latest}} is ready. You are on {{current}}.",

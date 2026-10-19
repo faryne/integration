@@ -7,9 +7,11 @@ import Suggestion, {
 import { Box, Divider, Paper, Typography } from "@mui/material";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
+import { useTranslation } from "react-i18next";
 
 import {
   slashWysiwygCommands,
+  translatedWysiwygCommandLabel,
   type WysiwygCommand,
   type WysiwygCommandContext,
 } from "./commands";
@@ -40,12 +42,13 @@ interface SlashCommandListProps {
   getOptionId: (index: number) => string;
 }
 
-const SLASH_GROUP_LABELS: Partial<Record<WysiwygCommand["group"], string>> = {
-  heading: "段落樣式",
-  align: "對齊",
-  block: "區塊",
-  insert: "插入",
-  ai: "AI 協作",
+const SLASH_GROUP_KEYS: Partial<Record<WysiwygCommand["group"], string>> = {
+  heading: "paragraphStyles",
+  align: "alignment",
+  block: "blocks",
+  insert: "insert",
+  utility: "utilities",
+  ai: "ai",
 };
 
 /** 選單本體改用真正的 React／MUI 元件（跟右鍵選單同一套 command → icon+label 呈現
@@ -65,6 +68,7 @@ function SlashCommandList({
   listboxId,
   getOptionId,
 }: SlashCommandListProps) {
+  const { t } = useTranslation();
   const groups = items.reduce<
     Array<{
       group: WysiwygCommand["group"];
@@ -84,7 +88,7 @@ function SlashCommandList({
     <Paper
       elevation={4}
       role="listbox"
-      aria-label="斜線指令選單"
+      aria-label={t("writer:editor.slashMenu")}
       id={listboxId}
       sx={{
         // z-index 不能設在這裡：`Paper` 預設 `position:static`，CSS 規定
@@ -106,7 +110,9 @@ function SlashCommandList({
           key={group}
           component="div"
           role="group"
-          aria-label={SLASH_GROUP_LABELS[group]}
+          aria-label={t(
+            `writer:editor.slashGroups.${SLASH_GROUP_KEYS[group]}`,
+          )}
         >
           {groupIndex > 0 && (
             <Divider
@@ -121,7 +127,7 @@ function SlashCommandList({
             variant="caption"
             sx={{ px: 1, pt: 0.5, pb: 0.25, fontWeight: 700 }}
           >
-            {SLASH_GROUP_LABELS[group]}
+            {t(`writer:editor.slashGroups.${SLASH_GROUP_KEYS[group]}`)}
           </Typography>
           <Box
             sx={{
@@ -200,7 +206,7 @@ function SlashCommandList({
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {command.label}
+                    {translatedWysiwygCommandLabel(command, t)}
                   </Box>
                 </Box>
               );

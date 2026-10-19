@@ -30,6 +30,7 @@ import {
 } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material";
 import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   useDeleteStorytellerProject,
@@ -120,13 +121,14 @@ function StoryRow({
   onOpenMoveMenu: (anchorEl: HTMLElement) => void;
   onDelete: () => void;
 }) {
+  const { t, i18n } = useTranslation();
   const isImage = story.content_type === "image";
   const { data: pages = [] } = useStorytellerImageStoryPages(
     isImage ? projectId : undefined,
     isImage ? story.public_id : undefined,
   );
   return (
-    <Tooltip title="可拖曳調整作品順序，或拖到上方冊分類">
+    <Tooltip title={t("web.projectWorkspace.story.dragHint")}>
       <Paper
         draggable
         variant="outlined"
@@ -174,16 +176,18 @@ function StoryRow({
             )}
             <Typography variant="body2" color="text.secondary">
               {isImage
-                ? `${pages.length} 頁`
-                : `${story.word_count.toLocaleString()} 字`}{" "}
-              · {formatStorytellerDate(story.updated_at)}
+                ? t("web.projectWorkspace.meta.pages", { count: pages.length })
+                : t("web.projectWorkspace.meta.words", {
+                    count: story.word_count.toLocaleString(i18n.resolvedLanguage),
+                  })}{" "}
+              · {formatStorytellerDate(story.updated_at, i18n.resolvedLanguage)}
             </Typography>
           </Stack>
           <Tooltip
             title={
               story.status === "completed"
-                ? "公開中，點一下改為未公開"
-                : "未公開，點一下改為公開中"
+                ? t("web.projectWorkspace.story.unpublishHint")
+                : t("web.projectWorkspace.story.publishHint")
             }
           >
             <FormControlLabel
@@ -197,19 +201,23 @@ function StoryRow({
                   onChange={(event) => onTogglePublish(event.target.checked)}
                 />
               }
-              label={story.status === "completed" ? "公開中" : "未公開"}
+              label={
+                story.status === "completed"
+                  ? t("web.projectWorkspace.status.published")
+                  : t("web.projectWorkspace.status.unpublished")
+              }
             />
           </Tooltip>
-          <Tooltip title="移動作品">
+          <Tooltip title={t("web.projectWorkspace.story.move")}>
             <IconButton
               size="small"
               onClick={(event) => onOpenMoveMenu(event.currentTarget)}
-              aria-label="移動作品"
+              aria-label={t("web.projectWorkspace.story.move")}
             >
               <MoreVertIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-          <Tooltip title="編輯作品">
+          <Tooltip title={t("web.projectWorkspace.story.edit")}>
             <IconButton
               component="a"
               href={steamloomPath(
@@ -217,17 +225,17 @@ function StoryRow({
               )}
               size="small"
               color="primary"
-              aria-label="編輯作品"
+              aria-label={t("web.projectWorkspace.story.edit")}
             >
               <EditIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-          <Tooltip title="刪除作品">
+          <Tooltip title={t("web.projectWorkspace.story.delete")}>
             <IconButton
               color="error"
               size="small"
               onClick={onDelete}
-              aria-label="刪除作品"
+              aria-label={t("web.projectWorkspace.story.delete")}
             >
               <DeleteIcon fontSize="small" />
             </IconButton>
@@ -239,6 +247,7 @@ function StoryRow({
 }
 
 export default function StorytellerProjectDetail() {
+  const { t, i18n } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -310,10 +319,10 @@ export default function StorytellerProjectDetail() {
         shareToken: apiProject.share_token,
         statusLabel:
           apiProject.visibility === "public"
-            ? "已公開"
+            ? t("web.projectWorkspace.visibility.public")
             : apiProject.visibility === "unlisted"
-              ? "與親友分享"
-              : "完全不公開",
+              ? t("web.projectWorkspace.visibility.unlisted")
+              : t("web.projectWorkspace.visibility.private"),
         storiesCount: (apiProject.stories ?? []).filter(
           (story) => story.content_type !== "image",
         ).length,
@@ -420,7 +429,9 @@ export default function StorytellerProjectDetail() {
       // 同一次拖曳會送多筆更新；每筆 Promise 都要接錯誤，不能只靠最後一次 mutate 回呼。
       void patchStory
         .mutateAsync({ storyPublicId: item.public_id, input: { sort: index } })
-        .catch(() => setReorderError("冊排序更新失敗，請重新整理後再試。"));
+        .catch(() =>
+          setReorderError(t("web.projectWorkspace.errors.volumeReorder")),
+        );
     });
   }
 
@@ -513,7 +524,9 @@ export default function StorytellerProjectDetail() {
               : {}),
           },
         })
-        .catch(() => setReorderError("作品排序更新失敗，請重新整理後再試。"));
+        .catch(() =>
+          setReorderError(t("web.projectWorkspace.errors.storyReorder")),
+        );
     });
   }
 
@@ -579,8 +592,13 @@ export default function StorytellerProjectDetail() {
       },
       {
         onSuccess: () =>
-          notifyAction(completed ? "冊已公開。" : "冊已設為未公開。"),
-        onError: () => notifyAction("冊狀態更新失敗，請重試。", "error"),
+          notifyAction(
+            completed
+              ? t("web.projectWorkspace.messages.volumePublished")
+              : t("web.projectWorkspace.messages.volumeUnpublished"),
+          ),
+        onError: () =>
+          notifyAction(t("web.projectWorkspace.errors.volumeStatus"), "error"),
       },
     );
   }
@@ -613,7 +631,8 @@ export default function StorytellerProjectDetail() {
         input: { sort: nextSort, parent_id: volumePublicId },
       },
       {
-        onSuccess: () => notifyAction("作品已移動。"),
+        onSuccess: () =>
+          notifyAction(t("web.projectWorkspace.messages.storyMoved")),
         onError: () => {
           // 移動是樂觀更新，存檔失敗時要還原清單，避免畫面假裝移動成功。
           setOrderedStories((current) =>
@@ -621,7 +640,7 @@ export default function StorytellerProjectDetail() {
               item.public_id === story.public_id ? story : item,
             ),
           );
-          notifyAction("作品移動失敗，請重試。", "error");
+          notifyAction(t("web.projectWorkspace.errors.storyMove"), "error");
         },
       },
     );
@@ -630,7 +649,7 @@ export default function StorytellerProjectDetail() {
   useTitle(
     project
       ? `${project.name} - ${STORYTELLER_APP_NAME}`
-      : `${STORYTELLER_APP_NAME} 專案`,
+      : t("web.projectWorkspace.pageTitle", { appName: STORYTELLER_APP_NAME }),
     {
       path: id
         ? steamloomPath(`my/project/${id}/${activeTab}`)
@@ -641,15 +660,23 @@ export default function StorytellerProjectDetail() {
 
   const projectShellBreadcrumbs = [
     { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-    { label: "我的工作台", to: steamloomPath("my") },
-    { label: "創作專案", to: steamloomPath("my/projects") },
+    { label: t("web.home.workspace"), to: steamloomPath("my") },
+    {
+      label: t("web.projectWorkspace.projects"),
+      to: steamloomPath("my/projects"),
+    },
   ];
 
   if (loading) {
     return (
-      <StorytellerShell title="創作專案" breadcrumbs={projectShellBreadcrumbs}>
+      <StorytellerShell
+        title={t("web.projectWorkspace.projects")}
+        breadcrumbs={projectShellBreadcrumbs}
+      >
         <Stack alignItems="center" sx={{ py: 8 }}>
-          <Typography color="text.secondary">正在確認登入狀態...</Typography>
+          <Typography color="text.secondary">
+            {t("web.home.checkingLogin")}
+          </Typography>
         </Stack>
       </StorytellerShell>
     );
@@ -657,9 +684,12 @@ export default function StorytellerProjectDetail() {
 
   if (!session) {
     return (
-      <StorytellerShell title="創作專案" breadcrumbs={projectShellBreadcrumbs}>
+      <StorytellerShell
+        title={t("web.projectWorkspace.projects")}
+        breadcrumbs={projectShellBreadcrumbs}
+      >
         <CustomLoginRequiredState
-          description="登入後即可查看這個創作專案。"
+          description={t("web.projectWorkspace.loginDescription")}
           onLogin={() => void login()}
           submitting={submitting}
         />
@@ -669,8 +699,11 @@ export default function StorytellerProjectDetail() {
 
   if (!project && (apiProjectsPending || apiProjectsFetching)) {
     return (
-      <StorytellerShell title="創作專案" breadcrumbs={projectShellBreadcrumbs}>
-        <StorytellerLoading label="正在載入專案..." />
+      <StorytellerShell
+        title={t("web.projectWorkspace.projects")}
+        breadcrumbs={projectShellBreadcrumbs}
+      >
+        <StorytellerLoading label={t("web.projectWorkspace.loadingProject")} />
       </StorytellerShell>
     );
   }
@@ -722,9 +755,16 @@ export default function StorytellerProjectDetail() {
             },
             {
               onSuccess: () =>
-                notifyAction(checked ? "作品已公開。" : "作品已設為未公開。"),
+                notifyAction(
+                  checked
+                    ? t("web.projectWorkspace.messages.storyPublished")
+                    : t("web.projectWorkspace.messages.storyUnpublished"),
+                ),
               onError: () =>
-                notifyAction("作品狀態更新失敗，請重試。", "error"),
+                notifyAction(
+                  t("web.projectWorkspace.errors.storyStatus"),
+                  "error",
+                ),
             },
           )
         }
@@ -742,7 +782,9 @@ export default function StorytellerProjectDetail() {
           slug: project.slug,
         });
   const readerUrlLabel =
-    project.visibility === "unlisted" ? "親友分享連結" : "作品頁連結";
+    project.visibility === "unlisted"
+      ? t("web.projectWorkspace.shareLink")
+      : t("web.projectWorkspace.readerLink");
   const absoluteReaderUrl =
     typeof window === "undefined"
       ? readerUrl
@@ -765,8 +807,11 @@ export default function StorytellerProjectDetail() {
       description={project.description}
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-        { label: "我的工作台", to: steamloomPath("my") },
-        { label: "創作專案", to: steamloomPath("my/projects") },
+        { label: t("web.home.workspace"), to: steamloomPath("my") },
+        {
+          label: t("web.projectWorkspace.projects"),
+          to: steamloomPath("my/projects"),
+        },
         {
           label: project.name,
           to: steamloomPath(`my/project/${project.id}`),
@@ -774,10 +819,10 @@ export default function StorytellerProjectDetail() {
         {
           label:
             activeTab === "lores"
-              ? "設定集"
+              ? t("web.projectWorkspace.tabs.lores")
               : activeTab === "assets"
-                ? "資產集"
-                : "作品與冊",
+                ? t("web.projectWorkspace.tabs.assets")
+                : t("web.projectWorkspace.tabs.stories"),
         },
       ]}
     >
@@ -808,31 +853,34 @@ export default function StorytellerProjectDetail() {
                 onClose={() => setLinkMenuAnchor(null)}
               >
                 <MenuItem onClick={() => void copyReaderUrl()}>
-                  複製到剪貼簿
+                  {t("web.projectWorkspace.copyLink")}
                 </MenuItem>
                 <MenuItem
                   component="a"
                   href={readerUrl}
                   onClick={() => setLinkMenuAnchor(null)}
                 >
-                  前往
+                  {t("web.projectWorkspace.openLink")}
                 </MenuItem>
               </Menu>
               <Chip label={project.statusLabel} color="primary" />
               <Chip
                 icon={<ArticleIcon />}
                 variant="outlined"
-                label={`${
-                  orderedStories.filter(
-                    (story) => story.content_type !== "image",
-                  ).length || project.storiesCount
-                } 篇故事`}
+                label={t("web.projectWorkspace.meta.stories", {
+                  count:
+                    orderedStories.filter(
+                      (story) => story.content_type !== "image",
+                    ).length || project.storiesCount,
+                })}
               />
               {imageStoryCount > 0 && (
                 <Chip
                   icon={<CollectionsIcon />}
                   variant="outlined"
-                  label={`${imageStoryCount} 話`}
+                  label={t("web.projectWorkspace.meta.episodes", {
+                    count: imageStoryCount,
+                  })}
                 />
               )}
               <Chip
@@ -841,7 +889,12 @@ export default function StorytellerProjectDetail() {
                 variant="outlined"
               />
               <Chip
-                label={`更新於 ${formatStorytellerDate(project.updatedAt)}`}
+                label={t("web.projectWorkspace.meta.updated", {
+                  date: formatStorytellerDate(
+                    project.updatedAt,
+                    i18n.resolvedLanguage,
+                  ),
+                })}
               />
             </Stack>
             <Stack
@@ -852,19 +905,19 @@ export default function StorytellerProjectDetail() {
               justifyContent={{ xs: "flex-start", md: "flex-end" }}
             >
               <ButtonGroup size="small" variant="outlined">
-                <Tooltip title="編輯專案">
+                <Tooltip title={t("web.projectWorkspace.editProject")}>
                   <Button
                     href={steamloomPath(`my/project/${project.id}/edit`)}
-                    aria-label="編輯專案"
+                    aria-label={t("web.projectWorkspace.editProject")}
                   >
                     <EditIcon fontSize="small" />
                   </Button>
                 </Tooltip>
-                <Tooltip title="刪除專案">
+                <Tooltip title={t("web.projectWorkspace.deleteProject")}>
                   <Button
                     color="error"
                     onClick={() => setProjectDeleteOpen(true)}
-                    aria-label="刪除專案"
+                    aria-label={t("web.projectWorkspace.deleteProject")}
                   >
                     <DeleteIcon fontSize="small" />
                   </Button>
@@ -876,12 +929,12 @@ export default function StorytellerProjectDetail() {
         </Paper>
         <CustomSnackbar
           open={copyMessageOpen}
-          message="已複製故事頁連結"
+          message={t("web.projectWorkspace.messages.linkCopied")}
           onClose={() => setCopyMessageOpen(false)}
         />
         <CustomSnackbar
           open={copyErrorOpen}
-          message="複製連結失敗，請重試。"
+          message={t("web.projectWorkspace.errors.copyLink")}
           severity="error"
           onClose={() => setCopyErrorOpen(false)}
         />
@@ -909,9 +962,18 @@ export default function StorytellerProjectDetail() {
                   }
                   sx={steamTabIndicatorSx}
                 >
-                  <Tab value="stories" label="作品與冊" />
-                  <Tab value="lores" label="設定集" />
-                  <Tab value="assets" label="資產集" />
+                  <Tab
+                    value="stories"
+                    label={t("web.projectWorkspace.tabs.stories")}
+                  />
+                  <Tab
+                    value="lores"
+                    label={t("web.projectWorkspace.tabs.lores")}
+                  />
+                  <Tab
+                    value="assets"
+                    label={t("web.projectWorkspace.tabs.assets")}
+                  />
                 </Tabs>
                 {activeTab === "stories" && (
                   <Stack
@@ -921,7 +983,7 @@ export default function StorytellerProjectDetail() {
                     alignItems={{ xs: "stretch", sm: "center" }}
                   >
                     <Typography variant="h6" fontWeight={800}>
-                      作品與冊
+                      {t("web.projectWorkspace.tabs.stories")}
                     </Typography>
                     <Stack
                       direction="row"
@@ -935,7 +997,7 @@ export default function StorytellerProjectDetail() {
                         onClick={() => setVolumeDialogTarget("new")}
                         sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
                       >
-                        新增冊
+                        {t("web.projectWorkspace.volume.add")}
                       </Button>
                       <ButtonGroup
                         ref={createButtonGroupRef}
@@ -948,7 +1010,7 @@ export default function StorytellerProjectDetail() {
                           }
                           sx={{ flex: { xs: 1, sm: "initial" } }}
                         >
-                          建立
+                          {t("web.common.create")}
                         </Button>
                         <Button
                           size="small"
@@ -975,7 +1037,9 @@ export default function StorytellerProjectDetail() {
                           <ListItemIcon>
                             <ArticleIcon fontSize="small" />
                           </ListItemIcon>
-                          <ListItemText>故事</ListItemText>
+                          <ListItemText>
+                            {t("web.projectWorkspace.story.text")}
+                          </ListItemText>
                         </MenuItem>
                         <MenuItem
                           component="a"
@@ -987,7 +1051,9 @@ export default function StorytellerProjectDetail() {
                           <ListItemIcon>
                             <CollectionsIcon fontSize="small" />
                           </ListItemIcon>
-                          <ListItemText>圖像</ListItemText>
+                          <ListItemText>
+                            {t("web.projectWorkspace.story.image")}
+                          </ListItemText>
                         </MenuItem>
                       </Menu>
                       <Menu
@@ -1008,7 +1074,9 @@ export default function StorytellerProjectDetail() {
                           <ListItemIcon>
                             <FolderIcon fontSize="small" />
                           </ListItemIcon>
-                          <ListItemText>移到未分冊</ListItemText>
+                          <ListItemText>
+                            {t("web.projectWorkspace.story.moveUngrouped")}
+                          </ListItemText>
                         </MenuItem>
                         {orderedVolumes.map((volume) => (
                           <MenuItem
@@ -1046,14 +1114,18 @@ export default function StorytellerProjectDetail() {
                 )}
                 {activeTab === "stories" &&
                 (apiStoriesLoading || apiVolumesLoading) ? (
-                  <StorytellerLoading label="正在載入故事列表..." />
+                  <StorytellerLoading
+                    label={t("web.projectWorkspace.loadingStories")}
+                  />
                 ) : activeTab === "stories" &&
                   orderedStories.length === 0 &&
                   apiVolumes.length === 0 ? (
                   <CustomEmptyState
                     icon={<ArticleIcon fontSize="large" />}
-                    title="尚未建立任何作品"
-                    description="使用上方的「建立」選擇「故事」開始撰寫，或選擇「圖像」建立第一話。"
+                    title={t("web.projectWorkspace.empty.allTitle")}
+                    description={t(
+                      "web.projectWorkspace.empty.allDescription",
+                    )}
                   />
                 ) : activeTab === "stories" ? (
                   <Stack spacing={2}>
@@ -1073,9 +1145,13 @@ export default function StorytellerProjectDetail() {
                         startIcon={<FolderIcon />}
                         onClick={() => setActiveStoryCollectionId("")}
                       >
-                        全部
+                        {t("web.common.all")}
                       </Button>
-                      <Tooltip title="可將作品拖曳到這裡，移到未分冊">
+                      <Tooltip
+                        title={t(
+                          "web.projectWorkspace.volume.ungroupedDropHint",
+                        )}
+                      >
                         <Button
                           size="small"
                           variant={
@@ -1093,7 +1169,7 @@ export default function StorytellerProjectDetail() {
                           onDrop={handleUngroupedDrop}
                           sx={dropTargetSx(canDropDraggingStory(null))}
                         >
-                          未分冊
+                          {t("web.projectWorkspace.volume.ungrouped")}
                         </Button>
                       </Tooltip>
                       {orderedVolumes.map((volume) => {
@@ -1135,8 +1211,16 @@ export default function StorytellerProjectDetail() {
                             <Tooltip
                               title={
                                 volume.summary
-                                  ? `可將作品拖曳到「${volume.title}」。摘要：${volume.summary}`
-                                  : `可將作品拖曳到「${volume.title}」`
+                                  ? t(
+                                      "web.projectWorkspace.volume.dropHintWithSummary",
+                                      {
+                                        title: volume.title,
+                                        summary: volume.summary,
+                                      },
+                                    )
+                                  : t("web.projectWorkspace.volume.dropHint", {
+                                      title: volume.title,
+                                    })
                               }
                             >
                               <Button
@@ -1166,8 +1250,12 @@ export default function StorytellerProjectDetail() {
                             <Tooltip
                               title={
                                 volume.status === "completed"
-                                  ? "公開中，點一下改為未公開（底下故事會一併隱藏）"
-                                  : "未公開，底下故事目前一律不對外顯示，點一下改為公開中"
+                                  ? t(
+                                      "web.projectWorkspace.volume.unpublishHint",
+                                    )
+                                  : t(
+                                      "web.projectWorkspace.volume.publishHint",
+                                    )
                               }
                             >
                               <Button
@@ -1175,11 +1263,15 @@ export default function StorytellerProjectDetail() {
                                 onClick={() => toggleVolumeStatus(volume)}
                               >
                                 {volume.status === "completed"
-                                  ? "公開"
-                                  : "未公開"}
+                                  ? t("web.projectWorkspace.status.public")
+                                  : t(
+                                      "web.projectWorkspace.status.unpublished",
+                                    )}
                               </Button>
                             </Tooltip>
-                            <Tooltip title="編輯冊">
+                            <Tooltip
+                              title={t("web.projectWorkspace.volume.edit")}
+                            >
                               <Button
                                 onClick={() => setVolumeDialogTarget(volume)}
                               >
@@ -1189,8 +1281,10 @@ export default function StorytellerProjectDetail() {
                             <Tooltip
                               title={
                                 storyCount > 0
-                                  ? "冊非空不能刪除，請先移出底下的故事"
-                                  : "刪除冊"
+                                  ? t(
+                                      "web.projectWorkspace.volume.deleteBlocked",
+                                    )
+                                  : t("web.projectWorkspace.volume.delete")
                               }
                             >
                               <Button
@@ -1209,8 +1303,10 @@ export default function StorytellerProjectDetail() {
                     {visibleStories.length === 0 ? (
                       <CustomEmptyState
                         icon={<ArticleIcon fontSize="large" />}
-                        title="目前沒有作品"
-                        description="可以從上方建立作品，或把其他作品拖曳到這個分類。"
+                        title={t("web.projectWorkspace.empty.groupTitle")}
+                        description={t(
+                          "web.projectWorkspace.empty.groupDescription",
+                        )}
                       />
                     ) : (
                       <Stack spacing={1.5}>
@@ -1244,18 +1340,32 @@ export default function StorytellerProjectDetail() {
       {deleteTarget && (
         <StorytellerConfirmNameDialog
           open
-          title={deleteTarget.content_type === "image" ? "刪除話" : "刪除故事"}
-          description={`刪除後會移除這${deleteTarget.content_type === "image" ? "話" : "篇故事"}與其版本資料。請輸入${deleteTarget.content_type === "image" ? "話" : "故事"}名稱確認。`}
+          title={
+            deleteTarget.content_type === "image"
+              ? t("web.projectWorkspace.story.deleteEpisode")
+              : t("web.projectWorkspace.story.deleteStory")
+          }
+          description={
+            deleteTarget.content_type === "image"
+              ? t("web.projectWorkspace.story.deleteEpisodeDescription")
+              : t("web.projectWorkspace.story.deleteStoryDescription")
+          }
           confirmName={deleteTarget.title}
           confirmLabel={
-            deleteTarget.content_type === "image" ? "刪除話" : "刪除故事"
+            deleteTarget.content_type === "image"
+              ? t("web.projectWorkspace.story.deleteEpisode")
+              : t("web.projectWorkspace.story.deleteStory")
           }
           loading={deleteStory.isPending}
           onClose={() => setDeleteTarget(null)}
           onConfirm={() =>
             deleteStory.mutate(deleteTarget.public_id, {
               onSuccess: () => setDeleteTarget(null),
-              onError: () => notifyAction("作品刪除失敗，請重試。", "error"),
+              onError: () =>
+                notifyAction(
+                  t("web.projectWorkspace.errors.storyDelete"),
+                  "error",
+                ),
             })
           }
         />
@@ -1300,10 +1410,16 @@ export default function StorytellerProjectDetail() {
                 }
                 setVolumeDialogTarget(null);
                 notifyAction(
-                  volumeDialogTarget === "new" ? "冊已建立。" : "冊已更新。",
+                  volumeDialogTarget === "new"
+                    ? t("web.projectWorkspace.messages.volumeCreated")
+                    : t("web.projectWorkspace.messages.volumeUpdated"),
                 );
               },
-              onError: () => notifyAction("冊儲存失敗，請重試。", "error"),
+              onError: () =>
+                notifyAction(
+                  t("web.projectWorkspace.errors.volumeSave"),
+                  "error",
+                ),
             },
           )
         }
@@ -1311,10 +1427,10 @@ export default function StorytellerProjectDetail() {
       {deleteVolumeTarget && (
         <StorytellerConfirmNameDialog
           open
-          title="刪除冊"
-          description="刪除後無法復原。請輸入冊名稱確認。"
+          title={t("web.projectWorkspace.volume.delete")}
+          description={t("web.projectWorkspace.volume.deleteDescription")}
           confirmName={deleteVolumeTarget.title}
-          confirmLabel="刪除冊"
+          confirmLabel={t("web.projectWorkspace.volume.delete")}
           loading={deleteStory.isPending}
           onClose={() => setDeleteVolumeTarget(null)}
           onConfirm={() =>
@@ -1325,7 +1441,11 @@ export default function StorytellerProjectDetail() {
                 }
                 setDeleteVolumeTarget(null);
               },
-              onError: () => notifyAction("冊刪除失敗，請重試。", "error"),
+              onError: () =>
+                notifyAction(
+                  t("web.projectWorkspace.errors.volumeDelete"),
+                  "error",
+                ),
             })
           }
         />
@@ -1333,16 +1453,20 @@ export default function StorytellerProjectDetail() {
       {projectDeleteOpen && (
         <StorytellerConfirmNameDialog
           open
-          title="刪除專案"
-          description="刪除後會移除專案與底下故事資料。請輸入專案名稱確認。"
+          title={t("web.projectWorkspace.deleteProject")}
+          description={t("web.projectWorkspace.deleteProjectDescription")}
           confirmName={project.name}
-          confirmLabel="刪除專案"
+          confirmLabel={t("web.projectWorkspace.deleteProject")}
           loading={deleteProject.isPending}
           onClose={() => setProjectDeleteOpen(false)}
           onConfirm={() =>
             deleteProject.mutate(project.id, {
               onSuccess: () => navigate(steamloomPath("my/projects")),
-              onError: () => notifyAction("專案刪除失敗，請重試。", "error"),
+              onError: () =>
+                notifyAction(
+                  t("web.projectWorkspace.errors.projectDelete"),
+                  "error",
+                ),
             })
           }
         />

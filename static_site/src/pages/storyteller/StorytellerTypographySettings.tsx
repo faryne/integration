@@ -1,5 +1,6 @@
 import { Button, ButtonGroup, Divider, Stack, Typography } from "@mui/material";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   TYPOGRAPHY_FONT_SIZES,
@@ -8,22 +9,6 @@ import {
   type TypographyLineHeight,
   type TypographyMeasure,
 } from "@/pages/storyteller/useStorytellerTypographyPreferences.ts";
-
-const LINE_HEIGHTS: Array<{ label: string; value: TypographyLineHeight }> = [
-  { label: "緊", value: 1.7 },
-  { label: "適中", value: 1.95 },
-  { label: "寬", value: 2.2 },
-];
-const MEASURES: Array<{ label: string; value: TypographyMeasure }> = [
-  { label: "窄", value: 640 },
-  { label: "適中", value: 720 },
-  { label: "寬", value: 820 },
-];
-const FONT_FAMILIES: Array<{ label: string; value: TypographyFontFamily }> = [
-  { label: "系統", value: "system" },
-  { label: "黑體", value: "sans" },
-  { label: "明體", value: "serif" },
-];
 
 function SettingButtons<T extends string | number>({
   value,
@@ -80,16 +65,17 @@ export function StorytellerTypographySettings({
   showMeasure?: boolean;
   caption: string;
 }) {
+  const { t } = useTranslation();
   const sizeIndex = TYPOGRAPHY_FONT_SIZES.indexOf(preferences.fontSize);
   const stepSize = (delta: number) =>
     onChange({ fontSize: TYPOGRAPHY_FONT_SIZES[sizeIndex + delta] });
 
   return (
     <Stack spacing={1.5}>
-      <SettingRow label="字體大小">
+      <SettingRow label={t("writer:editor.typography.fontSize")}>
         <ButtonGroup size="small" variant="outlined">
           <Button
-            aria-label="縮小字體"
+            aria-label={t("writer:editor.typography.decreaseFontSize")}
             disabled={sizeIndex <= 0}
             onClick={() => stepSize(-1)}
           >
@@ -99,7 +85,7 @@ export function StorytellerTypographySettings({
             {preferences.fontSize}
           </Button>
           <Button
-            aria-label="放大字體"
+            aria-label={t("writer:editor.typography.increaseFontSize")}
             disabled={sizeIndex >= TYPOGRAPHY_FONT_SIZES.length - 1}
             onClick={() => stepSize(1)}
           >
@@ -108,25 +94,38 @@ export function StorytellerTypographySettings({
         </ButtonGroup>
       </SettingRow>
       <Divider />
-      <SettingRow label="字體">
+      <SettingRow label={t("writer:editor.typography.fontFamily")}>
         <SettingButtons
           value={preferences.fontFamily}
-          options={FONT_FAMILIES}
+          options={(["system", "sans", "serif"] as const).map((value) => ({
+            label: t(`writer:editor.typography.fontFamilies.${value}`),
+            value: value as TypographyFontFamily,
+          }))}
           onChange={(fontFamily) => onChange({ fontFamily })}
         />
       </SettingRow>
-      <SettingRow label="行距">
+      <SettingRow label={t("writer:editor.typography.lineHeight")}>
         <SettingButtons
           value={preferences.lineHeight}
-          options={LINE_HEIGHTS}
+          options={([
+            ["tight", 1.7], ["normal", 1.95], ["wide", 2.2],
+          ] as const).map(([key, value]) => ({
+            label: t(`writer:editor.typography.spacing.${key}`),
+            value: value as TypographyLineHeight,
+          }))}
           onChange={(lineHeight) => onChange({ lineHeight })}
         />
       </SettingRow>
       {showMeasure && (
-        <SettingRow label="頁面寬度">
+        <SettingRow label={t("writer:editor.typography.measure")}>
           <SettingButtons
             value={preferences.measure}
-            options={MEASURES}
+            options={([
+              ["narrow", 640], ["normal", 720], ["wide", 820],
+            ] as const).map(([key, value]) => ({
+              label: t(`writer:editor.typography.width.${key}`),
+              value: value as TypographyMeasure,
+            }))}
             onChange={(measure) => onChange({ measure })}
           />
         </SettingRow>

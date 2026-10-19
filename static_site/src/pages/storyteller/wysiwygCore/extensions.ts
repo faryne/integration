@@ -40,6 +40,7 @@ import { ALIGNMENT_VALUES, DEFAULT_ALIGNMENT } from "./whitelist";
  * 只會原地留在段落文字裡（滿足「非白名單語法略過解析、以純文字顯示」）。
  */
 interface WysiwygCoreExtensionOptions {
+  placeholder?: string;
   slashCommand?:
     | false
     | {
@@ -77,7 +78,7 @@ export function createWysiwygCoreExtensions(
       alignments: [...ALIGNMENT_VALUES],
       defaultAlignment: DEFAULT_ALIGNMENT,
     }),
-    EmptyParagraphPlaceholder,
+    EmptyParagraphPlaceholder.configure({ placeholder: options.placeholder ?? "" }),
     FindReplace,
     ...(options.slashCommand === false
       ? []

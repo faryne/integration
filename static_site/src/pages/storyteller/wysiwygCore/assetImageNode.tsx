@@ -22,6 +22,7 @@ import {
   type NodeViewProps,
 } from "@tiptap/react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useEditorAsset } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 import {
   ASSET_IMAGE_LAYOUT_OPTIONS,
@@ -49,6 +50,7 @@ function AssetImageView({
   updateAttributes,
   deleteNode,
 }: NodeViewProps) {
+  const { t } = useTranslation();
   const publicId = (node.attrs.publicId as string | undefined) ?? "";
   const src = (node.attrs.src as string | undefined) ?? "";
   const projectPublicId =
@@ -169,7 +171,7 @@ function AssetImageView({
             }}
           >
             <Typography component="span" color="text.secondary">
-              {assetQuery.isLoading ? "正在載入資產..." : "找不到資產預覽"}
+              {t(assetQuery.isLoading ? "writer:editor.image.loading" : "writer:editor.image.previewMissing")}
             </Typography>
           </Box>
         )}
@@ -207,12 +209,12 @@ function AssetImageView({
             {title}
           </Typography>
           <Stack component="span" direction="row" spacing={0.5}>
-            <Tooltip title="圖片設定">
+            <Tooltip title={t("writer:editor.image.settings")}>
               <IconButton size="small" onClick={openDialog}>
                 <EditIcon fontSize="inherit" />
               </IconButton>
             </Tooltip>
-            <Tooltip title="移除資產">
+            <Tooltip title={t("writer:editor.image.removeAsset")}>
               <IconButton size="small" color="error" onClick={deleteNode}>
                 <DeleteIcon fontSize="inherit" />
               </IconButton>
@@ -227,19 +229,19 @@ function AssetImageView({
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle>圖片設定</DialogTitle>
+        <DialogTitle>{t("writer:editor.image.settings")}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
-              label="替代文字"
-              helperText="給無障礙輔助工具／SEO 用，不會顯示在畫面上"
+              label={t("writer:editor.image.alt")}
+              helperText={t("writer:editor.image.altHelp")}
               value={altDraft}
               onChange={(event) => setAltDraft(event.target.value)}
               fullWidth
             />
             <TextField
-              label="圖說"
-              helperText="顯示給讀者看的說明文字，留空則不顯示"
+              label={t("writer:editor.image.caption")}
+              helperText={t("writer:editor.image.captionHelp")}
               value={captionDraft}
               onChange={(event) => setCaptionDraft(event.target.value)}
               fullWidth
@@ -248,7 +250,7 @@ function AssetImageView({
             />
             <TextField
               select
-              label="版面"
+              label={t("writer:editor.image.layout")}
               value={layoutDraft}
               onChange={(event) =>
                 setLayoutDraft(normalizeAssetImageLayout(event.target.value))
@@ -257,13 +259,13 @@ function AssetImageView({
             >
               {ASSET_IMAGE_LAYOUT_OPTIONS.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
-                  {option.label}
+                  {t(`writer:editor.image.layouts.${option.value}`)}
                 </MenuItem>
               ))}
             </TextField>
             <TextField
               select
-              label="尺寸"
+              label={t("writer:editor.image.size")}
               value={sizeDraft}
               onChange={(event) =>
                 setSizeDraft(normalizeAssetImageSize(event.target.value))
@@ -272,7 +274,7 @@ function AssetImageView({
             >
               {ASSET_IMAGE_SIZE_OPTIONS.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
-                  {option.label}
+                  {t(`writer:editor.image.sizes.${option.value}`)}
                 </MenuItem>
               ))}
             </TextField>
@@ -280,12 +282,12 @@ function AssetImageView({
         </DialogContent>
         <DialogActions sx={{ justifyContent: "space-between" }}>
           <Button color="error" onClick={deleteAsset}>
-            刪除圖片
+            {t("writer:editor.image.delete")}
           </Button>
           <Stack direction="row" spacing={1}>
-            <Button onClick={() => setDialogOpen(false)}>取消</Button>
+            <Button onClick={() => setDialogOpen(false)}>{t("writer:common.cancel")}</Button>
             <Button variant="contained" onClick={saveSettings}>
-              套用
+              {t("writer:common.apply")}
             </Button>
           </Stack>
         </DialogActions>

@@ -4,12 +4,12 @@ import CollectionsIcon from "@mui/icons-material/Collections";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { Box, ButtonBase, Divider, Stack, Typography } from "@mui/material";
 import { useEffect, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { ReaderProgressBadge } from "./ReaderProgressBadge.tsx";
 import { readerLoreGroupAnchorId } from "./readerModel.ts";
 import type { ReaderProgress } from "./readingRecordStore.ts";
-import { SPOILER_LORE_TITLE } from "./useLoreSpoilerGate.ts";
 
 export interface WorkLandingItem {
   id: string;
@@ -55,8 +55,9 @@ export function StoryToc({
   items: WorkLandingItem[];
   volumes: WorkLandingVolume[];
 }) {
+  const { t } = useTranslation();
   if (items.length === 0) {
-    return <EmptyToc>這個作品還沒有公開的內容。</EmptyToc>;
+    return <EmptyToc>{t("web.reader.landing.noContent")}</EmptyToc>;
   }
   const ungrouped = items.filter((item) => item.parentId === null);
   const groups = volumes
@@ -72,6 +73,7 @@ export function StoryToc({
           key={volume.id}
           title={volume.title}
           count={children.length}
+          unit={t("web.reader.landing.itemUnit")}
         >
           {children.map((item, index) => (
             <StoryTocRow key={item.id} item={item} index={index} />
@@ -80,8 +82,9 @@ export function StoryToc({
       ))}
       {ungrouped.length > 0 && (
         <TocSection
-          title={groups.length > 0 ? "其他" : undefined}
+          title={groups.length > 0 ? t("web.reader.landing.other") : undefined}
           count={ungrouped.length}
+          unit={t("web.reader.landing.itemUnit")}
         >
           {ungrouped.map((item, index) => (
             <StoryTocRow key={item.id} item={item} index={index} />
@@ -95,6 +98,7 @@ export function StoryToc({
 // 設定 Tab：比照故事目錄的樣式，依設定集分組。網址帶 #錨點（設定頁麵包屑的設定集連結）時
 // 捲到對應的設定集——SPA 換頁不會自動處理 hash 捲動，要自己做。
 export function LoreToc({ groups }: { groups: WorkLandingLoreGroup[] }) {
+  const { t } = useTranslation();
   const { hash } = useLocation();
   useEffect(() => {
     if (hash) {
@@ -105,7 +109,7 @@ export function LoreToc({ groups }: { groups: WorkLandingLoreGroup[] }) {
   }, [hash]);
 
   if (groups.length === 0) {
-    return <EmptyToc>這個作品還沒有公開的設定。</EmptyToc>;
+    return <EmptyToc>{t("web.reader.landing.noLore")}</EmptyToc>;
   }
   return (
     <Stack spacing={2}>
@@ -115,7 +119,7 @@ export function LoreToc({ groups }: { groups: WorkLandingLoreGroup[] }) {
           anchorId={readerLoreGroupAnchorId(group.id)}
           title={group.name}
           count={group.lores.length}
-          unit="則"
+          unit={t("web.reader.landing.loreUnit")}
         >
           {group.lores.map((lore) =>
             lore.lockHint ? (
@@ -123,7 +127,7 @@ export function LoreToc({ groups }: { groups: WorkLandingLoreGroup[] }) {
                 key={lore.id}
                 href={lore.href}
                 icon={<LockOutlinedIcon fontSize="small" />}
-                title={SPOILER_LORE_TITLE}
+                title={t("web.reader.spoilerTitle")}
                 summary={lore.lockHint}
                 updatedAt={lore.updatedAt}
                 progress={lore.progress}
@@ -158,7 +162,7 @@ function EmptyToc({ children }: { children: ReactNode }) {
 function TocSection({
   title,
   count,
-  unit = "篇",
+  unit,
   anchorId,
   children,
 }: {
@@ -235,6 +239,7 @@ function TocRow({
   updatedAt: string;
   progress?: ReaderProgress;
 }) {
+  const { i18n } = useTranslation();
   return (
     <ButtonBase
       component={RouterLink}
@@ -284,7 +289,7 @@ function TocRow({
           color="text.secondary"
           sx={{ display: { xs: "none", sm: "block" } }}
         >
-          {formatStorytellerDate(updatedAt)}
+          {formatStorytellerDate(updatedAt, i18n.resolvedLanguage)}
         </Typography>
       </Stack>
     </ButtonBase>

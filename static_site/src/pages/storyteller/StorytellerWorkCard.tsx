@@ -3,10 +3,10 @@ import CollectionsIcon from "@mui/icons-material/Collections";
 import SellIcon from "@mui/icons-material/Sell";
 import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   formatStorytellerDate,
   storytellerProjectRatingColor,
-  storytellerProjectRatingLabel,
   storytellerSearchResultPath,
 } from "@/data/storyteller.ts";
 import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
@@ -35,6 +35,7 @@ export function StorytellerWorkCard({
   result,
   onTagClick,
 }: StorytellerWorkCardProps) {
+  const { t, i18n } = useTranslation();
   const isImage = Boolean(result.cover_image_url);
 
   return (
@@ -94,12 +95,12 @@ export function StorytellerWorkCard({
             size="small"
             variant="outlined"
             icon={isImage ? <CollectionsIcon /> : <ArticleIcon />}
-            label={isImage ? "圖片／漫畫" : "文字故事"}
+            label={t(isImage ? "web.projectCard.imageWork" : "web.projectCard.textWork")}
           />
           <Chip
             size="small"
             color={storytellerProjectRatingColor(result.rating)}
-            label={storytellerProjectRatingLabel(result.rating)}
+            label={t(`web.search.ratings.${result.rating ?? "general"}`)}
           />
           {result.tags.map((tag) => (
             <Chip
@@ -121,9 +122,10 @@ export function StorytellerWorkCard({
           ))}
         </Stack>
         <Typography variant="caption" color="text.secondary">
-          {formatAuthorNames(result.author_pen_name) &&
-            `作者 ${formatAuthorNames(result.author_pen_name)} · `}
-          更新於 {formatStorytellerDate(result.updated_at)}
+          {formatAuthorNames(result.author_pen_name) ? t("web.projectCard.authorUpdated", {
+            authors: formatAuthorNames(result.author_pen_name),
+            date: formatStorytellerDate(result.updated_at, i18n.resolvedLanguage),
+          }) : t("web.projectCard.updated", { date: formatStorytellerDate(result.updated_at, i18n.resolvedLanguage) })}
         </Typography>
       </Stack>
     </Paper>

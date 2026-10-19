@@ -14,6 +14,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import {
   workspaceDialogActionsSx,
   workspaceDialogBackdropSx,
@@ -96,6 +97,7 @@ export function CollectionDialog({
   onClose: () => void;
   onSubmit: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Dialog
       open={open}
@@ -111,14 +113,14 @@ export function CollectionDialog({
       <DialogContent sx={workspaceDialogContentSx}>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TextField
-            label="名稱"
+            label={t("writer.collectionDialog.name")}
             value={name}
             onChange={(event) => onNameChange(event.target.value)}
             fullWidth
             sx={workspaceTextFieldSx}
           />
           <TextField
-            label="用途筆記"
+            label={t("writer.collectionDialog.notes")}
             value={description}
             onChange={(event) => onDescriptionChange(event.target.value)}
             fullWidth
@@ -129,13 +131,13 @@ export function CollectionDialog({
         </Stack>
       </DialogContent>
       <DialogActions sx={workspaceDialogActionsSx}>
-        <Button onClick={onClose}>取消</Button>
+        <Button onClick={onClose}>{t("writer.common.cancel")}</Button>
         <Button
           variant="contained"
           disabled={loading || !name.trim()}
           onClick={onSubmit}
         >
-          儲存
+          {t("writer.common.save")}
         </Button>
       </DialogActions>
     </Dialog>
@@ -147,6 +149,7 @@ export function UploadProgressToast({
 }: {
   rows: WorkspaceUploadProgressRow[];
 }) {
+  const { t } = useTranslation();
   const total = rows.reduce((sum, row) => sum + row.total, 0);
   const loaded = rows.reduce((sum, row) => sum + row.loaded, 0);
   const percent = total > 0 ? Math.round((loaded / total) * 100) : 0;
@@ -166,7 +169,7 @@ export function UploadProgressToast({
         borderRadius: 1,
       }}
     >
-      <Typography fontWeight={800}>正在上傳資產 {percent}%</Typography>
+      <Typography fontWeight={800}>{t("writer.collectionDialog.uploading", { percent })}</Typography>
       <LinearProgress variant="determinate" value={percent} />
       {rows.slice(0, 3).map((row) => (
         <Typography

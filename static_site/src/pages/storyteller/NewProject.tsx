@@ -18,6 +18,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   useSaveStorytellerProject,
@@ -30,7 +31,6 @@ import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import {
   STORYTELLER_APP_NAME,
-  storytellerProjectRatingLabel,
   storytellerReaderPath,
 } from "@/data/storyteller.ts";
 import {
@@ -107,6 +107,7 @@ export default function StorytellerNewProject({
   onSaved,
   onCancel,
 }: StorytellerNewProjectProps = {}) {
+  const { t } = useTranslation();
   const { id: routeId } = useParams();
   const id = projectId ?? routeId;
   const navigate = useNavigate();
@@ -171,8 +172,8 @@ export default function StorytellerNewProject({
 
   useTitle(
     isEditing
-      ? `編輯 ${STORYTELLER_APP_NAME} 專案`
-      : `建立 ${STORYTELLER_APP_NAME} 專案`,
+      ? `${t("writer.projectForm.edit")} ${STORYTELLER_APP_NAME}`
+      : `${t("writer.projectForm.create")} ${STORYTELLER_APP_NAME}`,
     {
       path:
         isEditing && id
@@ -184,8 +185,8 @@ export default function StorytellerNewProject({
 
   const newProjectShellBreadcrumbs = [
     { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-    { label: "我的工作台", to: steamloomPath("my") },
-    { label: "創作專案", to: steamloomPath("my/projects") },
+    { label: t("writer.projectForm.workspace"), to: steamloomPath("my") },
+    { label: t("writer.projectForm.projects"), to: steamloomPath("my/projects") },
   ];
 
   // embedded（帳號工作台）模式下不重複套用一層 StorytellerShell 的頂欄跟麵包屑——
@@ -210,21 +211,21 @@ export default function StorytellerNewProject({
 
   if (authLoading) {
     return renderFrame(
-      isEditing ? "編輯專案" : "建立專案",
+      t(isEditing ? "writer.projectForm.edit" : "writer.projectForm.create"),
       newProjectShellBreadcrumbs,
       <Stack alignItems="center" sx={{ py: 8 }}>
-        <Typography color="text.secondary">正在確認登入狀態...</Typography>
+        <Typography color="text.secondary">{t("writer.projectForm.checkingAuth")}</Typography>
       </Stack>,
     );
   }
 
   if (!session) {
     return renderFrame(
-      isEditing ? "編輯專案" : "建立專案",
+      t(isEditing ? "writer.projectForm.edit" : "writer.projectForm.create"),
       newProjectShellBreadcrumbs,
       <CustomLoginRequiredState
         description={
-          isEditing ? "登入後即可編輯這個專案。" : "登入後即可建立新專案。"
+          t(isEditing ? "writer.projectForm.loginEdit" : "writer.projectForm.loginCreate")
         }
         onLogin={() => void login()}
         submitting={submitting}
@@ -234,9 +235,9 @@ export default function StorytellerNewProject({
 
   if (isEditing && !editingProject && (isLoading || isFetching)) {
     return renderFrame(
-      "編輯專案",
+      t("writer.projectForm.edit"),
       newProjectShellBreadcrumbs,
-      <StorytellerLoading label="正在載入專案資料..." />,
+      <StorytellerLoading label={t("writer.projectForm.loading")} />,
     );
   }
 
@@ -359,26 +360,26 @@ export default function StorytellerNewProject({
       urlPreview =
         editingProject.visibility === "unlisted" && editingProject.share_token
           ? publicUrl(steamloomPath(`work/share/${editingProject.share_token}`))
-          : "儲存後系統會建立新的分享網址，可到專案頁面查看。";
+          : t("writer.projectForm.shareAfterSave");
     }
   } else if (!isEditing) {
     if (input.visibility === "public") {
-      urlPreview = `建立後網址大致會是：${publicUrl(steamloomPath(`work/（系統代碼）-${projectNameToSlug(input.name)}`))}`;
+      urlPreview = t("writer.projectForm.publicUrlPreview", { url: publicUrl(steamloomPath(`work/system-${projectNameToSlug(input.name)}`)) });
     } else if (input.visibility === "unlisted") {
-      urlPreview = "建立後系統會自動產生一組專屬的分享網址。";
+      urlPreview = t("writer.projectForm.shareAfterCreate");
     }
   }
 
   return (
     <StorytellerShell
-      title={isEditing ? "編輯專案" : "建立專案"}
+      title={t(isEditing ? "writer.projectForm.edit" : "writer.projectForm.create")}
       breadcrumbs={
         embedded
           ? []
           : [
               { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-              { label: "我的工作台", to: steamloomPath("my") },
-              { label: "創作專案", to: steamloomPath("my/projects") },
+              { label: t("writer.projectForm.workspace"), to: steamloomPath("my") },
+              { label: t("writer.projectForm.projects"), to: steamloomPath("my/projects") },
               ...(editingProject
                 ? [
                     {
@@ -389,7 +390,7 @@ export default function StorytellerNewProject({
                     },
                   ]
                 : []),
-              { label: isEditing ? "編輯專案" : "建立專案" },
+              { label: t(isEditing ? "writer.projectForm.edit" : "writer.projectForm.create") },
             ]
       }
       plain={embedded}
@@ -398,19 +399,19 @@ export default function StorytellerNewProject({
       <StorytellerMascotDialog
         open={Boolean(createdProjectId)}
         state="success"
-        eyebrow="專案已建立"
-        title={`「${input.name}」已經準備好了`}
-        description="基本設定都已經建好。你可以直接建立第一篇故事，也可以先回專案首頁整理設定。"
+        eyebrow={t("writer.projectForm.created")}
+        title={t("writer.projectForm.ready", { name: input.name })}
+        description={t("writer.projectForm.readyDescription")}
         onClose={handleGoToProjectHome}
         actions={
           <>
-            <Button onClick={handleGoToProjectHome}>回專案首頁</Button>
+            <Button onClick={handleGoToProjectHome}>{t("writer.projectForm.goHome")}</Button>
             <Button
               autoFocus
               variant="contained"
               onClick={handleStartFirstStory}
             >
-              建立第一篇故事
+              {t("writer.projectForm.firstStory")}
             </Button>
           </>
         }
@@ -426,17 +427,13 @@ export default function StorytellerNewProject({
           }}
         >
           <Typography variant="caption" color="text.secondary">
-            新專案
+            {t("writer.projectForm.newProject")}
           </Typography>
           <Typography fontWeight={800}>{input.name}</Typography>
           <Typography variant="caption" color="text.secondary">
-            {input.visibility === "public"
-              ? "公開"
-              : input.visibility === "unlisted"
-                ? "不公開列出"
-                : "私人"}
+            {t(`writer.projectForm.visibilitySummary.${input.visibility}`)}
             {" · "}
-            {storytellerProjectRatingLabel(input.rating)}
+            {t(`writer.projectForm.ratingOptions.${input.rating}`)}
           </Typography>
         </Paper>
       </StorytellerMascotDialog>
@@ -446,14 +443,14 @@ export default function StorytellerNewProject({
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle>變更專案網址</DialogTitle>
+        <DialogTitle>{t("writer.projectForm.slugDialogTitle")}</DialogTitle>
         <DialogContent>
           <Typography color="text.secondary">
-            網址已變更，公開頁面顯示與分享的網址會立即更新為新網址（舊網址原則上仍可正常開啟，但可能不會馬上被外部平台或搜尋引擎更新）。
+            {t("writer.projectForm.slugDialogDescription")}
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setSlugWarningOpen(false)}>取消</Button>
+          <Button onClick={() => setSlugWarningOpen(false)}>{t("writer.common.cancel")}</Button>
           <Button
             variant="contained"
             onClick={() => {
@@ -461,7 +458,7 @@ export default function StorytellerNewProject({
               performSave();
             }}
           >
-            確認變更
+            {t("writer.projectForm.confirmChange")}
           </Button>
         </DialogActions>
       </Dialog>
@@ -474,15 +471,14 @@ export default function StorytellerNewProject({
         <Stack spacing={3}>
           {atProjectLimit && accountLimits && (
             <Alert severity="warning">
-              已達可建立的專案數量上限（{accountLimits.max_projects}{" "}
-              個），請刪除舊專案後再建立新的。
+              {t("writer.projectForm.limit", { count: accountLimits.max_projects })}
             </Alert>
           )}
           {saveProject.isError && (
             <Alert severity="error" variant="outlined">
               {errorMessage(
                 saveProject.error,
-                `${isEditing ? "更新專案失敗" : "建立專案失敗"}，請確認登入狀態與欄位內容。`,
+                t("writer.projectForm.saveFailed", { action: t(isEditing ? "writer.projectForm.updateAction" : "writer.projectForm.createAction") }),
               )}
             </Alert>
           )}
@@ -490,8 +486,8 @@ export default function StorytellerNewProject({
             value={activeTab}
             onChange={(_, value: number) => setActiveTab(value)}
           >
-            <Tab label="主要設定" />
-            <Tab label="封面圖設定" />
+            <Tab label={t("writer.projectForm.tabs.main")} />
+            <Tab label={t("writer.projectForm.tabs.cover")} />
           </Tabs>
           <Grid
             container
@@ -502,9 +498,9 @@ export default function StorytellerNewProject({
               <TextField
                 required
                 fullWidth
-                label="專案名稱"
-                placeholder="例如：河燈之城"
-                helperText="不可與既有專案重複。"
+                label={t("writer.projectForm.name")}
+                placeholder={t("writer.projectForm.namePlaceholder")}
+                helperText={t("writer.projectForm.nameHelp")}
                 value={input.name}
                 onChange={(event) =>
                   setInput((value) => ({ ...value, name: event.target.value }))
@@ -516,11 +512,11 @@ export default function StorytellerNewProject({
                 fullWidth
                 disabled={!isEditing}
                 required={isEditing}
-                label="專案網址"
+                label={t("writer.projectForm.slug")}
                 helperText={
                   isEditing
-                    ? "變更後，公開頁面顯示與分享用的網址會跟著改變。"
-                    : "預設使用專案名稱產生，建立後可以修改。"
+                    ? t("writer.projectForm.slugEditHelp")
+                    : t("writer.projectForm.slugCreateHelp")
                 }
                 value={isEditing ? input.slug : projectNameToSlug(input.name)}
                 onChange={
@@ -549,8 +545,8 @@ export default function StorytellerNewProject({
                 multiline
                 minRows={5}
                 maxRows={12}
-                label="專案描述"
-                placeholder="記錄故事類型、核心題材、世界觀與目前預計的寫作方向。"
+                label={t("writer.projectForm.description")}
+                placeholder={t("writer.projectForm.descriptionPlaceholder")}
                 value={input.description}
                 onChange={(event) =>
                   setInput((value) => ({
@@ -564,7 +560,7 @@ export default function StorytellerNewProject({
               <TextField
                 fullWidth
                 select
-                label="閱讀狀態"
+                label={t("writer.projectForm.visibility")}
                 value={input.visibility}
                 onChange={(event) =>
                   setInput((value) => ({
@@ -574,16 +570,16 @@ export default function StorytellerNewProject({
                   }))
                 }
               >
-                <MenuItem value="private">完全不公開</MenuItem>
-                <MenuItem value="unlisted">與親友分享</MenuItem>
-                <MenuItem value="public">已公開</MenuItem>
+                <MenuItem value="private">{t("writer.projectForm.visibilityOptions.private")}</MenuItem>
+                <MenuItem value="unlisted">{t("writer.projectForm.visibilityOptions.unlisted")}</MenuItem>
+                <MenuItem value="public">{t("writer.projectForm.visibilityOptions.public")}</MenuItem>
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 select
-                label="分級"
+                label={t("writer.projectForm.rating")}
                 value={input.rating}
                 onChange={(event) =>
                   setInput((value) => ({
@@ -592,11 +588,11 @@ export default function StorytellerNewProject({
                       .value as StorytellerProjectRequest["rating"],
                   }))
                 }
-                helperText="限制級公開頁會要求讀者進行年齡確認。"
+                helperText={t("writer.projectForm.ratingHelp")}
               >
-                <MenuItem value="general">普通級</MenuItem>
-                <MenuItem value="guidance">輔導級</MenuItem>
-                <MenuItem value="restricted">限制級</MenuItem>
+                <MenuItem value="general">{t("writer.projectForm.ratingOptions.general")}</MenuItem>
+                <MenuItem value="guidance">{t("writer.projectForm.ratingOptions.guidance")}</MenuItem>
+                <MenuItem value="restricted">{t("writer.projectForm.ratingOptions.restricted")}</MenuItem>
               </TextField>
             </Grid>
             <Grid size={12}>
@@ -640,10 +636,10 @@ export default function StorytellerNewProject({
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="標籤"
-                    helperText={`輸入後按 Enter，或用「,」「，」分隔新增多個，最多 ${maxTagCount} 個，每個最多 ${maxTagLength} 字。`}
+                    label={t("writer.projectForm.tags")}
+                    helperText={t("writer.projectForm.tagsHelp", { count: maxTagCount, length: maxTagLength })}
                     placeholder={
-                      input.tags.length === 0 ? "奇幻, 長篇, 群像" : ""
+                      input.tags.length === 0 ? t("writer.projectForm.tagsPlaceholder") : ""
                     }
                   />
                 )}
@@ -689,7 +685,7 @@ export default function StorytellerNewProject({
             ) : (
               <Grid size={12}>
                 <Typography variant="body2" color="text.secondary">
-                  建立後可在編輯專案設定封面。
+                  {t("writer.projectForm.coverAfterCreate")}
                 </Typography>
               </Grid>
             )}
@@ -697,11 +693,11 @@ export default function StorytellerNewProject({
           <Stack direction="row" spacing={1} justifyContent="flex-end">
             {onCancel ? (
               <Button onClick={onCancel} variant="text">
-                返回列表
+                {t("writer.projectForm.back")}
               </Button>
             ) : (
               <Button href={steamloomPath("my/projects")} variant="text">
-                返回列表
+                {t("writer.projectForm.back")}
               </Button>
             )}
             <Button
@@ -712,11 +708,11 @@ export default function StorytellerNewProject({
             >
               {saveProject.isPending
                 ? isEditing
-                  ? "更新中"
-                  : "建立中"
+                  ? t("writer.projectForm.updating")
+                  : t("writer.projectForm.creating")
                 : isEditing
-                  ? "更新專案"
-                  : "建立專案"}
+                  ? t("writer.projectForm.edit")
+                  : t("writer.projectForm.create")}
             </Button>
           </Stack>
         </Stack>
@@ -729,7 +725,7 @@ export default function StorytellerNewProject({
       />
       <CustomSnackbar
         open={Boolean(editSuccessTarget)}
-        message="專案設定已更新。"
+        message={t("writer.projectForm.updated")}
         severity="success"
         autoHideDuration={1200}
         onClose={() => {
@@ -743,7 +739,7 @@ export default function StorytellerNewProject({
       />
       <CustomSnackbar
         open={saveProject.isError}
-        message={`${isEditing ? "更新" : "建立"}專案失敗，請確認欄位內容後重試。`}
+        message={t("writer.projectForm.retryFailed", { action: t(isEditing ? "writer.projectForm.updateAction" : "writer.projectForm.createAction") })}
         severity="error"
         onClose={() => saveProject.reset()}
       />

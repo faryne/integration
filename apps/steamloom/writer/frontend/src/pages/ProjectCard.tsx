@@ -3,12 +3,12 @@ import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { Project } from "@writer/lib/backend.ts";
-import { dateTimeFormat } from "@writer/lib/format.ts";
+import { formatDateTime } from "@writer/lib/format.ts";
 
 // 專案卡片：版型比照網站工作台；沒有封面時用菱形織框當佔位圖。
 // action 放右上角（專案選單），在 CardActionArea 之外，點它不會進入專案。
 export function ProjectCard({ project, onOpen, action }: { project: Project; onOpen: () => void; action?: ReactNode }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   return (
     <Card variant="outlined" sx={{ position: "relative", "&:hover": { borderColor: "primary.main" } }}>
       {action && <Box sx={{ position: "absolute", top: 6, right: 6, zIndex: 1, bgcolor: "background.paper", borderRadius: "50%", opacity: 0.9 }}>{action}</Box>}
@@ -36,11 +36,11 @@ export function ProjectCard({ project, onOpen, action }: { project: Project; onO
           </Typography>
           <Stack direction="row" spacing={1.25} alignItems="center" sx={{ color: "text.secondary", fontSize: 12 }}>
             <span>{t("projects.storyCount", { count: project.story_count })}</span>
-            <span>{t("projects.wordCount", { words: project.word_count.toLocaleString() })}</span>
+            <span>{t("projects.wordCount", { words: project.word_count.toLocaleString(i18n.resolvedLanguage) })}</span>
             <Chip size="small" variant="outlined" label={t(`projects.visibility.${project.visibility}`)} />
           </Stack>
           <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1 }}>
-            {t("projects.updatedAt", { date: dateTimeFormat.format(new Date(project.updated_at)) })}
+            {t("projects.updatedAt", { date: formatDateTime(new Date(project.updated_at), i18n.resolvedLanguage ?? "zh-TW") })}
           </Typography>
         </Box>
       </CardActionArea>

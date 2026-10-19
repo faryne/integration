@@ -3,6 +3,7 @@
   "account": {
     "logout": "로그아웃"
   },
+  "apiProxy": { "unsupportedUrl": "Writer에서 이 URL을 프록시할 수 없습니다: {{url}}", "jsonOnly": "Writer API 프록시는 JSON body만 지원합니다" },
   "update": {
     "title": "새 Writer 버전이 있습니다",
     "message": "SteamLoom Writer {{latest}}을(를) 사용할 수 있습니다. 현재 버전은 {{current}}입니다.",

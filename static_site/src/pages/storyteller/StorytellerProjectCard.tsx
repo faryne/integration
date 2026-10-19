@@ -1,10 +1,10 @@
 import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
 import type { KeyboardEvent, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { SteamRegistrationMarks } from "@/components/storyteller/SteamPanelAccent.tsx";
 import {
   formatStorytellerDate,
   storytellerProjectRatingColor,
-  storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
 import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
 import { useGatedCoverUrl } from "@/helpers/storytellerCover.ts";
@@ -40,6 +40,7 @@ export function StorytellerProjectCard({
   onClick,
   onPrefetch,
 }: StorytellerProjectCardProps) {
+  const { t, i18n } = useTranslation();
   const coverUrl = useGatedCoverUrl(project.cover_url, project.rating);
   const stories = project.stories ?? [];
   const storiesCount = stories.filter(
@@ -134,7 +135,7 @@ export function StorytellerProjectCard({
             WebkitLineClamp: 2,
           }}
         >
-          {project.description || "尚未填寫專案描述。"}
+          {project.description || t("web.projectCard.noDescription")}
         </Typography>
         <Stack
           direction="row"
@@ -143,12 +144,12 @@ export function StorytellerProjectCard({
           useFlexGap
           color="text.secondary"
         >
-          <Typography variant="body2">{storiesCount} 篇故事</Typography>
+          <Typography variant="body2">{t("web.projectCard.stories", { count: storiesCount })}</Typography>
           {imageStoryCount > 0 && (
-            <Typography variant="body2">{imageStoryCount} 話</Typography>
+            <Typography variant="body2">{t("web.projectCard.imageEpisodes", { count: imageStoryCount })}</Typography>
           )}
           <Typography variant="body2">
-            {wordCount.toLocaleString()} 字
+            {t("web.projectCard.words", { count: wordCount.toLocaleString(i18n.resolvedLanguage) })}
           </Typography>
         </Stack>
         <Stack
@@ -161,12 +162,14 @@ export function StorytellerProjectCard({
           <Chip
             size="small"
             color={storytellerProjectRatingColor(project.rating)}
-            label={storytellerProjectRatingLabel(project.rating)}
+            label={t(`web.search.ratings.${project.rating ?? "general"}`)}
           />
           <Typography variant="caption" color="text.secondary">
-            {project.rating_count} 人評分 · 平均{" "}
-            {project.average_rating.toFixed(1)} · {project.favorite_count}{" "}
-            人追蹤
+            {t("web.projectCard.ratingSummary", {
+              ratingCount: project.rating_count,
+              average: project.average_rating.toFixed(1),
+              favoriteCount: project.favorite_count,
+            })}
           </Typography>
           {extraChips}
         </Stack>
@@ -179,9 +182,10 @@ export function StorytellerProjectCard({
           justifyContent="space-between"
         >
           <Typography variant="caption" color="text.secondary">
-            {formatAuthorNames(project.authors) &&
-              `作者 ${formatAuthorNames(project.authors)} · `}
-            更新於 {formatStorytellerDate(project.updated_at)}
+            {formatAuthorNames(project.authors) ? t("web.projectCard.authorUpdated", {
+              authors: formatAuthorNames(project.authors),
+              date: formatStorytellerDate(project.updated_at, i18n.resolvedLanguage),
+            }) : t("web.projectCard.updated", { date: formatStorytellerDate(project.updated_at, i18n.resolvedLanguage) })}
           </Typography>
           {actions && (
             <Stack

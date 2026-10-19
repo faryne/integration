@@ -13,6 +13,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 // 網站與 SteamLoom Writer 共用；Writer 透過 alias 直接 import（改這支也會影響 Writer）。
 import {
   collapseUnchangedLines,
@@ -131,6 +132,7 @@ function DiffGap({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <ButtonBase
       onClick={onToggle}
@@ -151,19 +153,22 @@ function DiffGap({
       ) : (
         <UnfoldMoreIcon fontSize="small" />
       )}
-      {expanded ? "收縮" : "展開"} {count} 行未變更的內容
+      {t(expanded ? "writer:editor.diff.collapseUnchanged" : "writer:editor.diff.expandUnchanged", { count })}
     </ButtonBase>
   );
 }
 
 export function CustomDiffSection({
   leftMetadataLabels = [],
-  leftTitle = "舊版本",
+  leftTitle,
   lines,
   rightMetadataLabels = [],
-  rightTitle = "新版本",
+  rightTitle,
   title,
 }: CustomDiffSectionProps) {
+  const { t } = useTranslation();
+  const resolvedLeftTitle = leftTitle ?? t("writer:editor.diff.oldVersion");
+  const resolvedRightTitle = rightTitle ?? t("writer:editor.diff.newVersion");
   const unchanged = lines.every((line) => line.state === "same");
   const rows = useMemo(() => collapseUnchangedLines(lines), [lines]);
   // 已展開的收合段（以收合段第一行的 index 當 id）
@@ -184,7 +189,7 @@ export function CustomDiffSection({
           <Typography fontWeight={800}>{title}</Typography>
           <Chip
             size="small"
-            label={unchanged ? "無變更" : "有變動"}
+            label={t(unchanged ? "writer:editor.diff.unchanged" : "writer:editor.diff.changed")}
             color={unchanged ? "default" : "warning"}
           />
         </Stack>
@@ -192,7 +197,7 @@ export function CustomDiffSection({
       <AccordionDetails>
         {unchanged ? (
           <Paper variant="outlined" sx={{ borderRadius: 1, p: 2 }}>
-            <Typography color="text.secondary">無變更</Typography>
+            <Typography color="text.secondary">{t("writer:editor.diff.unchanged")}</Typography>
           </Paper>
         ) : (
           <Paper
@@ -206,11 +211,11 @@ export function CustomDiffSection({
               }}
             >
               <DiffHeader
-                title={leftTitle}
+                title={resolvedLeftTitle}
                 metadataLabels={leftMetadataLabels}
               />
               <DiffHeader
-                title={rightTitle}
+                title={resolvedRightTitle}
                 metadataLabels={rightMetadataLabels}
               />
             </Box>

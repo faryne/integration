@@ -27,6 +27,7 @@ import {
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   STORYTELLER_WORKSPACE_SEARCH_KEYWORD_LIMIT,
   useStorytellerWorkspaceSearch,
@@ -60,12 +61,12 @@ interface WorkspaceSearchProps {
   recentItems?: StorytellerWorkspaceSearchResult[];
 }
 
-const searchFilters: Array<{ value: WorkspaceSearchFilter; label: string }> = [
-  { value: "all", label: "全部" },
-  { value: "story", label: "作品" },
-  { value: "lore", label: "設定" },
-  { value: "asset", label: "資產" },
-  { value: "memory", label: "記憶" },
+const searchFilters: WorkspaceSearchFilter[] = [
+  "all",
+  "story",
+  "lore",
+  "asset",
+  "memory",
 ];
 
 const resultIcons = {
@@ -75,12 +76,12 @@ const resultIcons = {
   memory: <PsychologyAltOutlinedIcon fontSize="small" />,
 };
 
-const resultLabels = {
-  story: "作品",
-  lore: "設定",
-  asset: "資產",
-  memory: "記憶",
-};
+const resultLabelKeys = {
+  story: "stories",
+  lore: "lores",
+  asset: "assets",
+  memory: "memories",
+} as const;
 
 export function WorkspaceSearch({
   open,
@@ -91,6 +92,7 @@ export function WorkspaceSearch({
   onOpenResult,
   recentItems,
 }: WorkspaceSearchProps) {
+  const { t, i18n } = useTranslation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [keyword, setKeyword] = useState(initialKeyword);
@@ -220,13 +222,16 @@ export function WorkspaceSearch({
         >
           <Box sx={{ minWidth: 0 }}>
             <Typography id="workspace-search-title" variant="h6" noWrap>
-              搜尋這個專案
+              {t("writer:search.title")}
             </Typography>
             <Typography variant="body2" color="text.secondary" noWrap>
               {projectName}
             </Typography>
           </Box>
-          <IconButton aria-label="關閉搜尋" onClick={closeSearch}>
+          <IconButton
+            aria-label={t("writer:search.close")}
+            onClick={closeSearch}
+          >
             <CloseIcon />
           </IconButton>
         </Stack>
@@ -254,7 +259,7 @@ export function WorkspaceSearch({
                 autoFocus
                 inputRef={searchInputRef}
                 fullWidth
-                placeholder="搜尋作品、設定、資產、記憶……"
+                placeholder={t("writer:search.placeholder")}
                 onKeyDown={handleSearchKeyDown}
                 slotProps={{
                   htmlInput: {
@@ -285,10 +290,14 @@ export function WorkspaceSearch({
             spacing={1}
             sx={{ py: 1.5, overflowX: "auto" }}
           >
-            {searchFilters.map(({ value, label }) => (
+            {searchFilters.map((value) => (
               <Chip
                 key={value}
-                label={label}
+                label={t(
+                  `writer:search.${
+                    value === "all" ? "all" : resultLabelKeys[value]
+                  }`,
+                )}
                 color={filter === value ? "primary" : "default"}
                 variant={filter === value ? "filled" : "outlined"}
                 onClick={() => {
@@ -303,7 +312,7 @@ export function WorkspaceSearch({
           {!debouncedKeyword && recentItems?.length ? (
             <Box sx={{ pt: 1.5 }}>
               <Typography variant="caption" color="text.secondary">
-                最近開啟
+                {t("writer:search.recent")}
               </Typography>
               <List dense disablePadding>
                 {recentItems.map((item) => (
@@ -318,7 +327,9 @@ export function WorkspaceSearch({
                     </ListItemIcon>
                     <ListItemText
                       primary={item.title}
-                      secondary={resultLabels[item.kind]}
+                      secondary={t(
+                        `writer:search.${resultLabelKeys[item.kind]}`,
+                      )}
                       slotProps={{ primary: { noWrap: true } }}
                     />
                   </ListItemButton>
@@ -327,13 +338,13 @@ export function WorkspaceSearch({
             </Box>
           ) : !debouncedKeyword ? (
             <Typography variant="body2" color="text.secondary" sx={{ pt: 2 }}>
-              搜尋範圍只包含目前專案，不會混入其他公開作品。
+              {t("writer:search.scope")}
             </Typography>
           ) : !keywordIsDebounced || search.isLoading ? (
             <Stack alignItems="center" spacing={1.5} sx={{ py: 6 }}>
               <CircularProgress size={28} />
               <Typography variant="body2" color="text.secondary">
-                正在搜尋工作台……
+                {t("writer:search.searching")}
               </Typography>
             </Stack>
           ) : results.length > 0 ? (
@@ -360,7 +371,7 @@ export function WorkspaceSearch({
                   color="text.secondary"
                   sx={{ px: 1 }}
                 >
-                  找到 {results.length} 筆結果
+                  {t("writer:search.results", { count: results.length })}
                 </Typography>
                 <List disablePadding sx={{ mt: 0.5 }}>
                   {results.map((result) => {
@@ -410,7 +421,9 @@ export function WorkspaceSearch({
                           secondaryTypographyProps={{ sx: { mt: 0.25 } }}
                         />
                         <Chip
-                          label={resultLabels[result.kind]}
+                          label={t(
+                            `writer:search.${resultLabelKeys[result.kind]}`,
+                          )}
                           size="small"
                           variant="outlined"
                           sx={{ ml: 1 }}
@@ -424,13 +437,13 @@ export function WorkspaceSearch({
               {!isMobile && selectedResult && (
                 <Stack
                   component="section"
-                  aria-label="搜尋結果預覽"
+                  aria-label={t("writer:search.previewTitle")}
                   spacing={2}
                   sx={{ pt: { xs: 2, sm: 1 }, pl: { sm: 2 }, minWidth: 0 }}
                 >
                   <Box>
                     <Typography variant="overline" color="text.secondary">
-                      搜尋結果 Preview
+                      {t("writer:search.previewAlt")}
                     </Typography>
                     <Stack
                       direction="row"
@@ -469,14 +482,19 @@ export function WorkspaceSearch({
                       <HighlightedSearchText
                         text={
                           selectedResult.preview ||
-                          "這筆內容沒有可顯示的文字預覽。"
+                          t("writer:search.noPreview")
                         }
                         keyword={keyword}
                       />
                     </Typography>
                   </Box>
                   <Typography variant="caption" color="text.secondary">
-                    最後更新：{formatStorytellerDate(selectedResult.updated_at)}
+                    {t("writer:search.updated", {
+                      date: formatStorytellerDate(
+                        selectedResult.updated_at,
+                        i18n.resolvedLanguage,
+                      ),
+                    })}
                   </Typography>
                   <Button
                     variant="contained"
@@ -484,7 +502,7 @@ export function WorkspaceSearch({
                     onClick={() => openResult(selectedResult)}
                     sx={{ alignSelf: "flex-start" }}
                   >
-                    在工作台開啟
+                    {t("writer:search.open")}
                   </Button>
                 </Stack>
               )}
@@ -496,9 +514,11 @@ export function WorkspaceSearch({
               sx={{ py: 5, textAlign: "center" }}
             >
               <SearchIcon color="disabled" sx={{ fontSize: 40 }} />
-              <Typography fontWeight={800}>找不到符合的內容</Typography>
+              <Typography fontWeight={800}>
+                {t("writer:search.empty")}
+              </Typography>
               <Typography variant="body2" color="text.secondary">
-                換個關鍵字，或切回「全部」再試一次。
+                {t("writer:search.emptyHelp")}
               </Typography>
             </Stack>
           )}
@@ -508,7 +528,7 @@ export function WorkspaceSearch({
       <CustomSnackbar
         open={errorSnackOpen}
         severity="error"
-        message="搜尋失敗，請稍後再試。"
+        message={t("writer:search.failed")}
         onClose={() => setErrorSnackOpen(false)}
       />
     </>

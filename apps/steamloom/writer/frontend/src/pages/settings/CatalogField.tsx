@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { backend, errorMessage, type CatalogItem, type WorkerAdapter } from "@writer/lib/backend.ts";
 import { parseCatalogValue } from "@writer/pages/settings/workerValidation.ts";
+import { useWorkerI18n } from "@writer/pages/settings/workerI18n.ts";
 
 type SettingField = WorkerAdapter["fields"][number];
 
@@ -17,6 +18,7 @@ export function CatalogField({ adapterID, field, value, error, onChange }: {
   onChange: (value: string) => void;
 }) {
   const { t } = useTranslation();
+  const workerText = useWorkerI18n();
   const items = useMemo(() => parseCatalogValue(value), [value]);
   const [url, setURL] = useState("");
   const [addError, setAddError] = useState("");
@@ -46,12 +48,12 @@ export function CatalogField({ adapterID, field, value, error, onChange }: {
 
   return (
     <Paper variant="outlined">
-      <Typography fontWeight={600} sx={{ px: 1.75, py: 1.25, borderBottom: 1, borderColor: "divider" }}>{field.label}</Typography>
+      <Typography fontWeight={600} sx={{ px: 1.75, py: 1.25, borderBottom: 1, borderColor: "divider" }}>{workerText.settingLabel(adapterID, field)}</Typography>
       <Stack direction="row" gap={1} alignItems="flex-start" sx={{ px: 1.75, py: 1.5 }}>
         <TextField
           fullWidth
           size="small"
-          placeholder={field.placeholder}
+          placeholder={workerText.settingPlaceholder(adapterID, field)}
           value={url}
           disabled={resolving}
           error={Boolean(addError)}

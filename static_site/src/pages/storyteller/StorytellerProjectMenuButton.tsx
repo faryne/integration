@@ -13,6 +13,7 @@ import {
   MenuItem,
 } from "@mui/material";
 import { useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import {
   useDeleteStorytellerProject,
@@ -20,7 +21,6 @@ import {
 } from "@/apis/storyteller.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
-import { STORYTELLER_VISIBILITY_LABELS } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import type { StorytellerProject } from "@/types/storyteller.ts";
 
@@ -38,13 +38,13 @@ export type StorytellerProjectMenuTarget = Pick<
 >;
 
 const visibilityItems = [
-  { value: "private", label: "設為私密", icon: <LockIcon fontSize="small" /> },
+  { value: "private", label: "writer.projectMenu.private", icon: <LockIcon fontSize="small" /> },
   {
     value: "unlisted",
-    label: "設為分享",
+    label: "writer.projectMenu.unlisted",
     icon: <PeopleIcon fontSize="small" />,
   },
-  { value: "public", label: "設為公開", icon: <PublicIcon fontSize="small" /> },
+  { value: "public", label: "writer.projectMenu.public", icon: <PublicIcon fontSize="small" /> },
 ] as const;
 
 // 專案卡片右上的「⋯」：切換公開狀態、編輯、刪除（輸入專案名稱確認，後端 soft delete）。
@@ -67,6 +67,7 @@ export function StorytellerProjectMenuButton({
     onClick: () => void;
   }[];
 }) {
+  const { t } = useTranslation();
   const saveProject = useSaveStorytellerProject();
   const deleteProject = useDeleteStorytellerProject();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
@@ -96,14 +97,14 @@ export function StorytellerProjectMenuButton({
       {
         onSuccess: () => {
           setSnack({
-            message: `專案已設為${STORYTELLER_VISIBILITY_LABELS[visibility]}。`,
+            message: t("writer.projectMenu.statusUpdated", { visibility: t(`writer.projectForm.visibilitySummary.${visibility}`) }),
             severity: "success",
           });
           onChanged?.();
         },
         onError: () =>
           setSnack({
-            message: "專案公開狀態更新失敗，請重試。",
+            message: t("writer.projectMenu.statusFailed"),
             severity: "error",
           }),
       },
@@ -113,7 +114,7 @@ export function StorytellerProjectMenuButton({
   return (
     <>
       <IconButton
-        aria-label={`${project.name}專案操作`}
+        aria-label={t("writer.projectMenu.actions", { name: project.name })}
         onClick={(event) => {
           // 卡片本身可點擊進入專案，選單按鈕不能把點擊傳上去
           event.stopPropagation();
@@ -154,7 +155,7 @@ export function StorytellerProjectMenuButton({
             onClick={() => changeVisibility(item.value)}
           >
             <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText>{item.label}</ListItemText>
+            <ListItemText>{t(item.label)}</ListItemText>
           </MenuItem>
         ))}
         <Divider />
@@ -168,7 +169,7 @@ export function StorytellerProjectMenuButton({
             <ListItemIcon>
               <EditIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText>編輯專案</ListItemText>
+            <ListItemText>{t("writer.projectMenu.edit")}</ListItemText>
           </MenuItem>
         ) : (
           <MenuItem
@@ -179,7 +180,7 @@ export function StorytellerProjectMenuButton({
             <ListItemIcon>
               <EditIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText>編輯專案</ListItemText>
+            <ListItemText>{t("writer.projectMenu.edit")}</ListItemText>
           </MenuItem>
         )}
         <MenuItem
@@ -192,16 +193,16 @@ export function StorytellerProjectMenuButton({
           <ListItemIcon sx={{ color: "inherit" }}>
             <DeleteIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>刪除專案</ListItemText>
+          <ListItemText>{t("writer.projectMenu.delete")}</ListItemText>
         </MenuItem>
       </Menu>
       {deleting && (
         <StorytellerConfirmNameDialog
           open
-          title="刪除專案"
-          description="刪除後會移除專案與底下故事資料。請輸入專案名稱確認。"
+          title={t("writer.projectMenu.delete")}
+          description={t("writer.projectMenu.deleteDescription")}
           confirmName={project.name}
-          confirmLabel="刪除專案"
+          confirmLabel={t("writer.projectMenu.delete")}
           loading={deleteProject.isPending}
           onClose={() => setDeleting(false)}
           onConfirm={() => {
@@ -222,7 +223,7 @@ export function StorytellerProjectMenuButton({
       />
       <CustomSnackbar
         open={deleteProject.isError}
-        message="刪除專案失敗，請確認登入狀態後再試一次。"
+        message={t("writer.projectMenu.deleteFailed")}
         severity="error"
         onClose={() => deleteProject.reset()}
       />

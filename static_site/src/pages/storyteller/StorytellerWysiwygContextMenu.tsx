@@ -16,10 +16,12 @@ import {
   Typography,
 } from "@mui/material";
 import type { Editor } from "@tiptap/core";
+import { useTranslation } from "react-i18next";
 
 import {
   BLOCK_OPERATION_GROUPS,
   findAssetImageAtSelection,
+  translatedWysiwygCommandLabel,
   wysiwygCommandsByGroup,
   type WysiwygCommand,
   type WysiwygCommandContext,
@@ -93,6 +95,7 @@ export function StorytellerWysiwygContextMenu({
   onToggleWritingBookmark,
   onFindSelection,
 }: StorytellerWysiwygContextMenuProps) {
+  const { t } = useTranslation();
   const runAndClose = (command: WysiwygCommand) => {
     command.run(editor, commandContext);
     onClose();
@@ -157,12 +160,14 @@ export function StorytellerWysiwygContextMenu({
     string,
     { label: string; onClick: () => void } | undefined
   > = {
-    link: hasLink ? { label: "移除連結", onClick: onRemoveLink } : undefined,
+    link: hasLink
+      ? { label: t("writer:editor.removeLink"), onClick: onRemoveLink }
+      : undefined,
     footnote: hasFootnote
-      ? { label: "移除腳注", onClick: onRemoveFootnote }
+      ? { label: t("writer:editor.removeFootnote"), onClick: onRemoveFootnote }
       : undefined,
     comment: hasComment
-      ? { label: "移除註解", onClick: onRemoveComment }
+      ? { label: t("writer:editor.removeComment"), onClick: onRemoveComment }
       : undefined,
   };
 
@@ -179,7 +184,7 @@ export function StorytellerWysiwygContextMenu({
       // MUI `<Menu>` 自己不會幫實際持有 `role="menu"` 的 `MenuList` 加上可辨識的
       // 名字——`aria-label` 直接放在 `<Menu>` 上不會轉送到那個元素，要透過
       // `MenuListProps` 才行。
-      MenuListProps={{ "aria-label": "編輯器右鍵選單" }}
+      MenuListProps={{ "aria-label": t("writer:editor.contextMenu") }}
     >
       {hasAssetImage
         ? [
@@ -190,13 +195,13 @@ export function StorytellerWysiwygContextMenu({
               <ListItemIcon>
                 <EditIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText>圖片設定</ListItemText>
+              <ListItemText>{t("writer:editor.imageSettings")}</ListItemText>
             </MenuItem>,
             <MenuItem key="asset-image-delete" onClick={deleteAssetImage}>
               <ListItemIcon>
                 <DeleteIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText>刪除圖片</ListItemText>
+              <ListItemText>{t("writer:editor.deleteImage")}</ListItemText>
             </MenuItem>,
             <Divider key="asset-image-layout-divider" />,
             ...imageLayoutCommands.map((command) => {
@@ -210,7 +215,9 @@ export function StorytellerWysiwygContextMenu({
                   <ListItemIcon>
                     <Icon fontSize="small" />
                   </ListItemIcon>
-                  <ListItemText>{command.label}</ListItemText>
+                  <ListItemText>
+                    {translatedWysiwygCommandLabel(command, t)}
+                  </ListItemText>
                 </MenuItem>
               );
             }),
@@ -228,7 +235,9 @@ export function StorytellerWysiwygContextMenu({
                     <ListItemIcon>
                       <Icon fontSize="small" />
                     </ListItemIcon>
-                    <ListItemText>{command.label}</ListItemText>
+                    <ListItemText>
+                      {translatedWysiwygCommandLabel(command, t)}
+                    </ListItemText>
                   </MenuItem>
                 );
               }),
@@ -239,7 +248,7 @@ export function StorytellerWysiwygContextMenu({
                 color="text.secondary"
                 sx={{ display: "block", px: 2, pt: 1 }}
               >
-                文字顏色
+                {t("writer:editor.textColor")}
               </Typography>,
               <Stack
                 key="text-color-swatches"
@@ -250,11 +259,14 @@ export function StorytellerWysiwygContextMenu({
                 {textColorCommands
                   .filter((c) => c.id !== "text-color-clear")
                   .map((command) => (
-                    <Tooltip key={command.id} title={command.label}>
+                    <Tooltip
+                      key={command.id}
+                      title={translatedWysiwygCommandLabel(command, t)}
+                    >
                       <Box
                         component="button"
                         type="button"
-                        aria-label={command.label}
+                        aria-label={translatedWysiwygCommandLabel(command, t)}
                         aria-pressed={command.isActive?.(editor) ?? false}
                         onClick={() => runAndClose(command)}
                         sx={{
@@ -282,7 +294,9 @@ export function StorytellerWysiwygContextMenu({
                 <ListItemIcon>
                   <DeleteIcon fontSize="small" />
                 </ListItemIcon>
-                <ListItemText>清除文字顏色</ListItemText>
+                <ListItemText>
+                  {t("writer:editor.clearTextColor")}
+                </ListItemText>
               </MenuItem>,
               <Divider key="bg-color-divider" />,
               <Typography
@@ -291,7 +305,7 @@ export function StorytellerWysiwygContextMenu({
                 color="text.secondary"
                 sx={{ display: "block", px: 2, pt: 1 }}
               >
-                文字背景色
+                {t("writer:editor.backgroundColor")}
               </Typography>,
               <Stack
                 key="bg-color-swatches"
@@ -302,11 +316,14 @@ export function StorytellerWysiwygContextMenu({
                 {bgColorCommands
                   .filter((c) => c.id !== "bg-color-clear")
                   .map((command) => (
-                    <Tooltip key={command.id} title={command.label}>
+                    <Tooltip
+                      key={command.id}
+                      title={translatedWysiwygCommandLabel(command, t)}
+                    >
                       <Box
                         component="button"
                         type="button"
-                        aria-label={command.label}
+                        aria-label={translatedWysiwygCommandLabel(command, t)}
                         aria-pressed={command.isActive?.(editor) ?? false}
                         onClick={() => runAndClose(command)}
                         sx={{
@@ -334,7 +351,9 @@ export function StorytellerWysiwygContextMenu({
                 <ListItemIcon>
                   <DeleteIcon fontSize="small" />
                 </ListItemIcon>
-                <ListItemText>清除背景色</ListItemText>
+                <ListItemText>
+                  {t("writer:editor.clearBackgroundColor")}
+                </ListItemText>
               </MenuItem>,
             ]
           : [
@@ -357,7 +376,9 @@ export function StorytellerWysiwygContextMenu({
                       <ListItemIcon>
                         <Icon fontSize="small" />
                       </ListItemIcon>
-                      <ListItemText>{command.label}</ListItemText>
+                      <ListItemText>
+                        {translatedWysiwygCommandLabel(command, t)}
+                      </ListItemText>
                     </MenuItem>
                   );
                 }),
@@ -375,7 +396,9 @@ export function StorytellerWysiwygContextMenu({
                           <ListItemIcon>
                             <Icon fontSize="small" />
                           </ListItemIcon>
-                          <ListItemText>{command.label}</ListItemText>
+                          <ListItemText>
+                            {translatedWysiwygCommandLabel(command, t)}
+                          </ListItemText>
                         </MenuItem>
                       );
                     }),
@@ -389,7 +412,7 @@ export function StorytellerWysiwygContextMenu({
           <ListItemIcon>
             <AutoAwesomeIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>問 AI</ListItemText>
+          <ListItemText>{t("writer:editor.askAI")}</ListItemText>
         </MenuItem>
       )}
 
@@ -397,8 +420,7 @@ export function StorytellerWysiwygContextMenu({
       {annotationCommands.flatMap((command) => {
         const Icon = command.icon!;
         const isActive = command.isActive?.(editor) ?? false;
-        const label =
-          isActive && command.activeLabel ? command.activeLabel : command.label;
+        const label = translatedWysiwygCommandLabel(command, t, isActive);
         const isEnabled = command.isEnabled?.(editor, commandContext) ?? true;
         const quickRemove = quickRemoveFor[command.id];
         const items = [
@@ -445,7 +467,7 @@ export function StorytellerWysiwygContextMenu({
             <ListItemIcon>
               <SearchIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText>搜尋選取的文字</ListItemText>
+            <ListItemText>{t("writer:editor.searchSelection")}</ListItemText>
           </MenuItem>,
         ]}
       {canWritingBookmark &&
@@ -471,7 +493,9 @@ export function StorytellerWysiwygContextMenu({
             </ListItemIcon>
             <ListItemText>
               {writingBookmarkDisabledReason ??
-                (isCurrentParagraphBookmarked ? "編輯書籤筆記" : "加入書籤")}
+                (isCurrentParagraphBookmarked
+                  ? t("writer:editor.editBookmark")
+                  : t("writer:editor.addBookmark"))}
             </ListItemText>
           </MenuItem>,
         ]}

@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StorytellerWysiwygEditor } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
 
 // 圖像作品的頁面清單：縮圖格、拖曳排序、刪除、點縮圖編輯「頁面描述」（網站編輯器、不開腳注／註解／資產）。
@@ -43,6 +44,7 @@ export function ImageEpisodePageList({
   onRemove: (pageId: string) => void;
   onDescriptionChange: (pageId: string, description: string) => void;
 }) {
+  const { t } = useTranslation();
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
   const editingPage = pages.find((page) => page.id === editingPageId) ?? null;
@@ -51,7 +53,7 @@ export function ImageEpisodePageList({
   return (
     <Box>
       <Typography variant="subtitle2" sx={{ mb: 1 }}>
-        頁面（{pages.length} 頁）
+        {t("writer:imagePages.title", { count: pages.length })}
       </Typography>
       {addControl}
       <Stack direction="row" justifyContent="flex-end" sx={{ mt: 1.5 }}>
@@ -61,7 +63,7 @@ export function ImageEpisodePageList({
           disabled={disabled}
           onClick={onPickAsset}
         >
-          從資產集加入
+          {t("writer:imagePages.addFromAssets")}
         </Button>
       </Stack>
       {pages.length > 0 && (
@@ -99,7 +101,7 @@ export function ImageEpisodePageList({
               <Box
                 component="img"
                 src={page.previewUrl}
-                alt={`第 ${index + 1} 頁`}
+                alt={t("writer:imagePages.description", { index: index + 1 })}
                 sx={{
                   width: "100%",
                   height: "100%",
@@ -160,7 +162,9 @@ export function ImageEpisodePageList({
         fullWidth
         maxWidth="md"
       >
-        <DialogTitle>第 {editingPageIndex + 1} 頁描述</DialogTitle>
+        <DialogTitle>
+          {t("writer:imagePages.description", { index: editingPageIndex + 1 })}
+        </DialogTitle>
         <DialogContent>
           {editingPage && (
             <Box sx={{ minHeight: 320, mt: 1 }}>
@@ -175,7 +179,9 @@ export function ImageEpisodePageList({
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditingPageId(null)}>完成</Button>
+          <Button onClick={() => setEditingPageId(null)}>
+            {t("writer:imagePages.done")}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

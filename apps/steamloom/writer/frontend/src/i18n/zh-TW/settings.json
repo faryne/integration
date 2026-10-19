@@ -1,5 +1,28 @@
 {
   "title": "應用程式設定",
+  "save": "儲存設定",
+  "saving": "儲存中",
+  "general": {
+    "title": "一般設定",
+    "description": "管理 SteamLoom Writer 在這台裝置上的介面偏好。",
+    "interface": "介面",
+    "language": "介面語言",
+    "languageHelp": "選擇語言後儲存，Writer 會立即套用。",
+    "languages": { "zh-TW": "正體中文（台灣）", "zh-CN": "简体中文", "en": "English", "ja": "日本語", "ko": "한국어" },
+    "storageTitle": "儲存位置",
+    "storageDescription": "設定會寫入 Writer 的本機設定檔。下次啟動時，畫面、日期與數字格式及應用程式選單會直接使用這個語言；Agent 回答與作品內容不會翻譯。",
+    "saved": "介面語言已儲存並套用"
+  },
+  "unsaved": {
+    "tone": "變更尚未儲存",
+    "eyebrow": "離開設定頁",
+    "title": "你有尚未儲存的變更",
+    "saveDescription": "離開這個設定頁前要先儲存嗎？不儲存的話，變更會遺失。",
+    "discardDescription": "離開這個設定頁後，還沒儲存的變更會遺失。確定要放棄變更並離開嗎？",
+    "continueEditing": "繼續編輯",
+    "discardAndLeave": "放棄變更並離開",
+    "saveAndContinue": "儲存並繼續"
+  },
   "workers": {
     "title": "媒體 Worker",
     "add": "新增 Worker",
@@ -47,6 +70,21 @@
       "reference_image": "參考圖片",
       "batch_candidates": "多候選結果",
       "lora": "LoRA"
+    },
+    "mediaTypes": { "image": "圖片" },
+    "adapters": {
+      "pixai": { "name": "PixAI", "description": "使用 PixAI API 生成動漫風格插圖（會消耗 PixAI 額度）", "fields": { "api_key": { "label": "API Key" }, "favorite_models": { "label": "常用模型", "placeholder": "貼上 PixAI 模型網址" }, "favorite_loras": { "label": "常用 LoRA", "placeholder": "貼上 PixAI LoRA 網址" } } },
+      "comfyui": { "name": "ComfyUI", "description": "連接本機或自管的 ComfyUI 服務", "fields": { "endpoint": { "label": "服務位址", "placeholder": "http://127.0.0.1:8188" } } },
+      "stable-diffusion-webui": { "name": "Stable Diffusion WebUI（A1111／Forge）", "description": "連接啟用 API 的 AUTOMATIC1111 或 Forge 服務", "fields": { "endpoint": { "label": "服務位址", "placeholder": "http://127.0.0.1:7860" }, "username": { "label": "API Auth 使用者名稱", "placeholder": "未啟用 --api-auth 時留白" }, "password": { "label": "API Auth 密碼" }, "default_checkpoint": { "label": "預設 Checkpoint", "placeholder": "留白時沿用 WebUI 目前模型" }, "default_sampler": { "label": "預設 Sampler" } } },
+      "fal": { "name": "fal", "description": "使用 fal Queue API 生成圖片（會消耗 fal 額度）", "fields": { "api_key": { "label": "API Key" } } }
+    },
+    "jobFields": {
+      "prompt": { "label": "Prompt" }, "negative_prompt": { "label": "Negative prompt" }, "model": { "label": "模型" }, "model_version_id": { "label": "模型" }, "loras": { "label": "LoRA" }, "aspect_ratio": { "label": "長寬比" },
+      "size": { "label": "解析度", "options": { "1k": "1k（約 1MP）", "1_5k": "1.5k（最長邊 1536px）" } },
+      "mode": { "label": "Tsubaki 模式", "description": "只有 Tsubaki 系列模型接受，其他模型請留空", "options": { "none": "不指定" } },
+      "candidate_count": { "label": "候選張數" }, "seed": { "label": "Seed", "description": "留空代表隨機" }, "prompt_helper": { "label": "PixAI Prompt 自動強化" },
+      "num_inference_steps": { "label": "推論步數" }, "guidance_scale": { "label": "Guidance scale" }, "acceleration": { "label": "加速模式" }, "output_format": { "label": "輸出格式" }, "enable_safety_checker": { "label": "啟用安全檢查" },
+      "checkpoint": { "label": "Checkpoint", "description": "留白時沿用 WebUI 目前模型" }, "sampler_name": { "label": "Sampler" }, "steps": { "label": "Steps" }, "cfg_scale": { "label": "CFG Scale" }, "width": { "label": "寬度" }, "height": { "label": "高度" }, "restore_faces": { "label": "臉部修復" }, "tiling": { "label": "平鋪模式" }
     }
   }
 }

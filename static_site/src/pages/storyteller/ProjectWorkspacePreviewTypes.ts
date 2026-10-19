@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type {
   StorytellerAsset,
   StorytellerLore,
@@ -20,20 +21,24 @@ export const ungroupedId = "__ungrouped__";
 // 差很多（未分類清單會混進所有已分類的項目）。
 export const backendUncategorizedFilterId = "__uncategorized__";
 
-export function nodeTitle(section: WorkspaceSection, collectionId: string) {
+export function nodeTitle(
+  section: WorkspaceSection,
+  collectionId: string,
+  t: TFunction,
+) {
   if (collectionId === "") {
     return section === "stories"
-      ? "全部作品"
+      ? t("web.workspacePreview.allWorks")
       : section === "lores"
-        ? "全部設定"
-        : "全部資產";
+        ? t("web.workspacePreview.allLore")
+        : t("web.workspacePreview.allAssets");
   }
   if (collectionId === ungroupedId) {
     return section === "stories"
-      ? "未分冊"
+      ? t("web.projectWorkspace.volume.ungrouped")
       : section === "lores"
-        ? "未歸類"
-        : "未分類";
+        ? t("web.loreManager.uncategorized")
+        : t("web.assetManager.uncategorized");
   }
   return "";
 }

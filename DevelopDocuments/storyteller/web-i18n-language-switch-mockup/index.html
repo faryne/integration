@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SteamLoom Web 語系切換 Mockup</title>
+  <style>
+    :root { color-scheme: dark; --bg:#080b12; --paper:#111827; --line:#2b3547; --text:#eef2ff; --muted:#9ca8bd; --primary:#e6bd76; --hover:#1b2434; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; font-family:Inter,"Noto Sans TC",system-ui,sans-serif; background:var(--bg); color:var(--text); }
+    button { font:inherit; }
+    .note { margin:20px auto 0; width:min(1120px,calc(100% - 32px)); padding:12px 16px; border:1px solid #51452f; background:#1b1710; color:#e7cf9f; border-radius:10px; font-size:14px; line-height:1.6; }
+    .tabs { margin:18px auto 0; width:min(1120px,calc(100% - 32px)); display:flex; gap:8px; }
+    .tabs button { border:1px solid var(--line); background:var(--paper); color:var(--muted); border-radius:8px; padding:8px 14px; cursor:pointer; }
+    .tabs button.active { color:#111827; background:var(--primary); border-color:var(--primary); font-weight:700; }
+    .frame { margin:14px auto 40px; width:min(1120px,calc(100% - 32px)); min-height:610px; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:#0b0f18; box-shadow:0 18px 54px #0008; }
+    .frame.mobile { width:390px; max-width:calc(100% - 24px); }
+    header { height:68px; display:flex; align-items:center; gap:16px; padding:0 22px; border-bottom:1px solid var(--line); background:#101620e8; backdrop-filter:blur(18px); }
+    .brand { display:flex; align-items:center; gap:9px; min-width:0; flex:1; font-size:19px; font-weight:800; }
+    .mark { width:25px; height:25px; border:2px solid var(--primary); border-radius:50% 45% 48% 40%; position:relative; transform:rotate(-12deg); }
+    .mark::after { content:""; position:absolute; width:7px; height:7px; border-radius:50%; background:var(--primary); left:7px; top:7px; }
+    .search { color:var(--muted); font-size:20px; }
+    .right { flex:1; display:flex; justify-content:flex-end; align-items:center; gap:7px; }
+    .primary { border:0; background:var(--primary); color:#17130c; font-weight:800; border-radius:8px; padding:9px 14px; }
+    .icon { width:38px; height:38px; display:grid; place-items:center; border:0; border-radius:50%; background:transparent; color:var(--text); cursor:pointer; font-size:20px; }
+    .icon:hover,.icon.open { background:var(--hover); color:var(--primary); }
+    .avatar { width:31px; height:31px; border-radius:50%; display:grid; place-items:center; background:#576481; font-size:13px; font-weight:800; }
+    .preferences { display:flex; align-items:center; gap:2px; margin-left:3px; }
+    .language-wrap { position:relative; }
+    .menu { position:absolute; z-index:10; right:0; top:45px; width:250px; padding:8px; border:1px solid var(--line); border-radius:11px; background:#151c2a; box-shadow:0 18px 50px #000a; }
+    .menu[hidden] { display:none; }
+    .menu-title { padding:8px 10px 10px; color:var(--muted); font-size:12px; font-weight:700; letter-spacing:.08em; }
+    .option { width:100%; border:0; background:transparent; color:var(--text); display:grid; grid-template-columns:28px 1fr; gap:8px; align-items:center; padding:10px; border-radius:7px; cursor:pointer; text-align:left; }
+    .option:hover { background:var(--hover); }
+    .option.selected { background:#e6bd7618; color:#f3d69f; }
+    main { display:grid; grid-template-columns:1fr 360px; gap:28px; padding:44px; }
+    h1 { margin:0 0 12px; font-size:34px; }
+    p { color:var(--muted); line-height:1.8; }
+    .card { border:1px solid var(--line); border-radius:12px; padding:20px; background:var(--paper); }
+    .skeleton { height:12px; border-radius:6px; background:#283246; margin:12px 0; }
+    .skeleton.short { width:63%; }
+    .mobile header { height:60px; padding:0 10px 0 14px; gap:6px; }
+    .mobile .brand { font-size:17px; }
+    .mobile .search,.mobile .primary { display:none; }
+    .mobile .preferences { margin-left:auto; }
+    .mobile .right { flex:0; }
+    .mobile .menu { position:fixed; left:12px; right:12px; top:66px; width:auto; }
+    .mobile main { grid-template-columns:1fr; padding:24px 18px; }
+    .mobile main .card:last-child { display:none; }
+    .mobile h1 { font-size:27px; }
+    .design { width:min(1120px,calc(100% - 32px)); margin:0 auto 40px; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .design div { border:1px solid var(--line); border-radius:10px; padding:14px; color:var(--muted); font-size:13px; line-height:1.55; }
+    .design strong { display:block; color:var(--text); margin-bottom:4px; }
+    @media(max-width:650px) { .design { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="note">Mockup 重點：語系入口與風格選擇並排放在 Header 左側，兩者使用相同的 icon button。未登入仍可使用；切換後立即套用並寫入瀏覽器，不額外要求按「儲存」。</div>
+  <div class="tabs">
+    <button class="active" data-mode="desktop">桌機</button>
+    <button data-mode="mobile">手機</button>
+  </div>
+  <section class="frame" id="frame">
+    <header>
+      <div class="brand">
+        <span class="mark"></span><span>SteamLoom</span><span class="search">⌕</span>
+        <div class="preferences">
+          <button class="icon" aria-label="風格選擇" title="風格選擇">◐</button>
+        <div class="language-wrap">
+          <button class="icon open" id="languageButton" aria-label="介面語言" aria-expanded="true">◎</button>
+          <div class="menu" id="languageMenu">
+            <div class="menu-title">介面語言</div>
+            <button class="option selected"><span>✓</span><span>正體中文（台灣）</span></button>
+            <button class="option"><span></span><span>简体中文（中国大陆）</span></button>
+            <button class="option"><span></span><span>English</span></button>
+            <button class="option"><span></span><span>日本語</span></button>
+            <button class="option"><span></span><span>한국어</span></button>
+          </div>
+        </div>
+        </div>
+      </div>
+      <div class="right">
+        <button class="primary">＋ 建立創作專案</button>
+        <button class="icon" aria-label="通知">♢</button>
+        <button class="icon" aria-label="帳號選單"><span class="avatar">F</span></button>
+      </div>
+    </header>
+    <main>
+      <div>
+        <h1>讓故事，在這裡繼續生長。</h1>
+        <p>語系選單使用各語言自己的名稱，避免使用者必須先看懂目前語言才能切換。切換結果套用到公開閱讀頁、登入流程與作者工作台。</p>
+        <div class="card"><div class="skeleton short"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton short"></div></div>
+      </div>
+      <div class="card"><strong>最近更新</strong><div class="skeleton"></div><div class="skeleton short"></div><div class="skeleton"></div></div>
+    </main>
+  </section>
+  <section class="design">
+    <div><strong>入口位置</strong>全站 Header 左側，與風格選擇相鄰且使用同款按鈕；不依賴登入狀態。</div>
+    <div><strong>套用方式</strong>點選後立即 changeLanguage 並寫入 localStorage；重新開啟頁面時先讀取。</div>
+    <div><strong>初次語系</strong>沒有儲存值時依 navigator.languages 對應，無法辨識則回正體中文（台灣）。</div>
+  </section>
+  <script>
+    const frame = document.querySelector('#frame');
+    document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
+      document.querySelectorAll('[data-mode]').forEach(item => item.classList.toggle('active', item === button));
+      frame.classList.toggle('mobile', button.dataset.mode === 'mobile');
+    }));
+    const trigger = document.querySelector('#languageButton');
+    const menu = document.querySelector('#languageMenu');
+    trigger.addEventListener('click', () => {
+      menu.hidden = !menu.hidden;
+      trigger.classList.toggle('open', !menu.hidden);
+      trigger.setAttribute('aria-expanded', String(!menu.hidden));
+    });
+    document.querySelectorAll('.option').forEach(option => option.addEventListener('click', () => {
+      document.querySelectorAll('.option').forEach(item => { item.classList.remove('selected'); item.firstElementChild.textContent = ''; });
+      option.classList.add('selected'); option.firstElementChild.textContent = '✓';
+      menu.hidden = true; trigger.classList.remove('open'); trigger.setAttribute('aria-expanded', 'false');
+    }));
+  </script>
+</body>
+</html>

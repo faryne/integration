@@ -12,6 +12,7 @@ import (
 
 	"faryne.dev/apps/steamloom/writer/internal/agent"
 	"faryne.dev/apps/steamloom/writer/internal/api"
+	"faryne.dev/apps/steamloom/writer/internal/appsettings"
 	"faryne.dev/apps/steamloom/writer/internal/auth"
 	"faryne.dev/apps/steamloom/writer/internal/config"
 	"faryne.dev/apps/steamloom/writer/internal/mediaworker"
@@ -24,13 +25,14 @@ import (
 // App 的公開方法會由 Wails 綁定給前端呼叫（frontend/wailsjs/go/main/App）。
 // 錯誤以字串傳到前端；auth.ErrNotLoggedIn／ErrLoginCanceled 的訊息是固定代碼，前端據此切畫面。
 type App struct {
-	ctx     context.Context
-	session *auth.Session
-	api     *api.Client
-	updater *appupdate.Service
-	skill   *skillupdate.Service
-	tasks   *agent.TaskManager
-	workers *mediaworker.Service
+	ctx      context.Context
+	session  *auth.Session
+	api      *api.Client
+	updater  *appupdate.Service
+	skill    *skillupdate.Service
+	tasks    *agent.TaskManager
+	workers  *mediaworker.Service
+	settings *appsettings.Service
 	// unsaved：編輯分頁有沒有未存檔的內容，由前端回報（見 unsaved.go）
 	unsaved atomic.Bool
 	// localImages：圖像作品選好但還沒上傳的本機圖檔（見 local_images.go）
@@ -45,7 +47,7 @@ type App struct {
 
 func NewApp() *App {
 	cfg := config.Load()
-	app := &App{recoveredProjects: map[string]bool{}, siteOrigin: cfg.WebURL}
+	app := &App{recoveredProjects: map[string]bool{}, siteOrigin: cfg.WebURL, settings: appsettings.NewDefault()}
 	app.session = auth.New(cfg, tokenstore.New(cfg.Issuer), func(url string) {
 		// 授權網址也印到 log，瀏覽器沒有自動打開時可以手動複製
 		log.Printf("open authorize url: %s", url)
@@ -60,6 +62,22 @@ func NewApp() *App {
 		panic(err)
 	}
 	return app
+}
+
+// ApplicationSettings 回傳 Writer 的裝置層級設定；前端在 render 前先據此初始化語系。
+func (a *App) ApplicationSettings() appsettings.Settings { return a.settings.Get() }
+
+// SaveApplicationSettings 以 atomic write 保存設定，成功後立即重建原生應用程式選單。
+func (a *App) SaveApplicationSettings(input appsettings.Settings) (*appsettings.Settings, error) {
+	if err := a.settings.Save(input); err != nil {
+		return nil, err
+	}
+	if a.ctx != nil {
+		runtime.MenuSetApplicationMenu(a.ctx, applicationMenu(a))
+		trimNativeMenu()
+	}
+	saved := a.settings.Get()
+	return &saved, nil
 }
 
 func (a *App) startup(ctx context.Context) {

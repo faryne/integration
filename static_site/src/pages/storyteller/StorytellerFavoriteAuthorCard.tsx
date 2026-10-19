@@ -14,6 +14,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import {
   useSaveFavoriteAuthorVisibility,
@@ -40,11 +41,12 @@ export function StorytellerFavoriteAuthorCard({
   unfollowAs?: string;
   onNotify: Notify;
 }) {
+  const { t } = useTranslation();
   const saveVisibility = useSaveFavoriteAuthorVisibility(author.pen_name);
   const saveFavorite = useSaveStorytellerAuthorFavorite(author.pen_name);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const hidden = author.hidden ?? false;
-  const name = author.pen_name || "未命名作者";
+  const name = author.pen_name || t("web.community.unnamedAuthor");
 
   return (
     <Paper
@@ -80,22 +82,20 @@ export function StorytellerFavoriteAuthorCard({
             </Typography>
           </Stack>
           {canToggleVisibility && !author.as && (
-            <Tooltip title={hidden ? "設為公開" : "設為隱藏"}>
+            <Tooltip title={hidden ? t("web.community.makePublic") : t("web.community.makePrivate")}>
               <span>
                 <IconButton
                   size="small"
-                  aria-label={hidden ? "設為公開" : "設為隱藏"}
+                  aria-label={hidden ? t("web.community.makePublic") : t("web.community.makePrivate")}
                   disabled={saveVisibility.isPending}
                   onClick={() =>
                     saveVisibility.mutate(!hidden, {
                       onSuccess: () =>
                         onNotify(
-                          hidden
-                            ? "追蹤作者已設為公開。"
-                            : "追蹤作者已設為隱藏。",
+                          hidden ? t("web.community.madePublic") : t("web.community.madePrivate"),
                         ),
                       onError: () =>
-                        onNotify("追蹤作者公開狀態更新失敗。", "error"),
+                        onNotify(t("web.community.authorVisibilityFailed"), "error"),
                     })
                   }
                 >
@@ -112,30 +112,30 @@ export function StorytellerFavoriteAuthorCard({
               size="small"
               color="primary"
               variant="outlined"
-              label={`以 ${author.as} 追蹤`}
+              label={t("web.community.followedAs", { name: author.as })}
             />
           )}
-          <Chip size="small" label={`${author.project_count} 個專案`} />
+          <Chip size="small" label={t("web.community.projects", { count: author.project_count })} />
           <Chip
             size="small"
             variant="outlined"
             icon={<ArticleIcon />}
-            label={`${author.story_count} 篇故事`}
+            label={t("web.community.stories", { count: author.story_count })}
           />
           {author.image_story_count > 0 && (
             <Chip
               size="small"
               variant="outlined"
               icon={<CollectionsIcon />}
-              label={`${author.image_story_count} 話`}
+              label={t("web.community.episodes", { count: author.image_story_count })}
             />
           )}
           <Chip
             size="small"
-            label={`平均 ${author.average_rating.toFixed(1)}（${author.rating_count} 人評分）`}
+            label={t("web.community.averageRating", { average: author.average_rating.toFixed(1), count: author.rating_count })}
           />
-          <Chip size="small" label={`${author.follower_count} 人追蹤`} />
-          {hidden && <Chip size="small" color="warning" label="對外隱藏中" />}
+          <Chip size="small" label={t("web.community.followerCount", { count: author.follower_count })} />
+          {hidden && <Chip size="small" color="warning" label={t("web.community.hidden")} />}
         </Stack>
         <Stack direction="row" spacing={1} sx={{ mt: "auto" }}>
           {author.pen_name && (
@@ -145,7 +145,7 @@ export function StorytellerFavoriteAuthorCard({
               variant="contained"
               sx={{ flex: 1 }}
             >
-              查看作者
+              {t("web.community.viewAuthor")}
             </Button>
           )}
           {unfollowAs && (
@@ -154,7 +154,7 @@ export function StorytellerFavoriteAuthorCard({
               disabled={saveFavorite.isPending}
               onClick={() => setConfirmOpen(true)}
             >
-              取消追蹤
+              {t("web.community.unfollow")}
             </Button>
           )}
         </Stack>
@@ -163,13 +163,13 @@ export function StorytellerFavoriteAuthorCard({
         <StorytellerMascotDialog
           open={confirmOpen}
           state="neutral"
-          eyebrow="取消追蹤"
-          title={`要取消以 ${unfollowAs} 追蹤 ${name} 嗎？`}
-          description="之後不會再收到這位作者的更新通知（除非你用其他身份追蹤）。"
+          eyebrow={t("web.community.unfollow")}
+          title={t("web.community.unfollowTitle", { names: unfollowAs, name })}
+          description={t("web.community.cardUnfollowDescription")}
           onClose={() => setConfirmOpen(false)}
           actions={
             <>
-              <Button onClick={() => setConfirmOpen(false)}>保留</Button>
+              <Button onClick={() => setConfirmOpen(false)}>{t("web.community.keep")}</Button>
               <Button
                 variant="contained"
                 disabled={saveFavorite.isPending}
@@ -178,14 +178,14 @@ export function StorytellerFavoriteAuthorCard({
                   saveFavorite.mutate(
                     { as: unfollowAs },
                     {
-                      onSuccess: () => onNotify(`已取消以 ${unfollowAs} 追蹤`),
+                      onSuccess: () => onNotify(t("web.community.unfollowedAs", { names: unfollowAs })),
                       onError: () =>
-                        onNotify("取消追蹤失敗，請稍後再試。", "error"),
+                        onNotify(t("web.community.unfollowFailed"), "error"),
                     },
                   );
                 }}
               >
-                取消追蹤
+                {t("web.community.unfollow")}
               </Button>
             </>
           }

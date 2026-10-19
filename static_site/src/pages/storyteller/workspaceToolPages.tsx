@@ -8,7 +8,7 @@ export type WorkspaceToolPage = "memories";
 export interface WorkspaceToolPageDefinition {
   key: WorkspaceToolPage;
   path: string;
-  label: string;
+  labelKey: string;
   icon: (fontSize?: "small" | "medium") => ReactNode;
 }
 
@@ -16,7 +16,7 @@ export const workspaceToolPages: WorkspaceToolPageDefinition[] = [
   {
     key: "memories",
     path: "memories",
-    label: "梭梭的記憶",
+    labelKey: "web.workspacePreview.memories",
     icon: (fontSize) => <PsychologyAltOutlinedIcon fontSize={fontSize} />,
   },
 ];

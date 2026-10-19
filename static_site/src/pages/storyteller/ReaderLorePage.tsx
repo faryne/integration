@@ -1,6 +1,7 @@
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import { Box, Divider, Paper, Stack, Typography } from "@mui/material";
 import { useEffect, useId, type Ref } from "react";
+import { useTranslation } from "react-i18next";
 import { ContentMetaHeader } from "@/pages/storyteller/ReaderContentHeader.tsx";
 import type { ReaderLore } from "@/pages/storyteller/readerModel.ts";
 import {
@@ -11,7 +12,6 @@ import {
   ReaderSpoilerGate,
   type ReaderSpoilerDependency,
 } from "@/pages/storyteller/ReaderSpoilerGate.tsx";
-import { SPOILER_LORE_TITLE } from "@/pages/storyteller/useLoreSpoilerGate.ts";
 import { StorytellerFootnoteSection } from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
 import type { StorytellerTypographyPreferences } from "@/pages/storyteller/useStorytellerTypographyPreferences.ts";
 import { computeFootnoteNumbering } from "@/pages/storyteller/wysiwygCore/parser.ts";
@@ -41,6 +41,7 @@ export function ReaderLorePage({
   titleRef?: Ref<HTMLHeadingElement>;
   preferences: StorytellerTypographyPreferences;
 }) {
+  const { t } = useTranslation();
   const footnoteIdPrefix = useId();
   const footnoteNumbering = computeFootnoteNumbering(lore.content);
 
@@ -79,11 +80,11 @@ export function ReaderLorePage({
         >
           <AutoStoriesIcon sx={{ fontSize: 18 }} />
           <Typography variant="overline" fontWeight={800} lineHeight={1.4}>
-            設定・{collectionName ?? "未歸類"}
+            {t("web.reader.loreEyebrow", { collection: collectionName ?? t("web.reader.uncategorized") })}
           </Typography>
         </Stack>
         <ContentMetaHeader
-          title={gate ? SPOILER_LORE_TITLE : lore.title}
+          title={gate ? t("web.reader.spoilerTitle") : lore.title}
           titleRef={titleRef}
           summary={gate ? undefined : lore.summary}
           updatedAt={lore.updatedAt}

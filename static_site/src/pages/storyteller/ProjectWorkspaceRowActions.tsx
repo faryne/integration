@@ -14,6 +14,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import type { MouseEvent } from "react";
+import { useTranslation } from "react-i18next";
 
 /** Row 本身已能進入編輯，右側只保留單一 overflow 入口，避免 mobile 操作擠成一排。
  * 網站工作台與 SteamLoom Writer 的作品／設定列表共用（Writer 透過 alias 直接 import，改這支也會影響 Writer）。 */
@@ -66,6 +67,7 @@ export function WorkspaceRowActionMenu({
   // 只有不在網站裡的宿主（SteamLoom Writer）會傳：用瀏覽器打開這篇；網站本身不需要
   onOpenOnWeb?: () => void;
 }) {
+  const { t } = useTranslation();
   const isPublic = status === "completed";
   return (
     <Menu
@@ -79,7 +81,7 @@ export function WorkspaceRowActionMenu({
           <ListItemIcon>
             <OpenInNewIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>在網站上開啟</ListItemText>
+          <ListItemText>{t("writer.rowActions.openWeb")}</ListItemText>
         </MenuItem>,
         <Divider key="open-on-web-divider" />,
       ]}
@@ -92,7 +94,7 @@ export function WorkspaceRowActionMenu({
               <PublicIcon fontSize="small" />
             )}
           </ListItemIcon>
-          <ListItemText>{isPublic ? "設為草稿" : "設為公開"}</ListItemText>
+          <ListItemText>{t(isPublic ? "writer.rowActions.draft" : "writer.rowActions.publish")}</ListItemText>
         </MenuItem>
       )}
       <MenuItem onClick={onMove}>

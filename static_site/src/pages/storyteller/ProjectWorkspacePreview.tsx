@@ -3,6 +3,7 @@ import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import { Box, Button, CircularProgress, Typography } from "@mui/material";
 import axios from "axios";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useLocation,
   useNavigate,
@@ -80,6 +81,7 @@ const lorePageSize = 20;
 const assetPageSize = 24;
 
 export default function StorytellerProjectWorkspacePreview() {
+  const { t } = useTranslation();
   const { id, storyId, loreId, assetId, collectionId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -334,8 +336,8 @@ export default function StorytellerProjectWorkspacePreview() {
       : undefined;
 
   const activeTitle = toolPage
-    ? toolPage.label
-    : nodeTitle(selected.section, selected.collectionId) ||
+    ? t(toolPage.labelKey)
+    : nodeTitle(selected.section, selected.collectionId, t) ||
       volumes.find((volume) => volume.public_id === selected.collectionId)
         ?.title ||
       loreCollections.find(
@@ -344,27 +346,27 @@ export default function StorytellerProjectWorkspacePreview() {
       assetCollections.find(
         (collection) => collection.public_id === selected.collectionId,
       )?.name ||
-      "工作台";
+      t("web.workspacePreview.workspace");
   // 麵包屑最後兩段要跟著目前選到的分組／收藏集走：「作品/設定集/資產集」＋
   // 「冊標題｜未分冊｜未分類｜全部」，跟左側側邊欄、右欄標題呈現的是同一組資訊，
   // 只是縮寫成更適合塞進麵包屑的短字串（不重複「全部作品」這種完整敘述）。
   const sectionBreadcrumbLabel = toolPage
-    ? toolPage.label
+    ? t(toolPage.labelKey)
     : selected.section === "stories"
-      ? "作品"
+      ? t("web.workspacePreview.works")
       : selected.section === "lores"
-        ? "設定集"
-        : "資產集";
+        ? t("web.projectWorkspace.tabs.lores")
+        : t("web.projectWorkspace.tabs.assets");
   const collectionBreadcrumbLabel = toolPage
     ? ""
     : selected.collectionId === ""
-      ? "全部"
+      ? t("web.common.all")
       : selected.collectionId === ungroupedId
         ? selected.section === "stories"
-          ? "未分冊"
+          ? t("web.projectWorkspace.volume.ungrouped")
           : selected.section === "lores"
-            ? "未歸類"
-            : "未分類"
+            ? t("web.loreManager.uncategorized")
+            : t("web.assetManager.uncategorized")
         : (volumes.find((volume) => volume.public_id === selected.collectionId)
             ?.title ??
           loreCollections.find(
@@ -492,10 +494,10 @@ export default function StorytellerProjectWorkspacePreview() {
   // 的 effect 先跑，之後只要子元件的標題相關資料一變動就會重新蓋回正確標題，
   // 不會卡住停在這裡設的通用標題。
   const workspaceTitleContext = toolPage
-    ? toolPage.label
+    ? t(toolPage.labelKey)
     : isAssetRoute && routeAssetQuery.data
       ? storytellerAssetTitle(routeAssetQuery.data)
-      : collectionBreadcrumbLabel === "全部"
+      : selected.collectionId === ""
         ? sectionBreadcrumbLabel
         : `${collectionBreadcrumbLabel} · ${sectionBreadcrumbLabel}`;
   const workspaceTitle = project?.name
@@ -580,27 +582,29 @@ export default function StorytellerProjectWorkspacePreview() {
 
   if (authLoading) {
     return (
-      <WorkspaceChrome title="工作台">
+      <WorkspaceChrome title={t("web.workspacePreview.workspace")}>
         <WorkspaceCentered>
           <CircularProgress size={24} />
-          <Typography color="text.secondary">確認登入狀態...</Typography>
+          <Typography color="text.secondary">
+            {t("web.home.checkingLogin")}
+          </Typography>
         </WorkspaceCentered>
       </WorkspaceChrome>
     );
   }
   if (!session) {
     return (
-      <WorkspaceChrome title="工作台">
+      <WorkspaceChrome title={t("web.workspacePreview.workspace")}>
         <WorkspaceCentered>
           <AutoStoriesIcon color="primary" />
           <Box>
-            <Typography fontWeight={900}>需要登入</Typography>
+            <Typography fontWeight={900}>{t("web.home.loginRequired")}</Typography>
             <Typography variant="body2" color="text.secondary">
-              登入後才能預覽專案工作台。
+              {t("web.workspacePreview.loginDescription")}
             </Typography>
           </Box>
           <Button variant="contained" onClick={() => void login()}>
-            {submitting ? "登入中" : "使用 Google 登入"}
+            {submitting ? t("web.home.loggingIn") : t("web.home.googleLogin")}
           </Button>
         </WorkspaceCentered>
       </WorkspaceChrome>
@@ -608,10 +612,12 @@ export default function StorytellerProjectWorkspacePreview() {
   }
   if (projectQuery.isLoading) {
     return (
-      <WorkspaceChrome title="工作台">
+      <WorkspaceChrome title={t("web.workspacePreview.workspace")}>
         <WorkspaceCentered>
           <CircularProgress size={24} />
-          <Typography color="text.secondary">載入工作台...</Typography>
+          <Typography color="text.secondary">
+            {t("web.workspacePreview.loading")}
+          </Typography>
         </WorkspaceCentered>
       </WorkspaceChrome>
     );
@@ -620,7 +626,7 @@ export default function StorytellerProjectWorkspacePreview() {
   return (
     <WorkspaceOpenDocumentProvider value={openWorkspaceDocument}>
       <WorkspaceChrome
-        title={project?.name ?? "專案"}
+        title={project?.name ?? t("web.workspacePreview.project")}
         projectId={project?.public_id ?? id}
         projects={projectsQuery.data ?? []}
         trail={
@@ -636,7 +642,7 @@ export default function StorytellerProjectWorkspacePreview() {
             onClick={() => setMobileNavigatorOpen(true)}
             sx={{ display: { xs: "inline-flex", md: "none" }, minWidth: 0 }}
           >
-            導覽
+            {t("web.workspacePreview.navigation")}
           </Button>
         }
       >
@@ -645,7 +651,7 @@ export default function StorytellerProjectWorkspacePreview() {
           open={workspaceSearch.open}
           initialKeyword={workspaceSearch.keyword}
           onClose={workspaceSearch.closeSearch}
-          projectName={project?.name ?? "目前專案"}
+          projectName={project?.name ?? t("web.workspacePreview.currentProject")}
           projectPublicId={project?.public_id ?? id ?? ""}
           onOpenResult={openWorkspaceSearchResult}
         />

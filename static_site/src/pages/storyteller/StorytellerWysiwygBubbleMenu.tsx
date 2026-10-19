@@ -5,9 +5,11 @@ import { isTextSelection, type Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   getWysiwygCommand,
+  translatedWysiwygCommandLabel,
   wysiwygCommandsByGroup,
   type WysiwygCommand,
   type WysiwygCommandContext,
@@ -49,6 +51,7 @@ export function StorytellerWysiwygBubbleMenu({
   hasSavedTarget,
   onRequestAI,
 }: StorytellerWysiwygBubbleMenuProps) {
+  const { t } = useTranslation();
   const [textColorMenuOpen, setTextColorMenuOpen] = useState(false);
   const [bgColorMenuOpen, setBgColorMenuOpen] = useState(false);
   // 色票子選單是自訂的小 popover（不是 MUI Menu），Escape 要能關閉並把 focus
@@ -138,7 +141,7 @@ export function StorytellerWysiwygBubbleMenu({
       <Paper
         elevation={4}
         role="toolbar"
-        aria-label="文字格式工具列"
+        aria-label={t("writer:editor.formatToolbar")}
         sx={{
           display: "flex",
           alignItems: "center",
@@ -154,12 +157,13 @@ export function StorytellerWysiwygBubbleMenu({
         <Stack direction="row" spacing={0.25} alignItems="center">
           {markCommands.map((command) => {
             const Icon = command.icon!;
+            const label = translatedWysiwygCommandLabel(command, t);
             return (
-              <Tooltip key={command.id} title={command.label}>
+              <Tooltip key={command.id} title={label}>
                 <Box
                   component="button"
                   type="button"
-                  aria-label={command.label}
+                  aria-label={label}
                   aria-pressed={isOn(command)}
                   onClick={() => run(command)}
                   sx={{
@@ -185,12 +189,12 @@ export function StorytellerWysiwygBubbleMenu({
           <Divider orientation="vertical" flexItem sx={{ mx: 0.25, my: 0.5 }} />
 
           <Box sx={{ position: "relative" }}>
-            <Tooltip title="文字顏色">
+            <Tooltip title={t("writer:editor.textColor")}>
               <Box
                 component="button"
                 type="button"
                 ref={textColorTriggerRef}
-                aria-label="文字顏色"
+                aria-label={t("writer:editor.textColor")}
                 aria-haspopup="true"
                 aria-expanded={textColorMenuOpen}
                 aria-controls="bubble-menu-text-color-popover"
@@ -229,7 +233,7 @@ export function StorytellerWysiwygBubbleMenu({
                 elevation={4}
                 id="bubble-menu-text-color-popover"
                 role="group"
-                aria-label="文字顏色選項"
+                aria-label={t("writer:editor.textColorOptions")}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") {
                     event.stopPropagation();
@@ -249,11 +253,14 @@ export function StorytellerWysiwygBubbleMenu({
               >
                 <Stack direction="row" spacing={1}>
                   {textColorCommands.map((command) => (
-                    <Tooltip key={command.id} title={command.label}>
+                    <Tooltip
+                      key={command.id}
+                      title={translatedWysiwygCommandLabel(command, t)}
+                    >
                       <Box
                         component="button"
                         type="button"
-                        aria-label={command.label}
+                        aria-label={translatedWysiwygCommandLabel(command, t)}
                         aria-pressed={isOn(command)}
                         onClick={() => {
                           run(command);
@@ -274,11 +281,11 @@ export function StorytellerWysiwygBubbleMenu({
                       />
                     </Tooltip>
                   ))}
-                  <Tooltip title="清除文字顏色">
+                  <Tooltip title={t("writer:editor.clearTextColor")}>
                     <Box
                       component="button"
                       type="button"
-                      aria-label="清除文字顏色"
+                      aria-label={t("writer:editor.clearTextColor")}
                       onClick={() => {
                         run(getWysiwygCommand("text-color-clear")!);
                         closeTextColorMenu();
@@ -303,12 +310,12 @@ export function StorytellerWysiwygBubbleMenu({
           </Box>
 
           <Box sx={{ position: "relative" }}>
-            <Tooltip title="文字背景色">
+            <Tooltip title={t("writer:editor.backgroundColor")}>
               <Box
                 component="button"
                 type="button"
                 ref={bgColorTriggerRef}
-                aria-label="文字背景色"
+                aria-label={t("writer:editor.backgroundColor")}
                 aria-haspopup="true"
                 aria-expanded={bgColorMenuOpen}
                 aria-controls="bubble-menu-bg-color-popover"
@@ -344,7 +351,7 @@ export function StorytellerWysiwygBubbleMenu({
                 elevation={4}
                 id="bubble-menu-bg-color-popover"
                 role="group"
-                aria-label="文字背景色選項"
+                aria-label={t("writer:editor.backgroundColorOptions")}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") {
                     event.stopPropagation();
@@ -364,11 +371,14 @@ export function StorytellerWysiwygBubbleMenu({
               >
                 <Stack direction="row" spacing={1}>
                   {bgColorCommands.map((command) => (
-                    <Tooltip key={command.id} title={command.label}>
+                    <Tooltip
+                      key={command.id}
+                      title={translatedWysiwygCommandLabel(command, t)}
+                    >
                       <Box
                         component="button"
                         type="button"
-                        aria-label={command.label}
+                        aria-label={translatedWysiwygCommandLabel(command, t)}
                         aria-pressed={isOn(command)}
                         onClick={() => {
                           run(command);
@@ -389,11 +399,11 @@ export function StorytellerWysiwygBubbleMenu({
                       />
                     </Tooltip>
                   ))}
-                  <Tooltip title="清除文字背景色">
+                  <Tooltip title={t("writer:editor.clearBackgroundColor")}>
                     <Box
                       component="button"
                       type="button"
-                      aria-label="清除文字背景色"
+                      aria-label={t("writer:editor.clearBackgroundColor")}
                       onClick={() => {
                         run(getWysiwygCommand("bg-color-clear")!);
                         closeBgColorMenu();
@@ -435,11 +445,11 @@ export function StorytellerWysiwygBubbleMenu({
                 flexItem
                 sx={{ mx: 0.25, my: 0.5 }}
               />
-              <Tooltip title="問 AI">
+              <Tooltip title={t("writer:editor.askAI")}>
                 <Box
                   component="button"
                   type="button"
-                  aria-label="問 AI"
+                  aria-label={t("writer:editor.askAI")}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => onRequestAI?.()}
                   sx={{
@@ -478,16 +488,16 @@ function AnnotationButton({
   active: boolean;
   onClick: () => void;
 }) {
+  const { t } = useTranslation();
   const Icon = command.icon!;
+  const label = translatedWysiwygCommandLabel(command, t, active);
   return (
-    <Tooltip
-      title={active ? (command.activeLabel ?? command.label) : command.label}
-    >
+    <Tooltip title={label}>
       <Box
         component="button"
         type="button"
         // 沿用第一個別名當無障礙名稱（連結／設定連結／腳注／註解），不帶「加」「編輯」這類動詞
-        aria-label={command.aliases?.[0] ?? command.label}
+        aria-label={label}
         aria-pressed={active}
         onClick={onClick}
         sx={{

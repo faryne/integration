@@ -9,6 +9,7 @@ import BookmarkIcon from "@mui/icons-material/Bookmark";
 import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
 import { Box, Button } from "@mui/material";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   TYPOGRAPHY_FONT_FAMILIES,
   type StorytellerTypographyPreferences,
@@ -50,6 +51,7 @@ export function StoryContentLines({
   footnoteNumbering: FootnoteNumbering;
   footnoteIdPrefix: string;
 }) {
+  const { t } = useTranslation();
   const lines = content.split("\n");
   const groups = groupParagraphsByBlockKind(parseMarkdownToParagraphs(content));
   return (
@@ -132,13 +134,13 @@ export function StoryContentLines({
                     onClick={() => onToggleBookmark(groupIndex)}
                     sx={{ whiteSpace: "nowrap" }}
                   >
-                    {isBookmarked ? "移除書籤" : "加入書籤"}
+                    {isBookmarked ? t("web.reader.removeBookmark") : t("web.reader.addBookmark")}
                   </Button>
                 ) : (
                   <Box
                     component="span"
                     role="img"
-                    aria-label="已加入書籤"
+                    aria-label={t("web.reader.bookmarked")}
                     sx={{
                       width: 30,
                       height: 30,

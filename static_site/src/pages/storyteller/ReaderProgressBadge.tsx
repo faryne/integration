@@ -1,6 +1,7 @@
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { Box, LinearProgress, Stack, Typography } from "@mui/material";
 import type { ReaderProgress } from "./readingRecordStore.ts";
+import { useTranslation } from "react-i18next";
 
 // 列表上的閱讀進度：沒讀過不顯示、讀到一半顯示細進度條＋百分比、讀完顯示「讀完」。
 // 故事與設定列表共用同一個元件，兩邊呈現才會一致。
@@ -9,6 +10,7 @@ export function ReaderProgressBadge({
 }: {
   progress?: ReaderProgress;
 }) {
+  const { t } = useTranslation();
   if (!progress || (progress.progress <= 0 && !progress.completed)) {
     return null;
   }
@@ -19,11 +21,11 @@ export function ReaderProgressBadge({
         spacing={0.5}
         alignItems="center"
         sx={{ color: "success.main", flexShrink: 0 }}
-        aria-label="已讀完"
+        aria-label={t("web.reader.completedAria")}
       >
         <CheckCircleIcon sx={{ fontSize: 16 }} />
         <Typography variant="caption" fontWeight={700}>
-          讀完
+          {t("web.reader.completed")}
         </Typography>
       </Stack>
     );
@@ -34,7 +36,7 @@ export function ReaderProgressBadge({
       spacing={0.75}
       alignItems="center"
       sx={{ flexShrink: 0 }}
-      aria-label={`已讀 ${progress.progress}%`}
+      aria-label={t("web.reader.progressAria", { progress: progress.progress })}
     >
       <Box sx={{ width: 48 }}>
         <LinearProgress

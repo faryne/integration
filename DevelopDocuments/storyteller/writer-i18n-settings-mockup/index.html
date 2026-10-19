@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SteamLoom Writer — 介面語言設定</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, "Noto Sans TC", system-ui, sans-serif; background: #100b18; color: #eee9f5; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 1024px; min-height: 680px; background: #100b18; }
+    header { height: 48px; display: flex; align-items: center; padding: 0 18px; border-bottom: 1px solid #332b40; background: #171120; }
+    .brand { font-weight: 750; letter-spacing: .2px; }
+    .brand span { color: #a98bff; margin-left: 8px; font-size: 12px; border: 1px solid #6d55b5; padding: 2px 7px; border-radius: 999px; }
+    .crumbs { height: 44px; display: flex; align-items: center; gap: 9px; padding: 0 18px; border-bottom: 1px solid #332b40; color: #aaa1b7; font-size: 13px; }
+    .crumbs b { color: #ba9fff; font-weight: 550; }
+    main { height: calc(100vh - 92px); display: flex; }
+    nav { width: 220px; padding: 10px 8px; border-right: 1px solid #332b40; background: #15101d; }
+    .nav-item { width: 100%; display: flex; align-items: center; gap: 10px; border: 0; border-radius: 6px; padding: 10px 12px; margin-bottom: 4px; background: transparent; color: #c9c0d5; text-align: left; cursor: pointer; }
+    .nav-item.selected { background: #2d2340; color: #d5c5ff; }
+    .icon { width: 18px; text-align: center; color: #a98bff; }
+    section { flex: 1; overflow: auto; padding: 30px 38px 96px; }
+    .panel { max-width: 720px; }
+    h1 { margin: 0 0 6px; font-size: 22px; }
+    .lead { margin: 0 0 34px; color: #aaa1b7; font-size: 14px; }
+    .group-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+    .setting-row { display: grid; grid-template-columns: 210px 1fr; align-items: start; gap: 26px; padding: 20px; border: 1px solid #40374f; border-radius: 8px; background: #191421; }
+    .setting-label { font-size: 14px; font-weight: 650; }
+    .setting-description { margin-top: 5px; color: #92899f; font-size: 12px; line-height: 1.5; }
+    select { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid #594b6d; border-radius: 5px; background: #110d18; color: #eee9f5; font-size: 14px; outline: none; }
+    select:focus { border-color: #a98bff; box-shadow: 0 0 0 2px #6d55b544; }
+    .page-actions { position: fixed; right: 28px; bottom: 24px; z-index: 20; display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 10px 12px; border: 1px solid #40374f; border-radius: 8px; background: #191421e8; box-shadow: 0 8px 28px #09060db8; backdrop-filter: blur(8px); }
+    .save { min-width: 108px; min-height: 36px; padding: 0 16px; border: 1px solid #9275ea; border-radius: 5px; background: #6d55b5; color: #fff; font-weight: 650; cursor: pointer; }
+    .save:hover:not(:disabled) { background: #7d62cc; }
+    .save:disabled { border-color: #4b4258; background: #332c3d; color: #776e83; cursor: default; }
+    .applied { min-height: 18px; color: #8fd39c; font-size: 12px; opacity: 0; transition: opacity .15s; }
+    .applied.show { opacity: 1; }
+    .preview { margin-top: 24px; padding: 16px 18px; border-left: 3px solid #8065d8; background: #171220; color: #cfc5dc; font-size: 13px; line-height: 1.7; }
+    .preview strong { color: #eee9f5; }
+    .worker-placeholder { display: none; padding: 24px; border: 1px dashed #4b405c; border-radius: 8px; color: #aaa1b7; }
+    .dialog-backdrop { position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; padding: 24px; background: #08050db8; }
+    .dialog-backdrop.show { display: flex; }
+    .dialog { width: min(520px, 100%); overflow: hidden; border: 1px solid #544765; border-radius: 10px; background: #1c1625; box-shadow: 0 24px 70px #000a; }
+    .dialog-head { padding: 22px 24px 18px; border-bottom: 1px solid #3d334a; }
+    .dialog-tone { color: #f0aa61; font-size: 12px; font-weight: 700; }
+    .dialog-eyebrow { margin-top: 10px; color: #aaa1b7; font-size: 12px; }
+    .dialog h2 { margin: 4px 0 9px; font-size: 20px; }
+    .dialog p { margin: 0; color: #b8afc4; font-size: 14px; line-height: 1.65; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 18px; }
+    .dialog-button { min-height: 36px; padding: 0 14px; border: 0; border-radius: 5px; background: transparent; color: #d9d0e4; cursor: pointer; }
+    .dialog-button:hover { background: #2b2335; }
+    .dialog-button.danger { color: #ff8c8c; }
+    .dialog-button.primary { background: #6d55b5; color: #fff; }
+  </style>
+</head>
+<body>
+  <header><div class="brand">SteamLoom <span>Writer</span></div></header>
+  <div class="crumbs"><span>我的專案</span><span>›</span><span>應用程式設定</span><span>›</span><b id="crumb">一般設定</b></div>
+  <main>
+    <nav>
+      <button class="nav-item selected" data-page="general"><span class="icon">⚙</span><span id="general-nav">一般設定</span></button>
+      <button class="nav-item" data-page="worker"><span class="icon">▧</span><span id="worker-nav">媒體 Worker</span></button>
+    </nav>
+    <section>
+      <div class="panel" id="general-panel">
+        <h1 id="title">一般設定</h1>
+        <p class="lead" id="lead">管理 SteamLoom Writer 在這台裝置上的介面偏好。</p>
+        <div class="group-title" id="interface-title">介面</div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-label" id="language-label">介面語言</div>
+            <div class="setting-description" id="language-help">選擇語言後儲存，Writer 會立即套用。</div>
+          </div>
+          <div>
+            <select id="language" aria-label="介面語言">
+              <option value="zh-TW">正體中文（台灣）</option>
+              <option value="zh-CN">简体中文</option>
+              <option value="en">English</option>
+              <option value="ja">日本語</option>
+              <option value="ko">한국어</option>
+            </select>
+          </div>
+        </div>
+        <div class="preview" id="preview"><strong>儲存位置：</strong>設定會寫入 Writer 的本機設定檔。下次啟動時，畫面、日期與數字格式及應用程式選單會直接使用這個語言；Agent 回答與作品內容不會翻譯。</div>
+      </div>
+      <div class="panel worker-placeholder" id="worker-panel">媒體 Worker 設定頁沿用既有畫面；右下角固定顯示同一個儲存按鈕。</div>
+    </section>
+  </main>
+  <div class="page-actions">
+    <div class="applied" id="applied">介面語言已儲存並套用。</div>
+    <button class="save" id="save" type="button" disabled>儲存設定</button>
+  </div>
+  <div class="dialog-backdrop" id="unsaved-dialog" role="dialog" aria-modal="true" aria-labelledby="unsaved-title">
+    <div class="dialog">
+      <div class="dialog-head">
+        <div class="dialog-tone" id="dialog-tone">變更尚未儲存</div>
+        <div class="dialog-eyebrow" id="dialog-eyebrow">離開設定頁</div>
+        <h2 id="unsaved-title">你有尚未儲存的變更</h2>
+        <p id="dialog-description">離開這個設定頁前要先儲存嗎？不儲存的話，變更會遺失。</p>
+      </div>
+      <div class="dialog-actions">
+        <button class="dialog-button" id="continue-editing" type="button">繼續編輯</button>
+        <button class="dialog-button danger" id="discard" type="button">放棄變更並離開</button>
+        <button class="dialog-button primary" id="save-continue" type="button">儲存並繼續</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    const copy = {
+      "zh-TW": ["一般設定", "媒體 Worker", "管理 SteamLoom Writer 在這台裝置上的介面偏好。", "介面", "介面語言", "選擇語言後儲存，Writer 會立即套用。", "介面語言已儲存並套用。", "儲存位置：", "設定會寫入 Writer 的本機設定檔。下次啟動時，畫面、日期與數字格式及應用程式選單會直接使用這個語言；Agent 回答與作品內容不會翻譯。", "儲存設定", "變更尚未儲存", "離開設定頁", "你有尚未儲存的變更", "離開這個設定頁前要先儲存嗎？不儲存的話，變更會遺失。", "繼續編輯", "放棄變更並離開", "儲存並繼續"],
+      "zh-CN": ["常规设置", "媒体 Worker", "管理此设备上的 SteamLoom Writer 界面偏好。", "界面", "界面语言", "选择语言并保存后，Writer 会立即应用。", "界面语言已保存并应用。", "保存位置：", "设置会写入 Writer 的本地配置文件。下次启动时，界面、日期和数字格式以及应用菜单会直接使用此语言；Agent 回复和作品内容不会翻译。", "保存设置", "更改尚未保存", "离开设置页", "你有尚未保存的更改", "离开此设置页前要先保存吗？不保存的话，更改将会丢失。", "继续编辑", "放弃更改并离开", "保存并继续"],
+      en: ["General", "Media workers", "Manage SteamLoom Writer interface preferences on this device.", "Interface", "Interface language", "Choose a language and save to apply it immediately.", "Interface language saved and applied.", "Storage: ", "The setting is written to Writer's local settings file. On the next launch, screens, date and number formats, and application menus use this language. Agent responses and creative content are not translated.", "Save settings", "Unsaved changes", "Leave settings", "You have unsaved changes", "Save before leaving this settings page? Unsaved changes will be lost.", "Continue editing", "Discard and leave", "Save and continue"],
+      ja: ["一般設定", "メディア Worker", "このデバイスでの SteamLoom Writer の表示設定を管理します。", "インターフェース", "表示言語", "言語を選択して保存すると、Writer にすぐ適用されます。", "表示言語を保存して適用しました。", "保存先：", "設定は Writer のローカル設定ファイルに保存されます。次回起動時から、画面、日付・数値形式、アプリメニューにこの言語が使用されます。Agent の回答と作品内容は翻訳されません。", "設定を保存", "変更は保存されていません", "設定ページを離れる", "保存されていない変更があります", "この設定ページを離れる前に保存しますか？保存しない場合、変更は失われます。", "編集を続ける", "変更を破棄して移動", "保存して続行"],
+      ko: ["일반 설정", "미디어 Worker", "이 기기의 SteamLoom Writer 인터페이스 환경설정을 관리합니다.", "인터페이스", "인터페이스 언어", "언어를 선택하고 저장하면 Writer에 즉시 적용됩니다.", "인터페이스 언어를 저장하고 적용했습니다.", "저장 위치: ", "설정은 Writer의 로컬 설정 파일에 저장됩니다. 다음 실행부터 화면, 날짜 및 숫자 형식과 애플리케이션 메뉴에 이 언어가 사용됩니다. Agent 답변과 작품 내용은 번역되지 않습니다.", "설정 저장", "변경 사항이 저장되지 않음", "설정 페이지 나가기", "저장되지 않은 변경 사항이 있습니다", "이 설정 페이지를 떠나기 전에 저장하시겠습니까? 저장하지 않은 변경 사항은 사라집니다.", "계속 편집", "변경 사항을 버리고 나가기", "저장하고 계속"],
+    };
+    const ids = ["general-nav", "worker-nav", "lead", "interface-title", "language-label", "language-help", "applied"];
+    const language = document.querySelector("#language");
+    const save = document.querySelector("#save");
+    const dialog = document.querySelector("#unsaved-dialog");
+    let savedLanguage = language.value;
+    let pendingPage = null;
+    language.addEventListener("change", () => {
+      save.disabled = language.value === savedLanguage;
+      document.querySelector("#applied").classList.remove("show");
+    });
+    const saveSettings = () => {
+      const strings = copy[language.value];
+      document.documentElement.lang = language.value;
+      document.querySelector("#crumb").textContent = strings[0];
+      document.querySelector("#title").textContent = strings[0];
+      ids.forEach((id, index) => document.querySelector(`#${id}`).textContent = strings[index]);
+      document.querySelector("#preview").innerHTML = `<strong>${strings[7]}</strong>${strings[8]}`;
+      save.textContent = strings[9];
+      document.querySelector("#dialog-tone").textContent = strings[10];
+      document.querySelector("#dialog-eyebrow").textContent = strings[11];
+      document.querySelector("#unsaved-title").textContent = strings[12];
+      document.querySelector("#dialog-description").textContent = strings[13];
+      document.querySelector("#continue-editing").textContent = strings[14];
+      document.querySelector("#discard").textContent = strings[15];
+      document.querySelector("#save-continue").textContent = strings[16];
+      savedLanguage = language.value;
+      save.disabled = true;
+      const applied = document.querySelector("#applied");
+      applied.classList.remove("show");
+      requestAnimationFrame(() => applied.classList.add("show"));
+    };
+    save.addEventListener("click", saveSettings);
+    const navigate = (page) => {
+      document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("selected", item.dataset.page === page));
+      document.querySelector("#general-panel").style.display = page === "general" ? "block" : "none";
+      document.querySelector("#worker-panel").style.display = page === "worker" ? "block" : "none";
+      document.querySelector("#applied").classList.remove("show");
+    };
+    document.querySelectorAll(".nav-item").forEach((item) => item.addEventListener("click", () => {
+      if (item.classList.contains("selected")) return;
+      if (!save.disabled) {
+        pendingPage = item.dataset.page;
+        dialog.classList.add("show");
+        return;
+      }
+      navigate(item.dataset.page);
+    }));
+    document.querySelector("#continue-editing").addEventListener("click", () => {
+      pendingPage = null;
+      dialog.classList.remove("show");
+    });
+    document.querySelector("#discard").addEventListener("click", () => {
+      language.value = savedLanguage;
+      save.disabled = true;
+      dialog.classList.remove("show");
+      navigate(pendingPage);
+      pendingPage = null;
+    });
+    document.querySelector("#save-continue").addEventListener("click", () => {
+      saveSettings();
+      dialog.classList.remove("show");
+      navigate(pendingPage);
+      pendingPage = null;
+    });
+  </script>
+</body>
+</html>

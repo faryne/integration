@@ -1,5 +1,7 @@
 import { Autocomplete, Chip, TextField } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 const maxTagCount = 8;
 const maxTagLength = 24;
@@ -11,12 +13,13 @@ export function StorytellerMemoryTagField({
   value: string[];
   onChange: (tags: string[]) => void;
 }) {
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   function commitTags(nextValue: string[], invalidInput = "") {
     const normalized = normalizeMemoryTags(nextValue);
-    const error = memoryTagValidationError(normalized);
+    const error = memoryTagValidationError(normalized, t);
     if (error) {
       setErrorMessage(error);
       if (invalidInput) setInputValue(invalidInput);
@@ -56,7 +59,7 @@ export function StorytellerMemoryTagField({
         setInputValue(nextInputValue);
         setErrorMessage(
           memoryTagLength(nextInputValue.trim()) > maxTagLength
-            ? `每個標籤最多 ${maxTagLength} 字。`
+            ? t("writer:memory.tagLength", { count: maxTagLength })
             : "",
         );
       }}
@@ -80,12 +83,17 @@ export function StorytellerMemoryTagField({
       renderInput={(params) => (
         <TextField
           {...params}
-          label="標籤"
-          placeholder={value.length === 0 ? "角色口吻, 世界觀, 待確認" : ""}
+          label={t("writer:memory.tags")}
+          placeholder={
+            value.length === 0 ? t("writer:memory.tagPlaceholder") : ""
+          }
           error={Boolean(errorMessage)}
           helperText={
             errorMessage ||
-            `輸入後按 Enter，或用逗號分隔；最多 ${maxTagCount} 個，每個最多 ${maxTagLength} 字。`
+            t("writer:memory.tagHelp", {
+              count: maxTagCount,
+              length: maxTagLength,
+            })
           }
         />
       )}
@@ -105,11 +113,13 @@ function normalizeMemoryTags(tags: string[]) {
     });
 }
 
-function memoryTagValidationError(tags: string[]) {
+function memoryTagValidationError(tags: string[], t: TFunction) {
   if (tags.some((tag) => memoryTagLength(tag) > maxTagLength)) {
-    return `每個標籤最多 ${maxTagLength} 字。`;
+    return t("writer:memory.tagLength", { count: maxTagLength });
   }
-  if (tags.length > maxTagCount) return `最多只能加入 ${maxTagCount} 個標籤。`;
+  if (tags.length > maxTagCount) {
+    return t("writer:memory.tagCount", { count: maxTagCount });
+  }
   return "";
 }
 

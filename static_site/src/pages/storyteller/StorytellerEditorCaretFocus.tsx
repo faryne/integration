@@ -11,6 +11,7 @@ import {
 } from "react";
 import { ShortcutHint } from "@/components/common/ShortcutHint.tsx";
 import { usePrimaryShortcut } from "@/helpers/shortcut.ts";
+import { useTranslation } from "react-i18next";
 import {
   CARET_BLOCK_CLASS,
   caretBlock,
@@ -48,7 +49,7 @@ export function StorytellerEditorCaretFocus({
   editor,
   scrollRef,
   memoryKey,
-  jumpLabel = "回到輸入位置",
+  jumpLabel,
 }: {
   editor: Editor | null;
   /** 正文的捲動容器（overflow: auto 那層）。 */
@@ -57,6 +58,8 @@ export function StorytellerEditorCaretFocus({
   memoryKey?: string;
   jumpLabel?: string;
 }) {
+  const { t } = useTranslation();
+  const resolvedJumpLabel = jumpLabel ?? t("writer:editor.backToCaret");
   const [caret, setCaret] = useState<CaretState>({
     ratio: null,
     offscreen: null,
@@ -265,7 +268,7 @@ export function StorytellerEditorCaretFocus({
             boxShadow: 3,
           }}
         >
-          {jumpLabel}
+          {resolvedJumpLabel}
           <ShortcutHint shortcutKey={JUMP_SHORTCUT} />
         </Button>
       )}

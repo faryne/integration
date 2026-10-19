@@ -16,6 +16,7 @@ import {
   type Theme,
 } from "@mui/material";
 import { useMemo, useRef, useState, type ComponentProps } from "react";
+import { useTranslation } from "react-i18next";
 import {
   WorkspaceEditorSaveButton,
   WorkspaceEditorStatusInfo,
@@ -102,6 +103,7 @@ export function SteamLoomDocumentEditor({
   editorProps?: Partial<WysiwygProps>;
   sx?: SxProps<Theme>;
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [ownTab, setOwnTab] = useState<DocumentEditorTab>("editor");
@@ -299,6 +301,7 @@ export function SteamLoomDocumentEditor({
                         wordCount,
                         updatedAt: editing.updatedAt,
                         autoSaveMinutes: publicId ? autoSaveMinutes : undefined,
+                        t,
                       })}
                     />
                   </Stack>

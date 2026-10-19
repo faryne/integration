@@ -14,6 +14,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { useMemo, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 // 網站與 SteamLoom Writer 共用；Writer 透過 alias 直接 import（改這支也會影響 Writer）。
 import { buildCustomLineDiff } from "../../components/common/customDiff.ts";
 import { CustomDiffLegend } from "../../components/common/CustomDiffLegend.tsx";
@@ -52,8 +53,8 @@ export function StorytellerVersionCompareDialog({
   leftVersion,
   rightVersion,
   dialogTitle,
-  leftVersionLabel = "舊版本",
-  rightVersionLabel = "新版本",
+  leftVersionLabel,
+  rightVersionLabel,
   notice,
   actions,
 }: {
@@ -69,6 +70,9 @@ export function StorytellerVersionCompareDialog({
   notice?: ReactNode;
   actions?: ReactNode;
 }) {
+  const { t, i18n } = useTranslation();
+  const resolvedLeftLabel = leftVersionLabel ?? t("writer:editor.diff.oldVersion");
+  const resolvedRightLabel = rightVersionLabel ?? t("writer:editor.diff.newVersion");
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -79,7 +83,7 @@ export function StorytellerVersionCompareDialog({
     const sections = [
       {
         key: "title",
-        title: "標題",
+        title: t("writer:editor.diff.titleField"),
         lines: buildCustomLineDiff(leftVersion.title, rightVersion.title),
       },
       ...(leftVersion.summary !== undefined &&
@@ -87,7 +91,7 @@ export function StorytellerVersionCompareDialog({
         ? [
             {
               key: "summary",
-              title: "摘要",
+              title: t("writer:editor.diff.summaryField"),
               lines: buildCustomLineDiff(
                 leftVersion.summary,
                 rightVersion.summary,
@@ -106,7 +110,7 @@ export function StorytellerVersionCompareDialog({
       })),
       {
         key: "content",
-        title: leftVersion.contentLabel ?? "內容",
+        title: leftVersion.contentLabel ?? t("writer:editor.diff.contentField"),
         // 濾掉 marker/align/comment 屬性再比對——這個對話框是純文字 diff（不會經過
         // 我們的解析器渲染），不濾掉的話使用者會直接看到 `⟦uuid⟧...⟦/uuid⟧` 這種
         // 內部語法，且無關的屬性異動會被誤判成內容變更。
@@ -119,7 +123,7 @@ export function StorytellerVersionCompareDialog({
     if (leftVersion.includeFootnotes ?? true) {
       sections.push({
         key: "footnotes",
-        title: "腳注",
+        title: t("writer:editor.diff.footnotesField"),
         lines: buildCustomLineDiff(
           extractFootnoteNotesForDiff(leftVersion.content).join("\n"),
           extractFootnoteNotesForDiff(rightVersion.content).join("\n"),
@@ -127,7 +131,7 @@ export function StorytellerVersionCompareDialog({
       });
     }
     return sections;
-  }, [leftVersion, rightVersion]);
+  }, [leftVersion, rightVersion, t]);
 
   const changedCount = diffSections.reduce(
     (total, section) =>
@@ -153,20 +157,22 @@ export function StorytellerVersionCompareDialog({
         >
           <Stack spacing={0.25} sx={{ minWidth: 0 }}>
             <Typography variant="h6" fontWeight={800} noWrap>
-              {dialogTitle ?? `${itemTitle} 版本比對`}
+              {dialogTitle ?? t("writer:editor.diff.compareTitle", { title: itemTitle })}
             </Typography>
             {diffSections.length > 0 && (
               <Chip
                 size="small"
                 color={changedCount > 0 ? "warning" : "default"}
                 label={
-                  changedCount > 0 ? `${changedCount} 行差異` : "兩版本無差異"
+                  changedCount > 0
+                    ? t("writer:editor.diff.differenceCount", { count: changedCount })
+                    : t("writer:editor.diff.noDifference")
                 }
                 sx={{ alignSelf: "flex-start" }}
               />
             )}
           </Stack>
-          <IconButton onClick={onClose} aria-label="關閉版本比對">
+          <IconButton onClick={onClose} aria-label={t("writer:editor.diff.closeCompare")}>
             <CloseIcon />
           </IconButton>
         </Stack>
@@ -184,20 +190,20 @@ export function StorytellerVersionCompareDialog({
               <Stack direction="row" spacing={1} alignItems="center">
                 <ArrowBackIcon fontSize="small" color="disabled" />
                 <Typography variant="body2" color="text.secondary">
-                  {leftVersionLabel}
+                  {resolvedLeftLabel}
                 </Typography>
                 <Chip size="small" label={leftVersion.source} />
                 <Typography variant="body2" color="text.secondary">
-                  {formatStorytellerDate(leftVersion.createdAt)}
+                  {formatStorytellerDate(leftVersion.createdAt, i18n.resolvedLanguage)}
                 </Typography>
               </Stack>
               <Stack direction="row" spacing={1} alignItems="center">
                 <Typography variant="body2" color="text.secondary">
-                  {rightVersionLabel}
+                  {resolvedRightLabel}
                 </Typography>
                 <Chip size="small" label={rightVersion.source} />
                 <Typography variant="body2" color="text.secondary">
-                  {formatStorytellerDate(rightVersion.createdAt)}
+                  {formatStorytellerDate(rightVersion.createdAt, i18n.resolvedLanguage)}
                 </Typography>
                 <ArrowForwardIcon fontSize="small" color="disabled" />
               </Stack>
@@ -209,15 +215,15 @@ export function StorytellerVersionCompareDialog({
                 key={section.key}
                 title={section.title}
                 lines={section.lines}
-                leftTitle={leftVersionLabel}
-                rightTitle={rightVersionLabel}
+                leftTitle={resolvedLeftLabel}
+                rightTitle={resolvedRightLabel}
                 leftMetadataLabels={[
                   leftVersion.source,
-                  formatStorytellerDate(leftVersion.createdAt),
+                  formatStorytellerDate(leftVersion.createdAt, i18n.resolvedLanguage),
                 ]}
                 rightMetadataLabels={[
                   rightVersion.source,
-                  formatStorytellerDate(rightVersion.createdAt),
+                  formatStorytellerDate(rightVersion.createdAt, i18n.resolvedLanguage),
                 ]}
               />
             ))}

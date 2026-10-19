@@ -1,7 +1,7 @@
 import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
 import { Box, Button, Chip, Link, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
-import { LORE_DEPENDENCY_TYPE_LABEL } from "./readerModel.ts";
+import { useTranslation } from "react-i18next";
 import { ReaderProgressBadge } from "./ReaderProgressBadge.tsx";
 import type { ReaderProgress } from "./readingRecordStore.ts";
 
@@ -27,6 +27,7 @@ export function ReaderSpoilerGate({
   onNavigate?: () => void;
   compact?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <Box
       sx={{
@@ -43,12 +44,12 @@ export function ReaderSpoilerGate({
       <Stack spacing={compact ? 1 : 1.5}>
         <Stack direction="row" spacing={1} alignItems="center">
           <ReportProblemOutlinedIcon color="warning" fontSize="small" />
-          <Typography fontWeight={800}>這則設定含有還沒讀到的劇情</Typography>
+          <Typography fontWeight={800}>{t("web.reader.spoilerTitle")}</Typography>
         </Stack>
         {dependencies.length > 0 ? (
           <>
             <Typography variant="body2" color="text.secondary">
-              作者建議先讀完以下內容：
+              {t("web.reader.spoilerDependencies")}
             </Typography>
             <Stack spacing={0.75}>
               {dependencies.map((dependency) => (
@@ -68,7 +69,7 @@ export function ReaderSpoilerGate({
                     <Chip
                       size="small"
                       variant="outlined"
-                      label={LORE_DEPENDENCY_TYPE_LABEL[dependency.type]}
+                      label={t(dependency.type === "story" ? "web.reader.story" : "web.reader.settings")}
                       sx={{ height: 20, borderRadius: 1, flexShrink: 0 }}
                     />
                     <Link
@@ -85,7 +86,7 @@ export function ReaderSpoilerGate({
                     <ReaderProgressBadge progress={dependency.progress} />
                   ) : (
                     <Typography variant="caption" color="text.secondary">
-                      尚未閱讀
+                      {t("web.reader.unread")}
                     </Typography>
                   )}
                 </Stack>
@@ -94,7 +95,7 @@ export function ReaderSpoilerGate({
           </>
         ) : (
           <Typography variant="body2" color="text.secondary">
-            作者把這則設定標成含劇透，確認後再看。
+            {t("web.reader.spoilerDescription")}
           </Typography>
         )}
         <Box>
@@ -104,7 +105,7 @@ export function ReaderSpoilerGate({
             size={compact ? "small" : "medium"}
             onClick={onConfirm}
           >
-            我了解，繼續閱讀
+            {t("web.reader.continue")}
           </Button>
         </Box>
       </Stack>

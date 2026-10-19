@@ -27,9 +27,10 @@ import {
 import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   homeTabGroups,
-  tabBreadcrumbLabel,
+  tabBreadcrumbKey,
   type StorytellerHomeTab,
 } from "./homeTabs.ts";
 
@@ -55,12 +56,13 @@ export function HomeSidebar({
   activeTab: StorytellerHomeTab;
   onSelect: (tab: StorytellerHomeTab) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Stack sx={{ height: 1, color: "text.secondary" }}>
       <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", p: 1 }}>
         <List dense disablePadding sx={{ mt: 0.5 }}>
           {homeTabGroups.map((group, groupIndex) => (
-            <Box key={group.label} sx={{ mt: groupIndex === 0 ? 0 : 1.5 }}>
+            <Box key={group.labelKey} sx={{ mt: groupIndex === 0 ? 0 : 1.5 }}>
               <Typography
                 variant="caption"
                 sx={{
@@ -72,7 +74,7 @@ export function HomeSidebar({
                   color: "text.disabled",
                 }}
               >
-                {group.label}
+                {t(group.labelKey)}
               </Typography>
               {group.tabs.map((tab) => (
                 <ListItemButton
@@ -109,7 +111,7 @@ export function HomeSidebar({
                     {tabIcons[tab]}
                   </ListItemIcon>
                   <ListItemText
-                    primary={tabBreadcrumbLabel[tab]}
+                    primary={t(tabBreadcrumbKey[tab])}
                     primaryTypographyProps={{
                       fontWeight: 700,
                       noWrap: true,
@@ -130,6 +132,7 @@ export function HomeMobileNav({
   activeTab,
   onSelect,
 }: Parameters<typeof HomeSidebar>[0]) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -148,7 +151,7 @@ export function HomeMobileNav({
           onClick={() => setOpen(true)}
           sx={{ justifyContent: "flex-start" }}
         >
-          工作台導覽 · {tabBreadcrumbLabel[activeTab]}
+          {t("web.home.navigation")} · {t(tabBreadcrumbKey[activeTab])}
         </Button>
       </Box>
       <Drawer
@@ -164,9 +167,9 @@ export function HomeMobileNav({
             justifyContent="space-between"
             sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: "divider" }}
           >
-            <Typography variant="h6">工作台導覽</Typography>
+            <Typography variant="h6">{t("web.home.navigation")}</Typography>
             <IconButton
-              aria-label="關閉工作台導覽"
+              aria-label={t("web.home.closeNavigation")}
               onClick={() => setOpen(false)}
             >
               <CloseIcon />

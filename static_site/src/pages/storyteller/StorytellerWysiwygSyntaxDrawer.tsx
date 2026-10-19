@@ -10,6 +10,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   BLOCK_KIND_BULLET_PREFIX,
@@ -18,7 +19,6 @@ import {
   BLOCK_KIND_QUOTE_PREFIX,
   HEADING_LEVELS,
   MARK_SYNTAX_WHITELIST,
-  type MarkName,
 } from "./wysiwygCore/whitelist";
 
 interface StorytellerWysiwygSyntaxDrawerProps {
@@ -26,16 +26,6 @@ interface StorytellerWysiwygSyntaxDrawerProps {
    * 照樣篩選，不要介紹使用者眼前根本不能用的功能。 */
   enabledFeatures?: Array<"footnote" | "comment" | "asset">;
 }
-
-const MARK_LABEL: Record<MarkName, string> = {
-  bold: "粗體",
-  italic: "斜體",
-  underline: "底線",
-  subscript: "下標",
-  superscript: "上標",
-  strike: "刪除線",
-  code: "行內程式碼",
-};
 
 interface SyntaxItem {
   label: string;
@@ -91,73 +81,77 @@ function SyntaxList({ items }: { items: SyntaxItem[] }) {
 export function StorytellerWysiwygSyntaxDrawer({
   enabledFeatures,
 }: StorytellerWysiwygSyntaxDrawerProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const isEnabled = (feature: "footnote" | "comment" | "asset") =>
     enabledFeatures === undefined || enabledFeatures.includes(feature);
 
   const markItems: SyntaxItem[] = MARK_SYNTAX_WHITELIST.map((rule) => ({
-    label: MARK_LABEL[rule.markName],
-    syntax: `${rule.canonicalDelimiter}文字${rule.canonicalDelimiter}`,
+    label: t(`writer:editor.commands.${rule.markName}.label`),
+    syntax: `${rule.canonicalDelimiter}${t("writer:editor.syntax.text")}${rule.canonicalDelimiter}`,
   }));
 
   const blockItems: SyntaxItem[] = [
     {
-      label: "標題",
+      label: t("writer:editor.syntax.heading"),
       syntax: Array.from(
         HEADING_LEVELS,
-        (level) => `${"#".repeat(level)} 標題`,
+        (level) => `${"#".repeat(level)} ${t("writer:editor.syntax.heading")}`,
       ).join("\n"),
-      description: `行首打 # 到 ${"#".repeat(HEADING_LEVELS.length)}（1~${HEADING_LEVELS.length} 層），後面接一個空白。`,
+      description: t("writer:editor.syntax.headingHelp", {
+        hashes: "#".repeat(HEADING_LEVELS.length),
+        count: HEADING_LEVELS.length,
+      }),
     },
-    { label: "引用", syntax: `${BLOCK_KIND_QUOTE_PREFIX}文字` },
-    { label: "無序清單", syntax: `${BLOCK_KIND_BULLET_PREFIX}項目` },
+    { label: t("writer:editor.commands.block-kind-quote.label"), syntax: `${BLOCK_KIND_QUOTE_PREFIX}${t("writer:editor.syntax.text")}` },
+    { label: t("writer:editor.commands.block-kind-bullet.label"), syntax: `${BLOCK_KIND_BULLET_PREFIX}${t("writer:editor.syntax.item")}` },
     {
-      label: "有序清單",
-      syntax: `${BLOCK_KIND_NUMBER_CANONICAL_PREFIX}項目`,
-      description: "自動編號，打的數字不影響實際顯示的編號。",
+      label: t("writer:editor.commands.block-kind-number.label"),
+      syntax: `${BLOCK_KIND_NUMBER_CANONICAL_PREFIX}${t("writer:editor.syntax.item")}`,
+      description: t("writer:editor.syntax.numberHelp"),
     },
     {
-      label: "分隔線",
+      label: t("writer:editor.syntax.divider"),
       syntax: BLOCK_KIND_HR_PREFIX,
-      description: "獨立一行打三個減號，會自動變成分隔線並換到下一行。",
+      description: t("writer:editor.syntax.dividerHelp"),
     },
   ];
 
   const menuOnlyItems: SyntaxItem[] = [
     {
-      label: "文字顏色／背景色",
-      syntax: "選取文字 → 右鍵選單／Bubble Menu 色盤",
-      description: "沒有打字捷徑，固定色盤可選。",
+      label: t("writer:editor.syntax.colors"),
+      syntax: t("writer:editor.syntax.colorsPath"),
+      description: t("writer:editor.syntax.colorsHelp"),
     },
     {
-      label: "連結",
-      syntax: "選取文字 → 右鍵選單／Bubble Menu 連結按鈕",
-      description: "只接受 http(s) 開頭的網址。",
+      label: t("writer:editor.syntax.link"),
+      syntax: t("writer:editor.syntax.linkPath"),
+      description: t("writer:editor.syntax.linkHelp"),
     },
     ...(isEnabled("footnote")
       ? [
           {
-            label: "腳注",
-            syntax: "選取文字 → 右鍵選單／Bubble Menu 腳注按鈕",
-            description: "讀者在閱讀頁看得到，內容顯示在文章最尾端。",
+            label: t("writer:editor.syntax.footnote"),
+            syntax: t("writer:editor.syntax.footnotePath"),
+            description: t("writer:editor.syntax.footnoteHelp"),
           },
         ]
       : []),
     ...(isEnabled("comment")
       ? [
           {
-            label: "註解",
-            syntax: "選取文字 → 右鍵選單／Bubble Menu 註解按鈕",
-            description: "只有作者自己看得到，讀者端完全不會出現。",
+            label: t("writer:editor.syntax.comment"),
+            syntax: t("writer:editor.syntax.commentPath"),
+            description: t("writer:editor.syntax.commentHelp"),
           },
         ]
       : []),
     ...(isEnabled("asset")
       ? [
           {
-            label: "插入圖片",
-            syntax: "空白段落輸入 /圖片，或在空白段落右鍵插入圖片",
-            description: "從專案的資產集裡選圖插入。",
+            label: t("writer:editor.commands.insert-image.label"),
+            syntax: t("writer:editor.syntax.imagePath"),
+            description: t("writer:editor.syntax.imageHelp"),
           },
         ]
       : []),
@@ -165,9 +159,9 @@ export function StorytellerWysiwygSyntaxDrawer({
 
   return (
     <>
-      <Tooltip title="支援的語法">
+      <Tooltip title={t("writer:editor.syntax.open")}>
         <IconButton
-          aria-label="支援的語法"
+          aria-label={t("writer:editor.syntax.open")}
           size="small"
           onClick={() => setOpen(true)}
         >
@@ -184,30 +178,28 @@ export function StorytellerWysiwygSyntaxDrawer({
               justifyContent="space-between"
             >
               <Typography variant="h6" fontWeight={800}>
-                編輯器支援的語法
+                {t("writer:editor.syntax.title")}
               </Typography>
-              <IconButton aria-label="關閉" onClick={() => setOpen(false)}>
+              <IconButton aria-label={t("writer:common.close")} onClick={() => setOpen(false)}>
                 <CloseIcon />
               </IconButton>
             </Stack>
             <Typography variant="body2" color="text.secondary">
-              這是本編輯器自訂的精簡語法，不是完整
-              Markdown／GFM——打下面的符號會自動轉換
-              成對應格式；顏色、連結等則要透過選單套用，沒有打字捷徑。
+              {t("writer:editor.syntax.description")}
             </Typography>
             <Divider />
             <Stack spacing={1.25}>
-              <Typography fontWeight={800}>文字樣式</Typography>
+              <Typography fontWeight={800}>{t("writer:editor.syntax.textStyles")}</Typography>
               <SyntaxList items={markItems} />
             </Stack>
             <Divider />
             <Stack spacing={1.25}>
-              <Typography fontWeight={800}>段落格式</Typography>
+              <Typography fontWeight={800}>{t("writer:editor.syntax.paragraphStyles")}</Typography>
               <SyntaxList items={blockItems} />
             </Stack>
             <Divider />
             <Stack spacing={1.25}>
-              <Typography fontWeight={800}>只能透過選單套用</Typography>
+              <Typography fontWeight={800}>{t("writer:editor.syntax.menuOnly")}</Typography>
               <SyntaxList items={menuOnlyItems} />
             </Stack>
           </Stack>

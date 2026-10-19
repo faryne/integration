@@ -4,6 +4,7 @@ import ImageIcon from "@mui/icons-material/Image";
 import { Box, Chip, Paper, Stack, Tooltip, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { formatStorytellerDate } from "@/data/storytellerDate.ts";
 import type { WorkspaceViewMode } from "./workspaceViewMode.ts";
 import type { StorytellerLore, StorytellerStory } from "@/types/storyteller.ts";
@@ -42,10 +43,11 @@ function storyPageCount(
 
 // 故事與設定共用的公開狀態標籤：公開＝讀者看得到，草稿＝只有作者看得到
 function PublicationStatusChip({ isPublic }: { isPublic: boolean }) {
+  const { t } = useTranslation();
   return (
     <Chip
       size="small"
-      label={isPublic ? "公開" : "草稿"}
+      label={t(isPublic ? "writer.rows.public" : "writer.rows.draft")}
       variant="outlined"
       sx={{
         height: 20,
@@ -87,10 +89,11 @@ export function StoryRow({
   onDropRow?: () => void;
   viewMode?: WorkspaceViewMode;
 }) {
+  const { t, i18n } = useTranslation();
   const isImage = story.content_type === "image";
   const isPublic = story.status === "completed";
   return (
-    <Tooltip title={reorderable ? "可拖曳調整順序" : ""}>
+    <Tooltip title={reorderable ? t("writer.rows.draggable") : ""}>
       <Paper
         onClick={onClick}
         elevation={0}
@@ -152,14 +155,14 @@ export function StoryRow({
             >
               <Typography variant="body2" color="text.secondary" noWrap>
                 {isImage
-                  ? `${storyPageCount(story)} 頁`
-                  : `${story.word_count.toLocaleString()} 字`}
+                  ? t("writer.rows.pageCount", { count: storyPageCount(story) })
+                  : t("writer.rows.wordCount", { count: story.word_count.toLocaleString(i18n.resolvedLanguage) })}
                 <Box
                   component="span"
                   sx={{ display: { xs: "none", sm: "inline" } }}
                 >
                   {" "}
-                  · 更新於 {formatStorytellerDate(story.updated_at)}
+                  {t("writer.rows.updated", { date: formatStorytellerDate(story.updated_at, i18n.resolvedLanguage) })}
                 </Box>
               </Typography>
               {collectionChip}
@@ -193,6 +196,7 @@ export function LoreRow({
   collectionChip?: ReactNode;
   viewMode?: WorkspaceViewMode;
 }) {
+  const { t, i18n } = useTranslation();
   return (
     <Paper
       elevation={0}
@@ -237,13 +241,13 @@ export function LoreRow({
             useFlexGap
           >
             <Typography variant="body2" color="text.secondary" noWrap>
-              {lore.word_count.toLocaleString()} 字
+              {t("writer.rows.wordCount", { count: lore.word_count.toLocaleString(i18n.resolvedLanguage) })}
               <Box
                 component="span"
                 sx={{ display: { xs: "none", sm: "inline" } }}
               >
                 {" "}
-                · 更新於 {formatStorytellerDate(lore.updated_at)}
+                {t("writer.rows.updated", { date: formatStorytellerDate(lore.updated_at, i18n.resolvedLanguage) })}
               </Box>
             </Typography>
             {collectionChip}

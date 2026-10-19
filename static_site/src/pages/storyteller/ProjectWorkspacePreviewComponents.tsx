@@ -28,6 +28,7 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { useDeleteStorytellerProject } from "@/apis/storyteller.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
@@ -123,6 +124,7 @@ export function WorkspaceSidebar({
   onOpenToolPage,
   onSearch,
 }: WorkspaceSidebarProps) {
+  const { t } = useTranslation();
   const storiesByCollection = useMemo(() => {
     const grouped = new Map<string, StorytellerStory[]>();
     const volumeIds = new Map(volumes.map((volume) => [volume.id, volume]));
@@ -160,15 +162,19 @@ export function WorkspaceSidebar({
       )}
       <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", p: 1, pb: 0 }}>
         <SidebarGroup
-          title="作品與冊"
+          title={t("web.projectWorkspace.tabs.stories")}
           section="stories"
           icon={<AutoStoriesIcon fontSize="small" />}
           selected={selected}
           rows={[
-            { id: "", label: "全部作品", count: storyCount },
+            {
+              id: "",
+              label: t("web.workspacePreview.allWorks"),
+              count: storyCount,
+            },
             {
               id: ungroupedId,
-              label: "未分冊",
+              label: t("web.projectWorkspace.volume.ungrouped"),
               count: ungroupedStoryCount,
               stories: storiesByCollection.get(ungroupedId) ?? [],
             },
@@ -184,22 +190,26 @@ export function WorkspaceSidebar({
           onSelectItem={onSelectItem}
           selectedItem={selectedItem}
           onCreate={onCreateVolume}
-          createLabel="新增冊"
+          createLabel={t("web.projectWorkspace.volume.add")}
           onReorder={onReorderVolume}
           onReorderItem={onReorderStoryInVolume}
           renderItemActions={renderItemActions}
         />
         <SidebarGroup
-          title="設定集"
+          title={t("web.projectWorkspace.tabs.lores")}
           section="lores"
           icon={<SettingsIcon fontSize="small" />}
           projectPublicId={project?.public_id}
           selected={selected}
           rows={[
-            { id: "", label: "全部設定", count: project?.lore_count },
+            {
+              id: "",
+              label: t("web.workspacePreview.allLore"),
+              count: project?.lore_count,
+            },
             {
               id: ungroupedId,
-              label: "未歸類",
+              label: t("web.loreManager.uncategorized"),
               count: project?.lore_uncategorized_count,
             },
             ...loreCollections.map((collection) => ({
@@ -216,16 +226,20 @@ export function WorkspaceSidebar({
           renderItemActions={renderItemActions}
         />
         <SidebarGroup
-          title="資產集"
+          title={t("web.projectWorkspace.tabs.assets")}
           section="assets"
           icon={<CollectionsIcon fontSize="small" />}
           projectPublicId={project?.public_id}
           selected={selected}
           rows={[
-            { id: "", label: "全部資產", count: project?.asset_count },
+            {
+              id: "",
+              label: t("web.workspacePreview.allAssets"),
+              count: project?.asset_count,
+            },
             {
               id: ungroupedId,
-              label: "未分類",
+              label: t("web.assetManager.uncategorized"),
               count: project?.asset_uncategorized_count,
             },
             ...assetCollections.map((collection) => ({
@@ -260,7 +274,7 @@ export function WorkspaceSidebar({
                 {page.icon("small")}
               </ListItemIcon>
               <ListItemText
-                primary={page.label}
+                primary={t(page.labelKey)}
                 primaryTypographyProps={{ fontWeight: 800, fontSize: 13 }}
               />
             </ListItemButton>
@@ -282,6 +296,7 @@ function ProjectActionsGroup({
   project: StorytellerProject;
   onNavigate?: () => void;
 }) {
+  const { t } = useTranslation();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const navigate = useNavigate();
@@ -312,7 +327,7 @@ function ProjectActionsGroup({
         fontWeight={700}
         sx={{ display: "block", px: 1, pb: 0.5 }}
       >
-        專案操作
+        {t("web.workspacePreview.projectActions")}
       </Typography>
       <List dense disablePadding>
         <ListItemButton
@@ -331,7 +346,7 @@ function ProjectActionsGroup({
             <EditIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText
-            primary="編輯專案"
+            primary={t("web.projectWorkspace.editProject")}
             primaryTypographyProps={{
               fontWeight: 700,
               noWrap: true,
@@ -351,7 +366,7 @@ function ProjectActionsGroup({
             <OpenInNewIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText
-            primary="開啟閱讀頁"
+            primary={t("web.workspacePreview.openReader")}
             primaryTypographyProps={{
               fontWeight: 700,
               noWrap: true,
@@ -367,7 +382,7 @@ function ProjectActionsGroup({
             <DeleteIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText
-            primary="刪除專案"
+            primary={t("web.projectWorkspace.deleteProject")}
             primaryTypographyProps={{
               fontWeight: 700,
               noWrap: true,
@@ -378,16 +393,17 @@ function ProjectActionsGroup({
       </List>
       <StorytellerConfirmNameDialog
         open={deleteOpen}
-        title="刪除專案"
-        description="刪除後會移除專案與底下故事資料。請輸入專案名稱確認。"
+        title={t("web.projectWorkspace.deleteProject")}
+        description={t("web.projectWorkspace.deleteProjectDescription")}
         confirmName={project.name}
-        confirmLabel="刪除專案"
+        confirmLabel={t("web.projectWorkspace.deleteProject")}
         loading={deleteProject.isPending}
         onClose={() => setDeleteOpen(false)}
         onConfirm={() =>
           deleteProject.mutate(project.public_id, {
             onSuccess: () => navigate(steamloomPath("my/projects")),
-            onError: () => setDeleteError("刪除專案失敗，請重試。"),
+            onError: () =>
+              setDeleteError(t("web.projectWorkspace.errors.projectDelete")),
           })
         }
       />
@@ -481,6 +497,7 @@ export function WorkspacePane({
     beforePublicId: string | null,
   ) => void;
 }) {
+  const { t } = useTranslation();
   const [draggingStoryId, setDraggingStoryId] = useState<string | null>(null);
   const { viewMode, setViewMode } = useWorkspaceViewMode(selected.section);
   function collectionChipFor(label: string | undefined, collectionId: string) {
@@ -521,7 +538,11 @@ export function WorkspacePane({
             color="text.secondary"
             sx={{ display: "block", mb: 0.5 }}
           >
-            工作台 / {loading ? "同步中" : `${count} 個項目`}
+            {t("web.workspacePreview.workspaceStatus", {
+              status: loading
+                ? t("web.workspacePreview.syncing")
+                : t("web.workspacePreview.itemCount", { count }),
+            })}
           </Typography>
           <Stack
             direction="row"
@@ -547,12 +568,20 @@ export function WorkspacePane({
             size="small"
             value={viewMode}
             onChange={(_, value) => value && setViewMode(value)}
-            aria-label="切換項目顯示方式"
+            aria-label={t("web.workspacePreview.switchView")}
           >
-            <ToggleButton value="grid" aria-label="卡片檢視" title="卡片檢視">
+            <ToggleButton
+              value="grid"
+              aria-label={t("web.workspacePreview.gridView")}
+              title={t("web.workspacePreview.gridView")}
+            >
               <ViewModuleIcon fontSize="small" />
             </ToggleButton>
-            <ToggleButton value="list" aria-label="列表檢視" title="列表檢視">
+            <ToggleButton
+              value="list"
+              aria-label={t("web.workspacePreview.listView")}
+              title={t("web.workspacePreview.listView")}
+            >
               <ViewListIcon fontSize="small" />
             </ToggleButton>
           </ToggleButtonGroup>
@@ -628,8 +657,8 @@ export function WorkspacePane({
                 <Box sx={{ gridColumn: "1 / -1" }}>
                   <WorkspaceEmptyState
                     icon={<ArticleIcon />}
-                    title="沒有作品"
-                    description="這個分類目前沒有作品。"
+                    title={t("web.workspacePreview.emptyWorks")}
+                    description={t("web.workspacePreview.emptyWorksDescription")}
                   />
                 </Box>
               )}
@@ -690,8 +719,8 @@ export function WorkspacePane({
                 <Box sx={{ gridColumn: "1 / -1" }}>
                   <WorkspaceEmptyState
                     icon={<DescriptionIcon />}
-                    title="沒有設定"
-                    description="這個設定集目前沒有設定。"
+                    title={t("web.workspacePreview.emptyLore")}
+                    description={t("web.workspacePreview.emptyLoreDescription")}
                   />
                 </Box>
               )}
@@ -744,8 +773,8 @@ export function WorkspacePane({
                 <Grid size={12}>
                   <WorkspaceEmptyState
                     icon={<CollectionsIcon />}
-                    title="沒有資產"
-                    description="這個分類目前沒有資產。"
+                    title={t("web.workspacePreview.emptyAssets")}
+                    description={t("web.workspacePreview.emptyAssetsDescription")}
                   />
                 </Grid>
               )}

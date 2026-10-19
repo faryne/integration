@@ -11,6 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import {
   useDeleteStorytellerAssistantMemory,
@@ -26,12 +27,7 @@ import { StorytellerFilterChips } from "@/components/storyteller/StorytellerFilt
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import { StorytellerMemoryEditorDialog } from "@/pages/storyteller/StorytellerMemoryEditorDialog.tsx";
 import { MemoryCard } from "@/pages/storyteller/StorytellerMemoryManagerComponents.tsx";
-import {
-  storytellerMemoryErrorMessage,
-  storytellerMemoryKindDescriptions,
-  storytellerMemoryKindLabels,
-  storytellerMemoryScopeLabels,
-} from "@/pages/storyteller/storytellerMemoryUI.ts";
+import { useStorytellerMemoryUI } from "@/pages/storyteller/storytellerMemoryUI.ts";
 import type {
   StorytellerAssistantMemory,
   StorytellerAssistantMemoryKind,
@@ -45,6 +41,8 @@ export function StorytellerMemoryManagerPage({
 }: {
   projectPublicId?: string;
 }) {
+  const { t } = useTranslation();
+  const memoryUI = useStorytellerMemoryUI();
   const [searchParams, setSearchParams] = useSearchParams();
   const contextKindValue = searchParams.get("context");
   const contextKind =
@@ -114,16 +112,16 @@ export function StorytellerMemoryManagerPage({
   );
   const scopeOptions = useMemo(
     () =>
-      Object.entries(storytellerMemoryScopeLabels).filter(
+      Object.entries(memoryUI.scopeLabels).filter(
         ([value]) =>
           !contextKind || value === "project" || value === contextKind,
       ),
-    [contextKind],
+    [contextKind, memoryUI.scopeLabels],
   );
 
   useEffect(() => {
     if (memories.isError) {
-      setErrorMessage(storytellerMemoryErrorMessage(memories.error));
+      setErrorMessage(memoryUI.errorMessage(memories.error));
     }
   }, [memories.error, memories.isError]);
 
@@ -146,7 +144,7 @@ export function StorytellerMemoryManagerPage({
       },
       {
         onError: (error) =>
-          setErrorMessage(storytellerMemoryErrorMessage(error)),
+          setErrorMessage(memoryUI.errorMessage(error)),
       },
     );
   }
@@ -160,7 +158,7 @@ export function StorytellerMemoryManagerPage({
         <Stack direction="row" alignItems="center" spacing={1}>
           <PsychologyAltOutlinedIcon color="primary" />
           <Typography variant="overline" color="primary.main" fontWeight={800}>
-            梭梭的記憶
+            {t("writer:memory.title")}
           </Typography>
         </Stack>
         <Typography
@@ -169,10 +167,10 @@ export function StorytellerMemoryManagerPage({
           fontWeight={900}
           sx={{ mt: 0.5 }}
         >
-          記憶管理
+          {t("writer:memory.manager")}
         </Typography>
         <Typography color="text.secondary" sx={{ mt: 0.75 }}>
-          使用工作台搜尋定位內容，或在這裡篩選並整理梭梭的長期記憶。
+          {t("writer:memory.description")}
         </Typography>
       </Box>
 
@@ -188,15 +186,17 @@ export function StorytellerMemoryManagerPage({
                 setPage(1);
               }}
             >
-              查看專案全部
+              {t("writer:memory.allProject")}
             </Button>
           }
         >
-          目前只顯示
-          {contextName
-            ? `「${contextName}」`
-            : `指定${contextKind === "story" ? "故事" : "設定"}`}
-          會讀到的專案與專屬記憶。
+          {t("writer:memory.showingOnly", {
+            kind: contextName
+              ? `「${contextName}」`
+              : t(
+                  `writer:memory.${contextKind === "story" ? "story" : "lore"}`,
+                ),
+          })}
         </Alert>
       )}
 
@@ -212,18 +212,18 @@ export function StorytellerMemoryManagerPage({
                 setPage(1);
               }}
             >
-              查看全部記憶
+              {t("writer:memory.all")}
             </Button>
           }
         >
-          目前顯示從工作台搜尋開啟的記憶。
+          {t("writer:memory.searchOnly")}
         </Alert>
       )}
 
       <Paper variant="outlined" sx={{ p: 2 }}>
         <Stack spacing={1.5}>
           <StorytellerFilterChips
-            label="適用範圍"
+            label={t("writer:memory.scope")}
             value={scopeType}
             onChange={(value) => {
               setScopeType(value as StorytellerAssistantMemoryScope | "");
@@ -232,25 +232,25 @@ export function StorytellerMemoryManagerPage({
             options={scopeOptions}
           />
           <StorytellerFilterChips
-            label="類型"
+            label={t("writer:memory.type")}
             value={kind}
             onChange={(value) => {
               setKind(value as StorytellerAssistantMemoryKind | "");
               setPage(1);
             }}
-            options={Object.entries(storytellerMemoryKindLabels)}
-            optionDescriptions={storytellerMemoryKindDescriptions}
+            options={Object.entries(memoryUI.kindLabels)}
+            optionDescriptions={memoryUI.kindDescriptions}
           />
           <StorytellerFilterChips
-            label="釘選狀態"
+            label={t("writer:memory.pinned")}
             value={pinned}
             onChange={(value) => {
               setPinned(value as "" | "true" | "false");
               setPage(1);
             }}
             options={[
-              ["true", "已釘選"],
-              ["false", "未釘選"],
+              ["true", t("writer:memory.pinnedYes")],
+              ["false", t("writer:memory.pinnedNo")],
             ]}
           />
           {tag && (
@@ -260,7 +260,7 @@ export function StorytellerMemoryManagerPage({
                 color="text.secondary"
                 sx={{ width: 64 }}
               >
-                標籤
+                {t("writer:memory.tags")}
               </Typography>
               <Chip label={tag} color="primary" onDelete={() => setTag("")} />
             </Stack>
@@ -273,13 +273,15 @@ export function StorytellerMemoryManagerPage({
           <CircularProgress size={32} />
         </Stack>
       ) : memories.isError ? (
-        <Alert severity="error">記憶載入失敗，請稍後再試。</Alert>
+        <Alert severity="error">{t("writer:memory.loadFailed")}</Alert>
       ) : (memories.data?.memories.length ?? 0) === 0 ? (
-        <Alert severity="info">沒有符合目前條件的記憶。</Alert>
+        <Alert severity="info">{t("writer:memory.empty")}</Alert>
       ) : (
         <Stack spacing={1.25}>
           <Typography variant="body2" color="text.secondary">
-            共 {memories.data?.total_count ?? 0} 筆記憶
+            {t("writer:memory.count", {
+              count: memories.data?.total_count ?? 0,
+            })}
           </Typography>
           {memories.data?.memories.map((memory) => (
             <MemoryCard
@@ -323,7 +325,7 @@ export function StorytellerMemoryManagerPage({
             {
               onSuccess: () => setEditing(null),
               onError: (error) =>
-                setErrorMessage(storytellerMemoryErrorMessage(error)),
+                setErrorMessage(memoryUI.errorMessage(error)),
             },
           );
         }}
@@ -331,13 +333,15 @@ export function StorytellerMemoryManagerPage({
       <StorytellerMascotDialog
         open={Boolean(deleting)}
         state="danger"
-        eyebrow="刪除記憶"
-        title="確定要讓梭梭忘記這件事？"
+        eyebrow={t("writer:memory.delete")}
+        title={t("writer:memory.deleteTitle")}
         description={deleting?.memory_name || deleting?.content.slice(0, 80)}
         onClose={() => !deleteMemory.isPending && setDeleting(null)}
         actions={
           <>
-            <Button onClick={() => setDeleting(null)}>取消</Button>
+            <Button onClick={() => setDeleting(null)}>
+              {t("writer:common.cancel")}
+            </Button>
             <Button
               color="error"
               variant="contained"
@@ -355,11 +359,11 @@ export function StorytellerMemoryManagerPage({
                     setDeleting(null);
                   },
                   onError: (error) =>
-                    setErrorMessage(storytellerMemoryErrorMessage(error)),
+                    setErrorMessage(memoryUI.errorMessage(error)),
                 });
               }}
             >
-              確認刪除
+              {t("writer:memory.confirmDelete")}
             </Button>
           </>
         }

@@ -27,6 +27,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 
 function ContentIndex({
@@ -42,6 +43,7 @@ function ContentIndex({
   basePath: string;
   onNavigate?: () => void;
 }) {
+  const { t } = useTranslation();
   // 序號改成「每一冊自己重新從 1 算」，不再沿用 flattenGroupedStories 給的
   // 全域線性順序——主線、支線這類語意不同的冊如果編號直接接下去（主線
   // 1 話接著支線變成 2 話），讀者會誤以為是同一條時間線，所以顯示用的序號
@@ -106,7 +108,7 @@ function ContentIndex({
       <Stack direction="row" spacing={1} alignItems="center">
         <AutoStoriesIcon color="primary" />
         <Typography variant="h6" fontWeight={800}>
-          作品索引
+          {t("web.reader.index")}
         </Typography>
       </Stack>
       <Divider />
@@ -160,7 +162,7 @@ function ContentIndex({
                 color="text.secondary"
                 sx={{ pl: 1 }}
               >
-                未分冊作品
+                {t("web.reader.uncollected")}
               </Typography>
             </>
           )}
@@ -226,6 +228,7 @@ function ImagePageOutline({
   activeIndex: number;
   onJumpToPage: (index: number) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Stack spacing={0.5}>
       {pages.map((page, index) => {
@@ -248,7 +251,7 @@ function ImagePageOutline({
               <Box
                 component="img"
                 src={page.imageUrl}
-                alt={`第 ${index + 1} 頁`}
+                alt={t("web.reader.pageAlt", { page: index + 1 })}
                 sx={{
                   width: 40,
                   height: 54,
@@ -264,7 +267,7 @@ function ImagePageOutline({
                   fontWeight={isActive ? 700 : 400}
                   sx={{ display: "block" }}
                 >
-                  第 {index + 1} 頁
+                  {t("web.reader.page", { page: index + 1 })}
                 </Typography>
                 {description && (
                   <Typography
@@ -325,12 +328,13 @@ export function ReaderIndexPanel({
   activeImagePageIndex: number;
   onJumpToImagePage: (index: number) => void;
 }) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<"toc" | "bookmarks" | "outline">("toc");
   // 文字故事用標題抽「本篇大綱」，圖像作品沒有標題，改用頁面清單當「頁面一覽」——
   // 兩者互斥（一個 item 只會是其中一種內容類型），共用同一個分頁槽位，只是內容跟
   // 標籤依目前是哪種類型決定。
   const hasOutline = headings.length > 0 || imagePages.length > 0;
-  const outlineLabel = imagePages.length > 0 ? "頁面一覽" : "本篇大綱";
+  const outlineLabel = t(imagePages.length > 0 ? "web.reader.pageOverview" : "web.reader.outline");
   useEffect(() => {
     // 切到沒有標題／頁面可列的內容時，大綱分頁會消失，這時候如果還停在該分頁要退回
     // 目錄，不然畫面會變成沒有任何分頁按鈕顯示為選取中。
@@ -347,7 +351,7 @@ export function ReaderIndexPanel({
           onClick={() => setTab("toc")}
           sx={{ flex: 1 }}
         >
-          目錄
+          {t("web.reader.toc")}
         </Button>
         <Button
           size="small"
@@ -355,7 +359,7 @@ export function ReaderIndexPanel({
           onClick={() => setTab("bookmarks")}
           sx={{ flex: 1 }}
         >
-          書籤{bookmarks.length > 0 ? ` ${bookmarks.length}` : ""}
+          {t("web.reader.bookmarks")}{bookmarks.length > 0 ? ` ${bookmarks.length}` : ""}
         </Button>
         {hasOutline && (
           <Button
@@ -398,15 +402,15 @@ export function ReaderIndexPanel({
         <Stack spacing={1}>
           {!bookmarksEnabled ? (
             <Typography variant="body2" color="text.secondary">
-              登入後即可查看你的書籤。
+              {t("web.reader.bookmarksLogin")}
             </Typography>
           ) : bookmarksLoading ? (
             <Typography variant="body2" color="text.secondary">
-              載入書籤中...
+              {t("web.reader.bookmarksLoading")}
             </Typography>
           ) : bookmarks.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
-              還沒有加入任何書籤。文字作品請開啟「編輯書籤」，圖像作品可使用頁面上的書籤按鈕。
+              {t("web.reader.bookmarksEmpty")}
             </Typography>
           ) : (
             bookmarks.map((bookmark) => {
@@ -462,7 +466,7 @@ export function ReaderIndexPanel({
                         {isStale && (
                           <Chip
                             size="small"
-                            label={isImage ? "頁面已移除" : "非最新版本"}
+                            label={t(isImage ? "web.reader.pageRemoved" : "web.reader.oldVersion")}
                             color="warning"
                             variant="outlined"
                             sx={{ height: 18, fontSize: 11 }}
@@ -472,12 +476,12 @@ export function ReaderIndexPanel({
                       <Typography variant="body2" color="text.secondary">
                         {isImage
                           ? isStale
-                            ? "（書籤指向的頁面已被刪除）"
-                            : `第 ${(bookmark.page_sort ?? 0) + 1} 頁`
-                          : snippet || "（空白段落）"}
+                            ? t("web.reader.removedPage")
+                            : t("web.reader.page", { page: (bookmark.page_sort ?? 0) + 1 })
+                          : snippet || t("web.reader.blankParagraph")}
                       </Typography>
                     </Box>
-                    <Tooltip title="刪除書籤">
+                    <Tooltip title={t("web.reader.deleteBookmark")}>
                       <span>
                         <IconButton
                           size="small"

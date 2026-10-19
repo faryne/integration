@@ -12,13 +12,10 @@ import {
   Tooltip,
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StorytellerDialog } from "@/components/storyteller/StorytellerDialog.tsx";
 import { StorytellerMemoryTagField } from "@/pages/storyteller/StorytellerMemoryTagField.tsx";
-import {
-  storytellerMemoryKindDescriptions,
-  storytellerMemoryKindLabels,
-  storytellerMemoryTargetLabel,
-} from "@/pages/storyteller/storytellerMemoryUI.ts";
+import { useStorytellerMemoryUI } from "@/pages/storyteller/storytellerMemoryUI.ts";
 import type {
   StorytellerAssistantMemory,
   StorytellerAssistantMemoryKind,
@@ -40,6 +37,8 @@ export function StorytellerMemoryEditorDialog({
   onClose: () => void;
   onSave: (input: StorytellerAssistantMemoryUpdateRequest) => void;
 }) {
+  const { t } = useTranslation();
+  const memoryUI = useStorytellerMemoryUI();
   const [name, setName] = useState("");
   const [content, setContent] = useState("");
   const [scope, setScope] =
@@ -64,13 +63,13 @@ export function StorytellerMemoryEditorDialog({
     <StorytellerDialog
       open={Boolean(memory)}
       maxWidth="sm"
-      eyebrow="編輯記憶"
-      title="調整梭梭記住的內容"
+      eyebrow={t("writer:memory.edit")}
+      title={t("writer:memory.editTitle")}
       onClose={saving ? undefined : onClose}
       actions={
         <>
           <Button onClick={onClose} disabled={saving}>
-            取消
+            {t("writer:common.cancel")}
           </Button>
           <Button
             variant="contained"
@@ -87,21 +86,21 @@ export function StorytellerMemoryEditorDialog({
               })
             }
           >
-            儲存
+            {t("writer:common.save")}
           </Button>
         </>
       }
     >
       <Stack spacing={2}>
         <TextField
-          label="記憶名稱"
+          label={t("writer:memory.name")}
           value={name}
           onChange={(event) => setName(event.target.value)}
           slotProps={{ htmlInput: { maxLength: 255 } }}
           fullWidth
         />
         <TextField
-          label="記憶內容"
+          label={t("writer:memory.content")}
           value={content}
           onChange={(event) => setContent(event.target.value)}
           slotProps={{ htmlInput: { maxLength: 2000 } }}
@@ -112,20 +111,20 @@ export function StorytellerMemoryEditorDialog({
         />
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
           <FormControl fullWidth>
-            <InputLabel>適用範圍</InputLabel>
+            <InputLabel>{t("writer:memory.scope")}</InputLabel>
             <Select
               value={scope}
-              label="適用範圍"
+              label={t("writer:memory.scope")}
               onChange={(event) =>
                 setScope(event.target.value as StorytellerAssistantMemoryScope)
               }
             >
               <MenuItem value="project">
-                {storytellerMemoryTargetLabel("project")}
+                {memoryUI.targetLabel("project")}
               </MenuItem>
               {targetKind && (
                 <MenuItem value={targetKind}>
-                  {storytellerMemoryTargetLabel(
+                  {memoryUI.targetLabel(
                     targetKind,
                     memory?.target_name,
                   )}
@@ -133,22 +132,22 @@ export function StorytellerMemoryEditorDialog({
               )}
             </Select>
           </FormControl>
-          <Tooltip title={storytellerMemoryKindDescriptions[kind]} arrow>
+          <Tooltip title={memoryUI.kindDescriptions[kind]} arrow>
             <FormControl fullWidth>
-              <InputLabel>記憶類型</InputLabel>
+              <InputLabel>{t("writer:memory.memoryType")}</InputLabel>
               <Select
                 value={kind}
-                label="記憶類型"
+                label={t("writer:memory.memoryType")}
                 onChange={(event) =>
                   setKind(event.target.value as StorytellerAssistantMemoryKind)
                 }
               >
-                {Object.entries(storytellerMemoryKindLabels).map(
+                {Object.entries(memoryUI.kindLabels).map(
                   ([value, label]) => (
                     <MenuItem key={value} value={value}>
                       <Tooltip
                         title={
-                          storytellerMemoryKindDescriptions[
+                          memoryUI.kindDescriptions[
                             value as StorytellerAssistantMemoryKind
                           ]
                         }
@@ -169,13 +168,13 @@ export function StorytellerMemoryEditorDialog({
         <StorytellerMemoryTagField value={tags} onChange={setTags} />
         <TextField
           type="number"
-          label="優先度"
+          label={t("writer:memory.priority")}
           value={priority}
           onChange={(event) =>
             setPriority(Math.max(0, Math.min(100, Number(event.target.value))))
           }
           slotProps={{ htmlInput: { min: 0, max: 100 } }}
-          helperText="0–100，數字越高越優先提供給梭梭"
+          helperText={t("writer:memory.priorityHelp")}
         />
         <FormControlLabel
           control={
@@ -184,7 +183,7 @@ export function StorytellerMemoryEditorDialog({
               onChange={(event) => setPinned(event.target.checked)}
             />
           }
-          label="釘選這筆記憶"
+          label={t("writer:memory.pinMemory")}
         />
       </Stack>
     </StorytellerDialog>

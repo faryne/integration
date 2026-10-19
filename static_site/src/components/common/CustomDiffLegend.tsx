@@ -1,29 +1,15 @@
 import { Box, Paper, Stack, Typography } from "@mui/material";
-
-const diffLegendItems = [
-  {
-    color: "success.light",
-    label: "新增",
-    description: "綠色代表新版本新增的內容。",
-  },
-  {
-    color: "error.light",
-    label: "移除",
-    description: "紅色代表舊版本中被移除的內容。",
-  },
-  {
-    color: "warning.light",
-    label: "修改",
-    description: "黃色代表同一行內容有所變更。",
-  },
-  {
-    color: "action.hover",
-    label: "空白對照",
-    description: "灰色代表另一側沒有對應內容。",
-  },
-];
+import { useTranslation } from "react-i18next";
 
 export function CustomDiffLegend() {
+  const { t } = useTranslation();
+  const diffLegendItems = ["added", "removed", "changed", "empty"].map(
+    (key, index) => ({
+      color: ["success.light", "error.light", "warning.light", "action.hover"][index],
+      label: t(`writer:editor.diff.legend.${key}.label`),
+      description: t(`writer:editor.diff.legend.${key}.description`),
+    }),
+  );
   return (
     <Paper variant="outlined" sx={{ borderRadius: 1, p: 2 }}>
       <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>

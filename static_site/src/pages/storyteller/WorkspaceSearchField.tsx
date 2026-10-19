@@ -1,6 +1,7 @@
 import SearchIcon from "@mui/icons-material/Search";
 import { Box, IconButton, InputAdornment, TextField } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { STORYTELLER_WORKSPACE_SEARCH_KEYWORD_LIMIT } from "@/apis/storyteller.ts";
 import { ShortcutHint } from "@/components/common/ShortcutHint.tsx";
 
@@ -13,6 +14,7 @@ export function WorkspaceSearchField({
 }: {
   onSubmit: (keyword: string) => void;
 }) {
+  const { t } = useTranslation();
   const [value, setValue] = useState("");
 
   function submit() {
@@ -26,7 +28,7 @@ export function WorkspaceSearchField({
         size="small"
         fullWidth
         value={value}
-        placeholder="搜尋此專案……"
+        placeholder={t("writer:search.fieldPlaceholder")}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={(event) => {
           // 注音／倉頡選字的 Enter 不能當成送出。
@@ -37,7 +39,7 @@ export function WorkspaceSearchField({
         slotProps={{
           htmlInput: {
             maxLength: STORYTELLER_WORKSPACE_SEARCH_KEYWORD_LIMIT,
-            "aria-label": "搜尋此專案",
+            "aria-label": t("writer:search.fieldPlaceholder"),
           },
           input: {
             endAdornment: (
@@ -53,7 +55,7 @@ export function WorkspaceSearchField({
                 <IconButton
                   size="small"
                   edge="end"
-                  aria-label="送出搜尋"
+                  aria-label={t("writer:search.submit")}
                   onClick={submit}
                 >
                   <SearchIcon fontSize="small" />

@@ -9,6 +9,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { Alert, Button, Stack } from "@mui/material";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   WorkspaceEditableSummary,
   WorkspaceEditableTitle,
@@ -87,6 +88,8 @@ export function DocumentEditorHeader({
   // 沒給就不顯示「查看編輯歷史」（例如還沒有歷史的新文件）
   onShowHistory?: () => void;
 }) {
+  const { t } = useTranslation();
+  const statusOptions = publicationStatusOptions(t);
   const { draft, setDraft, changeAttributes, conflict, dismissConflict } =
     editing;
   const { data: lores } = useEditorLores(projectPublicId);
@@ -193,11 +196,11 @@ export function DocumentEditorHeader({
         items={[
           {
             icon: statusIcon(draft.status),
-            text: selectedOptionLabel(publicationStatusOptions, draft.status),
+            text: selectedOptionLabel(statusOptions, draft.status, t("writer:editor.controls.notSet")),
           },
           {
             icon: <FolderIcon />,
-            text: selectedOptionLabel(groupOptions, draft.groupId),
+            text: selectedOptionLabel(groupOptions, draft.groupId, t("writer:editor.controls.notSet")),
           },
           ...(kind === "story"
             ? [
@@ -206,6 +209,7 @@ export function DocumentEditorHeader({
                   text: selectedOptionsLabel(
                     profileOptions,
                     draft.profileIds.map(String),
+                    t("writer:editor.controls.notSet"),
                   ),
                 },
               ]
@@ -217,7 +221,7 @@ export function DocumentEditorHeader({
             icon={statusIcon(draft.status)}
             label={labels.status}
             value={draft.status}
-            options={publicationStatusOptions}
+            options={statusOptions}
             onChange={changeStatus}
           />
           {/* 沒有冊／設定集（只剩未分冊／未歸類）、沒有其他筆名時沒得選，停用 */}

@@ -19,6 +19,7 @@ import {
 } from "@mui/material";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ShortcutHint } from "@/components/common/ShortcutHint.tsx";
 import {
   selectedOptionLabel,
@@ -46,6 +47,7 @@ export function WorkspaceEditorMetaPanel({
   items: WorkspaceEditorMetaItem[];
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   const compact = useWorkspaceEditorCompact();
   const [expanded, setExpanded] = useState(false);
   if (!compact) return <>{children}</>;
@@ -104,7 +106,7 @@ export function WorkspaceEditorMetaPanel({
           fontWeight={700}
           sx={{ flexShrink: 0, display: "flex", alignItems: "center" }}
         >
-          {expanded ? "收起" : "屬性與摘要"}
+          {t(expanded ? "writer:editor.controls.collapse" : "writer:editor.controls.properties")}
           {expanded ? (
             <ExpandLessIcon fontSize="small" />
           ) : (
@@ -196,7 +198,8 @@ export function WorkspaceEditorSaveButton({
   disabled: boolean;
   onClick: () => void;
 }) {
-  const label = pending ? "存檔中" : "存檔";
+  const { t } = useTranslation();
+  const label = t(pending ? "writer:common.saving" : "writer:common.save");
   return (
     <Button
       size="small"
@@ -394,13 +397,14 @@ export function WorkspaceEditorSelectButton({
   onChange: (value: string) => void;
   children?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   return (
     <Stack spacing={0.75} alignItems="flex-start">
       <AttributeTrigger
         icon={icon}
         label={label}
-        valueLabel={selectedOptionLabel(options, value)}
+        valueLabel={selectedOptionLabel(options, value, t("writer:editor.controls.notSet"))}
         disabled={disabled}
         onOpen={setAnchorEl}
       />

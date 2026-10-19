@@ -1,11 +1,13 @@
 import { Box, Divider, IconButton, Paper, Tooltip } from "@mui/material";
 import type { Editor } from "@tiptap/core";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import { StorytellerEditorTypographyButton } from "./StorytellerEditorTypographyButton";
 import { StorytellerWysiwygSyntaxDrawer } from "./StorytellerWysiwygSyntaxDrawer";
 import {
   wysiwygCommandsByGroup,
+  translatedWysiwygCommandLabel,
   type WysiwygCommandContext,
 } from "./wysiwygCore/commands";
 
@@ -30,6 +32,7 @@ export function StorytellerWysiwygToolbar({
   toolbarExtra,
   placement = "top",
 }: StorytellerWysiwygToolbarProps) {
+  const { t } = useTranslation();
   const utilityCommands = wysiwygCommandsByGroup("utility").filter(
     (command) => command.isVisible?.(commandContext) ?? true,
   );
@@ -77,10 +80,11 @@ export function StorytellerWysiwygToolbar({
         <StorytellerEditorTypographyButton placement={placement} />
         {utilityCommands.map((command) => {
           const Icon = command.icon!;
+          const label = translatedWysiwygCommandLabel(command, t);
           return (
-            <Tooltip key={command.id} title={command.label}>
+            <Tooltip key={command.id} title={label}>
               <IconButton
-                aria-label={command.label}
+                aria-label={label}
                 size="small"
                 onClick={() => command.run(editor, commandContext)}
               >

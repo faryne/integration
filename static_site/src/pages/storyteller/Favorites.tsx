@@ -14,6 +14,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import {
   useFavoriteStorytellerAuthors,
@@ -31,6 +32,7 @@ import type { StorytellerProject } from "@/types/storyteller.ts";
 // 「我的追蹤」的內容——掛在 /my 工作台殼底下（見 Home.tsx），登入狀態已經由
 // Home.tsx 統一擋過，這裡不用再自己判斷 session。
 export function StorytellerFavoritesContent() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<"stories" | "authors">("stories");
   const [visibilitySnack, setVisibilitySnack] = useState<{
     message: string;
@@ -58,28 +60,28 @@ export function StorytellerFavoritesContent() {
       <Tabs
         value={tab}
         onChange={(_, value: "stories" | "authors") => setTab(value)}
-        aria-label="追蹤分類"
+        aria-label={t("web.community.favoritesAria")}
       >
-        <Tab value="stories" label="作品" />
-        <Tab value="authors" label="作者" />
+        <Tab value="stories" label={t("web.community.works")} />
+        <Tab value="authors" label={t("web.community.authors")} />
       </Tabs>
 
       {isLoading ? (
         <StorytellerLoading
           label={
-            tab === "stories" ? "正在載入追蹤作品..." : "正在載入追蹤作者..."
+            tab === "stories" ? t("web.community.loadingFavoriteWorks") : t("web.community.loadingFavoriteAuthors")
           }
         />
       ) : isError ? (
         <Alert severity="error" variant="outlined">
-          讀取追蹤清單失敗，請確認登入狀態後再試一次。
+          {t("web.community.favoritesFailed")}
         </Alert>
       ) : tab === "stories" ? (
         projects.length === 0 ? (
           <CustomEmptyState
             icon={<FavoriteIcon fontSize="large" />}
-            title="尚未追蹤作品"
-            description="在作品閱讀頁按下追蹤後，會在此列出創作專案。"
+            title={t("web.community.noFollowedWorks")}
+            description={t("web.community.noFollowedWorksDescription")}
           />
         ) : (
           <Grid container spacing={2}>
@@ -96,8 +98,8 @@ export function StorytellerFavoritesContent() {
       ) : authors.length === 0 ? (
         <CustomEmptyState
           icon={<PersonIcon fontSize="large" />}
-          title="尚未追蹤作者"
-          description="在作品閱讀頁按下追蹤作者後，會在此列出作者。"
+          title={t("web.community.noFollowedAuthors")}
+          description={t("web.community.noFollowedAuthorsDescription")}
         />
       ) : (
         <Grid container spacing={2}>
@@ -139,6 +141,7 @@ function FavoriteProjectCard({
     severity?: "success" | "error",
   ) => void;
 }) {
+  const { t } = useTranslation();
   const saveVisibility = useSaveFavoriteProjectVisibility(project.public_id);
   const hidden = project.favorite_hidden ?? false;
 
@@ -146,18 +149,18 @@ function FavoriteProjectCard({
     <StorytellerProjectCard
       project={project}
       headerAction={
-        <Tooltip title={hidden ? "設為公開" : "設為隱藏"}>
+        <Tooltip title={hidden ? t("web.community.makePublic") : t("web.community.makePrivate")}>
           <span>
             <IconButton
               size="small"
-              aria-label={hidden ? "設為公開" : "設為隱藏"}
+              aria-label={hidden ? t("web.community.makePublic") : t("web.community.makePrivate")}
               disabled={saveVisibility.isPending}
               onClick={() =>
                 saveVisibility.mutate(!hidden, {
                   onSuccess: () =>
-                    onVisibilityChanged(hidden ? "已設為公開" : "已設為隱藏"),
+                    onVisibilityChanged(hidden ? t("web.community.madePublic") : t("web.community.madePrivate")),
                   onError: () =>
-                    onVisibilityChanged("追蹤作品公開狀態更新失敗。", "error"),
+                    onVisibilityChanged(t("web.community.projectVisibilityFailed"), "error"),
                 })
               }
             >
@@ -167,7 +170,7 @@ function FavoriteProjectCard({
         </Tooltip>
       }
       extraChips={
-        hidden && <Chip size="small" color="warning" label="對外隱藏中" />
+        hidden && <Chip size="small" color="warning" label={t("web.community.hidden")} />
       }
       actions={
         <Button
@@ -175,7 +178,7 @@ function FavoriteProjectCard({
           to={storytellerReaderPath(project)}
           variant="contained"
         >
-          開始閱讀
+          {t("web.community.startReading")}
         </Button>
       }
     />

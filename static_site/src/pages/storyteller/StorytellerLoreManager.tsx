@@ -26,7 +26,9 @@ import {
 } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material";
 import type { AlertColor } from "@mui/material";
+import type { TFunction } from "i18next";
 import { useEffect, useState, type DragEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useDeleteStorytellerLore,
   useDeleteStorytellerLoreCollection,
@@ -64,10 +66,16 @@ function dropTargetSx(active: boolean): SxProps<Theme> {
   };
 }
 
-function collectionDescription(collection: StorytellerLoreCollection) {
+function collectionDescription(
+  collection: StorytellerLoreCollection,
+  t: TFunction,
+) {
   return collection.description.trim()
-    ? `可將設定拖曳到「${collection.name}」。用途：${collection.description}`
-    : `可將設定拖曳到「${collection.name}」`;
+    ? t("web.loreManager.collection.dropHintWithDescription", {
+        name: collection.name,
+        description: collection.description,
+      })
+    : t("web.loreManager.collection.dropHint", { name: collection.name });
 }
 
 export function StorytellerLoreManager({
@@ -75,6 +83,7 @@ export function StorytellerLoreManager({
 }: {
   projectPublicId: string;
 }) {
+  const { t, i18n } = useTranslation();
   const [selectedCollectionId, setSelectedCollectionId] = useState("");
   const [loresPage, setLoresPage] = useState(1);
   const [draggingLore, setDraggingLore] = useState<StorytellerLore | null>(
@@ -177,7 +186,9 @@ export function StorytellerLoreManager({
         onSuccess: () => {
           if (!quietSuccess)
             notify(
-              targetCollectionId ? "設定已移入設定集。" : "設定已移到未歸類。",
+              targetCollectionId
+                ? t("web.loreManager.messages.movedToCollection")
+                : t("web.loreManager.messages.movedUncategorized"),
             );
         },
         onError: (error) => notify(error.message, "error"),
@@ -197,7 +208,7 @@ export function StorytellerLoreManager({
   function submitCollection() {
     const name = collectionName.trim();
     if (!name) {
-      notify("設定集名稱不可空白。", "error");
+      notify(t("web.loreManager.errors.collectionNameRequired"), "error");
       return;
     }
     const input = {
@@ -221,8 +232,8 @@ export function StorytellerLoreManager({
           setCollectionDialogTarget(null);
           notify(
             collectionDialogTarget === "new"
-              ? "設定集已建立。"
-              : "設定集已更新。",
+              ? t("web.loreManager.messages.collectionCreated")
+              : t("web.loreManager.messages.collectionUpdated"),
           );
         },
         onError: (error) => notify(error.message, "error"),
@@ -241,7 +252,7 @@ export function StorytellerLoreManager({
         alignItems={{ xs: "stretch", sm: "center" }}
       >
         <Typography variant="h6" fontWeight={800}>
-          設定列表
+          {t("web.loreManager.title")}
         </Typography>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Button
@@ -249,30 +260,30 @@ export function StorytellerLoreManager({
             variant="outlined"
             onClick={() => openCollectionDialog("new")}
           >
-            建立設定集
+            {t("web.loreManager.collection.create")}
           </Button>
           <Button
             href={steamloomPath(`my/project/${projectPublicId}/lore/new`)}
             variant="contained"
           >
-            建立設定
+            {t("web.loreManager.createLore")}
           </Button>
         </Stack>
       </Stack>
 
       <Stack spacing={1.25}>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <Tooltip title="顯示全部設定">
+          <Tooltip title={t("web.loreManager.showAll")}>
             <Button
               size="small"
               variant={selectedCollectionId === "" ? "contained" : "outlined"}
               startIcon={<FolderIcon />}
               onClick={() => setSelectedCollectionId("")}
             >
-              全部
+              {t("web.common.all")}
             </Button>
           </Tooltip>
-          <Tooltip title="可將設定拖曳到這裡，移到未歸類">
+          <Tooltip title={t("web.loreManager.uncategorizedDropHint")}>
             <Button
               size="small"
               variant={
@@ -288,7 +299,7 @@ export function StorytellerLoreManager({
               onDrop={(event) => handleCollectionDrop(event, "")}
               sx={dropTargetSx(canDropDraggingLore(""))}
             >
-              未歸類
+              {t("web.loreManager.uncategorized")}
             </Button>
           </Tooltip>
 
@@ -309,7 +320,7 @@ export function StorytellerLoreManager({
               }
               sx={dropTargetSx(canDropDraggingLore(collection.public_id))}
             >
-              <Tooltip title={collectionDescription(collection)}>
+              <Tooltip title={collectionDescription(collection, t)}>
                 <Button
                   onClick={() => setSelectedCollectionId(collection.public_id)}
                   sx={{ maxWidth: 220 }}
@@ -330,7 +341,7 @@ export function StorytellerLoreManager({
                   </Box>
                 </Button>
               </Tooltip>
-              <Tooltip title="編輯設定集">
+              <Tooltip title={t("web.loreManager.collection.edit")}>
                 <Button onClick={() => openCollectionDialog(collection)}>
                   <EditIcon fontSize="small" />
                 </Button>
@@ -338,8 +349,8 @@ export function StorytellerLoreManager({
               <Tooltip
                 title={
                   collection.lore_count > 0
-                    ? "設定集內仍有設定，不能刪除"
-                    : "刪除設定集"
+                    ? t("web.loreManager.collection.deleteBlocked")
+                    : t("web.loreManager.collection.delete")
                 }
               >
                 <Button
@@ -357,20 +368,22 @@ export function StorytellerLoreManager({
 
       {loading ? (
         <Paper variant="outlined" sx={{ p: 4, borderRadius: 1 }}>
-          <Typography color="text.secondary">正在載入設定...</Typography>
+          <Typography color="text.secondary">
+            {t("web.loreManager.loading")}
+          </Typography>
         </Paper>
       ) : lores.length === 0 ? (
         <CustomEmptyState
           icon={<MenuBookIcon fontSize="large" />}
-          title="尚未建立設定"
-          description="使用上方的「建立設定」記錄世界觀、角色規則與劇本設定。"
+          title={t("web.loreManager.emptyTitle")}
+          description={t("web.loreManager.emptyDescription")}
         />
       ) : (
         <Stack spacing={1.5}>
           {lores.map((lore) => (
             <Tooltip
               key={lore.public_id}
-              title="可拖曳到上方設定集移動"
+              title={t("web.loreManager.dragHint")}
               enterDelay={450}
               disableInteractive
             >
@@ -398,8 +411,16 @@ export function StorytellerLoreManager({
                       useFlexGap
                     >
                       <Typography variant="body2" color="text.secondary">
-                        {lore.word_count.toLocaleString()} 字 ·{" "}
-                        {formatStorytellerDate(lore.updated_at)}
+                        {t("web.projectWorkspace.meta.words", {
+                          count: lore.word_count.toLocaleString(
+                            i18n.resolvedLanguage,
+                          ),
+                        })}{" "}
+                        ·{" "}
+                        {formatStorytellerDate(
+                          lore.updated_at,
+                          i18n.resolvedLanguage,
+                        )}
                       </Typography>
                       <Chip
                         size="small"
@@ -408,12 +429,12 @@ export function StorytellerLoreManager({
                           collections.find(
                             (collection) =>
                               collection.public_id === lore.collection_id,
-                          )?.name ?? "未歸類"
+                          )?.name ?? t("web.loreManager.uncategorized")
                         }
                       />
                     </Stack>
                   </Stack>
-                  <Tooltip title="移動設定">
+                  <Tooltip title={t("web.loreManager.moveLore")}>
                     <IconButton
                       size="small"
                       onClick={(event) =>
@@ -430,7 +451,7 @@ export function StorytellerLoreManager({
                     variant="outlined"
                     size="small"
                   >
-                    編輯
+                    {t("web.common.edit")}
                   </Button>
                   <Button
                     color="error"
@@ -439,7 +460,7 @@ export function StorytellerLoreManager({
                     startIcon={<DeleteIcon />}
                     onClick={() => setDeleteLoreTarget(lore)}
                   >
-                    刪除
+                    {t("web.common.delete")}
                   </Button>
                 </Stack>
               </Paper>
@@ -465,18 +486,20 @@ export function StorytellerLoreManager({
         maxWidth="sm"
       >
         <DialogTitle>
-          {collectionDialogTarget === "new" ? "建立設定集" : "編輯設定集"}
+          {collectionDialogTarget === "new"
+            ? t("web.loreManager.collection.create")
+            : t("web.loreManager.collection.edit")}
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
-              label="設定集名稱"
+              label={t("web.loreManager.collection.name")}
               value={collectionName}
               onChange={(event) => setCollectionName(event.target.value)}
               fullWidth
             />
             <TextField
-              label="用途筆記"
+              label={t("web.loreManager.collection.description")}
               value={collectionDescriptionInput}
               onChange={(event) =>
                 setCollectionDescriptionInput(event.target.value)
@@ -488,13 +511,15 @@ export function StorytellerLoreManager({
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCollectionDialogTarget(null)}>取消</Button>
+          <Button onClick={() => setCollectionDialogTarget(null)}>
+            {t("web.common.cancel")}
+          </Button>
           <Button
             variant="contained"
             onClick={submitCollection}
             disabled={saveCollection.isPending}
           >
-            儲存
+            {t("web.common.save")}
           </Button>
         </DialogActions>
       </Dialog>
@@ -510,7 +535,7 @@ export function StorytellerLoreManager({
             setMoveMenu(null);
           }}
         >
-          移到未歸類
+          {t("web.loreManager.moveUncategorized")}
         </MenuItem>
         {collections.map((collection) => (
           <MenuItem
@@ -520,7 +545,7 @@ export function StorytellerLoreManager({
               setMoveMenu(null);
             }}
           >
-            移到「{collection.name}」
+            {t("web.loreManager.moveTo", { name: collection.name })}
           </MenuItem>
         ))}
       </Menu>
@@ -528,17 +553,17 @@ export function StorytellerLoreManager({
       {deleteCollectionTarget && (
         <StorytellerConfirmNameDialog
           open
-          title="刪除設定集"
-          description="刪除後不會影響其他設定集。請輸入設定集名稱確認。"
+          title={t("web.loreManager.collection.delete")}
+          description={t("web.loreManager.collection.deleteDescription")}
           confirmName={deleteCollectionTarget.name}
-          confirmLabel="刪除設定集"
+          confirmLabel={t("web.loreManager.collection.delete")}
           loading={deleteCollection.isPending}
           onClose={() => setDeleteCollectionTarget(null)}
           onConfirm={() =>
             deleteCollection.mutate(deleteCollectionTarget.public_id, {
               onSuccess: () => {
                 setDeleteCollectionTarget(null);
-                notify("設定集已刪除。");
+                notify(t("web.loreManager.messages.collectionDeleted"));
               },
               onError: (error) => notify(error.message, "error"),
             })
@@ -549,17 +574,17 @@ export function StorytellerLoreManager({
       {deleteLoreTarget && (
         <StorytellerConfirmNameDialog
           open
-          title="刪除設定"
-          description="刪除後會移除這則設定與版本資料。請輸入設定名稱確認。"
+          title={t("web.loreManager.deleteLore")}
+          description={t("web.loreManager.deleteLoreDescription")}
           confirmName={deleteLoreTarget.title}
-          confirmLabel="刪除設定"
+          confirmLabel={t("web.loreManager.deleteLore")}
           loading={deleteLore.isPending}
           onClose={() => setDeleteLoreTarget(null)}
           onConfirm={() =>
             deleteLore.mutate(deleteLoreTarget.public_id, {
               onSuccess: () => {
                 setDeleteLoreTarget(null);
-                notify("設定已刪除。");
+                notify(t("web.loreManager.messages.loreDeleted"));
               },
               onError: (error) => notify(error.message, "error"),
             })

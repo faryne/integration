@@ -9,6 +9,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { useEffect, useId, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 interface StorytellerEditorOutlineToggleProps {
   open: boolean;
@@ -26,6 +27,7 @@ export function StorytellerEditorOutlineToggle({
   onToggle,
   children,
 }: StorytellerEditorOutlineToggleProps) {
+  const { t } = useTranslation();
   const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
   const panelId = useId();
   const theme = useTheme();
@@ -51,12 +53,12 @@ export function StorytellerEditorOutlineToggle({
     <ClickAwayListener onClickAway={() => open && onToggle(false)}>
       <Box sx={{ display: "inline-flex" }}>
         <Box ref={setAnchorEl} sx={{ display: "inline-flex" }}>
-          <Tooltip title={open ? "收合大綱與書籤" : "大綱與書籤"}>
+          <Tooltip title={t(open ? "writer:editor.outline.collapse" : "writer:editor.outline.title")}>
             <ToggleButton
               value="outline"
               selected={open}
               size="small"
-              aria-label="大綱與書籤"
+              aria-label={t("writer:editor.outline.title")}
               aria-pressed={open}
               aria-expanded={open}
               aria-controls={open ? panelId : undefined}

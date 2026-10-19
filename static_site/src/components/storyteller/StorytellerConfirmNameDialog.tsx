@@ -1,5 +1,6 @@
 import { Alert, Button, Stack, TextField } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StorytellerMascotDialog } from "./StorytellerMascotDialog.tsx";
 
 export interface StorytellerConfirmNameDialogProps {
@@ -26,6 +27,7 @@ export function StorytellerConfirmNameDialog({
   onClose,
   onConfirm,
 }: StorytellerConfirmNameDialogProps) {
+  const { t } = useTranslation();
   const [value, setValue] = useState("");
   const matched = value === confirmName;
 
@@ -38,19 +40,19 @@ export function StorytellerConfirmNameDialog({
       open={open}
       state="danger"
       eyebrow={title}
-      title={`確定要${title}「${confirmName}」？`}
+      title={t("writer.confirmName.title", { action: title, name: confirmName })}
       description={description}
       onClose={onClose}
       actions={
         <>
-          <Button onClick={onClose}>先不要</Button>
+          <Button onClick={onClose}>{t("writer.confirmName.cancel")}</Button>
           <Button
             color="error"
             variant="contained"
             disabled={!matched || loading}
             onClick={onConfirm}
           >
-            {loading ? "處理中" : confirmLabel}
+            {loading ? t("writer.common.processing") : confirmLabel}
           </Button>
         </>
       }
@@ -59,10 +61,10 @@ export function StorytellerConfirmNameDialog({
         <TextField
           autoFocus
           fullWidth
-          label="輸入名稱以繼續"
+          label={t("writer.confirmName.input")}
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          helperText={`請輸入「${confirmName}」以啟用確認按鈕。`}
+          helperText={t("writer.confirmName.helper", { name: confirmName })}
         />
         {error && <Alert severity="error">{error}</Alert>}
       </Stack>

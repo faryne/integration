@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import type { Theme } from "@mui/material/styles";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   STORYTELLER_CODE_BLOCK_LANGUAGES as STORYTELLER_CODE_BLOCK_LANGUAGE_OPTIONS,
@@ -185,15 +186,6 @@ export const STORYTELLER_CODE_BLOCK_SX = {
   },
 } as const;
 
-export const DEFAULT_STORYTELLER_CODE_BLOCK_ACTIONS: StorytellerCodeBlockAction[] =
-  [
-    {
-      icon: <ContentCopyIcon fontSize="inherit" />,
-      label: "複製",
-      onClick: (content) => navigator.clipboard.writeText(content),
-    },
-  ];
-
 interface StorytellerCodeBlockFrameProps {
   markerId?: string | null;
   language?: string | null;
@@ -210,9 +202,15 @@ export function StorytellerCodeBlockFrame({
   content,
   editableLanguage = false,
   onLanguageChange,
-  actions = DEFAULT_STORYTELLER_CODE_BLOCK_ACTIONS,
+  actions,
   children,
 }: StorytellerCodeBlockFrameProps) {
+  const { t } = useTranslation();
+  const resolvedActions = actions ?? [{
+    icon: <ContentCopyIcon fontSize="inherit" />,
+    label: t("writer:editor.code.copy"),
+    onClick: (value: string) => navigator.clipboard.writeText(value),
+  }];
   const [succeededAction, setSucceededAction] = useState<number | null>(null);
   const normalizedLanguage = (language ?? "").trim();
   const highlightedLanguage =
@@ -263,7 +261,7 @@ export function StorytellerCodeBlockFrame({
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="語言"
+                label={t("writer:editor.code.language")}
                 variant="standard"
                 placeholder="language"
               />
@@ -276,7 +274,7 @@ export function StorytellerCodeBlockFrame({
           </Box>
         )}
         <Box className="storyteller-code-block-actions">
-          {actions.map((action, index) => (
+          {resolvedActions.map((action, index) => (
             <Tooltip key={`${action.label}-${index}`} title={action.label}>
               <IconButton
                 size="small"
@@ -347,7 +345,7 @@ export function StorytellerCodeBlockFrame({
             }
             onClick={() => setCollapsed((prev) => !prev)}
           >
-            {collapsed ? `展開全部（共 ${lineCount} 行）` : "收合"}
+            {t(collapsed ? "writer:editor.code.expandAll" : "writer:editor.code.collapse", { count: lineCount })}
           </Button>
         </Box>
       )}

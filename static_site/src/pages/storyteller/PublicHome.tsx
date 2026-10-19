@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import {
   usePublicStorytellerProjects,
@@ -23,7 +24,7 @@ import {
   STORYTELLER_APP_NAME,
   storytellerReaderPath,
 } from "@/data/storyteller.ts";
-import { STORYTELLER_PUBLIC_HOME_COPIES } from "@/data/storytellerPublicHomeCopy.ts";
+import { storytellerPublicHomeCopies } from "@/data/storytellerPublicHomeCopy.ts";
 import { storytellerHomeArtworkSrc } from "@/helpers/storytellerHomeArtwork.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
@@ -33,27 +34,29 @@ import { StorytellerProjectSearchCard } from "@/pages/storyteller/StorytellerPro
 import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
 
 function PublicHomeHero({ projectCount }: { projectCount?: number }) {
+  const { t } = useTranslation();
   const { appearance } = useStorytellerAppearance();
   const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const [copyIndex, setCopyIndex] = useState(0);
-  const copy = STORYTELLER_PUBLIC_HOME_COPIES[copyIndex];
+  const copies = storytellerPublicHomeCopies(t);
+  const copy = copies[copyIndex];
 
   useEffect(() => {
     const storageKey = "storyteller-home-copy-index";
     const previous = Number(window.sessionStorage.getItem(storageKey));
     let next = Math.floor(
-      Math.random() * STORYTELLER_PUBLIC_HOME_COPIES.length,
+      Math.random() * copies.length,
     );
     if (
-      STORYTELLER_PUBLIC_HOME_COPIES.length > 1 &&
+      copies.length > 1 &&
       Number.isInteger(previous) &&
       next === previous
     ) {
-      next = (next + 1) % STORYTELLER_PUBLIC_HOME_COPIES.length;
+      next = (next + 1) % copies.length;
     }
     window.sessionStorage.setItem(storageKey, String(next));
     setCopyIndex(next);
-  }, []);
+  }, [copies.length]);
 
   return (
     <Box
@@ -94,7 +97,7 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
           color="primary.main"
           sx={{ letterSpacing: "0.2em", fontWeight: 700 }}
         >
-          STORIES / WORLDS / LIVING THREADS
+          {t("web.public.heroEyebrow")}
         </Typography>
         <Typography
           component="h1"
@@ -131,8 +134,7 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
           }}
         >
           {copy.lead}
-          {typeof projectCount === "number" &&
-            ` 目前已有 ${projectCount} 部作品公開發佈。`}
+          {typeof projectCount === "number" && ` ${t("web.public.projectCount", { count: projectCount })}`}
         </Typography>
         <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
           <Button
@@ -141,7 +143,7 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
             variant="contained"
             startIcon={<AddIcon />}
           >
-            開始創作
+            {t("web.public.startCreating")}
           </Button>
           <Button
             component={RouterLink}
@@ -149,7 +151,7 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
             variant="text"
             endIcon={<ArrowForwardIcon />}
           >
-            打開我的工作台
+            {t("web.public.openWorkspace")}
           </Button>
           <Button
             component={RouterLink}
@@ -158,7 +160,7 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
             )}
             variant="text"
           >
-            認識梭梭
+            {t("web.public.meetMascot")}
           </Button>
         </Stack>
       </Stack>
@@ -235,6 +237,7 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
 }
 
 export default function StorytellerPublicHome() {
+  const { t } = useTranslation();
   const { data: publicProjects = [], isLoading } =
     usePublicStorytellerProjects();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -249,7 +252,7 @@ export default function StorytellerPublicHome() {
     projectSearch.data?.pages.flatMap((page) => page.data) ?? [];
   const searchTotal = projectSearch.data?.pages[0]?.total ?? 0;
 
-  useTitle(`${STORYTELLER_APP_NAME} 公開故事`, {
+  useTitle(t("web.public.title", { appName: STORYTELLER_APP_NAME }), {
     path: steamloomPath(),
     robots: "index, follow",
   });
@@ -280,7 +283,7 @@ export default function StorytellerPublicHome() {
         <TextField
           fullWidth
           size="small"
-          placeholder="搜尋專案名稱、標題、內文……"
+          placeholder={t("web.public.searchPlaceholder")}
           value={keywordInput}
           onChange={(event) => setKeywordInput(event.target.value)}
           slotProps={{
@@ -295,7 +298,7 @@ export default function StorytellerPublicHome() {
           }}
         />
         <Button type="submit" variant="contained" sx={{ whiteSpace: "nowrap" }}>
-          搜尋
+          {t("web.common.search")}
         </Button>
         {isSearching && (
           <Button
@@ -304,7 +307,7 @@ export default function StorytellerPublicHome() {
             variant="text"
             sx={{ whiteSpace: "nowrap" }}
           >
-            進階搜尋
+            {t("web.public.advancedSearch")}
           </Button>
         )}
       </Stack>
@@ -325,24 +328,24 @@ export default function StorytellerPublicHome() {
               {isSearching ? "SEARCH RESULTS" : "CURATED STORIES"}
             </Typography>
             <Typography variant="h3">
-              {isSearching ? "搜尋結果" : "正在發生的故事"}
+              {isSearching ? t("web.public.searchResults") : t("web.public.curatedStories")}
             </Typography>
           </Box>
           <Typography variant="body2" color="text.secondary">
             {isSearching
-              ? !projectSearch.isLoading && `${searchTotal} 個專案`
-              : !isLoading && `${publicProjects.length} 部作品`}
+              ? !projectSearch.isLoading && t("web.public.projectCountShort", { count: searchTotal })
+              : !isLoading && t("web.public.workCountShort", { count: publicProjects.length })}
           </Typography>
         </Stack>
 
         {isSearching ? (
           projectSearch.isLoading ? (
-            <StorytellerLoading label="正在搜尋..." />
+            <StorytellerLoading label={t("web.public.searching")} />
           ) : searchResults.length === 0 ? (
             <CustomEmptyState
               icon={<LockOpenIcon fontSize="large" />}
-              title="沒有符合的專案"
-              description="換個關鍵字試試，或是清空搜尋框看看全部公開作品。"
+              title={t("web.public.noProjectsFound")}
+              description={t("web.public.noProjectsFoundDescription")}
             />
           ) : (
             <>
@@ -364,20 +367,20 @@ export default function StorytellerPublicHome() {
                     onClick={() => void projectSearch.fetchNextPage()}
                   >
                     {projectSearch.isFetchingNextPage
-                      ? "載入中..."
-                      : "載入更多結果"}
+                      ? t("web.common.loading")
+                      : t("web.public.loadMore")}
                   </Button>
                 </Stack>
               )}
             </>
           )
         ) : isLoading ? (
-          <StorytellerLoading label="正在載入公開故事..." />
+          <StorytellerLoading label={t("web.public.loadingPublic")} />
         ) : publicProjects.length === 0 ? (
           <CustomEmptyState
             icon={<LockOpenIcon fontSize="large" />}
-            title="目前還沒有公開創作專案"
-            description={`公開的 ${STORYTELLER_APP_NAME} 專案會顯示在這裡。`}
+            title={t("web.public.noPublicProjects")}
+            description={t("web.public.noPublicProjectsDescription", { appName: STORYTELLER_APP_NAME })}
           />
         ) : (
           <Grid container spacing={0}>
@@ -389,7 +392,7 @@ export default function StorytellerPublicHome() {
                     <Chip
                       size="small"
                       icon={<LockOpenIcon />}
-                      label="公開閱讀"
+                      label={t("web.public.publicReading")}
                     />
                   }
                   actions={
@@ -399,7 +402,7 @@ export default function StorytellerPublicHome() {
                       variant="text"
                       endIcon={<ArrowForwardIcon />}
                     >
-                      開始閱讀
+                      {t("web.public.startReading")}
                     </Button>
                   }
                 />

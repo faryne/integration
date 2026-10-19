@@ -1,69 +1,67 @@
+import { useTranslation } from "react-i18next";
 import type {
   StorytellerAssistantMemoryKind,
   StorytellerAssistantMemoryScope,
 } from "@/types/storyteller.ts";
 
-export const storytellerMemoryScopeLabels: Record<
-  StorytellerAssistantMemoryScope,
-  string
-> = {
-  project: "整個專案",
-  story: "故事",
-  lore: "設定",
-};
+// 記憶相關元件共用同一組翻譯與格式化方法，避免管理頁、編輯器與草稿確認視窗各自拼字串。
+export function useStorytellerMemoryUI() {
+  const { t } = useTranslation();
+  const scopeLabels: Record<StorytellerAssistantMemoryScope, string> = {
+    project: t("writer:memory.scopeLabels.project"),
+    story: t("writer:memory.scopeLabels.story"),
+    lore: t("writer:memory.scopeLabels.lore"),
+  };
+  const contextScopeLabels: Record<StorytellerAssistantMemoryScope, string> = {
+    project: t("writer:memory.contextScopeLabels.project"),
+    story: t("writer:memory.contextScopeLabels.story"),
+    lore: t("writer:memory.contextScopeLabels.lore"),
+  };
+  const kindLabels: Record<StorytellerAssistantMemoryKind, string> = {
+    preference: t("writer:memory.kindLabels.preference"),
+    instruction: t("writer:memory.kindLabels.instruction"),
+    decision: t("writer:memory.kindLabels.decision"),
+    context: t("writer:memory.kindLabels.context"),
+  };
+  const kindDescriptions: Record<StorytellerAssistantMemoryKind, string> = {
+    preference: t("writer:memory.kindDescriptions.preference"),
+    instruction: t("writer:memory.kindDescriptions.instruction"),
+    decision: t("writer:memory.kindDescriptions.decision"),
+    context: t("writer:memory.kindDescriptions.context"),
+  };
 
-// 只有從故事／設定編輯器發起操作時，「這篇／這則」才有明確指涉。
-export const storytellerMemoryContextScopeLabels: Record<
-  StorytellerAssistantMemoryScope,
-  string
-> = {
-  project: "整個專案",
-  story: "這篇故事",
-  lore: "這則設定",
-};
-
-// 專案層管理頁要直接帶出目標名稱，不能用失去上下文的「這篇／這則」。
-export function storytellerMemoryTargetLabel(
-  scope: StorytellerAssistantMemoryScope,
-  targetName?: string,
-) {
-  if (scope === "project") return storytellerMemoryScopeLabels.project;
-  return targetName
-    ? `${storytellerMemoryScopeLabels[scope]}：${targetName}`
-    : storytellerMemoryScopeLabels[scope];
-}
-
-export const storytellerMemoryKindLabels: Record<
-  StorytellerAssistantMemoryKind,
-  string
-> = {
-  preference: "偏好",
-  instruction: "持續指示",
-  decision: "已確認決策",
-  context: "背景資訊",
-};
-
-export const storytellerMemoryKindDescriptions: Record<
-  StorytellerAssistantMemoryKind,
-  string
-> = {
-  preference: "偏好的寫作、格式或互動方式，例如「回覆簡潔一點」。",
-  instruction: "之後都要持續遵守的要求或限制，例如「不要改動角色名稱」。",
-  decision: "已經確認、不必反覆討論的決定，例如「第三章改成雨夜」。",
-  context: "理解內容所需的長期背景，例如角色關係或世界觀前提。",
-};
-
-export function storytellerMemoryErrorMessage(error: unknown) {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "response" in error &&
-    typeof error.response === "object" &&
-    error.response !== null &&
-    "data" in error.response
+  function targetLabel(
+    scope: StorytellerAssistantMemoryScope,
+    targetName?: string,
   ) {
-    const data = error.response.data as { message?: string };
-    if (data.message) return data.message;
+    if (scope === "project" || !targetName) return scopeLabels[scope];
+    return t("writer:memory.target", {
+      scope: scopeLabels[scope],
+      name: targetName,
+    });
   }
-  return "記憶操作失敗，請稍後再試。";
+
+  function errorMessage(error: unknown) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "response" in error &&
+      typeof error.response === "object" &&
+      error.response !== null &&
+      "data" in error.response
+    ) {
+      const data = error.response.data as { message?: string };
+      if (data.message) return data.message;
+    }
+    return t("writer:memory.operationFailed");
+  }
+
+  return {
+    contextScopeLabels,
+    errorMessage,
+    kindDescriptions,
+    kindLabels,
+    scopeLabels,
+    targetLabel,
+  };
 }

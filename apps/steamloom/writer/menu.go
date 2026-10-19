@@ -3,10 +3,28 @@ package main
 import (
 	"runtime"
 
+	"faryne.dev/apps/steamloom/writer/internal/appsettings"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+type menuCopy struct{ about, settings, hide, quit, file, help string }
+
+func applicationMenuCopy(language appsettings.Language) menuCopy {
+	switch language {
+	case appsettings.LanguageZHCN:
+		return menuCopy{"关于 SteamLoom Writer", "设置…", "隐藏 SteamLoom Writer", "退出 SteamLoom Writer", "文件", "帮助"}
+	case appsettings.LanguageEN:
+		return menuCopy{"About SteamLoom Writer", "Settings…", "Hide SteamLoom Writer", "Quit SteamLoom Writer", "File", "Help"}
+	case appsettings.LanguageJA:
+		return menuCopy{"SteamLoom Writer について", "設定…", "SteamLoom Writer を隠す", "SteamLoom Writer を終了", "ファイル", "ヘルプ"}
+	case appsettings.LanguageKO:
+		return menuCopy{"SteamLoom Writer 정보", "설정…", "SteamLoom Writer 숨기기", "SteamLoom Writer 종료", "파일", "도움말"}
+	default:
+		return menuCopy{"關於 SteamLoom Writer", "設定…", "隱藏 SteamLoom Writer", "結束 SteamLoom Writer", "檔案", "說明"}
+	}
+}
 
 const (
 	aboutEvent    = "app:show-about"
@@ -19,23 +37,24 @@ const (
 // Windows／Linux：「檔案 → 設定…」與「說明 → 關於」。
 func applicationMenu(app *App) *menu.Menu {
 	result := menu.NewMenu()
+	copy := applicationMenuCopy(app.settings.Get().Language)
 	emit := func(event string) menu.Callback {
 		return func(*menu.CallbackData) { wailsruntime.EventsEmit(app.ctx, event) }
 	}
 	if runtime.GOOS == "darwin" {
 		appMenu := result.AddSubmenu("SteamLoom Writer")
-		appMenu.AddText("關於 SteamLoom Writer", nil, emit(aboutEvent))
+		appMenu.AddText(copy.about, nil, emit(aboutEvent))
 		appMenu.AddSeparator()
-		appMenu.AddText("設定…", keys.CmdOrCtrl(","), emit(settingsEvent))
+		appMenu.AddText(copy.settings, keys.CmdOrCtrl(","), emit(settingsEvent))
 		appMenu.AddSeparator()
-		appMenu.AddText("隱藏 SteamLoom Writer", keys.CmdOrCtrl("h"), func(*menu.CallbackData) { wailsruntime.Hide(app.ctx) })
+		appMenu.AddText(copy.hide, keys.CmdOrCtrl("h"), func(*menu.CallbackData) { wailsruntime.Hide(app.ctx) })
 		appMenu.AddSeparator()
 		// Quit 會經過 OnBeforeClose，未儲存變更的確認照常運作。
-		appMenu.AddText("結束 SteamLoom Writer", keys.CmdOrCtrl("q"), func(*menu.CallbackData) { wailsruntime.Quit(app.ctx) })
+		appMenu.AddText(copy.quit, keys.CmdOrCtrl("q"), func(*menu.CallbackData) { wailsruntime.Quit(app.ctx) })
 		result.Append(menu.EditMenu())
 		return result
 	}
-	result.AddSubmenu("檔案").AddText("設定…", keys.CmdOrCtrl(","), emit(settingsEvent))
-	result.AddSubmenu("說明").AddText("關於 SteamLoom Writer", nil, emit(aboutEvent))
+	result.AddSubmenu(copy.file).AddText(copy.settings, keys.CmdOrCtrl(","), emit(settingsEvent))
+	result.AddSubmenu(copy.help).AddText(copy.about, nil, emit(aboutEvent))
 	return result
 }

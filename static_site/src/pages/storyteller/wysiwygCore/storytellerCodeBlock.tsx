@@ -17,6 +17,7 @@ import {
   type Transaction,
 } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { useTranslation } from "react-i18next";
 
 import {
   StorytellerCodeBlockFrame,
@@ -159,6 +160,7 @@ function StorytellerCodeBlockNodeView({
   updateAttributes,
   deleteNode,
 }: NodeViewProps) {
+  const { t } = useTranslation();
   const markerId = (node.attrs.markerId as string | null) ?? null;
   const language = normalizeLanguage(node.attrs.language);
   const content = node.textContent;
@@ -166,12 +168,12 @@ function StorytellerCodeBlockNodeView({
   const editorActions: StorytellerCodeBlockAction[] = [
     {
       icon: <ContentCopyIcon fontSize="inherit" />,
-      label: "複製",
+      label: t("writer:editor.code.copy"),
       onClick: (text) => navigator.clipboard.writeText(text),
     },
     {
       icon: <DeleteOutlineIcon fontSize="inherit" />,
-      label: "刪除程式碼區塊",
+      label: t("writer:editor.code.delete"),
       onClick: () => deleteNode(),
     },
   ];

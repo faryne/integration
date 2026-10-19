@@ -125,6 +125,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useId, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Link as RouterLink,
   useLocation,
@@ -135,20 +136,19 @@ import {
 // 閱讀 context 已合併進全站 AppBar，不再另外疊第二列；跳轉時只需避開 Header。
 const READER_STICKY_OFFSET = 84;
 
-// 設定頁的閱讀列用詞：設定不是章節，上一則／下一則只在設定之間切換
-const LORE_TOOLBAR_LABELS = {
-  previous: "上一則",
-  next: "下一則",
-  navigation: "設定列表",
-  navigationTooltip: "回到設定列表",
-};
-
 // landingTab 由路由決定：work/:projectPath 是故事 Tab，/lores 是設定 Tab，/discussions 是討論 Tab
 export default function StorytellerReader({
   landingTab = "stories",
 }: {
   landingTab?: ReaderLandingTab;
 }) {
+  const { t, i18n } = useTranslation();
+  const loreToolbarLabels = {
+    previous: t("web.reader.previousItem"),
+    next: t("web.reader.nextItem"),
+    navigation: t("web.reader.settingsList"),
+    navigationTooltip: t("web.reader.backToSettings"),
+  };
   const { setReader: setHeaderReader } = useStorytellerHeaderContext();
   const { session, loading: authLoading } = useAuth();
   const params = useParams();
@@ -516,13 +516,13 @@ export default function StorytellerReader({
       onSuccess: () => {
         setBookmarkSnackbar({
           open: true,
-          message: isBookmarked ? "書籤已刪除" : "書籤已加入",
+          message: isBookmarked ? t("web.reader.bookmarkRemoved") : t("web.reader.bookmarkAdded"),
         });
       },
       onError: () =>
         setBookmarkSnackbar({
           open: true,
-          message: "書籤更新失敗，請重試。",
+          message: t("web.reader.bookmarkUpdateFailed"),
           severity: "error",
         }),
       onSettled: () => {
@@ -570,13 +570,13 @@ export default function StorytellerReader({
       onSuccess: () => {
         setBookmarkSnackbar({
           open: true,
-          message: isBookmarked ? "書籤已刪除" : "書籤已加入",
+          message: isBookmarked ? t("web.reader.bookmarkRemoved") : t("web.reader.bookmarkAdded"),
         });
       },
       onError: () =>
         setBookmarkSnackbar({
           open: true,
-          message: "書籤更新失敗，請重試。",
+          message: t("web.reader.bookmarkUpdateFailed"),
           severity: "error",
         }),
       onSettled: () => {
@@ -617,13 +617,13 @@ export default function StorytellerReader({
       },
       {
         onSuccess: () => {
-          setBookmarkSnackbar({ open: true, message: "書籤已刪除" });
+          setBookmarkSnackbar({ open: true, message: t("web.reader.bookmarkRemoved") });
           setDeleteBookmarkTarget(null);
         },
         onError: () =>
           setBookmarkSnackbar({
             open: true,
-            message: "書籤刪除失敗，請重試。",
+            message: t("web.reader.bookmarkDeleteFailed"),
             severity: "error",
           }),
         onSettled: () => {
@@ -907,10 +907,10 @@ export default function StorytellerReader({
   ) {
     return (
       <StorytellerShell
-        title="故事"
+        title={t("web.reader.story")}
         breadcrumbs={[{ label: STORYTELLER_APP_NAME, to: steamloomPath() }]}
       >
-        <StorytellerLoading label="正在載入故事..." />
+        <StorytellerLoading label={t("web.reader.loadingStory")} />
       </StorytellerShell>
     );
   }
@@ -1025,13 +1025,13 @@ export default function StorytellerReader({
               onSuccess: () => {
                 setBookmarkSnackbar({
                   open: true,
-                  message: nextFavorited ? "已追蹤此作品" : "已取消追蹤此作品",
+                  message: nextFavorited ? t("web.reader.followed") : t("web.reader.unfollowed"),
                 });
               },
               onError: () =>
                 setBookmarkSnackbar({
                   open: true,
-                  message: "作品追蹤狀態更新失敗，請重試。",
+                  message: t("web.reader.followFailed"),
                   severity: "error",
                 }),
             });
@@ -1040,7 +1040,7 @@ export default function StorytellerReader({
           setFavorite((value) => !value);
         }}
       >
-        {isFavorited ? "已追蹤專案" : "追蹤專案"}（{favoriteCount}）
+        {isFavorited ? t("web.reader.followingProject") : t("web.reader.followProject")}（{favoriteCount}）
       </Button>
       {project.authors.map((author) => (
         <FollowAuthorButton
@@ -1062,7 +1062,7 @@ export default function StorytellerReader({
       <Paper variant="outlined" sx={{ px: 1.5, py: 0.75, borderRadius: 1 }}>
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography variant="body2" color="text.secondary">
-            評分
+            {t("web.reader.rating")}
           </Typography>
           <Rating
             value={rating}
@@ -1078,12 +1078,12 @@ export default function StorytellerReader({
                   onSuccess: () =>
                     setBookmarkSnackbar({
                       open: true,
-                      message: "評分已儲存。",
+                      message: t("web.reader.ratingSaved"),
                     }),
                   onError: () =>
                     setBookmarkSnackbar({
                       open: true,
-                      message: "評分儲存失敗，請重試。",
+                      message: t("web.reader.ratingFailed"),
                       severity: "error",
                     }),
                 });
@@ -1092,7 +1092,7 @@ export default function StorytellerReader({
           />
           {projectRatingCount > 0 && (
             <Typography variant="caption" color="text.secondary">
-              {projectRatingCount} 人・平均 {projectAverageRating.toFixed(1)}
+              {t("web.reader.ratingSummary", { count: projectRatingCount, average: projectAverageRating.toFixed(1) })}
             </Typography>
           )}
         </Stack>
@@ -1114,10 +1114,10 @@ export default function StorytellerReader({
       <Chip
         label={
           isPrivateOwnerRoute
-            ? "私人預覽"
+            ? t("web.reader.privatePreview")
             : isShareRoute
-              ? "專用連結"
-              : "公開閱讀"
+              ? t("web.reader.unlisted")
+              : t("web.reader.public")
         }
         color={
           isPrivateOwnerRoute ? "default" : isShareRoute ? "warning" : "success"
@@ -1126,7 +1126,7 @@ export default function StorytellerReader({
       {project.authors.map((author) => (
         <Chip
           key={author.pen_name}
-          label={`作者 ${author.pen_name}`}
+          label={t("web.reader.author", { name: author.pen_name })}
           variant="outlined"
           component={RouterLink}
           to={steamloomPath(`user/${encodeURIComponent(author.pen_name)}`)}
@@ -1134,13 +1134,13 @@ export default function StorytellerReader({
         />
       ))}
       <Chip
-        label={`${items.filter((item) => item.contentType !== "image").length} 篇故事`}
+        label={t("web.reader.storyCount", { count: items.filter((item) => item.contentType !== "image").length })}
         variant="outlined"
         icon={<ArticleIcon fontSize="small" />}
       />
       {items.some((item) => item.contentType === "image") && (
         <Chip
-          label={`${items.filter((item) => item.contentType === "image").length} 話`}
+          label={t("web.reader.episodeCount", { count: items.filter((item) => item.contentType === "image").length })}
           variant="outlined"
           icon={<CollectionsIcon fontSize="small" />}
         />
@@ -1149,7 +1149,7 @@ export default function StorytellerReader({
   );
   const projectSecondaryMeta = (
     <>
-      <Chip label={`${project.wordCount.toLocaleString()} 字`} />
+      <Chip label={t("web.reader.wordCount", { count: project.wordCount.toLocaleString(i18n.resolvedLanguage) })} />
       <Chip
         label={storytellerProjectRatingLabel(project.rating)}
         color={storytellerProjectRatingColor(project.rating)}
@@ -1298,7 +1298,7 @@ export default function StorytellerReader({
                   }
                 }}
                 src={currentEpisodePages[pageIndex]?.imageUrl}
-                alt={`第 ${pageIndex + 1} 頁`}
+                alt={t("web.reader.pageAlt", { page: pageIndex + 1 })}
                 onLoad={() => setCurrentPageLoaded(true)}
                 onClick={() => currentPageLoaded && setImageLightboxOpen(true)}
                 sx={{
@@ -1317,7 +1317,7 @@ export default function StorytellerReader({
                   const currentPageId = currentEpisodePages[pageIndex].id;
                   const isBookmarked = bookmarkedPageIds.has(currentPageId);
                   return (
-                    <Tooltip title={isBookmarked ? "移除書籤" : "加入書籤"}>
+                    <Tooltip title={isBookmarked ? t("web.reader.removeBookmark") : t("web.reader.addBookmark")}>
                       <span
                         style={{
                           position: "absolute",
@@ -1359,7 +1359,7 @@ export default function StorytellerReader({
                             },
                           }}
                         >
-                          {isBookmarked ? "已加入書籤" : "加入書籤"}
+                          {isBookmarked ? t("web.reader.bookmarked") : t("web.reader.addBookmark")}
                         </Button>
                       </span>
                     </Tooltip>
@@ -1389,7 +1389,7 @@ export default function StorytellerReader({
               >
                 <Stack direction="row" spacing={1}>
                   <IconButton
-                    aria-label="上一頁"
+                    aria-label={t("web.reader.previousPage")}
                     disabled={pageIndex === 0}
                     onClick={() => goToImagePage(pageIndex - 1)}
                     sx={{ color: "#f8fafc" }}
@@ -1397,7 +1397,7 @@ export default function StorytellerReader({
                     <ArrowBackIcon fontSize="small" />
                   </IconButton>
                   <IconButton
-                    aria-label="下一頁"
+                    aria-label={t("web.reader.nextPage")}
                     disabled={pageIndex >= totalEpisodePages - 1}
                     onClick={() => goToImagePage(pageIndex + 1)}
                     sx={{ color: "#f8fafc" }}
@@ -1416,11 +1416,10 @@ export default function StorytellerReader({
                   }}
                   variant="body2"
                 >
-                  {currentEpisode.title}（第 {pageIndex + 1} /{" "}
-                  {totalEpisodePages} 頁）
+                  {t("web.reader.pageProgress", { title: currentEpisode.title, page: pageIndex + 1, total: totalEpisodePages })}
                 </Typography>
                 <IconButton
-                  aria-label="關閉"
+                  aria-label={t("web.common.close")}
                   onClick={() => setImageLightboxOpen(false)}
                   sx={{ color: "#f8fafc" }}
                 >
@@ -1441,7 +1440,7 @@ export default function StorytellerReader({
                 <Box
                   component="img"
                   src={currentEpisodePages[pageIndex]?.imageUrl}
-                  alt={`第 ${pageIndex + 1} 頁（原圖）`}
+                  alt={t("web.reader.pageOriginalAlt", { page: pageIndex + 1 })}
                   sx={{
                     display: "block",
                     height: "auto",
@@ -1520,15 +1519,14 @@ export default function StorytellerReader({
               }}
             >
               <Typography variant="body2">
-                此非最新版本（第 {versions.length - historicalVersionIndex}{" "}
-                版），內容為當時儲存的版本，僅能移除既有書籤，無法新增
+                {t("web.reader.historical", { version: versions.length - historicalVersionIndex })}
               </Typography>
               <Typography
                 variant="body2"
                 fontWeight={800}
                 sx={{ flexShrink: 0 }}
               >
-                點擊查看最新版本 →
+                {t("web.reader.latest")}
               </Typography>
             </Box>
           )}
@@ -1554,7 +1552,7 @@ export default function StorytellerReader({
           </ReaderTextFrame>
         </Stack>
       ) : (
-        <Typography color="text.secondary">目前還沒有任何作品。</Typography>
+        <Typography color="text.secondary">{t("web.reader.empty")}</Typography>
       )}
       {currentItem && (
         <>
@@ -1602,7 +1600,7 @@ export default function StorytellerReader({
       }
       loreGroups={project.loreGroups.map((group) => ({
         id: group.collection?.id ?? null,
-        name: group.collection?.name ?? "未歸類",
+        name: group.collection?.name ?? t("web.reader.uncategorized"),
         lores: group.lores.map((lore) => ({
           id: lore.id,
           title: lore.title,
@@ -1691,7 +1689,7 @@ export default function StorytellerReader({
           : currentLore
             ? [
                 { label: project.name, to: projectLandingPath },
-                { label: "設定", to: loresPath },
+                { label: t("web.reader.settings"), to: loresPath },
                 ...(currentLoreCollection
                   ? [
                       {
@@ -1705,12 +1703,12 @@ export default function StorytellerReader({
             : landingTab === "lores"
               ? [
                   { label: project.name, to: projectLandingPath },
-                  { label: "設定" },
+                  { label: t("web.reader.settings") },
                 ]
               : landingTab === "discussions"
                 ? [
                     { label: project.name, to: projectLandingPath },
-                    { label: "討論" },
+                    { label: t("web.reader.discussions") },
                   ]
                 : [{ label: project.name }]),
       ]}
@@ -1779,7 +1777,7 @@ export default function StorytellerReader({
               />
             )
           }
-          labels={currentLore ? LORE_TOOLBAR_LABELS : undefined}
+          labels={currentLore ? loreToolbarLabels : undefined}
           projectDetails={projectDetails}
           bookmarkEditing={bookmarkEditing}
           bookmarkEditingAvailable={Boolean(
@@ -1836,7 +1834,7 @@ export default function StorytellerReader({
         <Box sx={{ width: { xs: 320, sm: 380 }, maxWidth: "92vw", p: 2 }}>
           <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1 }}>
             <IconButton
-              aria-label="關閉索引"
+              aria-label={t("web.reader.closeIndex")}
               onClick={() => setIndexOpen(false)}
             >
               <CloseIcon />
@@ -1867,7 +1865,7 @@ export default function StorytellerReader({
       <LoginPromptDialog
         open={loginPromptOpen}
         onClose={() => setLoginPromptOpen(false)}
-        description="追蹤專案、追蹤作者、評分故事或加入書籤需要登入。是否要現在登入？"
+        description={t("web.reader.loginPrompt")}
       />
       <CustomSnackbar
         open={bookmarkSnackbar.open}
@@ -1881,7 +1879,7 @@ export default function StorytellerReader({
         open={readingResume.resumedProgress !== null}
         severity="info"
         autoHideDuration={6000}
-        message={`已回到上次閱讀的位置（${readingResume.resumedProgress ?? 0}%）`}
+        message={t("web.reader.resumed", { progress: readingResume.resumedProgress ?? 0 })}
         onClose={readingResume.dismiss}
         action={
           <Button
@@ -1896,27 +1894,27 @@ export default function StorytellerReader({
               }
             }}
           >
-            從頭開始
+            {t("web.reader.startOver")}
           </Button>
         }
       />
       <StorytellerMascotDialog
         open={deleteBookmarkTarget !== null}
         state="danger"
-        eyebrow="刪除書籤"
-        title="確定要刪除這筆書籤？"
-        description="這筆書籤會從閱讀清單移除；若是舊版本或已失效的位置，之後可能無法重新加入。"
+        eyebrow={t("web.reader.deleteBookmark")}
+        title={t("web.reader.deleteBookmarkTitle")}
+        description={t("web.reader.deleteBookmarkDescription")}
         onClose={() => setDeleteBookmarkTarget(null)}
         actions={
           <>
-            <Button onClick={() => setDeleteBookmarkTarget(null)}>取消</Button>
+            <Button onClick={() => setDeleteBookmarkTarget(null)}>{t("web.common.cancel")}</Button>
             <Button
               color="error"
               variant="contained"
               disabled={deleteBookmark.isPending}
               onClick={confirmDeleteBookmarkFromList}
             >
-              {deleteBookmark.isPending ? "刪除中" : "刪除書籤"}
+              {deleteBookmark.isPending ? t("web.reader.deleting") : t("web.reader.deleteBookmark")}
             </Button>
           </>
         }
@@ -1924,9 +1922,9 @@ export default function StorytellerReader({
 
       {project.rating === "restricted" && !isOwner ? (
         <AgeConfirmationGate
-          description="此創作專案標示為限制級，請確認你已年滿 18 歲後再繼續閱讀。"
+          description={t("web.reader.restrictedDescription")}
           leaveTo={steamloomPath()}
-          panelTitle="限制級創作專案"
+          panelTitle={t("web.reader.restrictedTitle")}
         >
           {linkedPageBody}
         </AgeConfirmationGate>

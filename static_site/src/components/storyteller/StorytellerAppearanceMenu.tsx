@@ -11,6 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   storytellerAppearanceMeta,
   storytellerAppearanceOrder,
@@ -26,14 +27,15 @@ const appearanceIcons: Record<StorytellerAppearance, ReactNode> = {
 
 /** Header 唯一的全站外觀入口；三種 appearance 已各自包含明暗與配色。 */
 export function StorytellerAppearanceMenu() {
+  const { t } = useTranslation();
   const { appearance, setAppearance } = useStorytellerAppearance();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
 
   return (
     <>
-      <Tooltip title={`外觀：${storytellerAppearanceMeta[appearance].label}`}>
+      <Tooltip title={t("web.appearance.buttonLabel", { appearance: t(`web.appearance.options.${appearance}.label`) })}>
         <IconButton
-          aria-label={`外觀設定，目前為${storytellerAppearanceMeta[appearance].label}`}
+          aria-label={t("web.appearance.current", { appearance: t(`web.appearance.options.${appearance}.label`) })}
           aria-expanded={Boolean(anchor)}
           color="inherit"
           size="small"
@@ -51,9 +53,9 @@ export function StorytellerAppearanceMenu() {
       >
         <Stack spacing={1.25} sx={{ width: 300, p: 2 }}>
           <Box>
-            <Typography fontWeight={700}>外觀</Typography>
+            <Typography fontWeight={700}>{t("web.appearance.title")}</Typography>
             <Typography variant="caption" color="text.secondary">
-              三種模式已包含完整的明暗與配色
+              {t("web.appearance.description")}
             </Typography>
           </Box>
           {storytellerAppearanceOrder.map((name) => {
@@ -101,14 +103,14 @@ export function StorytellerAppearanceMenu() {
                 </Box>
                 <Box sx={{ minWidth: 0 }}>
                   <Typography variant="body2" fontWeight={700}>
-                    {meta.label}
+                    {t(`web.appearance.options.${name}.label`)}
                   </Typography>
                   <Typography
                     variant="caption"
                     color="text.secondary"
                     sx={{ display: "block" }}
                   >
-                    {meta.description}
+                    {t(`web.appearance.options.${name}.description`)}
                   </Typography>
                 </Box>
               </Stack>

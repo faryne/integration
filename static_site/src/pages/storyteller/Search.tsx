@@ -13,6 +13,7 @@ import {
   MenuItem,
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import {
   useStorytellerProjectSearch,
@@ -29,14 +30,12 @@ import { StorytellerWorkCard } from "@/pages/storyteller/StorytellerWorkCard.tsx
 
 type SearchView = "story" | "project";
 
-const ratingOptions: { value: string; label: string }[] = [
-  { value: "", label: "所有分級" },
-  { value: "general", label: "普通級" },
-  { value: "guidance", label: "輔導級" },
-  { value: "restricted", label: "限制級" },
-];
-
 export default function StorytellerSearch() {
+  const { t } = useTranslation();
+  const ratingOptions = ["", "general", "guidance", "restricted"].map((value) => ({
+    value,
+    label: t(`web.search.ratings.${value || "all"}`),
+  }));
   const [searchParams, setSearchParams] = useSearchParams();
   const keyword = searchParams.get("keyword") ?? "";
   const tag = searchParams.get("tag") ?? "";
@@ -53,7 +52,7 @@ export default function StorytellerSearch() {
     setKeywordInput(keyword);
   }, [keyword]);
 
-  useTitle(`全站作品搜尋 - ${STORYTELLER_APP_NAME}`, {
+  useTitle(`${t("web.search.pageTitle")} - ${STORYTELLER_APP_NAME}`, {
     path: steamloomPath("search"),
     robots: "noindex, nofollow",
   });
@@ -120,10 +119,10 @@ export default function StorytellerSearch() {
         }}
       >
         <Typography variant="h5" fontWeight={800} gutterBottom>
-          全站作品搜尋
+          {t("web.search.pageTitle")}
         </Typography>
         <Typography color="text.secondary" sx={{ mb: 2 }}>
-          在所有公開專案的文字故事與圖像作品裡找——標題、簡介、內文、圖片說明都算。
+          {t("web.search.description")}
         </Typography>
         <Stack
           component="form"
@@ -136,7 +135,7 @@ export default function StorytellerSearch() {
         >
           <TextField
             fullWidth
-            placeholder="輸入關鍵字，例如「共鳴」「駕駛艙」……"
+            placeholder={t("web.search.placeholder")}
             value={keywordInput}
             onChange={(event) => setKeywordInput(event.target.value)}
             slotProps={{
@@ -150,7 +149,7 @@ export default function StorytellerSearch() {
           <TextField
             select
             sx={{ minWidth: { sm: 160 } }}
-            label="分級"
+            label={t("web.search.rating")}
             value={rating}
             onChange={(event) => applyFilters({ rating: event.target.value })}
           >
@@ -161,13 +160,13 @@ export default function StorytellerSearch() {
             ))}
           </TextField>
           <Button type="submit" variant="contained" sx={{ whiteSpace: "nowrap" }}>
-            搜尋
+            {t("web.common.search")}
           </Button>
         </Stack>
         {tag && (
           <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
             <Chip
-              label={`標籤：${tag}`}
+              label={t("web.search.tag", { tag })}
               onDelete={() => applyFilters({ tag: "" })}
             />
           </Stack>
@@ -179,8 +178,8 @@ export default function StorytellerSearch() {
         onChange={(_, nextView: SearchView) => applyFilters({ view: nextView })}
         sx={steamTabIndicatorSx}
       >
-        <Tab value="story" label="依故事" />
-        <Tab value="project" label="依專案" />
+        <Tab value="story" label={t("web.search.byStory")} />
+        <Tab value="project" label={t("web.search.byProject")} />
       </Tabs>
 
       {!search.isLoading && (
@@ -191,18 +190,18 @@ export default function StorytellerSearch() {
           color="text.secondary"
         >
           <Typography variant="body2">
-            共找到 {total} {view === "story" ? "篇故事" : "個專案"}
+            {t(view === "story" ? "web.search.storyCount" : "web.search.projectCount", { count: total })}
           </Typography>
         </Stack>
       )}
 
       {search.isLoading ? (
-        <StorytellerLoading label="正在搜尋..." />
+        <StorytellerLoading label={t("web.search.searching")} />
       ) : results.length === 0 ? (
         <CustomEmptyState
           icon={<LockOpenIcon fontSize="large" />}
-          title="沒有符合的作品"
-          description="換個關鍵字，或是拿掉一些篩選條件試試。"
+          title={t("web.search.emptyTitle")}
+          description={t("web.search.emptyDescription")}
         />
       ) : view === "story" ? (
         <>
@@ -223,7 +222,7 @@ export default function StorytellerSearch() {
                 disabled={storySearch.isFetchingNextPage}
                 onClick={() => void storySearch.fetchNextPage()}
               >
-                {storySearch.isFetchingNextPage ? "載入中..." : "載入更多結果"}
+                {storySearch.isFetchingNextPage ? t("web.common.loading") : t("web.search.loadMore")}
               </Button>
             </Stack>
           )}
@@ -247,7 +246,7 @@ export default function StorytellerSearch() {
                 disabled={projectSearch.isFetchingNextPage}
                 onClick={() => void projectSearch.fetchNextPage()}
               >
-                {projectSearch.isFetchingNextPage ? "載入中..." : "載入更多結果"}
+                {projectSearch.isFetchingNextPage ? t("web.common.loading") : t("web.search.loadMore")}
               </Button>
             </Stack>
           )}

@@ -33,6 +33,7 @@ import TableChartIcon from "@mui/icons-material/TableChart";
 import TitleIcon from "@mui/icons-material/Title";
 import { NodeSelection } from "@tiptap/pm/state";
 import type { ComponentType } from "react";
+import type { TFunction } from "i18next";
 
 import {
   BG_COLOR_CSS,
@@ -595,6 +596,21 @@ export const WYSIWYG_COMMANDS: WysiwygCommand[] = [
 
 export function getWysiwygCommand(id: string): WysiwygCommand | undefined {
   return WYSIWYG_COMMANDS.find((command) => command.id === id);
+}
+
+// Registry 保留正體中文 fallback 與搜尋別名；所有呈現入口共用這個 helper 取得目前介面語言。
+export function translatedWysiwygCommandLabel(
+  command: WysiwygCommand,
+  t: TFunction,
+  active = false,
+) {
+  const fallback = active
+    ? (command.activeLabel ?? command.label)
+    : command.label;
+  const suffix = active && command.activeLabel ? "active" : "label";
+  return t(`writer:editor.commands.${command.id}.${suffix}`, {
+    defaultValue: fallback,
+  });
 }
 
 export function wysiwygCommandsByGroup(

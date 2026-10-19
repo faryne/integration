@@ -2,6 +2,7 @@ import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { Box, Stack, Typography } from "@mui/material";
 import type { Ref } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 
 // 跨內容類型（故事／圖像／未來新增的類型）共用的作品標頭：標題、簡介、作者、
@@ -19,6 +20,7 @@ export function ContentMetaHeader({
   authorPenNames?: string[];
   updatedAt: string;
 }) {
+  const { t, i18n } = useTranslation();
   return (
     <Box>
       <Typography
@@ -56,13 +58,13 @@ export function ContentMetaHeader({
                   "&:hover": { textDecoration: "underline" },
                 }}
               >
-                作者 {penName}
+                {t("web.reader.metaAuthor", { name: penName })}
               </Typography>
             ))}
           </Stack>
         )}
         <Typography variant="caption" color="text.secondary">
-          更新於 {formatStorytellerDate(updatedAt)}
+          {t("web.reader.updated", { date: formatStorytellerDate(updatedAt, i18n.resolvedLanguage) })}
         </Typography>
       </Stack>
     </Box>

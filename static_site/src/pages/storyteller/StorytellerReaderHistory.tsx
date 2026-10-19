@@ -3,6 +3,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { readerStoryVersionPath } from "@/helpers/storytellerReaderPaths.ts";
 import type { StorytellerStoryVersion } from "@/types/storyteller.ts";
+import { useTranslation } from "react-i18next";
 
 export function StorytellerReaderHistory({
   versions,
@@ -17,17 +18,18 @@ export function StorytellerReaderHistory({
   storyId: string;
   onSelect: () => void;
 }) {
+  const { t, i18n } = useTranslation();
   if (loading) {
     return (
       <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-        載入版本中...
+        {t("web.reader.historyLoading")}
       </Typography>
     );
   }
   if (versions.length === 0) {
     return (
       <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-        尚無編輯歷史。
+        {t("web.reader.historyEmpty")}
       </Typography>
     );
   }
@@ -37,8 +39,8 @@ export function StorytellerReaderHistory({
       {versions.map((version, index) => {
         const label =
           index === 0
-            ? `第 ${versions.length} 版（最新）`
-            : `第 ${versions.length - index} 版`;
+            ? t("web.reader.latestVersion", { version: versions.length })
+            : t("web.reader.version", { version: versions.length - index });
         return (
           <Box
             key={version.id}
@@ -58,7 +60,7 @@ export function StorytellerReaderHistory({
           >
             <Typography variant="body2">{label}</Typography>
             <Typography variant="caption" color="text.secondary" noWrap>
-              {formatStorytellerDate(version.created_at)}
+              {formatStorytellerDate(version.created_at, i18n.resolvedLanguage)}
             </Typography>
           </Box>
         );

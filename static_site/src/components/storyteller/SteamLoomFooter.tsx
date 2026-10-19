@@ -1,6 +1,7 @@
 import ForumOutlinedIcon from "@mui/icons-material/ForumOutlined";
 import { Box, Link, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { STORYTELLER_ASSISTANT_AVATAR_SRC } from "@/helpers/storytellerMascot.ts";
@@ -9,6 +10,7 @@ const DISCORD_INVITE_URL = "https://discord.gg/yqxjEx5kJ";
 
 /** SteamLoom 共用品牌頁尾；compact 版本可放進固定高度的工作台外殼。 */
 export function SteamLoomFooter({ compact = false }: { compact?: boolean }) {
+  const { t } = useTranslation();
   return (
     <Box
       component="footer"
@@ -31,7 +33,7 @@ export function SteamLoomFooter({ compact = false }: { compact?: boolean }) {
           <Box
             component="img"
             src={STORYTELLER_ASSISTANT_AVATAR_SRC}
-            alt="梭梭"
+            alt={t("web.footer.mascotAlt")}
             sx={{
               width: compact ? 32 : 48,
               height: compact ? 32 : 48,
@@ -59,7 +61,7 @@ export function SteamLoomFooter({ compact = false }: { compact?: boolean }) {
                 lineHeight: 1.45,
               }}
             >
-              寫故事、整理設定，讓世界持續生長。
+              {t("web.footer.tagline")}
             </Typography>
           </Stack>
         </Stack>

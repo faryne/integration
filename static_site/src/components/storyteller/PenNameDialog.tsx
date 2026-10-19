@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Button,
   Dialog,
@@ -19,6 +20,7 @@ interface PenNameDialogProps {
 }
 
 export function PenNameDialog({ open, onCompleted }: PenNameDialogProps) {
+  const { t } = useTranslation();
   const [penName, setPenName] = useState("");
   const { mutate: saveProfile, isPending } = useSaveStorytellerUserProfile();
 
@@ -42,16 +44,16 @@ export function PenNameDialog({ open, onCompleted }: PenNameDialogProps) {
 
   return (
     <Dialog open={open} disableEscapeKeyDown>
-      <DialogTitle>設定筆名</DialogTitle>
+      <DialogTitle>{t("web.onboarding.penNameTitle")}</DialogTitle>
       <DialogContent>
         <DialogContentText sx={{ mb: 2 }}>
-          歡迎使用 {STORYTELLER_APP_NAME}！在開始創作之前，請先設定您的筆名。
+          {t("web.onboarding.penNameWelcome", { appName: STORYTELLER_APP_NAME })}
         </DialogContentText>
         <TextField
           autoFocus
           required
           margin="dense"
-          label="筆名"
+          label={t("web.onboarding.penName")}
           fullWidth
           variant="outlined"
           value={penName}
@@ -65,7 +67,7 @@ export function PenNameDialog({ open, onCompleted }: PenNameDialogProps) {
           variant="contained"
           disabled={!penName.trim() || isPending}
         >
-          確定
+          {t("web.common.confirm")}
         </Button>
       </DialogActions>
     </Dialog>

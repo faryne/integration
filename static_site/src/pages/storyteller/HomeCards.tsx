@@ -11,6 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { useDeleteStorytellerAgent } from "@/apis/storyteller.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
@@ -33,7 +34,7 @@ import type {
 
 const agentPromptSummaryLength = 120;
 
-function agentPromptPlainTextSummary(prompt: string) {
+function agentPromptPlainTextSummary(prompt: string, emptyLabel: string) {
   // Skill 卡片只顯示 Prompt 摘要，避免 Markdown 或 HTML-like 語法影響列表掃描。
   const plainText = prompt
     .replace(/<[^>]*>/g, " ")
@@ -44,7 +45,7 @@ function agentPromptPlainTextSummary(prompt: string) {
     .replace(/\s+/g, " ")
     .trim();
   if (!plainText) {
-    return "未設定 Prompt 摘要。";
+    return emptyLabel;
   }
   const characters = Array.from(plainText);
   return characters.length > agentPromptSummaryLength
@@ -53,6 +54,7 @@ function agentPromptPlainTextSummary(prompt: string) {
 }
 
 export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
+  const { t } = useTranslation();
   const { appearance } = useStorytellerAppearance();
   const navigate = useNavigate();
   const visibilityLabel = STORYTELLER_VISIBILITY_LABELS;
@@ -64,13 +66,13 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
           icon={
             <Box
               component="img"
-              alt="梭梭"
+              alt={t("web.home.cards.mascotAlt")}
               src={storytellerMascotSrc("empty", appearance, "256")}
               sx={{ width: 96, height: 96, objectFit: "contain" }}
             />
           }
-          title="目前還沒有創作專案"
-          description="可以使用上方的「建立專案」開始建立第一個創作專案。"
+          title={t("web.home.cards.noProjects")}
+          description={t("web.home.cards.noProjectsDescription")}
         />
       ) : (
         <Grid container spacing={2}>
@@ -103,6 +105,7 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
 }
 
 export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
+  const { t, i18n } = useTranslation();
   const deleteAgent = useDeleteStorytellerAgent();
   const [deleteError, setDeleteError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -113,7 +116,7 @@ export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
   const rows = agents.map((agent) => ({
     id: agent.id,
     name: agent.name,
-    promptSummary: agentPromptPlainTextSummary(agent.default_prompt),
+    promptSummary: agentPromptPlainTextSummary(agent.default_prompt, t("web.home.cards.noPrompt")),
     enabled: !agent.is_deleted,
     updatedAt: agent.updated_at,
     apiBacked: true,
@@ -124,8 +127,8 @@ export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
       {rows.length === 0 ? (
         <CustomEmptyState
           icon={<SmartToyIcon fontSize="large" />}
-          title="目前還沒有 Skill"
-          description="可以使用上方的「建立 Skill」新增可在故事編輯器中使用的 Skill。"
+          title={t("web.home.cards.noSkills")}
+          description={t("web.home.cards.noSkillsDescription")}
         />
       ) : (
         <Grid container spacing={2}>
@@ -166,7 +169,7 @@ export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
                     {agent.promptSummary}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    更新於 {formatStorytellerDate(agent.updatedAt)}
+                    {t("web.home.cards.updated", { date: formatStorytellerDate(agent.updatedAt, i18n.resolvedLanguage) })}
                   </Typography>
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                     <Button
@@ -177,7 +180,7 @@ export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
                       startIcon={<EditIcon />}
                       disabled={!agent.apiBacked}
                     >
-                      編輯
+                      {t("web.common.edit")}
                     </Button>
                     <Button
                       size="small"
@@ -193,7 +196,7 @@ export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
                         })
                       }
                     >
-                      刪除
+                      {t("web.common.delete")}
                     </Button>
                   </Stack>
                 </Stack>
@@ -205,10 +208,10 @@ export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
       {deleteTarget && (
         <StorytellerConfirmNameDialog
           open
-          title="刪除 Skill"
-          description="刪除後此 Skill 將無法在故事編輯器中使用。請輸入 Skill 名稱確認。"
+          title={t("web.home.cards.deleteSkill")}
+          description={t("web.home.cards.deleteSkillDescription")}
           confirmName={deleteTarget.name}
-          confirmLabel="刪除 Skill"
+          confirmLabel={t("web.home.cards.deleteSkill")}
           loading={deleteAgent.isPending}
           onClose={() => setDeleteTarget(null)}
           onConfirm={() => {
@@ -218,7 +221,7 @@ export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
             }
             deleteAgent.mutate(deleteTarget.id, {
               onSuccess: () => setDeleteTarget(null),
-              onError: () => setDeleteError("刪除 Skill 失敗，請重試。"),
+              onError: () => setDeleteError(t("web.home.cards.deleteSkillFailed")),
             });
           }}
         />

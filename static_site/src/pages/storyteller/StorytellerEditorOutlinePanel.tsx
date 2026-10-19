@@ -23,6 +23,7 @@ import {
 import { alpha } from "@mui/material/styles";
 import type { Editor } from "@tiptap/core";
 import { useDeferredValue, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 
 import type { StorytellerWritingBookmark } from "@/types/storyteller.ts";
@@ -47,9 +48,9 @@ interface OutlineListItem {
   missing?: boolean;
 }
 
-function previewText(text: string): string {
+function previewText(text: string, emptyParagraph: string): string {
   const trimmed = text.replace(/\s+/g, " ").trim();
-  if (!trimmed) return "（空白段落）";
+  if (!trimmed) return emptyParagraph;
   return trimmed.length > PREVIEW_CHARS
     ? `${trimmed.slice(0, PREVIEW_CHARS)}…`
     : trimmed;
@@ -58,13 +59,15 @@ function previewText(text: string): string {
 function mergeOutlineItems(
   outline: ReturnType<typeof documentOutline>,
   bookmarks: StorytellerWritingBookmark[],
+  emptyParagraph: string,
+  untitled: string,
 ): OutlineListItem[] {
   const items: OutlineListItem[] = outline.sections.map((section) => ({
     key: `heading-${section.markerId}`,
     kind: "heading",
     markerId: section.markerId,
     line: section.start,
-    text: section.title || "（無標題文字）",
+    text: section.title || untitled,
     level: section.level,
   }));
   for (const bookmark of bookmarks) {
@@ -76,7 +79,7 @@ function mergeOutlineItems(
       line: paragraph?.line ?? null,
       text: bookmark.note?.trim()
         ? bookmark.note.trim()
-        : previewText(paragraph?.text ?? ""),
+        : previewText(paragraph?.text ?? "", emptyParagraph),
       note: bookmark.note,
       missing: !paragraph,
     });
@@ -123,11 +126,17 @@ export function StorytellerEditorOutlinePanel({
   onBackToFull,
   onJumpOutside,
 }: StorytellerEditorOutlinePanelProps) {
+  const { t } = useTranslation();
   // 面板開著時每次打字都會重新解析全文，延後到閒置時再算，不拖慢打字
   const deferredContent = useDeferredValue(content);
   const items = useMemo(
-    () => mergeOutlineItems(documentOutline(deferredContent), bookmarks),
-    [deferredContent, bookmarks],
+    () => mergeOutlineItems(
+      documentOutline(deferredContent),
+      bookmarks,
+      t("writer:editor.outline.emptyParagraph"),
+      t("writer:editor.outline.untitled"),
+    ),
+    [deferredContent, bookmarks, t],
   );
   const [editing, setEditing] = useState<OutlineListItem | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
@@ -152,7 +161,7 @@ export function StorytellerEditorOutlinePanel({
       color="text.disabled"
       sx={{ flexShrink: 0, mx: 0.5 }}
     >
-      全文
+      {t("writer:editor.outline.fullDocument")}
     </Typography>
   );
 
@@ -179,7 +188,7 @@ export function StorytellerEditorOutlinePanel({
       }}
     >
       <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 700 }}>
-        大綱與書籤
+        {t("writer:editor.outline.title")}
       </Typography>
       {scope && (
         <Stack
@@ -197,24 +206,26 @@ export function StorytellerEditorOutlinePanel({
           }}
         >
           <Typography variant="caption" noWrap>
-            目前只編輯：{scope.title || "（無標題文字）"}
+            {t("writer:editor.outline.editingOnly", {
+              title: scope.title || t("writer:editor.outline.untitled"),
+            })}
           </Typography>
           <Button
             size="small"
             onClick={onBackToFull}
             sx={{ flexShrink: 0, minWidth: 0, py: 0 }}
           >
-            回到全文
+            {t("writer:editor.outline.backToFull")}
           </Button>
         </Stack>
       )}
       {loading ? (
         <Typography variant="body2" color="text.secondary">
-          載入書籤中…
+          {t("writer:editor.outline.loading")}
         </Typography>
       ) : items.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          還沒有標題或書籤。把段落設成標題，或在段落上加入書籤，就會出現在這裡。
+          {t("writer:editor.outline.empty")}
         </Typography>
       ) : (
         <List dense disablePadding>
@@ -255,13 +266,13 @@ export function StorytellerEditorOutlinePanel({
                       color="primary.main"
                       sx={{ flexShrink: 0, mx: 0.5 }}
                     >
-                      編輯中
+                      {t("writer:editor.outline.editing")}
                     </Typography>
                   ) : (
-                    <Tooltip title="只編輯這段">
+                    <Tooltip title={t("writer:editor.outline.editSection")}>
                       <IconButton
                         size="small"
-                        aria-label="只編輯這段"
+                        aria-label={t("writer:editor.outline.editSection")}
                         onClick={(event) => {
                           event.stopPropagation();
                           onEditSection(item.markerId);
@@ -302,7 +313,7 @@ export function StorytellerEditorOutlinePanel({
                 </ListItemIcon>
                 <ListItemText
                   primary={
-                    item.missing ? "找不到這個位置了，可能已被刪除" : item.text
+                    item.missing ? t("writer:editor.outline.missing") : item.text
                   }
                   primaryTypographyProps={{
                     variant: "body2",
@@ -321,20 +332,20 @@ export function StorytellerEditorOutlinePanel({
                   onClick={(event) => event.stopPropagation()}
                 >
                   {!item.missing && (
-                    <Tooltip title="編輯筆記">
+                    <Tooltip title={t("writer:editor.outline.editNote")}>
                       <IconButton
                         size="small"
-                        aria-label="編輯筆記"
+                        aria-label={t("writer:editor.outline.editNote")}
                         onClick={() => openEdit(item)}
                       >
                         <EditIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
                   )}
-                  <Tooltip title="刪除書籤">
+                  <Tooltip title={t("writer:editor.outline.deleteBookmark")}>
                     <IconButton
                       size="small"
-                      aria-label="刪除書籤"
+                      aria-label={t("writer:editor.outline.deleteBookmark")}
                       onClick={() => setDeleting(item)}
                     >
                       <DeleteIcon fontSize="small" />
@@ -353,7 +364,7 @@ export function StorytellerEditorOutlinePanel({
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle>編輯書籤筆記</DialogTitle>
+        <DialogTitle>{t("writer:editor.bookmark.edit")}</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
@@ -361,15 +372,15 @@ export function StorytellerEditorOutlinePanel({
             multiline
             minRows={3}
             margin="dense"
-            label="筆記（可留空）"
+            label={t("writer:editor.bookmark.note")}
             value={noteDraft}
             onChange={(event) => setNoteDraft(event.target.value)}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditing(null)}>取消</Button>
+          <Button onClick={() => setEditing(null)}>{t("writer:common.cancel")}</Button>
           <Button variant="contained" onClick={confirmEdit}>
-            儲存
+            {t("writer:common.save")}
           </Button>
         </DialogActions>
       </Dialog>
@@ -377,13 +388,13 @@ export function StorytellerEditorOutlinePanel({
       <StorytellerMascotDialog
         open={deleting !== null}
         state="danger"
-        eyebrow="刪除書籤"
-        title="確定要刪除這筆書籤？"
-        description="書籤與筆記會一併移除，此操作無法復原。"
+        eyebrow={t("writer:editor.outline.deleteBookmark")}
+        title={t("writer:editor.outline.deleteTitle")}
+        description={t("writer:editor.outline.deleteDescription")}
         onClose={() => setDeleting(null)}
         actions={
           <>
-            <Button onClick={() => setDeleting(null)}>取消</Button>
+            <Button onClick={() => setDeleting(null)}>{t("writer:common.cancel")}</Button>
             <Button
               color="error"
               variant="contained"
@@ -393,7 +404,7 @@ export function StorytellerEditorOutlinePanel({
                 setDeleting(null);
               }}
             >
-              刪除
+              {t("writer:common.delete")}
             </Button>
           </>
         }

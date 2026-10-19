@@ -1,6 +1,7 @@
 import TextFieldsIcon from "@mui/icons-material/TextFields";
 import { IconButton, Tooltip } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { StorytellerResponsivePopover } from "@/pages/storyteller/StorytellerResponsivePopover.tsx";
 import { StorytellerTypographySettings } from "@/pages/storyteller/StorytellerTypographySettings.tsx";
@@ -13,13 +14,14 @@ export function StorytellerEditorTypographyButton({
   placement: "top" | "bottom";
 }) {
   const { preferences, updatePreferences } = useStorytellerEditorPreferences();
+  const { t } = useTranslation();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
   return (
     <>
-      <Tooltip title="文字設定">
+      <Tooltip title={t("writer:editor.typography.title")}>
         <IconButton
-          aria-label="文字設定"
+          aria-label={t("writer:editor.typography.title")}
           aria-expanded={Boolean(anchorEl)}
           size="small"
           onClick={(event) => setAnchorEl(event.currentTarget)}
@@ -30,7 +32,7 @@ export function StorytellerEditorTypographyButton({
       <StorytellerResponsivePopover
         anchorEl={anchorEl}
         onClose={() => setAnchorEl(null)}
-        title="文字設定"
+        title={t("writer:editor.typography.title")}
         width={340}
         // 底部工具列（工作台）往上開，頂部工具列（獨立頁、圖像描述對話框）往下開
         placement={placement === "bottom" ? "above" : "below"}
@@ -39,7 +41,7 @@ export function StorytellerEditorTypographyButton({
           preferences={preferences}
           onChange={updatePreferences}
           showMeasure={false}
-          caption="只影響編輯區的顯示，不會改到作品內容；閱讀頁另有自己的設定。"
+          caption={t("writer:editor.typography.editorCaption")}
         />
       </StorytellerResponsivePopover>
     </>

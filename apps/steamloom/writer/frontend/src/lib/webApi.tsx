@@ -7,6 +7,7 @@ import axios, { AxiosError, AxiosHeaders, type AxiosAdapter, type AxiosResponse 
 import { useEffect, useState, type ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { backend, errorMessage, isNotLoggedIn } from "@writer/lib/backend.ts";
+import i18n from "@writer/i18n/index.ts";
 
 // 讓網站的 API hook（static_site/src/apis/storyteller/*，axios＋react-query）直接在 Writer 裡跑：
 // axios 的 adapter 換成走 Go 綁定 ApiProxy，由 Go 帶 Bearer 打同一組 /storyteller 路由，token 不進 JS、不用開 CORS。
@@ -25,11 +26,11 @@ const writerAdapter: AxiosAdapter = async (config) => {
   // getUri 會把 params 序列化進 query string，跟瀏覽器實際送出的網址一致
   const url = axios.getUri(config);
   if (!url.startsWith(`${storytellerPrefix}/`)) {
-    throw new AxiosError(`Writer 不支援轉發這個網址：${url}`, AxiosError.ERR_NOT_SUPPORT, config);
+    throw new AxiosError(i18n.t("app.apiProxy.unsupportedUrl", { url }), AxiosError.ERR_NOT_SUPPORT, config);
   }
   // transformRequest 跑完後物件已經是 JSON 字串；不是字串就是 FormData 之類，Go 那邊無法轉發
   if (config.data != null && typeof config.data !== "string") {
-    throw new AxiosError("Writer 轉發 API 只支援 JSON body", AxiosError.ERR_NOT_SUPPORT, config);
+    throw new AxiosError(i18n.t("app.apiProxy.jsonOnly"), AxiosError.ERR_NOT_SUPPORT, config);
   }
   const method = (config.method ?? "get").toUpperCase();
   let proxied;

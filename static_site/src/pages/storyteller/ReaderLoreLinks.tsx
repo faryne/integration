@@ -14,6 +14,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { useId, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import {
   readerLorePath,
@@ -77,6 +78,7 @@ export function ReaderLoreLinkProvider({
   onLoreRead: (loreId: string) => void;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [card, setCard] = useState<{
@@ -188,7 +190,7 @@ export function ReaderLoreLinkProvider({
                     color="secondary"
                     onClick={() => openPanel(cardLore)}
                   >
-                    看完整設定
+                    {t("web.reader.fullLore")}
                   </Button>
                   <Button
                     size="small"
@@ -196,7 +198,7 @@ export function ReaderLoreLinkProvider({
                     to={readerLorePath(basePath, cardLore.id)}
                     onClick={() => setCard(null)}
                   >
-                    設定頁
+                    {t("web.reader.lorePage")}
                   </Button>
                 </Stack>
               </>
@@ -243,6 +245,7 @@ export function ReaderLoreLinkProvider({
 }
 
 function LoreEyebrow({ collectionName }: { collectionName?: string }) {
+  const { t } = useTranslation();
   return (
     <Stack
       direction="row"
@@ -252,7 +255,7 @@ function LoreEyebrow({ collectionName }: { collectionName?: string }) {
     >
       <AutoStoriesIcon sx={{ fontSize: 16 }} />
       <Typography variant="overline" fontWeight={800} lineHeight={1.4}>
-        設定・{collectionName ?? "未歸類"}
+        {t("web.reader.loreEyebrow", { collection: collectionName ?? t("web.reader.uncategorized") })}
       </Typography>
     </Stack>
   );
@@ -280,6 +283,7 @@ function LorePanel({
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const footnoteIdPrefix = useId();
   const footnoteNumbering = computeFootnoteNumbering(lore.content);
   return (
@@ -291,7 +295,7 @@ function LorePanel({
         sx={{ px: 2, py: 1, borderBottom: 1, borderColor: "divider" }}
       >
         <LoreEyebrow collectionName={collectionName} />
-        <IconButton aria-label="關閉設定面板" onClick={onClose}>
+        <IconButton aria-label={t("web.reader.closeLorePanel")} onClick={onClose}>
           <CloseIcon />
         </IconButton>
       </Stack>
@@ -335,7 +339,7 @@ function LorePanel({
             onClick={onClose}
             endIcon={<OpenInNewIcon fontSize="small" />}
           >
-            在設定頁打開
+            {t("web.reader.openLorePage")}
           </Button>
         </Box>
       </Stack>

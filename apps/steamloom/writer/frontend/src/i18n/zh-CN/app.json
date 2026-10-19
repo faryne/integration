@@ -3,6 +3,7 @@
   "account": {
     "logout": "退出登录"
   },
+  "apiProxy": { "unsupportedUrl": "Writer 不支持转发此网址：{{url}}", "jsonOnly": "Writer 转发 API 仅支持 JSON body" },
   "update": {
     "title": "有新的 Writer 版本",
     "message": "SteamLoom Writer {{latest}} 已经可以使用，当前版本是 {{current}}。",

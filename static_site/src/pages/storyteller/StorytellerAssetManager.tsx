@@ -36,6 +36,7 @@ import type { SxProps, Theme } from "@mui/material";
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useConfirmStorytellerAssetReplace,
   useDeleteStorytellerAssetCollection,
@@ -92,10 +93,10 @@ function formatFileSize(size: number) {
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
 }
 
-function imageSizeLabel(asset: StorytellerAsset) {
+function imageSizeLabel(asset: StorytellerAsset, unknownLabel: string) {
   const width = Number(asset.metadata?.width ?? 0);
   const height = Number(asset.metadata?.height ?? 0);
-  return width > 0 && height > 0 ? `${width} × ${height}` : "尺寸未記錄";
+  return width > 0 && height > 0 ? `${width} × ${height}` : unknownLabel;
 }
 
 function editForm(asset: StorytellerAsset): StorytellerAssetUpdateRequest {
@@ -137,6 +138,7 @@ export function StorytellerAssetManager({
 }: {
   projectPublicId: string;
 }) {
+  const { t, i18n } = useTranslation();
   const replaceFileInputRef = useRef<HTMLInputElement | null>(null);
   const [page, setPage] = useState(1);
   const [keyword, setKeyword] = useState("");
@@ -276,14 +278,16 @@ export function StorytellerAssetManager({
         setPage(1);
       }
       setSnack({
-        message: editingCollection ? "資產集已更新。" : "資產集已建立。",
+        message: editingCollection
+          ? t("web.assetManager.messages.collectionUpdated")
+          : t("web.assetManager.messages.collectionCreated"),
         severity: "success",
       });
       setCollectionDialogOpen(false);
       setEditingCollection(null);
     } catch (error) {
       setSnack({
-        message: errorMessage(error, "資產集儲存失敗。"),
+        message: errorMessage(error, t("web.assetManager.errors.collectionSave")),
         severity: "error",
       });
     }
@@ -299,11 +303,17 @@ export function StorytellerAssetManager({
         setActiveCollectionId("");
         setPage(1);
       }
-      setSnack({ message: "資產集已刪除。", severity: "success" });
+      setSnack({
+        message: t("web.assetManager.messages.collectionDeleted"),
+        severity: "success",
+      });
       setCollectionDeleteTarget(null);
     } catch (error) {
       setSnack({
-        message: errorMessage(error, "資產集刪除失敗。"),
+        message: errorMessage(
+          error,
+          t("web.assetManager.errors.collectionDelete"),
+        ),
         severity: "error",
       });
     }
@@ -325,10 +335,13 @@ export function StorytellerAssetManager({
       });
       setAssetMoveMenu(null);
       if (!quietSuccess)
-        setSnack({ message: "資產已移動。", severity: "success" });
+        setSnack({
+          message: t("web.assetManager.messages.assetMoved"),
+          severity: "success",
+        });
     } catch (error) {
       setSnack({
-        message: errorMessage(error, "資產移動失敗。"),
+        message: errorMessage(error, t("web.assetManager.errors.assetMove")),
         severity: "error",
       });
     }
@@ -374,7 +387,10 @@ export function StorytellerAssetManager({
 
   function chooseAssetReplace(asset: StorytellerAsset) {
     if (asset.asset_type !== "image") {
-      setSnack({ message: "目前只支援替換圖片資產。", severity: "error" });
+      setSnack({
+        message: t("web.assetManager.errors.replaceImageOnly"),
+        severity: "error",
+      });
       return;
     }
     setAssetMoveMenu(null);
@@ -393,7 +409,7 @@ export function StorytellerAssetManager({
     }
     if (!STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES.includes(file.type)) {
       setSnack({
-        message: "請選擇 JPEG／PNG／WebP／GIF 圖片檔。",
+        message: t("web.assetManager.errors.invalidImageType"),
         severity: "error",
       });
       setReplacePickerTarget(null);
@@ -401,7 +417,10 @@ export function StorytellerAssetManager({
     }
     if (file.size > STORYTELLER_IMAGE_PAGE_MAX_BYTES) {
       const maxMB = Math.floor(STORYTELLER_IMAGE_PAGE_MAX_BYTES / 1024 / 1024);
-      setSnack({ message: `單張檔案不能超過 ${maxMB}MB。`, severity: "error" });
+      setSnack({
+        message: t("web.assetManager.errors.fileTooLarge", { maxMB }),
+        severity: "error",
+      });
       setReplacePickerTarget(null);
       return;
     }
@@ -421,12 +440,15 @@ export function StorytellerAssetManager({
         mimeType: file.type,
       });
       setSnack({
-        message: "新檔案已上傳，確認後才會取代原資產。",
+        message: t("web.assetManager.messages.replaceUploaded"),
         severity: "info",
       });
     } catch (error) {
       setSnack({
-        message: errorMessage(error, "替換檔案上傳失敗，原資產未變更。"),
+        message: errorMessage(
+          error,
+          t("web.assetManager.errors.replaceUpload"),
+        ),
         severity: "error",
       });
     } finally {
@@ -447,11 +469,14 @@ export function StorytellerAssetManager({
         assetPublicId: editingAsset.public_id,
         input: form,
       });
-      setSnack({ message: "資產資訊已更新。", severity: "success" });
+      setSnack({
+        message: t("web.assetManager.messages.assetUpdated"),
+        severity: "success",
+      });
       setEditingAsset(null);
     } catch (error) {
       setSnack({
-        message: errorMessage(error, "資產資訊更新失敗。"),
+        message: errorMessage(error, t("web.assetManager.errors.assetUpdate")),
         severity: "error",
       });
     }
@@ -463,10 +488,13 @@ export function StorytellerAssetManager({
     }
     try {
       await deleteAsset.mutateAsync(deleteTarget.public_id);
-      setSnack({ message: "資產已刪除。", severity: "success" });
+      setSnack({
+        message: t("web.assetManager.messages.assetDeleted"),
+        severity: "success",
+      });
       setDeleteTarget(null);
     } catch (error) {
-      const message = errorMessage(error, "資產刪除失敗。");
+      const message = errorMessage(error, t("web.assetManager.errors.assetDelete"));
       setDeleteError(message);
       setSnack({
         message,
@@ -486,10 +514,13 @@ export function StorytellerAssetManager({
       });
       await assetsQuery.refetch();
       setReplaceConfirmTarget(null);
-      setSnack({ message: "資產檔案已取代。", severity: "success" });
+      setSnack({
+        message: t("web.assetManager.messages.fileReplaced"),
+        severity: "success",
+      });
     } catch (error) {
       setSnack({
-        message: errorMessage(error, "資產檔案取代失敗，原資產未變更。"),
+        message: errorMessage(error, t("web.assetManager.errors.fileReplace")),
         severity: "error",
       });
     }
@@ -509,8 +540,8 @@ export function StorytellerAssetManager({
     asset.collection_id
       ? (collections.find(
           (collection) => collection.public_id === asset.collection_id,
-        )?.name ?? "資產集")
-      : "未分類";
+        )?.name ?? t("web.assetManager.collection.fallback"))
+      : t("web.assetManager.uncategorized");
 
   return (
     <Stack spacing={2.5}>
@@ -521,12 +552,12 @@ export function StorytellerAssetManager({
         alignItems={{ xs: "stretch", sm: "center" }}
       >
         <Typography variant="h6" fontWeight={800}>
-          資產集
+          {t("web.assetManager.title")}
         </Typography>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <TextField
             size="small"
-            label="搜尋資產"
+            label={t("web.assetManager.search")}
             value={keyword}
             onChange={(event) => {
               setKeyword(event.target.value);
@@ -538,14 +569,14 @@ export function StorytellerAssetManager({
             startIcon={<RefreshIcon />}
             onClick={() => void assetsQuery.refetch()}
           >
-            重新整理
+            {t("web.assetManager.refresh")}
           </Button>
           <Button
             variant="outlined"
             startIcon={<CreateNewFolderIcon />}
             onClick={openCreateCollection}
           >
-            建立資產集
+            {t("web.assetManager.collection.create")}
           </Button>
           <ButtonGroup
             variant="contained"
@@ -557,7 +588,9 @@ export function StorytellerAssetManager({
               onClick={(event) => openUploadMenu(event.currentTarget)}
               sx={{ flex: { xs: 1, sm: "initial" } }}
             >
-              {uploadPhase === "uploading" ? "上傳中" : "上傳"}
+              {uploadPhase === "uploading"
+                ? t("web.assetManager.uploading")
+                : t("web.common.upload")}
             </Button>
             <Button
               size="small"
@@ -577,7 +610,7 @@ export function StorytellerAssetManager({
               <ListItemIcon>
                 <ImageIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText>圖像</ListItemText>
+              <ListItemText>{t("web.assetManager.image")}</ListItemText>
             </MenuItem>
           </Menu>
           <Box
@@ -609,7 +642,7 @@ export function StorytellerAssetManager({
           <ListItemIcon>
             <FileUploadIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>取代檔案</ListItemText>
+          <ListItemText>{t("web.assetManager.replaceFile")}</ListItemText>
         </MenuItem>
         <Divider />
         <MenuItem
@@ -624,7 +657,7 @@ export function StorytellerAssetManager({
           <ListItemIcon>
             <FolderIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>移到未分類</ListItemText>
+          <ListItemText>{t("web.assetManager.moveUncategorized")}</ListItemText>
         </MenuItem>
         {collections.map((collection) => (
           <MenuItem
@@ -659,9 +692,9 @@ export function StorytellerAssetManager({
             setPage(1);
           }}
         >
-          全部
+          {t("web.common.all")}
         </Button>
-        <Tooltip title="可將資產拖曳到這裡，移到未分類">
+        <Tooltip title={t("web.assetManager.uncategorizedDropHint")}>
           <Button
             size="small"
             variant={
@@ -678,7 +711,7 @@ export function StorytellerAssetManager({
             }}
             sx={dropTargetSx(canDropDraggingAsset(""))}
           >
-            未分類
+            {t("web.assetManager.uncategorized")}
           </Button>
         </Tooltip>
         {collections.map((collection) => (
@@ -701,8 +734,13 @@ export function StorytellerAssetManager({
             <Tooltip
               title={
                 collection.description
-                  ? `可將資產拖曳到「${collection.name}」。用途：${collection.description}`
-                  : `可將資產拖曳到「${collection.name}」`
+                  ? t("web.assetManager.collection.dropHintWithDescription", {
+                      name: collection.name,
+                      description: collection.description,
+                    })
+                  : t("web.assetManager.collection.dropHint", {
+                      name: collection.name,
+                    })
               }
             >
               <Button
@@ -728,7 +766,7 @@ export function StorytellerAssetManager({
                 </Box>
               </Button>
             </Tooltip>
-            <Tooltip title="編輯資產集">
+            <Tooltip title={t("web.assetManager.collection.edit")}>
               <Button onClick={() => openEditCollection(collection)}>
                 <EditIcon fontSize="small" />
               </Button>
@@ -736,8 +774,8 @@ export function StorytellerAssetManager({
             <Tooltip
               title={
                 collection.asset_count > 0
-                  ? "資產集內仍有資產，不能刪除"
-                  : "刪除資產集"
+                  ? t("web.assetManager.collection.deleteBlocked")
+                  : t("web.assetManager.collection.delete")
               }
             >
               <Button
@@ -760,7 +798,9 @@ export function StorytellerAssetManager({
               justifyContent="space-between"
               alignItems="center"
             >
-              <Typography fontWeight={800}>圖片上傳中</Typography>
+              <Typography fontWeight={800}>
+                {t("web.assetManager.imageUploading")}
+              </Typography>
               <Typography variant="body2" color="text.secondary">
                 {overallProgress}%
               </Typography>
@@ -806,20 +846,22 @@ export function StorytellerAssetManager({
 
       {assetsQuery.isLoading ? (
         <Paper variant="outlined" sx={{ p: 4, borderRadius: 1 }}>
-          <Typography color="text.secondary">正在載入資產...</Typography>
+          <Typography color="text.secondary">
+            {t("web.assetManager.loading")}
+          </Typography>
         </Paper>
       ) : assets.length === 0 ? (
         <CustomEmptyState
           icon={<ImageIcon />}
-          title="尚未有資產"
-          description="上傳圖片後，會在這裡管理標題、替代文字與備註。"
+          title={t("web.assetManager.emptyTitle")}
+          description={t("web.assetManager.emptyDescription")}
         />
       ) : (
         <Grid container spacing={2}>
           {assets.map((asset) => (
             <Grid key={asset.public_id} size={{ xs: 12, sm: 6, lg: 4 }}>
               <Tooltip
-                title="可拖曳到上方資產集移動"
+                title={t("web.assetManager.dragHint")}
                 enterDelay={450}
                 disableInteractive
               >
@@ -872,14 +914,17 @@ export function StorytellerAssetManager({
                         >
                           {asset.title ||
                             asset.original_filename ||
-                            "未命名資產"}
+                            t("web.assetManager.untitled")}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {formatStorytellerDate(asset.created_at)}
+                          {formatStorytellerDate(
+                            asset.created_at,
+                            i18n.resolvedLanguage,
+                          )}
                         </Typography>
                       </Stack>
                       <Stack direction="row" spacing={0.5}>
-                        <Tooltip title="編輯資產資訊">
+                        <Tooltip title={t("web.assetManager.editAsset")}>
                           <IconButton
                             size="small"
                             onClick={() => openEdit(asset)}
@@ -890,8 +935,8 @@ export function StorytellerAssetManager({
                         <Tooltip
                           title={
                             asset.reference_count > 0
-                              ? "仍被作品引用，不能刪除"
-                              : "刪除資產"
+                              ? t("web.assetManager.deleteBlocked")
+                              : t("web.assetManager.deleteAsset")
                           }
                         >
                           <span>
@@ -908,7 +953,7 @@ export function StorytellerAssetManager({
                             </IconButton>
                           </span>
                         </Tooltip>
-                        <Tooltip title="資產操作">
+                        <Tooltip title={t("web.assetManager.actions")}>
                           <IconButton
                             size="small"
                             onClick={(event) =>
@@ -939,12 +984,20 @@ export function StorytellerAssetManager({
                         size="small"
                         label={formatFileSize(asset.file_size)}
                       />
-                      <Chip size="small" label={imageSizeLabel(asset)} />
+                      <Chip
+                        size="small"
+                        label={imageSizeLabel(
+                          asset,
+                          t("web.assetManager.unknownDimensions"),
+                        )}
+                      />
                       {asset.reference_count > 0 && (
                         <Chip
                           size="small"
                           color="warning"
-                          label={`引用 ${asset.reference_count}`}
+                          label={t("web.assetManager.references", {
+                            count: asset.reference_count,
+                          })}
                         />
                       )}
                     </Stack>
@@ -987,11 +1040,11 @@ export function StorytellerAssetManager({
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>編輯資產資訊</DialogTitle>
+        <DialogTitle>{t("web.assetManager.editAsset")}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             <TextField
-              label="標題"
+              label={t("web.assetManager.fields.title")}
               value={form.title}
               onChange={(event) =>
                 setForm((current) => ({
@@ -1001,7 +1054,7 @@ export function StorytellerAssetManager({
               }
             />
             <TextField
-              label="替代文字"
+              label={t("web.assetManager.fields.altText")}
               value={form.alt_text}
               onChange={(event) =>
                 setForm((current) => ({
@@ -1011,7 +1064,7 @@ export function StorytellerAssetManager({
               }
             />
             <TextField
-              label="備註"
+              label={t("web.assetManager.fields.notes")}
               value={form.description}
               multiline
               minRows={3}
@@ -1025,13 +1078,17 @@ export function StorytellerAssetManager({
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditingAsset(null)}>取消</Button>
+          <Button onClick={() => setEditingAsset(null)}>
+            {t("web.common.cancel")}
+          </Button>
           <Button
             variant="contained"
             disabled={updateAsset.isPending}
             onClick={() => void saveEdit()}
           >
-            {updateAsset.isPending ? "儲存中" : "儲存"}
+            {updateAsset.isPending
+              ? t("web.assetManager.saving")
+              : t("web.common.save")}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1059,12 +1116,14 @@ export function StorytellerAssetManager({
         fullWidth
       >
         <DialogTitle>
-          {editingCollection ? "編輯資產集" : "建立資產集"}
+          {editingCollection
+            ? t("web.assetManager.collection.edit")
+            : t("web.assetManager.collection.create")}
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             <TextField
-              label="名稱"
+              label={t("web.assetManager.collection.name")}
               value={collectionFormData.name}
               onChange={(event) =>
                 setCollectionFormData((current) => ({
@@ -1074,7 +1133,7 @@ export function StorytellerAssetManager({
               }
             />
             <TextField
-              label="用途筆記"
+              label={t("web.assetManager.collection.description")}
               value={collectionFormData.description}
               multiline
               minRows={3}
@@ -1086,7 +1145,7 @@ export function StorytellerAssetManager({
               }
             />
             <TextField
-              label="排序"
+              label={t("web.assetManager.collection.sort")}
               type="number"
               value={collectionFormData.sort}
               onChange={(event) =>
@@ -1105,29 +1164,31 @@ export function StorytellerAssetManager({
               setEditingCollection(null);
             }}
           >
-            取消
+            {t("web.common.cancel")}
           </Button>
           <Button
             variant="contained"
             disabled={saveCollection.isPending}
             onClick={() => void saveAssetCollection()}
           >
-            {saveCollection.isPending ? "儲存中" : "儲存"}
+            {saveCollection.isPending
+              ? t("web.assetManager.saving")
+              : t("web.common.save")}
           </Button>
         </DialogActions>
       </Dialog>
 
       <StorytellerConfirmNameDialog
         open={Boolean(deleteTarget)}
-        title="刪除資產"
-        description="刪除後這個資產會從資產集移除；已被引用的資產不能刪除。"
+        title={t("web.assetManager.deleteAsset")}
+        description={t("web.assetManager.deleteAssetDescription")}
         confirmName={
           deleteTarget?.title ||
           deleteTarget?.original_filename ||
           deleteTarget?.public_id ||
           ""
         }
-        confirmLabel="刪除"
+        confirmLabel={t("web.common.delete")}
         loading={deleteAsset.isPending}
         error={deleteError}
         onClose={() => {
@@ -1139,10 +1200,10 @@ export function StorytellerAssetManager({
 
       <StorytellerConfirmNameDialog
         open={Boolean(collectionDeleteTarget)}
-        title="刪除資產集"
-        description="刪除前請先把資產集內的資產移到其他資產集或未分類。"
+        title={t("web.assetManager.collection.delete")}
+        description={t("web.assetManager.collection.deleteDescription")}
         confirmName={collectionDeleteTarget?.name ?? ""}
-        confirmLabel="刪除"
+        confirmLabel={t("web.common.delete")}
         loading={deleteCollection.isPending}
         onClose={() => setCollectionDeleteTarget(null)}
         onConfirm={() => void confirmDeleteCollection()}
@@ -1151,21 +1212,25 @@ export function StorytellerAssetManager({
       <StorytellerMascotDialog
         open={Boolean(replaceConfirmTarget)}
         state="danger"
-        toneLabel="舊檔案會被刪除"
-        eyebrow="取代檔案"
-        title="確定要取代這個檔案？"
-        description="確認後舊檔案會被永久刪除，所有引用此資產的地方都會立即顯示新檔案。此操作無法復原。"
+        toneLabel={t("web.assetManager.replace.tone")}
+        eyebrow={t("web.assetManager.replace.eyebrow")}
+        title={t("web.assetManager.replace.title")}
+        description={t("web.assetManager.replace.description")}
         onClose={() => setReplaceConfirmTarget(null)}
         actions={
           <>
-            <Button onClick={() => setReplaceConfirmTarget(null)}>取消</Button>
+            <Button onClick={() => setReplaceConfirmTarget(null)}>
+              {t("web.common.cancel")}
+            </Button>
             <Button
               color="error"
               variant="contained"
               disabled={confirmAssetReplace.isPending}
               onClick={() => void confirmReplaceFile()}
             >
-              {confirmAssetReplace.isPending ? "取代中" : "確認取代"}
+              {confirmAssetReplace.isPending
+                ? t("web.assetManager.replace.replacing")
+                : t("web.assetManager.replace.confirm")}
             </Button>
           </>
         }

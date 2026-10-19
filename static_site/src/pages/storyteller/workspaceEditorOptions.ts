@@ -1,6 +1,7 @@
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { createElement, type ReactNode } from "react";
+import type { TFunction } from "i18next";
 
 // 編輯頁屬性按鈕（ProjectWorkspaceEditorControls.tsx）的選項型別與顯示文字；
 // 獨立成 .ts 是因為元件檔只能 export 元件（react-refresh 規則）。
@@ -15,29 +16,31 @@ export interface WorkspaceEditorSelectOption {
 export const selectedOptionLabel = (
   options: WorkspaceEditorSelectOption[],
   value: string,
-) => options.find((option) => option.value === value)?.label ?? "未設定";
+  fallback = "—",
+) => options.find((option) => option.value === value)?.label ?? fallback;
 
 export const selectedOptionsLabel = (
   options: WorkspaceEditorSelectOption[],
   values: string[],
+  fallback = "—",
 ) =>
   options
     .filter((option) => values.includes(option.value))
     .map((option) => option.label)
-    .join("、") || "未設定";
+    .join("、") || fallback;
 
 // 故事與設定共用的公開狀態選項（draft＝只有作者看得到、completed＝讀者看得到）
 export type PublicationStatus = "draft" | "completed";
 
-export const publicationStatusOptions: WorkspaceEditorSelectOption[] = [
+export const publicationStatusOptions = (t: TFunction): WorkspaceEditorSelectOption[] => [
   {
     value: "draft",
-    label: "未公開",
+    label: t("writer:editor.controls.unpublished"),
     icon: createElement(VisibilityOffIcon, { fontSize: "small" }),
   },
   {
     value: "completed",
-    label: "公開中",
+    label: t("writer:editor.controls.published"),
     icon: createElement(VisibilityIcon, { fontSize: "small" }),
   },
 ];

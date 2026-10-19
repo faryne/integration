@@ -2,6 +2,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { IconButton, Tooltip } from "@mui/material";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 // 工作台側邊列收合用的兩個小元件，網站與 SteamLoom Writer 共用（Writer 透過 alias 直接 import，改這支也會影響 Writer）。
 
@@ -9,14 +10,18 @@ import type { ReactNode } from "react";
 export function WorkspaceSidebarToggle({
   collapsed,
   onToggle,
-  collapseLabel = "收合側邊欄",
-  expandLabel = "展開側邊欄",
+  collapseLabel,
+  expandLabel,
 }: {
   collapsed: boolean;
   onToggle: () => void;
   collapseLabel?: string;
   expandLabel?: string;
 }) {
+  const { t } = useTranslation();
+  collapseLabel ??= t("writer:sidebar.collapse");
+  expandLabel ??= t("writer:sidebar.expand");
+
   return (
     <Tooltip title={collapsed ? expandLabel : collapseLabel}>
       <IconButton

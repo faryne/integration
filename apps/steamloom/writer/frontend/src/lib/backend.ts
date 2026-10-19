@@ -1,6 +1,6 @@
 // Go 端（app.go）綁定方法的薄包裝：統一型別名稱與錯誤判斷，元件不直接碰 wailsjs 產生檔。
 import * as App from "../../wailsjs/go/main/App";
-import type { agent, api, mediaworker, updater } from "../../wailsjs/go/models";
+import type { agent, api, appsettings, mediaworker, updater } from "../../wailsjs/go/models";
 
 export type Profile = api.Profile;
 export type Project = api.Project;
@@ -16,6 +16,7 @@ export type DocumentItem = api.DocumentItem;
 export type Document = api.Document;
 export type Version = api.Version;
 export type UpdateInfo = updater.Info;
+export type ApplicationSettings = appsettings.Settings;
 export type InstalledAgent = agent.Installed;
 export type CodexModel = agent.CodexModel;
 export type AgentTask = agent.Task;

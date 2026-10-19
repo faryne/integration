@@ -2,6 +2,7 @@ import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
 import { Button } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useSaveStorytellerAuthorFavorite,
   useStorytellerAuthorFavorite,
@@ -31,29 +32,30 @@ export function FollowAuthorButton({
   onLoginRequired: () => void;
   onNotify: (message: string, severity?: "success" | "error") => void;
 }) {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const query = useStorytellerAuthorFavorite(disabled ? undefined : penName);
   const save = useSaveStorytellerAuthorFavorite(disabled ? undefined : penName);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const favorited = query.data?.favorited ?? false;
   const followingAs = favorited ? [] : (query.data?.following_as ?? []);
-  const target = showName ? ` ${penName}` : "作者";
+  const target = showName ? ` ${penName}` : t("web.community.author");
   const count = followerCount === undefined ? "" : `（${followerCount}）`;
 
   const label = favorited
-    ? `已追蹤${target}`
+    ? t("web.community.followingAuthor", { target })
     : followingAs.length > 0
-      ? `已以 ${followingAs.join("、")} 追蹤`
-      : `追蹤${target}`;
+      ? t("web.community.followingAs", { names: followingAs.join("、") })
+      : t("web.community.followAuthor", { target });
 
   // 同時以多個筆名追蹤時一次全部取消
   const unfollowPenNames = async () => {
     setConfirmOpen(false);
     try {
       for (const as of followingAs) await save.mutateAsync({ as });
-      onNotify(`已取消以 ${followingAs.join("、")} 追蹤`);
+      onNotify(t("web.community.unfollowedAs", { names: followingAs.join("、") }));
     } catch {
-      onNotify("取消追蹤失敗，請稍後再試。", "error");
+      onNotify(t("web.community.unfollowFailed"), "error");
     }
   };
 
@@ -81,8 +83,8 @@ export function FollowAuthorButton({
           const next = !favorited;
           save.mutate(next, {
             onSuccess: () =>
-              onNotify(next ? `已追蹤 ${penName}` : `已取消追蹤 ${penName}`),
-            onError: () => onNotify("作者追蹤狀態更新失敗，請重試。", "error"),
+              onNotify(t(next ? "web.community.followedName" : "web.community.unfollowedName", { name: penName })),
+            onError: () => onNotify(t("web.community.followUpdateFailed"), "error"),
           });
         }}
       >
@@ -92,19 +94,19 @@ export function FollowAuthorButton({
       <StorytellerMascotDialog
         open={confirmOpen}
         state="neutral"
-        eyebrow="取消追蹤"
-        title={`要取消以 ${followingAs.join("、")} 追蹤 ${penName} 嗎？`}
-        description="你是用筆名追蹤這位作者的，取消後不會改用本人身份追蹤。"
+        eyebrow={t("web.community.unfollow")}
+        title={t("web.community.unfollowTitle", { names: followingAs.join("、"), name: penName })}
+        description={t("web.community.unfollowDescription")}
         onClose={() => setConfirmOpen(false)}
         actions={
           <>
-            <Button onClick={() => setConfirmOpen(false)}>保留</Button>
+            <Button onClick={() => setConfirmOpen(false)}>{t("web.community.keep")}</Button>
             <Button
               variant="contained"
               disabled={save.isPending}
               onClick={() => void unfollowPenNames()}
             >
-              取消追蹤
+              {t("web.community.unfollow")}
             </Button>
           </>
         }

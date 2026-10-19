@@ -4,9 +4,21 @@
 // 是網頁編輯頁自己存的，"mcp:<token label>" 是外部工具透過 MCP 用哪把 Personal
 // Access Token 寫入的。source 可能因為資料庫還沒跑過補欄位的 migration、或本來
 // 就是舊資料而缺值，一律當手動存檔。
+import type { TFunction } from "i18next";
+
 export function storytellerVersionSourceLabel(
   source: string | null | undefined,
+  t?: TFunction,
 ) {
+  if (t) {
+    if (source === "web_auto") return t("writer:editor.history.sources.auto");
+    if (source === "web_agent_apply") return t("writer:editor.history.sources.agent");
+    if (source?.startsWith("mcp:")) {
+      const label = source.slice("mcp:".length);
+      return t(label ? "writer:editor.history.sources.mcpPat" : "writer:editor.history.sources.mcp", { label });
+    }
+    return t("writer:editor.history.sources.manual");
+  }
   if (!source) {
     return "手動存檔";
   }

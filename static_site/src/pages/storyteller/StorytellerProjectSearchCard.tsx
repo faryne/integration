@@ -1,9 +1,9 @@
 import SellIcon from "@mui/icons-material/Sell";
 import { Chip, Link as MuiLink, Paper, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   storytellerProjectRatingColor,
-  storytellerProjectRatingLabel,
   storytellerReaderPath,
   storytellerSearchResultPath,
 } from "@/data/storyteller.ts";
@@ -26,6 +26,7 @@ export function StorytellerProjectSearchCard({
   result,
   onTagClick,
 }: StorytellerProjectSearchCardProps) {
+  const { t } = useTranslation();
   const coverUrl = useGatedCoverUrl(result.cover_url, result.rating);
   const remaining = result.matched_story_count - result.matches.length;
 
@@ -72,13 +73,14 @@ export function StorytellerProjectSearchCard({
           <Chip
             size="small"
             color={storytellerProjectRatingColor(result.rating)}
-            label={storytellerProjectRatingLabel(result.rating)}
+            label={t(`web.search.ratings.${result.rating ?? "general"}`)}
           />
         </Stack>
         <Typography variant="body2" color="text.secondary">
-          {result.matched_story_count} 篇故事符合
-          {formatAuthorNames(result.author_pen_name) &&
-            ` · 作者 ${formatAuthorNames(result.author_pen_name)}`}
+          {t(formatAuthorNames(result.author_pen_name) ? "web.projectCard.matchedStoriesBy" : "web.projectCard.matchedStories", {
+            count: result.matched_story_count,
+            authors: formatAuthorNames(result.author_pen_name),
+          })}
         </Typography>
         <Stack spacing={0.5} sx={{ flex: 1 }}>
           {result.matches.map((match) => (
@@ -95,7 +97,7 @@ export function StorytellerProjectSearchCard({
           ))}
           {remaining > 0 && (
             <Typography variant="caption" color="text.secondary">
-              還有 {remaining} 篇故事符合……
+              {t("web.projectCard.moreMatches", { count: remaining })}
             </Typography>
           )}
         </Stack>

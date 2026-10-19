@@ -15,6 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useEditorLores } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 import {
   isSafeHref,
@@ -49,6 +50,7 @@ export function StorytellerWysiwygLinkDialog({
   onConfirm: (href: string, target?: "_blank") => void;
   onRemove: () => void;
 }) {
+  const { t } = useTranslation();
   const initialLoreId = initialHref ? loreIdFromHref(initialHref) : undefined;
   const [mode, setMode] = useState<LinkMode>(
     initialMode ?? (initialLoreId ? "lore" : "url"),
@@ -79,7 +81,11 @@ export function StorytellerWysiwygLinkDialog({
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>
-        {hadExistingLink ? "編輯連結" : mode === "lore" ? "連到設定" : "加連結"}
+        {hadExistingLink
+          ? t("writer:editor.commands.link.active")
+          : mode === "lore"
+            ? t("writer:editor.commands.lore-link.label")
+            : t("writer:editor.commands.link.label")}
       </DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 0.5 }}>
@@ -90,8 +96,8 @@ export function StorytellerWysiwygLinkDialog({
               value={mode}
               onChange={(_, value: LinkMode | null) => value && setMode(value)}
             >
-              <ToggleButton value="url">網址</ToggleButton>
-              <ToggleButton value="lore">設定</ToggleButton>
+              <ToggleButton value="url">{t("writer:editor.link.url")}</ToggleButton>
+              <ToggleButton value="lore">{t("writer:editor.link.lore")}</ToggleButton>
             </ToggleButtonGroup>
           )}
           {mode === "lore" ? (
@@ -112,20 +118,22 @@ export function StorytellerWysiwygLinkDialog({
                 getOptionLabel={(lore) =>
                   lore.status === "completed"
                     ? lore.title
-                    : `${lore.title}（未公開）`
+                    : t("writer:editor.link.unpublished", { title: lore.title })
                 }
                 isOptionEqualToValue={(option, value) =>
                   option.public_id === value.public_id
                 }
                 noOptionsText={
-                  lores.length === 0 ? "這個專案還沒有設定" : "找不到符合的設定"
+                  lores.length === 0
+                    ? t("writer:editor.link.noLore")
+                    : t("writer:editor.link.noMatch")
                 }
                 renderInput={(params) => (
-                  <TextField {...params} autoFocus label="連到哪一則設定" />
+                  <TextField {...params} autoFocus label={t("writer:editor.link.selectLore")} />
                 )}
               />
               <Typography variant="body2" color="text.secondary">
-                讀者點了會看到這則設定的摘要。設定還沒公開時，讀者只會看到純文字。
+                {t("writer:editor.link.loreHelp")}
               </Typography>
             </>
           ) : (
@@ -133,14 +141,14 @@ export function StorytellerWysiwygLinkDialog({
               <TextField
                 autoFocus
                 fullWidth
-                label="網址"
+                label={t("writer:editor.link.url")}
                 placeholder="https://..."
                 value={hrefDraft}
                 onChange={(event) => setHrefDraft(event.target.value)}
                 error={url !== "" && !isSafeHref(url)}
                 helperText={
                   url !== "" && !isSafeHref(url)
-                    ? "只接受 http:// 或 https:// 開頭的網址；要連到設定請切換到「設定」"
+                    ? t("writer:editor.link.urlHelp")
                     : undefined
                 }
               />
@@ -151,7 +159,7 @@ export function StorytellerWysiwygLinkDialog({
                     onChange={(event) => setOpenInNewTab(event.target.checked)}
                   />
                 }
-                label="在新分頁開啟"
+                label={t("writer:editor.link.newTab")}
               />
             </>
           )}
@@ -165,12 +173,14 @@ export function StorytellerWysiwygLinkDialog({
             startIcon={<LinkOffIcon fontSize="small" />}
             sx={{ mr: "auto" }}
           >
-            移除連結
+            {t("writer:editor.removeLink")}
           </Button>
         )}
-        <Button onClick={onClose}>取消</Button>
+        <Button onClick={onClose}>{t("writer:common.cancel")}</Button>
         <Button variant="contained" onClick={confirm} disabled={!valid}>
-          {hadExistingLink ? "更新連結" : "新增連結"}
+          {hadExistingLink
+            ? t("writer:editor.link.update")
+            : t("writer:editor.link.create")}
         </Button>
       </DialogActions>
     </Dialog>

@@ -3,6 +3,7 @@ import { PenNameDialog } from "@/components/storyteller/PenNameDialog.tsx";
 import { SteamLoomMark } from "@/components/storyteller/SteamLoomMark.tsx";
 import { SteamLoomFooter } from "@/components/storyteller/SteamLoomFooter.tsx";
 import { StorytellerAppearanceMenu } from "@/components/storyteller/StorytellerAppearanceMenu.tsx";
+import { StorytellerLanguageMenu } from "@/components/storyteller/StorytellerLanguageMenu.tsx";
 import { WelcomeGuideDialog } from "@/components/storyteller/WelcomeGuideDialog.tsx";
 import { ReportProvider } from "@/components/storyteller/report/ReportProvider.tsx";
 import { useAdminMe, useStorytellerUserProfile } from "@/apis/storyteller.ts";
@@ -61,6 +62,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Link as RouterLink,
   Outlet,
@@ -105,6 +107,7 @@ function usesWorkspaceChrome(pathname: string) {
 }
 
 export function StorytellerLayout() {
+  const { t } = useTranslation();
   const { user, session, loading, submitting, login, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -164,7 +167,7 @@ export function StorytellerLayout() {
   const { data: profile, isLoading: isProfileLoading } =
     useStorytellerUserProfile();
   const displayName =
-    session?.user.display_name ?? user?.displayName ?? user?.email ?? "使用者";
+    session?.user.display_name ?? user?.displayName ?? user?.email ?? t("web.common.user");
   const photoURL = storytellerUserAvatarSrc(
     profile,
     session?.user.photo_url ?? user?.photoURL ?? undefined,
@@ -182,21 +185,21 @@ export function StorytellerLayout() {
   // 有任一平台權限才出現「管理後台」入口（API 仍由後端每次檢查）
   const adminMe = useAdminMe();
   const accountMenuItems = [
-    { label: "我的工作台", to: steamloomPath("my"), icon: <AutoStoriesIcon /> },
+    { label: t("web.layout.menu.workspace"), to: steamloomPath("my"), icon: <AutoStoriesIcon /> },
     {
-      label: "我的追蹤",
+      label: t("web.layout.menu.favorites"),
       to: steamloomPath("my/favorites"),
       icon: <FavoriteIcon />,
     },
     {
-      label: "我的檔案",
+      label: t("web.layout.menu.profile"),
       to: steamloomPath("my/profile"),
       icon: <PersonIcon />,
     },
     ...((adminMe.data?.permissions.length ?? 0) > 0
       ? [
           {
-            label: "管理後台",
+            label: t("web.layout.menu.admin"),
             to: steamloomPath("admin"),
             icon: <AdminPanelSettingsIcon />,
           },
@@ -301,7 +304,7 @@ export function StorytellerLayout() {
                               autoFocus
                               size="small"
                               variant="standard"
-                              placeholder="搜尋作品..."
+                              placeholder={t("web.layout.searchPlaceholder")}
                               value={quickSearchKeyword}
                               onChange={(event) =>
                                 setQuickSearchKeyword(event.target.value)
@@ -321,14 +324,14 @@ export function StorytellerLayout() {
                             />
                             <IconButton
                               type="submit"
-                              aria-label="送出搜尋"
+                              aria-label={t("web.layout.submitSearch")}
                               color="inherit"
                               size="small"
                             >
                               <SearchIcon fontSize="small" />
                             </IconButton>
                             <IconButton
-                              aria-label="關閉搜尋"
+                              aria-label={t("web.layout.closeSearch")}
                               color="inherit"
                               size="small"
                               onClick={() => {
@@ -340,9 +343,9 @@ export function StorytellerLayout() {
                             </IconButton>
                           </Stack>
                         ) : (
-                          <Tooltip title="全站搜尋">
+                          <Tooltip title={t("web.layout.siteSearch")}>
                             <IconButton
-                              aria-label="全站搜尋"
+                              aria-label={t("web.layout.siteSearch")}
                               color="inherit"
                               size="small"
                               onClick={() => setQuickSearchOpen(true)}
@@ -352,12 +355,13 @@ export function StorytellerLayout() {
                           </Tooltip>
                         )}
                         <StorytellerAppearanceMenu />
+                        <StorytellerLanguageMenu />
                       </Stack>
                     </Stack>
                     {readerHeaderVisible && (
                       <Box
                         component="section"
-                        aria-label="目前閱讀內容"
+                        aria-label={t("web.layout.readingNow")}
                         sx={[
                           readerHeader?.coverUrl
                             ? (theme) => ({
@@ -439,13 +443,13 @@ export function StorytellerLayout() {
                             : { xs: "none", sm: "inline-flex" },
                         }}
                       >
-                        建立創作專案
+                        {t("web.layout.createProject")}
                       </Button>
                       <IconButton
                         component={RouterLink}
                         to={steamloomPath("my/projects/new")}
                         color="primary"
-                        aria-label="建立創作專案"
+                        aria-label={t("web.layout.createProject")}
                         sx={{
                           mr: 1,
                           display: readerHeaderVisible
@@ -458,12 +462,12 @@ export function StorytellerLayout() {
                       {session ? (
                         <Stack direction="row" spacing={1} alignItems="center">
                           <StorytellerNotificationBell />
-                          <Tooltip title="帳號選單">
+                          <Tooltip title={t("web.layout.accountMenu")}>
                             <IconButton
                               onClick={(event) =>
                                 setAccountMenuAnchor(event.currentTarget)
                               }
-                              aria-label="帳號選單"
+                              aria-label={t("web.layout.accountMenu")}
                               sx={{ borderRadius: 5, pr: 0.5 }}
                             >
                               <Avatar
@@ -515,7 +519,7 @@ export function StorytellerLayout() {
                               <ListItemIcon>
                                 <LogoutIcon fontSize="small" />
                               </ListItemIcon>
-                              <ListItemText primary="登出" />
+                              <ListItemText primary={t("web.layout.logout")} />
                             </MenuItem>
                           </Menu>
                         </Stack>
@@ -526,7 +530,7 @@ export function StorytellerLayout() {
                           disabled={loading || submitting}
                           onClick={() => void login()}
                         >
-                          登入
+                          {t("web.layout.login")}
                         </Button>
                       )}
                     </Stack>

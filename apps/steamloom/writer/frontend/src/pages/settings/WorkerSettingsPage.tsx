@@ -7,12 +7,14 @@ import { backend, errorMessage, type MediaWorker, type WorkerAdapter, type Worke
 import { AddWorkerDialog } from "@writer/pages/settings/AddWorkerDialog.tsx";
 import { WorkerDetail } from "@writer/pages/settings/WorkerDetail.tsx";
 import { WorkerRegistryList } from "@writer/pages/settings/WorkerRegistryList.tsx";
+import { useSettingsNavigation } from "@writer/pages/settings/settingsForm.tsx";
 
 // WorkerSettingsPage 是設定外框右側的「媒體 Worker」內容：Worker 列表＋編輯區。
 // 不自動選第一個 Worker；沒選時提示點選，一個都沒有時引導建立。
 export function WorkerSettingsPage() {
   const { t } = useTranslation();
   const { showError, showSuccess, showWarning } = useSnack();
+  const requestNavigation = useSettingsNavigation();
   const [adapters, setAdapters] = useState<WorkerAdapter[] | null>(null);
   const [workers, setWorkers] = useState<MediaWorker[] | null>(null);
   const [selectedID, setSelectedID] = useState("");
@@ -43,9 +45,16 @@ export function WorkerSettingsPage() {
     if (notify) showSuccess(t("settings.workers.saved"));
     return worker;
   };
-  const handleSave = (input: WorkerSaveInput) => {
+  const handleSave = async (input: WorkerSaveInput) => {
     setBusy("save");
-    void save(input).catch((error) => showError(errorMessage(error))).finally(() => setBusy(null));
+    try {
+      await save(input);
+    } catch (error) {
+      showError(errorMessage(error));
+      throw error;
+    } finally {
+      setBusy(null);
+    }
   };
   const handleTest = (input: WorkerSaveInput) => {
     setBusy("test");
@@ -80,7 +89,7 @@ export function WorkerSettingsPage() {
         <Box sx={{ flex: 1, display: "grid", placeItems: "center" }}><CircularProgress size={24} /></Box>
       ) : (
         <Box sx={{ flex: 1, minHeight: 0, display: "flex" }}>
-          <WorkerRegistryList workers={workers} selectedID={selectedID} onSelect={(id) => { setCreating(null); setSelectedID(id); }} onAdd={() => setAddOpen(true)} />
+          <WorkerRegistryList workers={workers} selectedID={selectedID} onSelect={(id) => requestNavigation(() => { setCreating(null); setSelectedID(id); })} onAdd={() => requestNavigation(() => setAddOpen(true))} />
           {selectedAdapter ? (
             <WorkerDetail adapter={selectedAdapter} worker={creating ? undefined : selected} busy={busy} onSave={handleSave} onTest={handleTest} onDelete={selected ? () => setDeleting(selected) : undefined} />
           ) : workers.length ? (

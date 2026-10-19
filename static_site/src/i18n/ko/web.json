@@ -1,0 +1,237 @@
+{
+  "language": {
+    "buttonLabel": "인터페이스 언어",
+    "current": "인터페이스 언어: {{language}}",
+    "title": "인터페이스 언어",
+    "options": {
+      "zh-TW": "正體中文",
+      "zh-CN": "简体中文",
+      "en": "English",
+      "ja": "日本語",
+      "ko": "한국어"
+    }
+  },
+  "common": {
+    "user": "사용자",
+    "cancel": "취소",
+    "close": "닫기",
+    "confirm": "확인",
+    "save": "저장",
+    "delete": "삭제",
+    "edit": "편집",
+    "create": "만들기",
+    "add": "추가",
+    "back": "뒤로",
+    "next": "다음",
+    "previous": "이전",
+    "retry": "다시 시도",
+    "loading": "불러오는 중…",
+    "search": "검색",
+    "clear": "지우기",
+    "copy": "복사",
+    "copied": "복사됨",
+    "open": "열기",
+    "download": "다운로드",
+    "upload": "업로드",
+    "all": "전체",
+    "none": "없음",
+    "unknown": "알 수 없음",
+    "untitled": "제목 없음",
+    "required": "필수",
+    "optional": "선택",
+    "enabled": "활성화됨",
+    "disabled": "비활성화됨",
+    "notSet": "설정되지 않음",
+    "noResults": "조건과 일치하는 결과가 없습니다",
+    "operationFailed": "작업 실패: {{message}}"
+  },
+  "layout": {
+    "searchPlaceholder": "작품 검색…",
+    "submitSearch": "검색 실행",
+    "closeSearch": "검색 닫기",
+    "siteSearch": "전체 검색",
+    "readingNow": "현재 읽는 콘텐츠",
+    "createProject": "창작 프로젝트 만들기",
+    "accountMenu": "계정 메뉴",
+    "login": "로그인",
+    "logout": "로그아웃",
+    "menu": {
+      "workspace": "내 작업 공간",
+      "favorites": "팔로잉",
+      "profile": "내 프로필",
+      "admin": "관리자"
+    }
+  },
+  "appearance": {
+    "buttonLabel": "외관: {{appearance}}",
+    "current": "외관 설정, 현재 {{appearance}}",
+    "title": "외관",
+    "description": "각 모드에 밝기와 색상 팔레트가 포함되어 있습니다",
+    "options": {
+      "nocturne": { "label": "야직", "description": "차가운 빛이 흐르는 어두운 작업실, 기본 외관" },
+      "ivory": { "label": "종이", "description": "낮에 읽기 좋은 따뜻한 종이와 진한 잉크" },
+      "prism": { "label": "프리즘", "description": "짙은 보라색 바탕과 청록·분홍빛 광택" }
+    }
+  },
+  "public": {
+    "title": "{{appName}} 공개 스토리",
+    "heroEyebrow": "STORIES / WORLDS / LIVING THREADS",
+    "projectCount": "현재 {{count}}개 작품이 공개되어 있습니다.",
+    "startCreating": "창작 시작",
+    "openWorkspace": "내 작업 공간 열기",
+    "meetMascot": "슈오슈오 만나기",
+    "searchPlaceholder": "프로젝트명, 제목, 본문 검색…",
+    "advancedSearch": "상세 검색",
+    "searchResults": "검색 결과",
+    "curatedStories": "지금 펼쳐지는 이야기",
+    "projectCountShort": "프로젝트 {{count}}개",
+    "workCountShort": "작품 {{count}}개",
+    "searching": "검색 중…",
+    "noProjectsFound": "일치하는 프로젝트가 없습니다",
+    "noProjectsFoundDescription": "다른 키워드를 입력하거나 검색어를 지워 모든 공개 작품을 확인하세요.",
+    "loadMore": "더 불러오기",
+    "loadingPublic": "공개 스토리 불러오는 중…",
+    "noPublicProjects": "아직 공개 프로젝트가 없습니다",
+    "noPublicProjectsDescription": "공개된 {{appName}} 프로젝트가 여기에 표시됩니다.",
+    "publicReading": "공개",
+    "startReading": "읽기 시작",
+    "copies": [
+      { "title": "익숙한 AI로,", "accent": "이야기에 바로 써 보세요.", "lead": "Claude, ChatGPT, Codex를 MCP로 SteamLoom에 연결하면 설정을 읽고, 다음 장을 쓰고, 수정한 뒤 바로 저장할 수 있습니다. 복사와 붙여넣기는 필요 없습니다." },
+      { "title": "AI를 바꿔도,", "accent": "처음부터 다시 설명할 필요가 없습니다.", "lead": "문체 취향, 집필 규칙, 확정된 줄거리는 슈오슈오의 기억에 저장됩니다. 어떤 AI든 쓰기 전에 먼저 읽습니다." },
+      { "title": "세계가 점점 커져도,", "accent": "AI는 필요한 내용을 찾을 수 있습니다.", "lead": "인물, 장소, 장, 설정집을 한 프로젝트에 정리하세요. AI가 쓰기 전에 검색하고 설정을 대조해 모순을 줄입니다." },
+      { "title": "이야기는 완성만으로 충분하지 않고,", "accent": "독자를 만나야 합니다.", "lead": "비공개 초안부터 공개 연재까지 창작 흐름을 끊지 않고 정리하고 공개한 뒤 계속 써 내려가세요." }
+    ]
+  },
+  "search": {
+    "pageTitle": "전체 작품 검색",
+    "description": "모든 공개 프로젝트의 제목, 소개, 본문, 이미지 설명을 검색합니다.",
+    "placeholder": "키워드 입력…",
+    "rating": "등급",
+    "ratings": { "all": "모든 등급", "general": "전체 이용가", "guidance": "지도 필요", "restricted": "성인" },
+    "tag": "태그: {{tag}}",
+    "byStory": "스토리별",
+    "byProject": "프로젝트별",
+    "storyCount": "스토리 {{count}}개 찾음",
+    "projectCount": "프로젝트 {{count}}개 찾음",
+    "searching": "검색 중…",
+    "emptyTitle": "일치하는 작품이 없습니다",
+    "emptyDescription": "다른 키워드를 사용하거나 필터를 줄여 보세요.",
+    "loadMore": "더 불러오기"
+  },
+  "projectCard": {
+    "noDescription": "프로젝트 설명이 아직 없습니다.",
+    "stories": "스토리 {{count}}편",
+    "imageEpisodes": "{{count}}화",
+    "words": "{{count}}자",
+    "ratingSummary": "평가 {{ratingCount}}명 · 평균 {{average}} · 팔로워 {{favoriteCount}}명",
+    "authorUpdated": "작가 {{authors}} · {{date}} 업데이트",
+    "updated": "{{date}} 업데이트",
+    "matchedStories": "일치하는 스토리 {{count}}편",
+    "matchedStoriesBy": "일치하는 스토리 {{count}}편 · 작가 {{authors}}",
+    "moreMatches": "일치하는 스토리 {{count}}편 더 있음…",
+    "imageWork": "이미지／만화",
+    "textWork": "텍스트 스토리"
+  },
+  "footer": { "mascotAlt": "슈오슈오", "tagline": "이야기를 쓰고 설정을 정리하며 세계를 계속 키워 나가세요." },
+  "onboarding": {
+    "penNameTitle": "필명 설정", "penNameWelcome": "{{appName}}에 오신 것을 환영합니다! 창작을 시작하기 전에 필명을 설정하세요.", "penName": "필명",
+    "welcomeTitle": "{{appName}}에 오신 것을 환영합니다", "welcomeDescription": "필명 설정을 마쳤습니다. 자주 사용할 기능을 간단히 소개합니다:", "later": "먼저 둘러보기", "firstProject": "첫 프로젝트 만들기",
+    "features": {
+      "project": { "title": "창작 프로젝트 만들기", "description": "프로젝트는 모든 창작의 시작점입니다. 이야기, 설정, 인물 자료를 한곳에 모을 수 있습니다." },
+      "editor": { "title": "WYSIWYG 편집기", "description": "제목, 인용, 목록, 표, 구분선뿐 아니라 각주, 비공개 메모, 글자 색도 사용할 수 있습니다." },
+      "assets": { "title": "에셋 라이브러리", "description": "이미지를 업로드하고 이야기나 설정에 언제든 삽입하세요." },
+      "agent": { "title": "AI Agent(선택)", "description": "자신의 모델 API Key를 사용해 Agent가 이야기를 고쳐 쓰거나 이어 쓰게 할 수 있습니다." },
+      "mcp": { "title": "MCP 연결(선택)", "description": "Claude, ChatGPT, Claude Code, Codex 등의 AI 도구가 MCP를 통해 이야기와 설정을 직접 읽고 쓸 수 있습니다." },
+      "memory": { "title": "슈오슈오의 기억", "description": "문체 취향, 집필 규칙, 확정된 줄거리를 저장하면 연결된 AI가 쓰기 전에 먼저 읽습니다." },
+      "history": { "title": "버전 기록과 북마크", "description": "저장할 때마다 복원 가능한 버전을 남기고, 읽을 때 좋아하는 문단을 북마크할 수 있습니다." },
+      "publish": { "title": "공개", "description": "프로젝트를 공개, 링크 공개, 비공개로 설정해 누가 볼 수 있는지 정할 수 있습니다." }
+    }
+  },
+  "home": {
+    "workspace": "내 작업 공간", "checkingLogin": "로그인 상태 확인 중…", "loginRequired": "로그인이 필요합니다", "loginDescription": "로그인하면 작업 공간을 이용할 수 있습니다.", "loggingIn": "로그인 중", "googleLogin": "Google로 로그인",
+    "projectCount": "프로젝트 {{count}}개", "skillCount": "Skill {{count}}개", "recentProjects": "최근 프로젝트", "availableSkills": "사용 가능한 Skill", "createProject": "프로젝트 만들기", "createSkill": "Skill 만들기", "loadingProjects": "프로젝트 불러오는 중…", "loadingSkills": "Skill 불러오는 중…", "navigation": "작업 공간 탐색", "closeNavigation": "작업 공간 탐색 닫기",
+    "tabs": { "project": "창작 프로젝트", "notifications": "알림", "blocks": "차단 목록", "agent": "Skill", "apikey": "API 키", "usage": "사용량", "pat": "Personal Access Token", "oauth": "OAuth Token", "mcp": "MCP 연결", "activity": "활동 기록", "favorites": "팔로잉", "profile": "내 프로필" },
+    "groups": { "workspace": "작업 공간", "community": "커뮤니티", "security": "계정 및 보안", "developer": "개발자" },
+    "cards": { "mascotAlt": "슈오슈오", "noProjects": "아직 프로젝트가 없습니다", "noProjectsDescription": "위의 ‘프로젝트 만들기’로 첫 프로젝트를 시작하세요.", "noSkills": "아직 Skill이 없습니다", "noSkillsDescription": "위의 ‘Skill 만들기’로 스토리 편집기에서 사용할 Skill을 추가하세요.", "noPrompt": "Prompt 요약이 없습니다.", "updated": "{{date}} 업데이트", "deleteSkill": "Skill 삭제", "deleteSkillDescription": "삭제하면 스토리 편집기에서 사용할 수 없습니다. Skill 이름을 입력해 확인하세요.", "deleteSkillFailed": "Skill을 삭제하지 못했습니다. 다시 시도하세요." }
+  },
+  "reader": {
+    "story": "스토리", "loadingStory": "스토리 불러오는 중…", "settings": "설정", "discussions": "토론", "uncategorized": "미분류", "empty": "아직 작품이 없습니다.",
+    "previousItem": "이전", "nextItem": "다음", "settingsList": "설정 목록", "backToSettings": "설정 목록으로 돌아가기",
+    "bookmarkAdded": "북마크를 추가했습니다", "bookmarkRemoved": "북마크를 삭제했습니다", "bookmarkUpdateFailed": "북마크를 업데이트하지 못했습니다.", "bookmarkDeleteFailed": "북마크를 삭제하지 못했습니다.", "addBookmark": "북마크 추가", "removeBookmark": "북마크 제거", "bookmarked": "북마크됨",
+    "followed": "이 작품을 팔로우합니다", "unfollowed": "이 작품의 팔로우를 취소했습니다", "followFailed": "팔로우 상태를 업데이트하지 못했습니다.", "followProject": "프로젝트 팔로우", "followingProject": "팔로우 중",
+    "rating": "평가", "ratingSaved": "평가를 저장했습니다.", "ratingFailed": "평가를 저장하지 못했습니다.", "ratingSummary": "평가 {{count}}명・평균 {{average}}",
+    "privatePreview": "비공개 미리보기", "unlisted": "전용 링크", "public": "공개", "author": "작가 {{name}}", "storyCount": "스토리 {{count}}편", "episodeCount": "{{count}}화", "wordCount": "{{count}}자",
+    "pageAlt": "{{page}}페이지", "pageOriginalAlt": "{{page}}페이지(원본)", "pagePreviewAlt": "{{page}}페이지 미리보기", "page": "{{page}}페이지", "pageProgress": "{{title}}({{page}} / {{total}}페이지)", "previousPage": "이전 페이지", "nextPage": "다음 페이지",
+    "historical": "최신 버전이 아닌 {{version}}번째 버전입니다. 기존 북마크는 제거할 수 있지만 새로 추가할 수 없습니다.", "latest": "최신 버전 보기 →",
+    "closeIndex": "색인 닫기", "loginPrompt": "프로젝트·작가 팔로우, 평가, 북마크에는 로그인이 필요합니다. 지금 로그인할까요?", "resumed": "마지막으로 읽던 위치로 돌아왔습니다({{progress}}%)", "startOver": "처음부터",
+    "deleteBookmark": "북마크 삭제", "deleteBookmarkTitle": "이 북마크를 삭제할까요?", "deleteBookmarkDescription": "읽기 목록에서 제거됩니다. 이전 버전이나 사라진 위치의 북마크는 다시 추가하지 못할 수 있습니다.", "deleting": "삭제 중",
+    "restrictedDescription": "이 프로젝트는 성인용입니다. 만 18세 이상인지 확인한 후 계속하세요.", "restrictedTitle": "성인용 프로젝트",
+    "metaAuthor": "작가 {{name}}", "updated": "{{date}} 업데이트",
+    "index": "작품 색인", "uncollected": "미분류 작품", "outline": "개요", "pageOverview": "페이지 목록", "toc": "목차", "bookmarks": "북마크", "bookmarksLogin": "로그인하면 북마크를 볼 수 있습니다.", "bookmarksLoading": "북마크 불러오는 중…", "bookmarksEmpty": "아직 북마크가 없습니다. 텍스트 작품은 ‘북마크 편집’을 켜고, 이미지 작품은 페이지의 북마크 버튼을 사용하세요.", "pageRemoved": "페이지 삭제됨", "oldVersion": "이전 버전", "removedPage": "(북마크한 페이지가 삭제되었습니다)", "blankParagraph": "(빈 문단)",
+    "spoilerTitle": "이 설정에는 아직 읽지 않은 내용이 포함되어 있습니다", "spoilerDependencies": "작가가 다음 내용을 먼저 읽기를 권합니다:", "unread": "읽지 않음", "spoilerDescription": "작가가 이 설정을 스포일러로 표시했습니다. 확인 후 열어 보세요.", "continue": "확인했습니다. 계속 읽기", "fullLore": "전체 설정 보기", "lorePage": "설정 페이지", "loreEyebrow": "설정・{{collection}}", "closeLorePanel": "설정 패널 닫기", "openLorePage": "설정 페이지에서 열기", "completed": "완독", "completedAria": "읽기 완료", "progressAria": "{{progress}}% 읽음",
+    "historyLoading": "버전 불러오는 중…", "historyEmpty": "편집 기록이 없습니다.", "latestVersion": "{{version}}번째 버전(최신)", "version": "{{version}}번째 버전",
+    "toolbar": { "previous": "이전 장", "next": "다음 장", "navigation": "장", "navigationTooltip": "목차와 북마크", "done": "완료", "bookmark": "북마크", "aria": "읽기 도구 모음", "noPrevious": "{{label}} 없음", "noNext": "{{label}} 없음", "progress": "읽기 진행률", "progressAria": "읽기 진행률 {{progress}}%", "projectInfo": "작품 정보: {{project}}", "work": "작품", "history": "편집 기록", "historyShort": "기록", "finishBookmarks": "북마크 편집 완료", "editBookmarks": "문단 북마크 편집", "readingSettings": "읽기 설정", "reading": "읽기", "projectInfoTitle": "작품 정보", "settingsCaption": "배경과 밝기 모드는 현재 사이트 외관을 따릅니다." },
+    "landing": { "completed": "{{total}}편 중 {{completed}}편 읽음", "stories": "스토리 {{count}}", "settings": "설정 {{count}}", "discussions": "토론", "start": "읽기 시작", "startOver": "처음부터 읽기", "continue": "계속 읽기: {{title}}{{percent}}", "noContent": "이 작품에는 아직 공개 콘텐츠가 없습니다.", "other": "기타", "noLore": "이 작품에는 아직 공개 설정이 없습니다.", "itemUnit": "편", "loreUnit": "개" }
+  },
+  "projectWorkspace": {
+    "pageTitle": "{{appName}} 프로젝트",
+    "projects": "창작 프로젝트",
+    "loginDescription": "로그인하면 이 창작 프로젝트를 볼 수 있습니다.",
+    "loadingProject": "프로젝트 불러오는 중…",
+    "loadingStories": "작품 목록 불러오는 중…",
+    "readerLink": "작품 페이지 링크",
+    "shareLink": "지인 공유 링크",
+    "copyLink": "클립보드에 복사",
+    "openLink": "열기",
+    "editProject": "프로젝트 편집",
+    "deleteProject": "프로젝트 삭제",
+    "deleteProjectDescription": "프로젝트와 그 안의 스토리 데이터가 삭제됩니다. 확인하려면 프로젝트 이름을 입력하세요.",
+    "tabs": { "stories": "작품과 권", "lores": "설정집", "assets": "에셋 모음" },
+    "visibility": { "public": "공개됨", "unlisted": "지인과 공유", "private": "비공개" },
+    "status": { "public": "공개", "published": "공개 중", "unpublished": "비공개" },
+    "meta": { "stories": "스토리 {{count}}개", "episodes": "{{count}}화", "pages": "{{count}}페이지", "words": "{{count}}자", "updated": "{{date}} 업데이트" },
+    "story": {
+      "text": "스토리", "image": "이미지", "move": "작품 이동", "edit": "작품 편집", "delete": "작품 삭제", "moveUngrouped": "미분류로 이동",
+      "dragHint": "드래그하여 작품 순서를 바꾸거나 위의 권으로 이동할 수 있습니다", "publishHint": "비공개입니다. 클릭하여 공개", "unpublishHint": "공개 중입니다. 클릭하여 비공개로 전환",
+      "deleteEpisode": "화 삭제", "deleteStory": "스토리 삭제", "deleteEpisodeDescription": "이 화와 버전 기록이 삭제됩니다. 확인하려면 화 이름을 입력하세요.", "deleteStoryDescription": "이 스토리와 버전 기록이 삭제됩니다. 확인하려면 스토리 이름을 입력하세요."
+    },
+    "volume": {
+      "add": "권 추가", "edit": "권 편집", "delete": "권 삭제", "ungrouped": "미분류", "ungroupedDropHint": "여기에 놓아 작품을 권에서 빼냅니다",
+      "dropHint": "작품을 ‘{{title}}’에 놓기", "dropHintWithSummary": "작품을 ‘{{title}}’에 놓기. 요약: {{summary}}",
+      "publishHint": "비공개이며 안의 작품도 숨겨집니다. 클릭하여 공개", "unpublishHint": "공개 중입니다. 클릭하면 안의 작품도 함께 숨겨집니다",
+      "deleteBlocked": "권 안의 작품을 모두 옮긴 뒤 삭제하세요", "deleteDescription": "이 작업은 되돌릴 수 없습니다. 확인하려면 권 이름을 입력하세요."
+    },
+    "empty": {
+      "allTitle": "아직 작품이 없습니다", "allDescription": "위의 ‘만들기’에서 ‘스토리’를 선택해 글을 쓰거나 ‘이미지’를 선택해 첫 화를 만드세요.",
+      "groupTitle": "여기에 작품이 없습니다", "groupDescription": "위에서 작품을 만들거나 다른 작품을 이 분류로 드래그하세요."
+    },
+    "messages": { "linkCopied": "작품 페이지 링크를 복사했습니다", "storyPublished": "작품을 공개했습니다.", "storyUnpublished": "작품을 비공개로 전환했습니다.", "storyMoved": "작품을 이동했습니다.", "volumePublished": "권을 공개했습니다.", "volumeUnpublished": "권을 비공개로 전환했습니다.", "volumeCreated": "권을 만들었습니다.", "volumeUpdated": "권을 업데이트했습니다." },
+    "errors": { "copyLink": "링크를 복사하지 못했습니다. 다시 시도하세요.", "storyReorder": "작품 순서를 업데이트하지 못했습니다. 새로고침 후 다시 시도하세요.", "volumeReorder": "권 순서를 업데이트하지 못했습니다. 새로고침 후 다시 시도하세요.", "storyStatus": "작품 상태를 업데이트하지 못했습니다.", "volumeStatus": "권 상태를 업데이트하지 못했습니다.", "storyMove": "작품을 이동하지 못했습니다.", "storyDelete": "작품을 삭제하지 못했습니다.", "volumeSave": "권을 저장하지 못했습니다.", "volumeDelete": "권을 삭제하지 못했습니다.", "projectDelete": "프로젝트를 삭제하지 못했습니다." }
+  },
+  "loreManager": {
+    "title": "설정 목록", "createLore": "설정 만들기", "showAll": "모든 설정 보기", "uncategorized": "미분류", "uncategorizedDropHint": "여기에 놓아 설정을 미분류로 이동", "loading": "설정 불러오는 중…", "emptyTitle": "아직 설정이 없습니다", "emptyDescription": "위의 ‘설정 만들기’에서 세계관, 캐릭터 규칙, 각본 설정을 기록하세요.", "dragHint": "위의 설정집으로 드래그하여 이동", "moveLore": "설정 이동", "moveUncategorized": "미분류로 이동", "moveTo": "‘{{name}}’로 이동", "deleteLore": "설정 삭제", "deleteLoreDescription": "이 설정과 버전 기록이 삭제됩니다. 확인하려면 설정 이름을 입력하세요.",
+    "collection": { "create": "설정집 만들기", "edit": "설정집 편집", "delete": "설정집 삭제", "name": "설정집 이름", "description": "용도 메모", "dropHint": "설정을 ‘{{name}}’에 놓기", "dropHintWithDescription": "설정을 ‘{{name}}’에 놓기. 용도: {{description}}", "deleteBlocked": "설정집 안에 설정이 남아 있어 삭제할 수 없습니다", "deleteDescription": "다른 설정집에는 영향을 주지 않습니다. 확인하려면 설정집 이름을 입력하세요." },
+    "messages": { "movedToCollection": "설정을 설정집으로 이동했습니다.", "movedUncategorized": "설정을 미분류로 이동했습니다.", "collectionCreated": "설정집을 만들었습니다.", "collectionUpdated": "설정집을 업데이트했습니다.", "collectionDeleted": "설정집을 삭제했습니다.", "loreDeleted": "설정을 삭제했습니다." },
+    "errors": { "collectionNameRequired": "설정집 이름을 입력하세요." }
+  },
+  "assetManager": {
+    "title": "에셋 모음", "search": "에셋 검색", "refresh": "새로고침", "uploading": "업로드 중", "imageUploading": "이미지 업로드 중", "image": "이미지", "loading": "에셋 불러오는 중…", "emptyTitle": "아직 에셋이 없습니다", "emptyDescription": "이미지를 업로드하면 제목, 대체 텍스트, 메모를 여기서 관리할 수 있습니다.", "untitled": "제목 없는 에셋", "uncategorized": "미분류", "uncategorizedDropHint": "여기에 놓아 에셋을 미분류로 이동", "dragHint": "위의 에셋 모음으로 드래그하여 이동", "moveUncategorized": "미분류로 이동", "replaceFile": "파일 교체", "editAsset": "에셋 정보 편집", "deleteAsset": "에셋 삭제", "deleteAssetDescription": "이 에셋을 에셋 모음에서 삭제합니다. 사용 중인 에셋은 삭제할 수 없습니다.", "deleteBlocked": "작품에서 사용 중이므로 삭제할 수 없습니다", "actions": "에셋 작업", "unknownDimensions": "크기 기록 없음", "references": "참조 {{count}}개", "saving": "저장 중",
+    "fields": { "title": "제목", "altText": "대체 텍스트", "notes": "메모" },
+    "collection": { "fallback": "에셋 모음", "create": "에셋 모음 만들기", "edit": "에셋 모음 편집", "delete": "에셋 모음 삭제", "name": "이름", "description": "용도 메모", "sort": "정렬", "dropHint": "에셋을 ‘{{name}}’에 놓기", "dropHintWithDescription": "에셋을 ‘{{name}}’에 놓기. 용도: {{description}}", "deleteBlocked": "에셋 모음 안에 에셋이 남아 있어 삭제할 수 없습니다", "deleteDescription": "삭제하기 전에 에셋을 다른 에셋 모음이나 미분류로 이동하세요." },
+    "replace": { "tone": "이전 파일이 삭제됩니다", "eyebrow": "파일 교체", "title": "이 파일을 교체할까요?", "description": "확인하면 이전 파일이 영구 삭제되고 이 에셋을 참조하는 모든 곳에 새 파일이 즉시 표시됩니다. 되돌릴 수 없습니다.", "replacing": "교체 중", "confirm": "교체 확인" },
+    "messages": { "collectionCreated": "에셋 모음을 만들었습니다.", "collectionUpdated": "에셋 모음을 업데이트했습니다.", "collectionDeleted": "에셋 모음을 삭제했습니다.", "assetMoved": "에셋을 이동했습니다.", "replaceUploaded": "새 파일을 업로드했습니다. 확인 후 원래 에셋을 교체합니다.", "assetUpdated": "에셋 정보를 업데이트했습니다.", "assetDeleted": "에셋을 삭제했습니다.", "fileReplaced": "에셋 파일을 교체했습니다." },
+    "errors": { "collectionSave": "에셋 모음을 저장하지 못했습니다.", "collectionDelete": "에셋 모음을 삭제하지 못했습니다.", "assetMove": "에셋을 이동하지 못했습니다.", "replaceImageOnly": "현재는 이미지 에셋만 교체할 수 있습니다.", "invalidImageType": "JPEG／PNG／WebP／GIF 이미지를 선택하세요.", "fileTooLarge": "파일 하나는 {{maxMB}}MB를 넘을 수 없습니다.", "replaceUpload": "교체 파일을 업로드하지 못했습니다. 원래 에셋은 변경되지 않았습니다.", "assetUpdate": "에셋 정보를 업데이트하지 못했습니다.", "assetDelete": "에셋을 삭제하지 못했습니다.", "fileReplace": "에셋 파일을 교체하지 못했습니다. 원래 에셋은 변경되지 않았습니다." }
+  },
+  "community": {
+    "author": "작가", "post": "게시물", "authorWorks": "{{name}}의 작품", "authorPosts": "{{name}}의 게시물", "loadingAuthor": "작가 정보 불러오는 중…", "loadingPosts": "게시물 불러오는 중…", "backToPosts": "{{name}}의 게시물로 돌아가기",
+    "tabs": { "projects": "작품", "posts": "게시물", "favoriteProjects": "팔로우한 작품", "favoriteAuthors": "팔로우한 작가", "penNameFavoriteAuthors": "이 필명으로 팔로우한 작가" },
+    "joinedAsAuthor": "{{date}}부터 이야기를 쓰기 시작", "joinedAsReader": "{{date}}부터 이야기를 읽기 시작", "followLogin": "작가를 팔로우하려면 로그인해야 합니다. 지금 로그인할까요?", "interactionLogin": "좋아요와 댓글에는 로그인이 필요합니다. 지금 로그인할까요?", "home": "홈으로",
+    "stats": { "works": "작품", "stories": "스토리 수", "images": "이미지 작품 수", "average": "평균 평가", "followers": "팔로워", "people": "{{count}}명" },
+    "categoryAria": "작가 콘텐츠 분류", "publicReading": "공개", "startReading": "읽기 시작", "noWorks": "공개 작품이 없습니다", "noWorksDescription": "이 작가가 공개한 {{appName}} 프로젝트가 여기에 표시됩니다.",
+    "loadingFavoriteProjects": "팔로우한 작품 불러오는 중…", "noFavoriteProjects": "공개된 팔로우 작품이 없습니다", "noFavoriteProjectsDescription": "이 작가가 팔로우한 공개 작품이 여기에 표시됩니다.", "loadingFavoriteAuthors": "팔로우한 작가 불러오는 중…", "noPenNameFavoriteAuthors": "이 필명으로 팔로우한 작가가 없습니다", "noFavoriteAuthors": "공개된 팔로우 작가가 없습니다", "privateFavoriteAuthorsDescription": "알림에서 맞팔할 때 알림을 받은 필명이 사용됩니다. 이 목록은 본인만 볼 수 있습니다.", "favoriteAuthorsDescription": "이 작가가 팔로우한 작가가 여기에 표시됩니다.",
+    "favoritesAria": "팔로우 분류", "works": "작품", "authors": "작가", "loadingFavoriteWorks": "팔로우한 작품 불러오는 중…", "favoritesFailed": "팔로우 목록을 불러오지 못했습니다. 로그인 상태를 확인하세요.", "noFollowedWorks": "팔로우한 작품이 없습니다", "noFollowedWorksDescription": "읽기 페이지에서 팔로우한 프로젝트가 여기에 표시됩니다.", "noFollowedAuthors": "팔로우한 작가가 없습니다", "noFollowedAuthorsDescription": "읽기 페이지에서 팔로우한 작가가 여기에 표시됩니다.",
+    "makePublic": "공개", "makePrivate": "비공개", "madePublic": "공개로 설정했습니다", "madePrivate": "비공개로 설정했습니다", "projectVisibilityFailed": "팔로우 작품 공개 상태를 업데이트하지 못했습니다.", "authorVisibilityFailed": "팔로우 작가 공개 상태를 업데이트하지 못했습니다.", "hidden": "외부에 숨김",
+    "followAuthor": "{{target}} 팔로우", "followingAuthor": "{{target}} 팔로우 중", "followingAs": "{{names}}(으)로 팔로우 중", "unfollowedAs": "{{names}}(으)로 팔로우를 취소했습니다", "unfollowFailed": "팔로우를 취소하지 못했습니다.", "followedName": "{{name}} 팔로우", "unfollowedName": "{{name}} 팔로우 취소", "followUpdateFailed": "작가 팔로우 상태를 업데이트하지 못했습니다.", "unfollow": "팔로우 취소", "unfollowTitle": "{{names}}(으)로 {{name}} 팔로우를 취소할까요?", "unfollowDescription": "필명으로 이 작가를 팔로우 중입니다. 취소해도 본인 계정 팔로우로 전환되지 않습니다.", "keep": "유지",
+    "unnamedAuthor": "이름 없는 작가", "followedAs": "{{name}}(으)로 팔로우", "projects": "프로젝트 {{count}}개", "stories": "스토리 {{count}}편", "episodes": "{{count}}화", "averageRating": "평균 {{average}}(평가 {{count}}명)", "followerCount": "팔로워 {{count}}명", "viewAuthor": "작가 보기", "cardUnfollowDescription": "다른 명의로 팔로우하지 않는 한 이 작가의 업데이트 알림을 받지 않습니다.", "expandBio": "소개 전체 보기", "collapseBio": "소개 접기"
+  }
+}

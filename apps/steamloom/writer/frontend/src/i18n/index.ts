@@ -25,22 +25,28 @@ import zhTWAuth from "./zh-TW/auth.json";
 import zhTWProjects from "./zh-TW/projects.json";
 import zhTWSettings from "./zh-TW/settings.json";
 import zhTWWorkspace from "./zh-TW/workspace.json";
+import enWriter from "@steamloom-web/i18n/en/writer.json";
+import jaWriter from "@steamloom-web/i18n/ja/writer.json";
+import koWriter from "@steamloom-web/i18n/ko/writer.json";
+import zhCNWriter from "@steamloom-web/i18n/zh-CN/writer.json";
+import zhTWWriter from "@steamloom-web/i18n/zh-TW/writer.json";
 
-const pack = (app: object, auth: object, projects: object, settings: object, workspace: object) => ({
-  translation: { app, auth, projects, settings, workspace },
+const pack = (app: object, auth: object, projects: object, settings: object, workspace: object, writer: object) => ({
+  translation: { app, auth, projects, settings, workspace, writer },
+  writer,
 });
 
-// 沿用網站的語系清單與分檔方式。畫面仍固定 zh-TW；其他語系已經掛上，之後改 lng 就能切。
-void i18n.use(initReactI18next).init({
+// 先以正體中文建立資源；main.tsx 會在 React render 前讀取 Writer 設定並切換成已儲存語系。
+export const i18nReady = i18n.use(initReactI18next).init({
   lng: "zh-TW",
   fallbackLng: "zh-TW",
   supportedLngs: ["zh-TW", "zh-CN", "en", "ja", "ko"],
   resources: {
-    "zh-TW": pack(zhTWApp, zhTWAuth, zhTWProjects, zhTWSettings, zhTWWorkspace),
-    "zh-CN": pack(zhCNApp, zhCNAuth, zhCNProjects, zhCNSettings, zhCNWorkspace),
-    en: pack(enApp, enAuth, enProjects, enSettings, enWorkspace),
-    ja: pack(jaApp, jaAuth, jaProjects, jaSettings, jaWorkspace),
-    ko: pack(koApp, koAuth, koProjects, koSettings, koWorkspace),
+    "zh-TW": pack(zhTWApp, zhTWAuth, zhTWProjects, zhTWSettings, zhTWWorkspace, zhTWWriter),
+    "zh-CN": pack(zhCNApp, zhCNAuth, zhCNProjects, zhCNSettings, zhCNWorkspace, zhCNWriter),
+    en: pack(enApp, enAuth, enProjects, enSettings, enWorkspace, enWriter),
+    ja: pack(jaApp, jaAuth, jaProjects, jaSettings, jaWorkspace, jaWriter),
+    ko: pack(koApp, koAuth, koProjects, koSettings, koWorkspace, koWriter),
   },
   interpolation: { escapeValue: false },
 });

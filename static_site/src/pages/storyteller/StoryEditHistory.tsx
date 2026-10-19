@@ -21,6 +21,7 @@ import {
 } from "@mui/material";
 // 網站與 SteamLoom Writer 共用；Writer 透過 alias 直接 import（改這支也會影響 Writer）。
 import { formatStorytellerDate } from "../../data/storytellerDate.ts";
+import { useTranslation } from "react-i18next";
 
 export interface StoryEditHistoryItem {
   id: string;
@@ -73,8 +74,8 @@ export function StoryEditHistory({
   onLeftVersionChange,
   onRightVersionChange,
   isRightVersionDisabled,
-  newItemMessage = "第一次存檔後才會產生編輯歷史。",
-  helperMessage = "請依序選擇要比對的新舊版本後再按下「比對選取版本」",
+  newItemMessage,
+  helperMessage,
   isNewItem = false,
   page = 1,
   pageCount = 1,
@@ -84,10 +85,13 @@ export function StoryEditHistory({
   currentVersionId,
   showSourceColumn = true,
 }: StoryEditHistoryProps) {
+  const { t, i18n } = useTranslation();
+  const resolvedNewItemMessage = newItemMessage ?? t("writer:editor.history.newItem");
+  const resolvedHelperMessage = helperMessage ?? t("writer:editor.history.helper");
   if (isNewItem) {
     return (
       <Alert severity="info" variant="outlined">
-        {newItemMessage}
+        {resolvedNewItemMessage}
       </Alert>
     );
   }
@@ -102,12 +106,12 @@ export function StoryEditHistory({
   );
   const describeReferencedVersion = (versionId: string) => {
     const seq = versionNumberById.get(versionId);
-    return seq !== undefined ? `版本 #${seq}` : `版本 #${versionId}`;
+    return t("writer:editor.history.version", { number: seq ?? versionId });
   };
   const referencedVersionTooltip = (versionId: string) => {
     const referenced = itemById.get(versionId);
     return referenced
-      ? `建立於 ${formatStorytellerDate(referenced.createdAt)}`
+      ? t("writer:editor.history.createdAt", { date: formatStorytellerDate(referenced.createdAt, i18n.resolvedLanguage) })
       : "";
   };
 
@@ -125,7 +129,7 @@ export function StoryEditHistory({
         justifyContent="space-between"
       >
         <Typography color="text.secondary">
-          選擇兩個版本後可以比對標題與 Markdown 內容差異。
+          {t("writer:editor.history.description")}
         </Typography>
         <Button
           onClick={onCompare}
@@ -133,13 +137,13 @@ export function StoryEditHistory({
           variant="contained"
           startIcon={<CompareArrowsIcon />}
         >
-          比對選取版本
+          {t("writer:editor.history.compare")}
         </Button>
       </Stack>
 
       {(!leftVersionId || !rightVersionId) && (
         <Alert severity="info" variant="outlined">
-          {helperMessage}
+          {resolvedHelperMessage}
         </Alert>
       )}
 
@@ -152,16 +156,16 @@ export function StoryEditHistory({
           <TableHead>
             <TableRow>
               <TableCell padding="checkbox" align="center">
-                舊
+                {t("writer:editor.history.old")}
               </TableCell>
               <TableCell padding="checkbox" align="center">
-                新
+                {t("writer:editor.history.new")}
               </TableCell>
-              <TableCell align="center">版本號</TableCell>
-              {showSourceColumn && <TableCell>來源</TableCell>}
-              <TableCell>字數</TableCell>
-              <TableCell>建立時間</TableCell>
-              {onRevert && <TableCell align="center">操作</TableCell>}
+              <TableCell align="center">{t("writer:editor.history.versionNumber")}</TableCell>
+              {showSourceColumn && <TableCell>{t("writer:editor.history.source")}</TableCell>}
+              <TableCell>{t("writer:editor.history.words")}</TableCell>
+              <TableCell>{t("writer:editor.history.createdTime")}</TableCell>
+              {onRevert && <TableCell align="center">{t("writer:editor.history.actions")}</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -178,7 +182,7 @@ export function StoryEditHistory({
                     checked={leftVersionId === item.id}
                     onChange={() => onLeftVersionChange(item.id)}
                     inputProps={{
-                      "aria-label": `選擇 ${item.id} 作為舊版本`,
+                      "aria-label": t("writer:editor.history.selectOld", { id: item.id }),
                     }}
                   />
                 </TableCell>
@@ -192,7 +196,7 @@ export function StoryEditHistory({
                     }
                     onChange={() => onRightVersionChange(item.id)}
                     inputProps={{
-                      "aria-label": `選擇 ${item.id} 作為新版本`,
+                      "aria-label": t("writer:editor.history.selectNew", { id: item.id }),
                     }}
                   />
                 </TableCell>
@@ -218,7 +222,7 @@ export function StoryEditHistory({
                           <Chip
                             size="small"
                             variant="outlined"
-                            label={`回復自${describeReferencedVersion(item.revertedFromVersionId)}`}
+                            label={t("writer:editor.history.revertedFrom", { version: describeReferencedVersion(item.revertedFromVersionId) })}
                           />
                         </Tooltip>
                       )}
@@ -232,7 +236,7 @@ export function StoryEditHistory({
                             size="small"
                             color="warning"
                             variant="outlined"
-                            label={`與${describeReferencedVersion(item.conflictedWithVersionId)}衝突`}
+                            label={t("writer:editor.history.conflictedWith", { version: describeReferencedVersion(item.conflictedWithVersionId) })}
                           />
                         </Tooltip>
                       )}
@@ -245,11 +249,11 @@ export function StoryEditHistory({
                   </TableCell>
                 )}
                 <TableCell>{item.words.toLocaleString()}</TableCell>
-                <TableCell>{formatStorytellerDate(item.createdAt)}</TableCell>
+                <TableCell>{formatStorytellerDate(item.createdAt, i18n.resolvedLanguage)}</TableCell>
                 {onRevert && (
                   <TableCell align="center">
                     {item.id !== currentVersionId && (
-                      <Tooltip title="回復到這個版本">
+                      <Tooltip title={t("writer:editor.history.revert")}>
                         <span>
                           <IconButton
                             size="small"

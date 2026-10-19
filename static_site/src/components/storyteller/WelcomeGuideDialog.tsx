@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import AddIcon from "@mui/icons-material/Add";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import BookmarkIcon from "@mui/icons-material/Bookmark";
@@ -30,58 +31,43 @@ interface WelcomeGuideDialogProps {
 
 interface FeatureHighlight {
   icon: ReactNode;
-  title: string;
-  description: string;
+  key: string;
 }
 
 const allFeatureHighlights: (FeatureHighlight & { ai?: boolean })[] = [
   {
     icon: <AddIcon fontSize="small" />,
-    title: "建立創作專案",
-    description:
-      "專案是所有創作的起點，故事、設定、角色資料都收在同一個專案底下。",
+    key: "project",
   },
   {
     icon: <EditNoteIcon fontSize="small" />,
-    title: "所見即所得編輯器",
-    description:
-      "打字就能用標題、引用、清單、表格、分隔線；還有腳注、只有你看得到的私人註解、文字顏色可以用。",
+    key: "editor",
   },
   {
     icon: <CollectionsIcon fontSize="small" />,
-    title: "資產庫",
-    description: "上傳圖片建立資產庫，隨時插入故事或設定裡使用。",
+    key: "assets",
   },
   {
     icon: <AutoAwesomeIcon fontSize="small" />,
-    title: "AI Agent（選用）",
+    key: "agent",
     ai: true,
-    description:
-      "帶上你自己的模型 API Key，設定 Agent 幫忙改寫或延伸故事內容。",
   },
   {
     icon: <CableIcon fontSize="small" />,
-    title: "MCP 連接（選用）",
-    description:
-      "讓 Claude、ChatGPT、Claude Code、Codex 等 AI 工具透過 MCP 直接讀寫你的故事與設定，不用手動複製貼上。",
+    key: "mcp",
   },
   {
     // 跟工作台工具頁「梭梭的記憶」同一個圖示
     icon: <PsychologyAltOutlinedIcon fontSize="small" />,
-    title: "梭梭的記憶",
-    description:
-      "把文風偏好、寫作規矩、定案的劇情存成記憶，透過 MCP 連進來的 AI 動筆前都會先讀過，換工具也不用從頭交代。",
+    key: "memory",
   },
   {
     icon: <BookmarkIcon fontSize="small" />,
-    title: "版本歷史與書籤",
-    description:
-      "每次存檔都留一份版本紀錄，隨時可以回復；閱讀時也能替喜歡的段落加書籤。",
+    key: "history",
   },
   {
     icon: <PublicIcon fontSize="small" />,
-    title: "公開發佈",
-    description: "專案可以設成公開、不公開連結或私人，由你決定誰看得到作品。",
+    key: "publish",
   },
 ];
 
@@ -98,21 +84,22 @@ const featureHighlights = allFeatureHighlights.filter(
  * 互動模式一致，之後真的需要逐步導覽再評估要不要導入專門的 tour 套件。
  */
 export function WelcomeGuideDialog({ open, onClose }: WelcomeGuideDialogProps) {
+  const { t } = useTranslation();
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <Box sx={{ ...steamPanelTopBarSx, p: { xs: 2.5, sm: 3 } }}>
         <SteamRegistrationMarks />
         <Typography variant="h6" fontWeight={800}>
-          歡迎加入 {STORYTELLER_APP_NAME}
+          {t("web.onboarding.welcomeTitle", { appName: STORYTELLER_APP_NAME })}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          筆名設定好了，這裡快速介紹幾個你會用到的功能：
+          {t("web.onboarding.welcomeDescription")}
         </Typography>
       </Box>
       <DialogContent sx={{ pt: 1 }}>
         <Stack spacing={2}>
           {featureHighlights.map((feature) => (
-            <Stack key={feature.title} direction="row" spacing={1.5}>
+            <Stack key={feature.key} direction="row" spacing={1.5}>
               <Box
                 sx={{
                   color: "primary.main",
@@ -124,10 +111,10 @@ export function WelcomeGuideDialog({ open, onClose }: WelcomeGuideDialogProps) {
               </Box>
               <Box>
                 <Typography variant="subtitle2" fontWeight={700}>
-                  {feature.title}
+                  {t(`web.onboarding.features.${feature.key}.title`)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {feature.description}
+                  {t(`web.onboarding.features.${feature.key}.description`)}
                 </Typography>
               </Box>
             </Stack>
@@ -136,7 +123,7 @@ export function WelcomeGuideDialog({ open, onClose }: WelcomeGuideDialogProps) {
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5 }}>
         <Button onClick={onClose} color="inherit">
-          先逛逛，晚點再說
+          {t("web.onboarding.later")}
         </Button>
         <Button
           component={RouterLink}
@@ -144,7 +131,7 @@ export function WelcomeGuideDialog({ open, onClose }: WelcomeGuideDialogProps) {
           variant="contained"
           onClick={onClose}
         >
-          開始建立第一個專案
+          {t("web.onboarding.firstProject")}
         </Button>
       </DialogActions>
     </Dialog>

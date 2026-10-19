@@ -15,6 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import {
   useEditorData,
@@ -36,10 +37,11 @@ interface StorytellerAssetPickerDialogProps {
 export function StorytellerAssetPickerDialog({
   open,
   projectPublicId,
-  title = "選擇資產",
+  title,
   onClose,
   onSelect,
 }: StorytellerAssetPickerDialogProps) {
+  const { t } = useTranslation();
   const [keyword, setKeyword] = useState("");
   const [page, setPage] = useState(1);
   const { useAssets, assetUploadAction } = useEditorData();
@@ -56,12 +58,12 @@ export function StorytellerAssetPickerDialog({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>{title}</DialogTitle>
+      <DialogTitle>{title ?? t("writer:assetPicker.title")}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
           <TextField
             size="small"
-            label="搜尋資產"
+            label={t("writer:assetPicker.search")}
             value={keyword}
             onChange={(event) => {
               setKeyword(event.target.value);
@@ -70,13 +72,15 @@ export function StorytellerAssetPickerDialog({
           />
           {assetsQuery.isLoading ? (
             <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
-              <Typography color="text.secondary">正在載入資產...</Typography>
+              <Typography color="text.secondary">
+                {t("writer:assetPicker.loading")}
+              </Typography>
             </Paper>
           ) : assets.length === 0 ? (
             <CustomEmptyState
               icon={<ImageIcon />}
-              title="沒有可用資產"
-              description="請先在資產集上傳圖片。"
+              title={t("writer:assetPicker.empty")}
+              description={t("writer:assetPicker.emptyHelp")}
               action={
                 projectPublicId
                   ? assetUploadAction?.(projectPublicId)
@@ -143,7 +147,7 @@ export function StorytellerAssetPickerDialog({
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>關閉</Button>
+        <Button onClick={onClose}>{t("writer:common.close")}</Button>
       </DialogActions>
     </Dialog>
   );
