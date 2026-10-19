@@ -72,9 +72,11 @@ Do not modify or rely on these directories unless the user explicitly asks for i
 
 `static_site/README.md` is currently the default Vite template README. Treat the actual source tree in `static_site/` as authoritative over that README when making frontend changes.
 
+Any user-facing text in SteamLoom (storyteller) web pages or the SteamLoom Writer frontend must follow the i18n rules in `README.md` (section「前端多語系（i18n）規則」): five locales (zh-TW as base), no hard-coded UI strings, no cross-feature key borrowing.
+
 ## Important Notices
 - `AVOID` put all functions / constants / variables or other things in JUST ONE FILE. Separate them into multiple files.
-- Every Creating frontend page SHOULD contain proper `breadcrumb` in Chinese.
+- Every Creating frontend page SHOULD contain proper `breadcrumb` in Chinese (for SteamLoom pages, write it via i18n keys; zh-TW is the base locale).
 - When encountering an error during calling api, frontend page should make a `SNACK` component appeared to notify user what happened.
 - ALWAYS Consider Function / Const / Frontend Component or others' usage in common.
 - Soft deleted data SHOULD be marked with `is_deleted` & `deleted_at` field. And user clicks `delete`, ALWAYS show a `confirm` dialog to avoid mis-delelted data.
