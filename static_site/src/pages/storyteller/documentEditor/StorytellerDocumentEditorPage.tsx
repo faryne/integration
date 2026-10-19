@@ -1,6 +1,7 @@
 import type { AlertColor } from "@mui/material";
 import { Stack, Typography } from "@mui/material";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useLocation,
   useNavigate,
@@ -73,8 +74,6 @@ function errorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-const NAME = { story: "故事", lore: "設定" } as const;
-
 // 網站的故事／設定編輯頁（StoryEditor.tsx／LoreEditor.tsx 只是轉到這裡）。外層載入資料、處理登入與 404，
 // 資料備齊後才掛上 DocumentEditorBody（以文件為 key），useDocumentEditing 一開始拿到的就是真正的文件；
 // 編輯本體是跟 SteamLoom Writer 共用的 SteamLoomDocumentEditor。
@@ -90,6 +89,7 @@ export function StorytellerDocumentEditorPage({
   projectId?: string;
   documentPublicId?: string;
 }) {
+  const { t } = useTranslation();
   const params = useParams();
   const id = projectId ?? params.id;
   const documentId =
@@ -228,12 +228,15 @@ export function StorytellerDocumentEditorPage({
 
   const shellBreadcrumbs = [
     { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-    { label: "我的工作台", to: steamloomPath("my") },
-    { label: "創作專案", to: steamloomPath("my/projects") },
+    { label: t("web.home.workspace"), to: steamloomPath("my") },
+    {
+      label: t("web.projectWorkspace.projects"),
+      to: steamloomPath("my/projects"),
+    },
   ];
   const frame = (children: ReactNode) => (
     <StorytellerShell
-      title={`${NAME[kind]}編輯器`}
+      title={t(`web.documentEditor.page.editorTitle.${kind}`)}
       breadcrumbs={embedded ? [] : shellBreadcrumbs}
       plain={embedded}
     >
@@ -243,14 +246,16 @@ export function StorytellerDocumentEditorPage({
   if (authLoading) {
     return frame(
       <Stack alignItems="center" sx={{ py: 8 }}>
-        <Typography color="text.secondary">正在確認登入狀態...</Typography>
+        <Typography color="text.secondary">
+          {t("web.home.checkingLogin")}
+        </Typography>
       </Stack>,
     );
   }
   if (!session) {
     return frame(
       <CustomLoginRequiredState
-        description={`登入後即可編輯這篇${NAME[kind]}。`}
+        description={t(`web.documentEditor.page.loginDescription.${kind}`)}
         onLogin={() => void login()}
         submitting={submitting}
       />,
@@ -263,7 +268,11 @@ export function StorytellerDocumentEditorPage({
       !loadedDocument &&
       (listQuery.isPending || listQuery.isFetching))
   ) {
-    return frame(<StorytellerLoading label={`正在載入${NAME[kind]}...`} />);
+    return frame(
+      <StorytellerLoading
+        label={t(`web.documentEditor.page.loading.${kind}`)}
+      />,
+    );
   }
   if (!apiProject || !documentId || (!isNew && !loadedDocument)) {
     return (
@@ -286,7 +295,9 @@ export function StorytellerDocumentEditorPage({
   }
   const shellTitle =
     loadedDocument?.title ||
-    (isNew ? `建立${NAME[kind]}` : `未命名${NAME[kind]}`);
+    (isNew
+      ? t(`web.documentEditor.page.create.${kind}`)
+      : t(`web.documentEditor.titlePlaceholder.${kind}`));
 
   return (
     <StorytellerShell
@@ -301,7 +312,7 @@ export function StorytellerDocumentEditorPage({
                 to: steamloomPath(`my/project/${apiProject.public_id}`),
               },
               {
-                label: kind === "story" ? "故事" : "設定集",
+                label: t(`web.documentEditor.page.listBreadcrumb.${kind}`),
                 to: steamloomPath(
                   `my/project/${apiProject.public_id}/${kind === "story" ? "stories" : "lores"}`,
                 ),
@@ -359,6 +370,7 @@ function DocumentEditorBody({
   stories: StorytellerStory[];
   lores: StorytellerLore[];
 }) {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const workspaceEditorBack = useWorkspaceEditorBack();
@@ -390,7 +402,7 @@ function DocumentEditorBody({
     doc,
     adapter: useWebDocumentAdapter(kind, projectPublicId),
     autoSaveMinutes,
-    messages: defaultDocumentEditingMessages(kind),
+    messages: defaultDocumentEditingMessages(kind, t),
     notify,
     notifyError,
     onCreated: (publicId) =>
@@ -402,7 +414,7 @@ function DocumentEditorBody({
         ),
       ),
   });
-  const labels = useMemo(() => defaultDocumentEditorLabels(kind), [kind]);
+  const labels = useMemo(() => defaultDocumentEditorLabels(kind, t), [kind, t]);
   const agentEditorProps = useDocumentEditorAgentWorkspace({
     enabled: STORYTELLER_AI_ASSISTANT_ENABLED,
     kind,
@@ -435,8 +447,10 @@ function DocumentEditorBody({
   useDocumentEditingLeaveGuard(editing, embedded);
 
   const pageTitle = isNew
-    ? `建立${NAME[kind]}`
-    : editing.draft.title.trim() || document?.title || `未命名${NAME[kind]}`;
+    ? t(`web.documentEditor.page.create.${kind}`)
+    : editing.draft.title.trim() ||
+      document?.title ||
+      t(`web.documentEditor.titlePlaceholder.${kind}`);
   useTitle(`${pageTitle} - ${STORYTELLER_APP_NAME}`, {
     path: steamloomPath(
       `my/project/${projectPublicId}/${kind}/${documentId}${isHistoryRoute ? "/diff" : ""}`,

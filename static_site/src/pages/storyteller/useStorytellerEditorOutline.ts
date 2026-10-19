@@ -1,6 +1,7 @@
 import type { AlertColor } from "@mui/material";
 import type { Editor } from "@tiptap/core";
 import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   useCreateStorytellerWritingBookmark,
@@ -39,6 +40,7 @@ export function useStorytellerEditorOutline({
   lorePublicId,
   onSnack,
 }: UseStorytellerEditorOutlineArgs) {
+  const { t } = useTranslation();
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [editor, setEditor] = useState<Editor | null>(null);
 
@@ -86,13 +88,16 @@ export function useStorytellerEditorOutline({
       createBookmark.mutate(
         { marker_id: markerId, note },
         {
-          onSuccess: () => onSnack("已加入書籤。"),
+          onSuccess: () => onSnack(t("writer:editor.bookmarks.added")),
           onError: (error) =>
-            onSnack(errorMessage(error, "加入書籤失敗。"), "error"),
+            onSnack(
+              errorMessage(error, t("writer:editor.bookmarks.addFailed")),
+              "error",
+            ),
         },
       );
     },
-    [createBookmark, onSnack],
+    [createBookmark, onSnack, t],
   );
 
   const saveBookmarkNote = useCallback(
@@ -100,24 +105,30 @@ export function useStorytellerEditorOutline({
       updateBookmark.mutate(
         { marker_id: markerId, note },
         {
-          onSuccess: () => onSnack("已更新書籤筆記。"),
+          onSuccess: () => onSnack(t("writer:editor.bookmarks.noteUpdated")),
           onError: (error) =>
-            onSnack(errorMessage(error, "更新書籤失敗。"), "error"),
+            onSnack(
+              errorMessage(error, t("writer:editor.bookmarks.updateFailed")),
+              "error",
+            ),
         },
       );
     },
-    [onSnack, updateBookmark],
+    [onSnack, t, updateBookmark],
   );
 
   const removeBookmark = useCallback(
     (markerId: string) => {
       deleteBookmark.mutate(markerId, {
-        onSuccess: () => onSnack("已移除書籤。"),
+        onSuccess: () => onSnack(t("writer:editor.bookmarks.removed")),
         onError: (error) =>
-          onSnack(errorMessage(error, "移除書籤失敗。"), "error"),
+          onSnack(
+            errorMessage(error, t("writer:editor.bookmarks.removeFailed")),
+            "error",
+          ),
       });
     },
-    [deleteBookmark, onSnack],
+    [deleteBookmark, onSnack, t],
   );
 
   return {

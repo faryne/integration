@@ -129,8 +129,8 @@
     "draft": "草稿",
     "draggable": "可拖动调整顺序",
     "updated": "更新于 {{date}}",
-    "wordCount": "{{count}} 字"
-    ,"pageCount": "{{count}} 页"
+    "wordCount": "{{count}} 字",
+    "pageCount": "{{count}} 页"
   },
   "assets": {
     "references": "引用 {{count}} 次",
@@ -224,65 +224,519 @@
     "deleteTitle": "确定要让梭梭忘记这件事吗？",
     "confirmDelete": "确认删除",
     "operationFailed": "记忆操作失败，请稍后重试。",
-    "scopeLabels": { "project": "整个项目", "story": "故事", "lore": "设定" },
-    "contextScopeLabels": { "project": "整个项目", "story": "这篇故事", "lore": "这则设定" },
+    "scopeLabels": {
+      "project": "整个项目",
+      "story": "故事",
+      "lore": "设定"
+    },
+    "contextScopeLabels": {
+      "project": "整个项目",
+      "story": "这篇故事",
+      "lore": "这则设定"
+    },
     "target": "{{scope}}：{{name}}",
-    "kindLabels": { "preference": "偏好", "instruction": "持续指示", "decision": "已确认决策", "context": "背景信息" },
+    "kindLabels": {
+      "preference": "偏好",
+      "instruction": "持续指示",
+      "decision": "已确认决策",
+      "context": "背景信息"
+    },
     "kindDescriptions": {
       "preference": "偏好的写作、格式或互动方式，例如“回复简洁一点”。",
       "instruction": "之后都要持续遵守的要求或限制，例如“不要改动角色名称”。",
       "decision": "已经确认、不必反复讨论的决定，例如“第三章改成雨夜”。",
       "context": "理解内容所需的长期背景，例如角色关系或世界观前提。"
     },
-    "priorityValue": "优先级 {{value}}", "unpin": "取消置顶", "pin": "置顶", "updated": "更新于 {{date}}",
-    "edit": "编辑记忆", "editTitle": "调整梭梭记住的内容", "name": "记忆名称", "content": "记忆内容", "memoryType": "记忆类型",
-    "priority": "优先级", "priorityHelp": "0–100，数字越高越优先提供给梭梭", "pinMemory": "置顶这条记忆",
-    "tagPlaceholder": "角色口吻, 世界观, 待确认", "tagLength": "每个标签最多 {{count}} 个字。", "tagCount": "最多只能加入 {{count}} 个标签。", "tagHelp": "输入后按 Enter，或用逗号分隔；最多 {{count}} 个，每个最多 {{length}} 个字。",
+    "priorityValue": "优先级 {{value}}",
+    "unpin": "取消置顶",
+    "pin": "置顶",
+    "updated": "更新于 {{date}}",
+    "edit": "编辑记忆",
+    "editTitle": "调整梭梭记住的内容",
+    "name": "记忆名称",
+    "content": "记忆内容",
+    "memoryType": "记忆类型",
+    "priority": "优先级",
+    "priorityHelp": "0–100，数字越高越优先提供给梭梭",
+    "pinMemory": "置顶这条记忆",
+    "tagPlaceholder": "角色口吻, 世界观, 待确认",
+    "tagLength": "每个标签最多 {{count}} 个字。",
+    "tagCount": "最多只能加入 {{count}} 个标签。",
+    "tagHelp": "输入后按 Enter，或用逗号分隔；最多 {{count}} 个，每个最多 {{length}} 个字。",
     "draft": {
-      "organizing": "正在整理对话", "candidate": "记忆候选", "loadingTitle": "我正在寻找值得留下来的事……", "failedTitle": "这次没有整理成功", "emptyTitle": "这轮没有需要长期记住的事", "confirmTitle": "确认要记住的内容",
-      "loadingDescription": "整理完成后会先让你检查，不会自动写入记忆。", "confirmDescription": "你可以修改内容与适用范围；点击“存入记忆”后，之后的对话才会读取它。",
-      "retry": "重新整理", "discard": "不保存", "save": "存入记忆", "loading": "梭梭正在把这轮对话整理成一件清楚、之后看得懂的事。", "failed": "记忆整理失败，请稍后重试。", "empty": "这轮更像一次性请求，没有找到适合长期记住的内容。",
-      "supersedeWarning": "这条候选原本会替换下面的旧记忆。如果修改了适用范围，或想保留两条，请选择“不替换，另存一条”。", "oldMemory": "旧记忆", "oldUnavailable": "旧记忆已不在当前可读范围，建议另存一条。", "skipSupersede": "不替换，另存一条", "content": "要记住的内容", "pin": "置顶这条记忆，避免日后被自动替换"
+      "organizing": "正在整理对话",
+      "candidate": "记忆候选",
+      "loadingTitle": "我正在寻找值得留下来的事……",
+      "failedTitle": "这次没有整理成功",
+      "emptyTitle": "这轮没有需要长期记住的事",
+      "confirmTitle": "确认要记住的内容",
+      "loadingDescription": "整理完成后会先让你检查，不会自动写入记忆。",
+      "confirmDescription": "你可以修改内容与适用范围；点击“存入记忆”后，之后的对话才会读取它。",
+      "retry": "重新整理",
+      "discard": "不保存",
+      "save": "存入记忆",
+      "loading": "梭梭正在把这轮对话整理成一件清楚、之后看得懂的事。",
+      "failed": "记忆整理失败，请稍后重试。",
+      "empty": "这轮更像一次性请求，没有找到适合长期记住的内容。",
+      "supersedeWarning": "这条候选原本会替换下面的旧记忆。如果修改了适用范围，或想保留两条，请选择“不替换，另存一条”。",
+      "oldMemory": "旧记忆",
+      "oldUnavailable": "旧记忆已不在当前可读范围，建议另存一条。",
+      "skipSupersede": "不替换，另存一条",
+      "content": "要记住的内容",
+      "pin": "置顶这条记忆，避免日后被自动替换"
     }
   },
   "editor": {
-    "formatToolbar": "文字格式工具栏", "textColor": "文字颜色", "textColorOptions": "文字颜色选项", "clearTextColor": "清除文字颜色", "backgroundColor": "文字背景色", "backgroundColorOptions": "文字背景色选项", "clearBackgroundColor": "清除文字背景色", "askAI": "询问 AI", "contextMenu": "编辑器右键菜单", "imageSettings": "图片设置", "deleteImage": "删除图片", "removeLink": "移除链接", "removeFootnote": "移除脚注", "removeComment": "移除注释", "searchSelection": "搜索选中文字", "editBookmark": "编辑书签笔记", "addBookmark": "加入书签", "slashMenu": "斜线命令菜单", "bookmarkSaveFirst": "保存后才能加入书签", "bookmarkUnavailable": "光标不在可加书签的段落", "editComment": "编辑注释", "addComment": "添加注释", "commentAttached": "这条注释会附在这段文字上：“{{text}}”", "commentContent": "注释内容", "updateComment": "更新注释", "createComment": "新增注释", "editFootnote": "编辑脚注", "addFootnote": "添加脚注", "footnoteContent": "脚注内容", "footnoteHelp": "仅支持 **粗体**、*斜体*、++下划线++，其他格式不会应用", "updateFootnote": "更新脚注", "createFootnote": "新增脚注", "removeBookmark": "移除书签", "removeBookmarkTitle": "确定要移除这条书签吗？", "removeBookmarkDescription": "书签移除后无法恢复。", "footnoteEditHelp": "右键或选中文字后使用格式栏编辑／移除脚注", "colors": { "yellow": "黄", "pink": "粉红", "blue": "蓝", "green": "绿", "purple": "紫" },
-    "slashGroups": { "paragraphStyles": "段落样式", "alignment": "对齐", "blocks": "区块", "insert": "插入", "utilities": "工具", "ai": "AI 协作" },
-    "link": { "url": "网址", "lore": "设定", "unpublished": "{{title}}（未公开）", "noLore": "这个项目还没有设定", "noMatch": "找不到符合的设定", "selectLore": "链接到哪条设定", "loreHelp": "读者点击后会看到这条设定的摘要。设定未公开时，读者只会看到纯文字。", "urlHelp": "仅接受以 http:// 或 https:// 开头的网址；要链接到设定请切换到“设定”", "newTab": "在新标签页打开", "update": "更新链接", "create": "新增链接" },
-    "syntax": { "text": "文字", "item": "项目", "heading": "标题", "headingHelp": "行首输入 # 到 {{hashes}}（1～{{count}} 级），后面加一个空格。", "numberHelp": "自动编号，输入的数字不影响实际显示的编号。", "divider": "分隔线", "dividerHelp": "单独一行输入三个减号，会自动转换为分隔线并换到下一行。", "colors": "文字颜色／背景色", "colorsPath": "选中文字 → 右键菜单／Bubble Menu 色盘", "colorsHelp": "没有输入快捷方式，可从固定色盘选择。", "link": "链接", "linkPath": "选中文字 → 右键菜单／Bubble Menu 链接按钮", "linkHelp": "仅接受以 http(s) 开头的网址。", "footnote": "脚注", "footnotePath": "选中文字 → 右键菜单／Bubble Menu 脚注按钮", "footnoteHelp": "读者可在阅读页看到，内容显示在文章末尾。", "comment": "注释", "commentPath": "选中文字 → 右键菜单／Bubble Menu 注释按钮", "commentHelp": "只有作者可见，读者端不会显示。", "imagePath": "在空白段落输入 /图片，或右键插入图片", "imageHelp": "从项目的资产集中选择图片插入。", "open": "支持的语法", "title": "编辑器支持的语法", "description": "这是编辑器自定义的精简语法，并非完整 Markdown／GFM。输入下列符号会自动转换为对应格式；颜色、链接等需通过菜单应用。", "textStyles": "文字样式", "paragraphStyles": "段落格式", "menuOnly": "只能通过菜单应用" },
+    "formatToolbar": "文字格式工具栏",
+    "textColor": "文字颜色",
+    "textColorOptions": "文字颜色选项",
+    "clearTextColor": "清除文字颜色",
+    "backgroundColor": "文字背景色",
+    "backgroundColorOptions": "文字背景色选项",
+    "clearBackgroundColor": "清除文字背景色",
+    "askAI": "询问 AI",
+    "contextMenu": "编辑器右键菜单",
+    "imageSettings": "图片设置",
+    "deleteImage": "删除图片",
+    "removeLink": "移除链接",
+    "removeFootnote": "移除脚注",
+    "removeComment": "移除注释",
+    "searchSelection": "搜索选中文字",
+    "editBookmark": "编辑书签笔记",
+    "addBookmark": "加入书签",
+    "slashMenu": "斜线命令菜单",
+    "bookmarkSaveFirst": "保存后才能加入书签",
+    "bookmarkUnavailable": "光标不在可加书签的段落",
+    "editComment": "编辑注释",
+    "addComment": "添加注释",
+    "commentAttached": "这条注释会附在这段文字上：“{{text}}”",
+    "commentContent": "注释内容",
+    "updateComment": "更新注释",
+    "createComment": "新增注释",
+    "editFootnote": "编辑脚注",
+    "addFootnote": "添加脚注",
+    "footnoteContent": "脚注内容",
+    "footnoteHelp": "仅支持 **粗体**、*斜体*、++下划线++，其他格式不会应用",
+    "updateFootnote": "更新脚注",
+    "createFootnote": "新增脚注",
+    "removeBookmark": "移除书签",
+    "removeBookmarkTitle": "确定要移除这条书签吗？",
+    "removeBookmarkDescription": "书签移除后无法恢复。",
+    "footnoteEditHelp": "右键或选中文字后使用格式栏编辑／移除脚注",
+    "colors": {
+      "yellow": "黄",
+      "pink": "粉红",
+      "blue": "蓝",
+      "green": "绿",
+      "purple": "紫"
+    },
+    "slashGroups": {
+      "paragraphStyles": "段落样式",
+      "alignment": "对齐",
+      "blocks": "区块",
+      "insert": "插入",
+      "utilities": "工具",
+      "ai": "AI 协作"
+    },
+    "link": {
+      "url": "网址",
+      "lore": "设定",
+      "unpublished": "{{title}}（未公开）",
+      "noLore": "这个项目还没有设定",
+      "noMatch": "找不到符合的设定",
+      "selectLore": "链接到哪条设定",
+      "loreHelp": "读者点击后会看到这条设定的摘要。设定未公开时，读者只会看到纯文字。",
+      "urlHelp": "仅接受以 http:// 或 https:// 开头的网址；要链接到设定请切换到“设定”",
+      "newTab": "在新标签页打开",
+      "update": "更新链接",
+      "create": "新增链接"
+    },
+    "syntax": {
+      "text": "文字",
+      "item": "项目",
+      "heading": "标题",
+      "headingHelp": "行首输入 # 到 {{hashes}}（1～{{count}} 级），后面加一个空格。",
+      "numberHelp": "自动编号，输入的数字不影响实际显示的编号。",
+      "divider": "分隔线",
+      "dividerHelp": "单独一行输入三个减号，会自动转换为分隔线并换到下一行。",
+      "colors": "文字颜色／背景色",
+      "colorsPath": "选中文字 → 右键菜单／Bubble Menu 色盘",
+      "colorsHelp": "没有输入快捷方式，可从固定色盘选择。",
+      "link": "链接",
+      "linkPath": "选中文字 → 右键菜单／Bubble Menu 链接按钮",
+      "linkHelp": "仅接受以 http(s) 开头的网址。",
+      "footnote": "脚注",
+      "footnotePath": "选中文字 → 右键菜单／Bubble Menu 脚注按钮",
+      "footnoteHelp": "读者可在阅读页看到，内容显示在文章末尾。",
+      "comment": "注释",
+      "commentPath": "选中文字 → 右键菜单／Bubble Menu 注释按钮",
+      "commentHelp": "只有作者可见，读者端不会显示。",
+      "imagePath": "在空白段落输入 /图片，或右键插入图片",
+      "imageHelp": "从项目的资产集中选择图片插入。",
+      "open": "支持的语法",
+      "title": "编辑器支持的语法",
+      "description": "这是编辑器自定义的精简语法，并非完整 Markdown／GFM。输入下列符号会自动转换为对应格式；颜色、链接等需通过菜单应用。",
+      "textStyles": "文字样式",
+      "paragraphStyles": "段落格式",
+      "menuOnly": "只能通过菜单应用"
+    },
     "backToCaret": "回到输入位置",
     "placeholder": "输入 / 插入区块；选择文字可应用样式",
     "typography": {
-      "title": "文字设置", "fontSize": "字体大小", "decreaseFontSize": "缩小字体", "increaseFontSize": "放大字体", "fontFamily": "字体", "lineHeight": "行距", "measure": "页面宽度", "editorCaption": "只影响编辑区的显示，不会修改作品内容；阅读页另有自己的设置。",
-      "fontFamilies": { "system": "系统", "sans": "黑体", "serif": "宋体" },
-      "spacing": { "tight": "紧", "normal": "适中", "wide": "宽" },
-      "width": { "narrow": "窄", "normal": "适中", "wide": "宽" }
+      "title": "文字设置",
+      "fontSize": "字体大小",
+      "decreaseFontSize": "缩小字体",
+      "increaseFontSize": "放大字体",
+      "fontFamily": "字体",
+      "lineHeight": "行距",
+      "measure": "页面宽度",
+      "editorCaption": "只影响编辑区的显示，不会修改作品内容；阅读页另有自己的设置。",
+      "fontFamilies": {
+        "system": "系统",
+        "sans": "黑体",
+        "serif": "宋体"
+      },
+      "spacing": {
+        "tight": "紧",
+        "normal": "适中",
+        "wide": "宽"
+      },
+      "width": {
+        "narrow": "窄",
+        "normal": "适中",
+        "wide": "宽"
+      }
     },
-    "find": { "replaced": "已替换 {{count}} 处", "noMatch": "没有匹配项", "collapseReplace": "收起替换", "expandReplace": "展开替换", "search": "查找", "caseSensitive": "区分大小写（英文）", "previous": "上一个", "next": "下一个", "replaceWith": "替换为", "replace": "替换", "replaceAll": "全部替换" },
-    "bookmark": { "edit": "编辑书签笔记", "add": "添加书签", "attached": "此书签位于这段文字：“{{text}}”", "note": "笔记（可留空）", "placeholder": "例如：写到这里、这里之后要修改", "remove": "移除书签" },
-    "outline": { "title": "大纲与书签", "collapse": "收起大纲与书签", "emptyParagraph": "（空白段落）", "untitled": "（无标题文字）", "fullDocument": "全文", "editingOnly": "当前仅编辑：{{title}}", "backToFull": "返回全文", "loading": "正在加载书签…", "empty": "还没有标题或书签。将段落设为标题，或在段落上添加书签后会显示在这里。", "editing": "编辑中", "editSection": "仅编辑此段", "missing": "找不到此位置，可能已被删除", "editNote": "编辑笔记", "deleteBookmark": "删除书签", "deleteTitle": "确定要删除此书签？", "deleteDescription": "书签和笔记将一并移除，此操作无法撤销。" },
+    "find": {
+      "replaced": "已替换 {{count}} 处",
+      "noMatch": "没有匹配项",
+      "collapseReplace": "收起替换",
+      "expandReplace": "展开替换",
+      "search": "查找",
+      "caseSensitive": "区分大小写（英文）",
+      "previous": "上一个",
+      "next": "下一个",
+      "replaceWith": "替换为",
+      "replace": "替换",
+      "replaceAll": "全部替换"
+    },
+    "bookmark": {
+      "edit": "编辑书签笔记",
+      "add": "添加书签",
+      "attached": "此书签位于这段文字：“{{text}}”",
+      "note": "笔记（可留空）",
+      "placeholder": "例如：写到这里、这里之后要修改",
+      "remove": "移除书签"
+    },
+    "outline": {
+      "title": "大纲与书签",
+      "collapse": "收起大纲与书签",
+      "emptyParagraph": "（空白段落）",
+      "untitled": "（无标题文字）",
+      "fullDocument": "全文",
+      "editingOnly": "当前仅编辑：{{title}}",
+      "backToFull": "返回全文",
+      "loading": "正在加载书签…",
+      "empty": "还没有标题或书签。将段落设为标题，或在段落上添加书签后会显示在这里。",
+      "editing": "编辑中",
+      "editSection": "仅编辑此段",
+      "missing": "找不到此位置，可能已被删除",
+      "editNote": "编辑笔记",
+      "deleteBookmark": "删除书签",
+      "deleteTitle": "确定要删除此书签？",
+      "deleteDescription": "书签和笔记将一并移除，此操作无法撤销。"
+    },
     "diff": {
-      "oldVersion": "旧版本", "newVersion": "新版本", "unchanged": "无变化", "changed": "有变化", "collapseUnchanged": "收起 {{count}} 行未变化内容", "expandUnchanged": "展开 {{count}} 行未变化内容", "titleField": "标题", "summaryField": "摘要", "contentField": "内容", "footnotesField": "脚注", "compareTitle": "{{title}} 版本比较", "differenceCount": "{{count}} 行差异", "noDifference": "两个版本无差异", "closeCompare": "关闭版本比较",
-      "legend": { "added": { "label": "新增", "description": "绿色表示新版本新增的内容。" }, "removed": { "label": "移除", "description": "红色表示旧版本中被移除的内容。" }, "changed": { "label": "修改", "description": "黄色表示同一行内容有变化。" }, "empty": { "label": "空白对照", "description": "灰色表示另一侧没有对应内容。" } }
+      "oldVersion": "旧版本",
+      "newVersion": "新版本",
+      "unchanged": "无变化",
+      "changed": "有变化",
+      "collapseUnchanged": "收起 {{count}} 行未变化内容",
+      "expandUnchanged": "展开 {{count}} 行未变化内容",
+      "titleField": "标题",
+      "summaryField": "摘要",
+      "contentField": "内容",
+      "footnotesField": "脚注",
+      "compareTitle": "{{title}} 版本比较",
+      "differenceCount": "{{count}} 行差异",
+      "noDifference": "两个版本无差异",
+      "closeCompare": "关闭版本比较",
+      "legend": {
+        "added": {
+          "label": "新增",
+          "description": "绿色表示新版本新增的内容。"
+        },
+        "removed": {
+          "label": "移除",
+          "description": "红色表示旧版本中被移除的内容。"
+        },
+        "changed": {
+          "label": "修改",
+          "description": "黄色表示同一行内容有变化。"
+        },
+        "empty": {
+          "label": "空白对照",
+          "description": "灰色表示另一侧没有对应内容。"
+        }
+      }
     },
-    "image": { "loading": "正在加载资产…", "previewMissing": "找不到资产预览", "settings": "图片设置", "removeAsset": "移除资产", "alt": "替代文字", "altHelp": "用于无障碍辅助工具和 SEO，不会显示在画面上", "caption": "图片说明", "captionHelp": "显示给读者的说明文字，留空则不显示", "layout": "版面", "size": "尺寸", "delete": "删除图片", "layouts": { "block": "图片全宽", "center": "图片居中", "float-left": "图片靠左环绕", "float-right": "图片靠右环绕" }, "sizes": { "small": "小", "medium": "中", "large": "大（原始比例）" } },
-    "controls": { "collapse": "收起", "properties": "属性与摘要", "notSet": "未设置", "unpublished": "未公开", "published": "已公开" },
-    "status": { "wordCount": "{{count}} 字", "published": "已公开：读者可查看此篇", "unpublished": "未公开：仅自己可见", "notSaved": "尚未保存", "updatedAt": "更新于 {{time}}", "autoSaveOff": "自动保存已关闭", "autoSaveEvery": "每 {{count}} 分钟自动保存" },
-    "code": { "copy": "复制", "delete": "删除代码块", "language": "语言", "expandAll": "展开全部（共 {{count}} 行）", "collapse": "收起" },
-    "history": { "newItem": "首次保存后才会生成编辑历史。", "helper": "请依次选择要比较的新旧版本，再点击“比较所选版本”", "version": "版本 #{{number}}", "createdAt": "创建于 {{date}}", "description": "选择两个版本后，可比较标题和 Markdown 内容差异。", "compare": "比较所选版本", "old": "旧", "new": "新", "versionNumber": "版本号", "source": "来源", "words": "字数", "createdTime": "创建时间", "actions": "操作", "selectOld": "选择 {{id}} 作为旧版本", "selectNew": "选择 {{id}} 作为新版本", "revertedFrom": "恢复自{{version}}", "conflictedWith": "与{{version}}冲突", "revert": "恢复到此版本", "sources": { "manual": "手动保存", "auto": "自动保存", "agent": "应用 AI 提案后保存", "mcp": "通过 MCP 操作", "mcpPat": "通过 MCP 使用 PAT“{{label}}”操作" } },
+    "image": {
+      "loading": "正在加载资产…",
+      "previewMissing": "找不到资产预览",
+      "settings": "图片设置",
+      "removeAsset": "移除资产",
+      "alt": "替代文字",
+      "altHelp": "用于无障碍辅助工具和 SEO，不会显示在画面上",
+      "caption": "图片说明",
+      "captionHelp": "显示给读者的说明文字，留空则不显示",
+      "layout": "版面",
+      "size": "尺寸",
+      "delete": "删除图片",
+      "layouts": {
+        "block": "图片全宽",
+        "center": "图片居中",
+        "float-left": "图片靠左环绕",
+        "float-right": "图片靠右环绕"
+      },
+      "sizes": {
+        "small": "小",
+        "medium": "中",
+        "large": "大（原始比例）"
+      }
+    },
+    "controls": {
+      "collapse": "收起",
+      "properties": "属性与摘要",
+      "notSet": "未设置",
+      "unpublished": "未公开",
+      "published": "已公开"
+    },
+    "status": {
+      "wordCount": "{{count}} 字",
+      "published": "已公开：读者可查看此篇",
+      "unpublished": "未公开：仅自己可见",
+      "notSaved": "尚未保存",
+      "updatedAt": "更新于 {{time}}",
+      "autoSaveOff": "自动保存已关闭",
+      "autoSaveEvery": "每 {{count}} 分钟自动保存"
+    },
+    "code": {
+      "copy": "复制",
+      "delete": "删除代码块",
+      "language": "语言",
+      "expandAll": "展开全部（共 {{count}} 行）",
+      "collapse": "收起"
+    },
+    "history": {
+      "newItem": "首次保存后才会生成编辑历史。",
+      "helper": "请依次选择要比较的新旧版本，再点击“比较所选版本”",
+      "version": "版本 #{{number}}",
+      "createdAt": "创建于 {{date}}",
+      "description": "选择两个版本后，可比较标题和 Markdown 内容差异。",
+      "compare": "比较所选版本",
+      "old": "旧",
+      "new": "新",
+      "versionNumber": "版本号",
+      "source": "来源",
+      "words": "字数",
+      "createdTime": "创建时间",
+      "actions": "操作",
+      "selectOld": "选择 {{id}} 作为旧版本",
+      "selectNew": "选择 {{id}} 作为新版本",
+      "revertedFrom": "恢复自{{version}}",
+      "conflictedWith": "与{{version}}冲突",
+      "revert": "恢复到此版本",
+      "sources": {
+        "manual": "手动保存",
+        "auto": "自动保存",
+        "agent": "应用 AI 提案后保存",
+        "mcp": "通过 MCP 操作",
+        "mcpPat": "通过 MCP 使用 PAT“{{label}}”操作"
+      }
+    },
     "commands": {
-      "bold": { "label": "粗体" }, "italic": { "label": "斜体" }, "underline": { "label": "下划线" }, "subscript": { "label": "下标" }, "superscript": { "label": "上标" }, "strike": { "label": "删除线" }, "code": { "label": "行内代码" },
-      "heading-0": { "label": "正文" }, "heading-1": { "label": "标题 1" }, "heading-2": { "label": "标题 2" }, "heading-3": { "label": "标题 3" }, "heading-4": { "label": "标题 4" }, "heading-5": { "label": "标题 5" }, "heading-6": { "label": "标题 6" },
-      "insert-code-block": { "label": "插入代码块" }, "insert-table": { "label": "插入表格" }, "insert-image": { "label": "插入图片" }, "image-layout-block": { "label": "图片全宽" }, "image-layout-center": { "label": "图片居中" }, "image-layout-float-left": { "label": "图片靠左环绕" }, "image-layout-float-right": { "label": "图片靠右环绕" },
-      "align-left": { "label": "左对齐" }, "align-center": { "label": "居中" }, "align-right": { "label": "右对齐" }, "block-kind-quote": { "label": "引用" }, "block-kind-bullet": { "label": "无序列表" }, "block-kind-number": { "label": "有序列表" }, "horizontal-rule": { "label": "插入分隔线" },
-      "text-color-red": { "label": "红" }, "text-color-orange": { "label": "橙" }, "text-color-green": { "label": "绿" }, "text-color-blue": { "label": "蓝" }, "text-color-purple": { "label": "紫" }, "text-color-clear": { "label": "清除文字颜色" }, "bg-color-yellow": { "label": "黄" }, "bg-color-pink": { "label": "粉红" }, "bg-color-blue": { "label": "蓝" }, "bg-color-green": { "label": "绿" }, "bg-color-purple": { "label": "紫" }, "bg-color-clear": { "label": "清除背景色" },
-      "link": { "label": "添加链接", "active": "编辑链接" }, "lore-link": { "label": "链接到设定", "active": "编辑设定链接" }, "footnote": { "label": "添加脚注", "active": "编辑脚注" }, "comment": { "label": "添加注释", "active": "编辑注释" }, "ask-ai": { "label": "询问 AI" }, "find-replace": { "label": "查找／替换" }, "export-markdown": { "label": "导出 markdown 文件" }
+      "bold": {
+        "label": "粗体"
+      },
+      "italic": {
+        "label": "斜体"
+      },
+      "underline": {
+        "label": "下划线"
+      },
+      "subscript": {
+        "label": "下标"
+      },
+      "superscript": {
+        "label": "上标"
+      },
+      "strike": {
+        "label": "删除线"
+      },
+      "code": {
+        "label": "行内代码"
+      },
+      "heading-0": {
+        "label": "正文"
+      },
+      "heading-1": {
+        "label": "标题 1"
+      },
+      "heading-2": {
+        "label": "标题 2"
+      },
+      "heading-3": {
+        "label": "标题 3"
+      },
+      "heading-4": {
+        "label": "标题 4"
+      },
+      "heading-5": {
+        "label": "标题 5"
+      },
+      "heading-6": {
+        "label": "标题 6"
+      },
+      "insert-code-block": {
+        "label": "插入代码块"
+      },
+      "insert-table": {
+        "label": "插入表格"
+      },
+      "insert-image": {
+        "label": "插入图片"
+      },
+      "image-layout-block": {
+        "label": "图片全宽"
+      },
+      "image-layout-center": {
+        "label": "图片居中"
+      },
+      "image-layout-float-left": {
+        "label": "图片靠左环绕"
+      },
+      "image-layout-float-right": {
+        "label": "图片靠右环绕"
+      },
+      "align-left": {
+        "label": "左对齐"
+      },
+      "align-center": {
+        "label": "居中"
+      },
+      "align-right": {
+        "label": "右对齐"
+      },
+      "block-kind-quote": {
+        "label": "引用"
+      },
+      "block-kind-bullet": {
+        "label": "无序列表"
+      },
+      "block-kind-number": {
+        "label": "有序列表"
+      },
+      "horizontal-rule": {
+        "label": "插入分隔线"
+      },
+      "text-color-red": {
+        "label": "红"
+      },
+      "text-color-orange": {
+        "label": "橙"
+      },
+      "text-color-green": {
+        "label": "绿"
+      },
+      "text-color-blue": {
+        "label": "蓝"
+      },
+      "text-color-purple": {
+        "label": "紫"
+      },
+      "text-color-clear": {
+        "label": "清除文字颜色"
+      },
+      "bg-color-yellow": {
+        "label": "黄"
+      },
+      "bg-color-pink": {
+        "label": "粉红"
+      },
+      "bg-color-blue": {
+        "label": "蓝"
+      },
+      "bg-color-green": {
+        "label": "绿"
+      },
+      "bg-color-purple": {
+        "label": "紫"
+      },
+      "bg-color-clear": {
+        "label": "清除背景色"
+      },
+      "link": {
+        "label": "添加链接",
+        "active": "编辑链接"
+      },
+      "lore-link": {
+        "label": "链接到设定",
+        "active": "编辑设定链接"
+      },
+      "footnote": {
+        "label": "添加脚注",
+        "active": "编辑脚注"
+      },
+      "comment": {
+        "label": "添加注释",
+        "active": "编辑注释"
+      },
+      "ask-ai": {
+        "label": "询问 AI"
+      },
+      "find-replace": {
+        "label": "查找／替换"
+      },
+      "export-markdown": {
+        "label": "导出 markdown 文件"
+      }
+    },
+    "table": {
+      "rowAbove": "上方行",
+      "rowBelow": "下方行",
+      "deleteRow": "删除行",
+      "columnLeft": "左侧列",
+      "columnRight": "右侧列",
+      "deleteColumn": "删除列",
+      "deleteTable": "删除表格"
+    },
+    "bookmarks": {
+      "added": "已加入书签。",
+      "addFailed": "加入书签失败。",
+      "noteUpdated": "已更新书签笔记。",
+      "updateFailed": "更新书签失败。",
+      "removed": "已移除书签。",
+      "removeFailed": "移除书签失败。"
     }
   },
   "mascot": {
-    "dangerLabel": "无法恢复", "dangerAlt": "梭梭提醒这是无法恢复的操作", "successLabel": "准备好了", "successAlt": "梭梭为工作完成感到开心", "thinkingLabel": "处理中", "thinkingAlt": "梭梭正在思考并处理工作", "neutralLabel": "请再次确认", "neutralAlt": "梭梭提醒你确认当前选择"
+    "dangerLabel": "无法恢复",
+    "dangerAlt": "梭梭提醒这是无法恢复的操作",
+    "successLabel": "准备好了",
+    "successAlt": "梭梭为工作完成感到开心",
+    "thinkingLabel": "处理中",
+    "thinkingAlt": "梭梭正在思考并处理工作",
+    "neutralLabel": "请再次确认",
+    "neutralAlt": "梭梭提醒你确认当前选择"
   },
   "unsaved": {
-    "toneLabel": "更改尚未保存", "eyebrow": "离开编辑器", "title": "你有尚未保存的更改", "saveDescription": "离开这个编辑页面前要先保存吗？不保存的话，更改会丢失。", "discardDescription": "离开这个编辑页面后，未保存的更改会丢失。确定要放弃更改并离开吗？", "continueEditing": "继续编辑", "discardAndLeave": "放弃更改并离开", "saveAndContinue": "保存并继续"
+    "toneLabel": "更改尚未保存",
+    "eyebrow": "离开编辑器",
+    "title": "你有尚未保存的更改",
+    "saveDescription": "离开这个编辑页面前要先保存吗？不保存的话，更改会丢失。",
+    "discardDescription": "离开这个编辑页面后，未保存的更改会丢失。确定要放弃更改并离开吗？",
+    "continueEditing": "继续编辑",
+    "discardAndLeave": "放弃更改并离开",
+    "saveAndContinue": "保存并继续"
   }
 }

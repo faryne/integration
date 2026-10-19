@@ -443,7 +443,9 @@
       "publishHint": "비공개이며 안의 작품도 숨겨집니다. 클릭하여 공개",
       "unpublishHint": "공개 중입니다. 클릭하면 안의 작품도 함께 숨겨집니다",
       "deleteBlocked": "권 안의 작품을 모두 옮긴 뒤 삭제하세요",
-      "deleteDescription": "이 작업은 되돌릴 수 없습니다. 확인하려면 권 이름을 입력하세요."
+      "deleteDescription": "이 작업은 되돌릴 수 없습니다. 확인하려면 권 이름을 입력하세요.",
+      "name": "권 이름",
+      "namePlaceholder": "예: 제1권"
     },
     "empty": {
       "allTitle": "아직 작품이 없습니다",
@@ -716,6 +718,15 @@
       "loreCollectionDeleteFailed": "설정집을 삭제하지 못했습니다.",
       "deleteAssetDescription": "삭제하면 되돌릴 수 없습니다. 확인을 위해 에셋 이름을 입력하세요.",
       "deleteAssetCollectionDescription": "다른 에셋 모음에는 영향을 주지 않습니다. 확인을 위해 에셋 모음 이름을 입력하세요."
+    },
+    "lastUpdated": "마지막 업데이트 {{date}}",
+    "sidebar": {
+      "collapse": "접기",
+      "expand": "펼치기",
+      "reorder": "{{title}} 순서 조정",
+      "create": "{{title}} 추가",
+      "collapseItems": "항목 접기",
+      "expandItems": "항목 펼치기"
     }
   },
   "agent": {
@@ -822,6 +833,188 @@
     },
     "messages": {
       "responseCopied": "AI 답장을 복사했습니다."
+    }
+  },
+  "documentEditor": {
+    "tabs": {
+      "editor": "편집",
+      "history": "편집 기록"
+    },
+    "ungrouped": {
+      "story": "권으로 나누지 않음",
+      "lore": "미분류"
+    },
+    "titlePlaceholder": {
+      "story": "제목 없는 이야기",
+      "lore": "제목 없는 설정",
+      "image": "제목 없는 이미지 작품"
+    },
+    "summaryPlaceholder": {
+      "story": "요약 추가...",
+      "lore": "독자용 요약 추가...",
+      "image": "설명 추가..."
+    },
+    "status": "상태",
+    "group": {
+      "story": "권",
+      "lore": "설정집"
+    },
+    "authors": "서명",
+    "autoSave": {
+      "label": "자동 저장",
+      "off": "자동 저장 안 함",
+      "every": "{{minutes}}분마다",
+      "custom": "사용자 지정",
+      "range": "{{min}}-{{max}}분"
+    },
+    "conflict": {
+      "story": "저장한 뒤 이 이야기가 도중에 다른 곳에서 수정된 것을 확인했습니다. 최신 버전 뒤에 새 버전으로 저장했습니다.",
+      "lore": "저장한 뒤 이 설정이 도중에 다른 곳에서 수정된 것을 확인했습니다. 최신 버전 뒤에 새 버전으로 저장했습니다.",
+      "viewHistory": "편집 기록 보기"
+    },
+    "self": "본인({{penName}})",
+    "selfOnly": "본인",
+    "spoiler": {
+      "label": "스포일러",
+      "no": "스포일러 없음",
+      "yes": "스포일러 포함"
+    },
+    "dependsOn": "먼저 읽을 것",
+    "dependency": {
+      "story": "작품",
+      "lore": "설정"
+    },
+    "saveFailedBanner": "저장하지 못했습니다. 로그인 상태와 입력 내용을 확인해 주세요.",
+    "insertAsset": "에셋 삽입",
+    "insertAssetTitle": {
+      "story": "작품 에셋 삽입",
+      "lore": "설정 에셋 삽입"
+    },
+    "assetInserted": "에셋을 삽입했습니다.",
+    "assetInsertFailed": "에셋을 삽입하지 못했습니다. 새로고침한 뒤 다시 시도해 주세요.",
+    "historyEmpty": {
+      "story": "처음 저장하면 편집 기록이 생깁니다.",
+      "lore": "처음 저장하면 편집 기록이 생깁니다."
+    },
+    "reverted": "이 버전으로 되돌렸습니다.",
+    "scope": {
+      "only": "편집 범위",
+      "backToFull": "전체로 돌아가기"
+    },
+    "backToList": "목록으로",
+    "revertFailed": {
+      "story": "이야기 버전을 되돌리지 못했습니다. 다시 시도하세요.",
+      "lore": "설정 버전을 되돌리지 못했습니다. 다시 시도하세요."
+    },
+    "messages": {
+      "saved": {
+        "story": "이야기를 저장했습니다.",
+        "lore": "설정을 저장했습니다."
+      },
+      "autoSaved": "자동 저장했습니다.",
+      "agentApplied": "AI 제안을 적용하고 저장했습니다.",
+      "saveFailed": {
+        "story": "이야기를 저장하지 못했습니다. 다시 시도하세요.",
+        "lore": "설정을 저장하지 못했습니다. 다시 시도하세요."
+      },
+      "autoSaveFailed": {
+        "story": "이야기 자동 저장에 실패했습니다. 직접 저장해 주세요.",
+        "lore": "설정 자동 저장에 실패했습니다. 직접 저장해 주세요."
+      },
+      "titleRequired": "먼저 제목을 입력하세요.",
+      "attributeFailed": "속성을 업데이트하지 못했습니다. 다시 시도하세요."
+    },
+    "page": {
+      "editorTitle": {
+        "story": "이야기 편집기",
+        "lore": "설정 편집기"
+      },
+      "loginDescription": {
+        "story": "로그인하면 이 이야기를 편집할 수 있습니다.",
+        "lore": "로그인하면 이 설정을 편집할 수 있습니다."
+      },
+      "loading": {
+        "story": "이야기를 불러오는 중…",
+        "lore": "설정을 불러오는 중…"
+      },
+      "create": {
+        "story": "이야기 만들기",
+        "lore": "설정 만들기"
+      },
+      "listBreadcrumb": {
+        "story": "이야기",
+        "lore": "설정집"
+      }
+    }
+  },
+  "assetUpload": {
+    "title": "이미지 에셋 업로드",
+    "close": "업로드 패널 닫기",
+    "done": "완료",
+    "editMetadata": "업로드 정보 편집",
+    "autoSaveHint": "입력란에서 포커스가 벗어나면 자동으로 저장됩니다.",
+    "saveAfterUpload": "업로드가 끝난 뒤 저장됩니다.",
+    "saved": "저장됨",
+    "saveFailed": "저장 실패",
+    "errors": {
+      "quotaReached": "이 프로젝트는 에셋 개수 또는 용량 한도에 도달했습니다. 필요 없는 에셋을 삭제한 뒤 업로드하세요.",
+      "selectImage": "이미지 파일을 선택하세요.",
+      "upload": "에셋을 업로드하지 못했습니다. 잠시 후 다시 시도하세요."
+    },
+    "reasons": {
+      "type": "JPEG／PNG／WebP／GIF 이미지만 지원합니다",
+      "size": "파일당 {{maxMB}}MB를 넘을 수 없습니다",
+      "count": "한 번에 최대 {{max}}장까지입니다",
+      "assetCount": "이 프로젝트의 에셋 개수 한도에 도달했습니다",
+      "storageWithLimit": "이 프로젝트의 용량 한도({{maxMB}}MB)에 도달했습니다",
+      "storage": "이 프로젝트의 용량 한도에 도달했습니다"
+    },
+    "partialRejected": "일부 파일이 업로드되지 않았습니다: {{reasons}}",
+    "reasonSeparator": ", ",
+    "uploaded": "에셋 {{count}}개를 업로드했습니다.",
+    "uploadedMetadataFailed": "에셋 {{count}}개를 업로드했지만 일부 정보가 저장되지 않았습니다. 패널에서 다시 시도하세요.",
+    "closeWhileUploading": "이미지를 업로드하는 중입니다. 완료된 뒤 닫아 주세요.",
+    "quota": {
+      "count": "이 프로젝트는 에셋 개수 한도에 도달했습니다. 필요 없는 에셋을 삭제한 뒤 업로드하세요.",
+      "storage": "이 프로젝트는 용량 한도{{limit}}에 도달했습니다. 필요 없는 에셋을 삭제한 뒤 업로드하세요.",
+      "both": "이 프로젝트는 에셋 개수와 용량 한도{{limit}}에 도달했습니다. 필요 없는 에셋을 삭제한 뒤 업로드하세요.",
+      "storageLimit": "({{maxMB}}MB)"
+    },
+    "hint": {
+      "select": "이미지를 여기로 끌어오거나 클릭해서 파일을 선택하세요(여러 장 선택, 일괄 업로드 지원)",
+      "limits": "JPEG／PNG／WebP／GIF, 파일당 {{maxMB}}MB 이내, 한 번에 최대 {{max}}장"
+    },
+    "status": {
+      "uploaded": "{{count}}장 업로드됨",
+      "empty": "선택한 이미지 없음"
+    }
+  },
+  "imageEpisode": {
+    "uploadTitle": "이미지 작품 업로드",
+    "editTitle": "이미지 작품 편집",
+    "loginDescription": "로그인하면 이미지 작품을 업로드할 수 있습니다.",
+    "loadingEpisode": "화 데이터를 불러오는 중…",
+    "maxPages": "한 화는 최대 {{max}}페이지입니다",
+    "partialRejected": "일부 파일이 추가되지 않았습니다: {{reasons}}",
+    "processing": "처리 중…",
+    "saved": "이미지 화를 저장했습니다.",
+    "overallProgress": "전체 업로드 진행률",
+    "pageNumber": "{{page}}페이지",
+    "addFromAssets": "에셋 모음에서 페이지 추가",
+    "errors": {
+      "assetIncomplete": "일부 이미지의 에셋 생성이 완료되지 않았습니다. 다시 시도하세요.",
+      "upload": "업로드에 실패했습니다. 다시 시도하세요.",
+      "save": "이미지 작품을 저장하지 못했습니다. 다시 시도하세요."
+    },
+    "fields": {
+      "title": "화 제목",
+      "titlePlaceholder": "예: 제1화　서장",
+      "summary": "기본 설명",
+      "summaryPlaceholder": "독자에게 보이는 글입니다. 이 화의 핵심, 줄거리 또는 현재 상태를 간단히 적어 주세요.",
+      "status": "화 상태",
+      "statusHelp": "비공개 화는 공개 읽기 페이지와 작품 목차에 표시되지 않습니다.",
+      "volumeHelp": "선택하지 않으면 권 없음으로 처리됩니다.",
+      "authorsHelp": "여러 개 선택할 수 있으며 기본값은 본인입니다."
     }
   }
 }

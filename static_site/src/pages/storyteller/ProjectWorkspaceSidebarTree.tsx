@@ -20,6 +20,7 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useState, type MouseEvent, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ungroupedId,
   type SelectedItem,
@@ -81,6 +82,7 @@ export function SidebarGroup({
   onReorderItem?: ReorderSidebarItem;
   renderItemActions?: RenderSidebarItemActions;
 }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(true);
   const [sorting, setSorting] = useState(false);
   const reorderableRows = rows.filter(
@@ -96,7 +98,13 @@ export function SidebarGroup({
         useFlexGap
         sx={{ px: 1, py: 0.75 }}
       >
-        <Tooltip title={expanded ? "收合" : "展開"}>
+        <Tooltip
+          title={
+            expanded
+              ? t("web.workspacePreview.sidebar.collapse")
+              : t("web.workspacePreview.sidebar.expand")
+          }
+        >
           <IconButton
             size="small"
             onClick={() => setExpanded((value) => !value)}
@@ -118,11 +126,16 @@ export function SidebarGroup({
             <WorkspaceSortToggle
               sorting={sorting}
               onToggle={() => setSorting((value) => !value)}
-              label={`調整${title}順序`}
+              label={t("web.workspacePreview.sidebar.reorder", { title })}
             />
           )}
           {onCreate && (
-            <Tooltip title={createLabel ?? `新增${title}`}>
+            <Tooltip
+              title={
+                createLabel ??
+                t("web.workspacePreview.sidebar.create", { title })
+              }
+            >
               <IconButton
                 size="small"
                 onClick={onCreate}
@@ -206,6 +219,7 @@ export function SidebarCollectionRow({
   // 排序模式下這一列的上移／下移（「全部」「未分冊／未分類」這類虛擬節點沒有）
   sortArrows?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const [childrenExpanded, setChildrenExpanded] = useState(false);
   const [childrenLoaded, setChildrenLoaded] = useState(false);
   const canExpandChildren = section !== "assets";
@@ -238,7 +252,13 @@ export function SidebarCollectionRow({
           sx={{ ...sidebarTreeRowSx, flex: 1, minWidth: 0 }}
         >
           {canExpandChildren && (
-            <Tooltip title={childrenExpanded ? "收合項目" : "展開項目"}>
+            <Tooltip
+              title={
+                childrenExpanded
+                  ? t("web.workspacePreview.sidebar.collapseItems")
+                  : t("web.workspacePreview.sidebar.expandItems")
+              }
+            >
               <Box
                 onClick={toggleChildren}
                 sx={{

@@ -11,6 +11,7 @@ import {
 import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import {
   formatStorytellerDate,
@@ -58,6 +59,7 @@ export function WorkspaceChrome({
   action?: ReactNode;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   const [projectMenuAnchor, setProjectMenuAnchor] =
     useState<HTMLElement | null>(null);
   const switchableProjects = projects.filter(
@@ -142,7 +144,7 @@ export function WorkspaceChrome({
                   color="text.secondary"
                   sx={{ textDecoration: "none", flexShrink: 0 }}
                 >
-                  我的工作台
+                  {t("web.home.workspace")}
                 </Typography>
                 <Typography color="text.secondary" sx={{ flexShrink: 0 }}>
                   &gt;
@@ -244,7 +246,9 @@ export function WorkspaceChrome({
             >
               <ListItemText
                 primary={project.name}
-                secondary={`最後更新 ${formatStorytellerDate(project.updated_at)}`}
+                secondary={t("web.workspacePreview.lastUpdated", {
+                  date: formatStorytellerDate(project.updated_at),
+                })}
                 primaryTypographyProps={{ noWrap: true }}
                 secondaryTypographyProps={{ noWrap: true }}
               />
@@ -279,6 +283,7 @@ export function EditorBleedContainer({
   fitHeight?: boolean;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
     <Box
       sx={{
@@ -311,7 +316,7 @@ export function EditorBleedContainer({
                   },
                 }}
               >
-                回列表
+                {t("web.documentEditor.backToList")}
               </Button>
             </Box>
           )}

@@ -3,6 +3,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { Button, Divider, Paper, Stack } from "@mui/material";
 import { isTextSelection, type Editor } from "@tiptap/core";
 import { BubbleMenu } from "@tiptap/react/menus";
+import { useTranslation } from "react-i18next";
 
 interface StorytellerWysiwygTableMenuProps {
   editor: Editor;
@@ -15,6 +16,7 @@ interface StorytellerWysiwygTableMenuProps {
 export function StorytellerWysiwygTableMenu({
   editor,
 }: StorytellerWysiwygTableMenuProps) {
+  const { t } = useTranslation();
   const run = (command: () => boolean) => command();
 
   return (
@@ -48,7 +50,7 @@ export function StorytellerWysiwygTableMenu({
               )
             }
           >
-            上方列
+            {t("writer:editor.table.rowAbove")}
           </Button>
           <Button
             size="small"
@@ -59,7 +61,7 @@ export function StorytellerWysiwygTableMenu({
               )
             }
           >
-            下方列
+            {t("writer:editor.table.rowBelow")}
           </Button>
           <Button
             color="error"
@@ -71,7 +73,7 @@ export function StorytellerWysiwygTableMenu({
               )
             }
           >
-            刪除列
+            {t("writer:editor.table.deleteRow")}
           </Button>
 
           <Divider orientation="vertical" flexItem sx={{ mx: 0.25 }} />
@@ -89,7 +91,7 @@ export function StorytellerWysiwygTableMenu({
               )
             }
           >
-            左側欄
+            {t("writer:editor.table.columnLeft")}
           </Button>
           <Button
             size="small"
@@ -100,7 +102,7 @@ export function StorytellerWysiwygTableMenu({
               )
             }
           >
-            右側欄
+            {t("writer:editor.table.columnRight")}
           </Button>
           <Button
             color="error"
@@ -112,7 +114,7 @@ export function StorytellerWysiwygTableMenu({
               )
             }
           >
-            刪除欄
+            {t("writer:editor.table.deleteColumn")}
           </Button>
 
           <Divider orientation="vertical" flexItem sx={{ mx: 0.25 }} />
@@ -125,7 +127,7 @@ export function StorytellerWysiwygTableMenu({
               run(() => editor.chain().focus().deleteStorytellerTable().run())
             }
           >
-            刪除表格
+            {t("writer:editor.table.deleteTable")}
           </Button>
         </Stack>
       </Paper>

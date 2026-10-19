@@ -129,8 +129,8 @@
     "draft": "Draft",
     "draggable": "Drag to reorder",
     "updated": "Updated {{date}}",
-    "wordCount": "{{count}} words"
-    ,"pageCount": "{{count}} pages"
+    "wordCount": "{{count}} words",
+    "pageCount": "{{count}} pages"
   },
   "assets": {
     "references": "{{count}} references",
@@ -224,65 +224,519 @@
     "deleteTitle": "Ask Suo-suo to forget this?",
     "confirmDelete": "Delete",
     "operationFailed": "The memory operation failed. Try again later.",
-    "scopeLabels": { "project": "Entire project", "story": "Story", "lore": "Lore" },
-    "contextScopeLabels": { "project": "Entire project", "story": "This story", "lore": "This lore entry" },
+    "scopeLabels": {
+      "project": "Entire project",
+      "story": "Story",
+      "lore": "Lore"
+    },
+    "contextScopeLabels": {
+      "project": "Entire project",
+      "story": "This story",
+      "lore": "This lore entry"
+    },
     "target": "{{scope}}: {{name}}",
-    "kindLabels": { "preference": "Preference", "instruction": "Standing instruction", "decision": "Confirmed decision", "context": "Background" },
+    "kindLabels": {
+      "preference": "Preference",
+      "instruction": "Standing instruction",
+      "decision": "Confirmed decision",
+      "context": "Background"
+    },
     "kindDescriptions": {
       "preference": "Preferred writing, formatting, or interaction style, such as ‘Keep replies concise.’",
       "instruction": "A requirement or constraint to keep following, such as ‘Do not rename characters.’",
       "decision": "A confirmed decision that does not need to be revisited, such as ‘Chapter 3 takes place on a rainy night.’",
       "context": "Long-term background needed to understand the content, such as character relationships or worldbuilding premises."
     },
-    "priorityValue": "Priority {{value}}", "unpin": "Unpin", "pin": "Pin", "updated": "Updated {{date}}",
-    "edit": "Edit memory", "editTitle": "Adjust what Suo-suo remembers", "name": "Memory name", "content": "Memory content", "memoryType": "Memory type",
-    "priority": "Priority", "priorityHelp": "0–100; higher values are shown to Suo-suo first", "pinMemory": "Pin this memory",
-    "tagPlaceholder": "character voice, worldbuilding, review", "tagLength": "Each tag can contain up to {{count}} characters.", "tagCount": "You can add up to {{count}} tags.", "tagHelp": "Press Enter or separate tags with commas; up to {{count}} tags and {{length}} characters per tag.",
+    "priorityValue": "Priority {{value}}",
+    "unpin": "Unpin",
+    "pin": "Pin",
+    "updated": "Updated {{date}}",
+    "edit": "Edit memory",
+    "editTitle": "Adjust what Suo-suo remembers",
+    "name": "Memory name",
+    "content": "Memory content",
+    "memoryType": "Memory type",
+    "priority": "Priority",
+    "priorityHelp": "0–100; higher values are shown to Suo-suo first",
+    "pinMemory": "Pin this memory",
+    "tagPlaceholder": "character voice, worldbuilding, review",
+    "tagLength": "Each tag can contain up to {{count}} characters.",
+    "tagCount": "You can add up to {{count}} tags.",
+    "tagHelp": "Press Enter or separate tags with commas; up to {{count}} tags and {{length}} characters per tag.",
     "draft": {
-      "organizing": "Organizing conversation", "candidate": "Memory candidate", "loadingTitle": "I’m looking for something worth keeping…", "failedTitle": "I couldn’t organize this one", "emptyTitle": "Nothing in this turn needs long-term memory", "confirmTitle": "Confirm what to remember",
-      "loadingDescription": "You can review it after it is organized; it will not be saved automatically.", "confirmDescription": "You can edit the content and scope. Future conversations will use it only after you select Save to memory.",
-      "retry": "Try again", "discard": "Don’t save", "save": "Save to memory", "loading": "Suo-suo is turning this conversation into one clear note that will make sense later.", "failed": "Could not organize the memory. Try again later.", "empty": "This looks like a one-time request; there is nothing suitable for long-term memory.",
-      "supersedeWarning": "This candidate would replace the old memory below. If you changed the scope or want to keep both, select ‘Keep both as a new memory.’", "oldMemory": "Old memory", "oldUnavailable": "The old memory is no longer readable in the current scope. Saving a new memory is recommended.", "skipSupersede": "Keep both as a new memory", "content": "What to remember", "pin": "Pin this memory so it is not replaced automatically later"
+      "organizing": "Organizing conversation",
+      "candidate": "Memory candidate",
+      "loadingTitle": "I’m looking for something worth keeping…",
+      "failedTitle": "I couldn’t organize this one",
+      "emptyTitle": "Nothing in this turn needs long-term memory",
+      "confirmTitle": "Confirm what to remember",
+      "loadingDescription": "You can review it after it is organized; it will not be saved automatically.",
+      "confirmDescription": "You can edit the content and scope. Future conversations will use it only after you select Save to memory.",
+      "retry": "Try again",
+      "discard": "Don’t save",
+      "save": "Save to memory",
+      "loading": "Suo-suo is turning this conversation into one clear note that will make sense later.",
+      "failed": "Could not organize the memory. Try again later.",
+      "empty": "This looks like a one-time request; there is nothing suitable for long-term memory.",
+      "supersedeWarning": "This candidate would replace the old memory below. If you changed the scope or want to keep both, select ‘Keep both as a new memory.’",
+      "oldMemory": "Old memory",
+      "oldUnavailable": "The old memory is no longer readable in the current scope. Saving a new memory is recommended.",
+      "skipSupersede": "Keep both as a new memory",
+      "content": "What to remember",
+      "pin": "Pin this memory so it is not replaced automatically later"
     }
   },
   "editor": {
-    "formatToolbar": "Text formatting toolbar", "textColor": "Text color", "textColorOptions": "Text color options", "clearTextColor": "Clear text color", "backgroundColor": "Text background color", "backgroundColorOptions": "Background color options", "clearBackgroundColor": "Clear background color", "askAI": "Ask AI", "contextMenu": "Editor context menu", "imageSettings": "Image settings", "deleteImage": "Delete image", "removeLink": "Remove link", "removeFootnote": "Remove footnote", "removeComment": "Remove comment", "searchSelection": "Search selected text", "editBookmark": "Edit bookmark note", "addBookmark": "Add bookmark", "slashMenu": "Slash command menu", "bookmarkSaveFirst": "Save before adding a bookmark", "bookmarkUnavailable": "The cursor is not in a bookmarkable paragraph", "editComment": "Edit comment", "addComment": "Add comment", "commentAttached": "This comment is attached to: “{{text}}”", "commentContent": "Comment", "updateComment": "Update comment", "createComment": "Add comment", "editFootnote": "Edit footnote", "addFootnote": "Add footnote", "footnoteContent": "Footnote", "footnoteHelp": "Supports **bold**, *italic*, and ++underline++ only; other formatting is ignored", "updateFootnote": "Update footnote", "createFootnote": "Add footnote", "removeBookmark": "Remove bookmark", "removeBookmarkTitle": "Remove this bookmark?", "removeBookmarkDescription": "This bookmark cannot be recovered after removal.", "footnoteEditHelp": "Right-click or select text and use the formatting bar to edit or remove the footnote", "colors": { "yellow": "Yellow", "pink": "Pink", "blue": "Blue", "green": "Green", "purple": "Purple" },
-    "slashGroups": { "paragraphStyles": "Paragraph styles", "alignment": "Alignment", "blocks": "Blocks", "insert": "Insert", "utilities": "Tools", "ai": "AI assistance" },
-    "link": { "url": "URL", "lore": "Lore", "unpublished": "{{title}} (unpublished)", "noLore": "This project has no lore entries", "noMatch": "No matching lore entries", "selectLore": "Link to which lore entry?", "loreHelp": "Readers can open a summary of this lore entry. If it is not published, readers see plain text only.", "urlHelp": "Only http:// or https:// URLs are accepted. Switch to Lore to link an entry.", "newTab": "Open in a new tab", "update": "Update link", "create": "Add link" },
-    "syntax": { "text": "text", "item": "item", "heading": "Heading", "headingHelp": "Type # through {{hashes}} (levels 1–{{count}}) at the start of a line, followed by a space.", "numberHelp": "Numbers are generated automatically; the number you type does not affect the displayed numbering.", "divider": "Divider", "dividerHelp": "Type three hyphens on their own line to create a divider and move to the next line.", "colors": "Text / background color", "colorsPath": "Select text → context menu / Bubble Menu palette", "colorsHelp": "There is no typing shortcut; choose from the fixed palette.", "link": "Link", "linkPath": "Select text → context menu / Bubble Menu link button", "linkHelp": "Only http(s) URLs are accepted.", "footnote": "Footnote", "footnotePath": "Select text → context menu / Bubble Menu footnote button", "footnoteHelp": "Readers can see it at the end of the article.", "comment": "Comment", "commentPath": "Select text → context menu / Bubble Menu comment button", "commentHelp": "Only the author can see it; readers never will.", "imagePath": "Type /image in an empty paragraph, or right-click an empty paragraph and insert an image", "imageHelp": "Choose an image from the project's asset collections.", "open": "Supported syntax", "title": "Syntax supported by the editor", "description": "This editor uses a compact custom syntax, not full Markdown / GFM. The symbols below convert automatically; colors and links must be applied from menus.", "textStyles": "Text styles", "paragraphStyles": "Paragraph formats", "menuOnly": "Available from menus only" },
+    "formatToolbar": "Text formatting toolbar",
+    "textColor": "Text color",
+    "textColorOptions": "Text color options",
+    "clearTextColor": "Clear text color",
+    "backgroundColor": "Text background color",
+    "backgroundColorOptions": "Background color options",
+    "clearBackgroundColor": "Clear background color",
+    "askAI": "Ask AI",
+    "contextMenu": "Editor context menu",
+    "imageSettings": "Image settings",
+    "deleteImage": "Delete image",
+    "removeLink": "Remove link",
+    "removeFootnote": "Remove footnote",
+    "removeComment": "Remove comment",
+    "searchSelection": "Search selected text",
+    "editBookmark": "Edit bookmark note",
+    "addBookmark": "Add bookmark",
+    "slashMenu": "Slash command menu",
+    "bookmarkSaveFirst": "Save before adding a bookmark",
+    "bookmarkUnavailable": "The cursor is not in a bookmarkable paragraph",
+    "editComment": "Edit comment",
+    "addComment": "Add comment",
+    "commentAttached": "This comment is attached to: “{{text}}”",
+    "commentContent": "Comment",
+    "updateComment": "Update comment",
+    "createComment": "Add comment",
+    "editFootnote": "Edit footnote",
+    "addFootnote": "Add footnote",
+    "footnoteContent": "Footnote",
+    "footnoteHelp": "Supports **bold**, *italic*, and ++underline++ only; other formatting is ignored",
+    "updateFootnote": "Update footnote",
+    "createFootnote": "Add footnote",
+    "removeBookmark": "Remove bookmark",
+    "removeBookmarkTitle": "Remove this bookmark?",
+    "removeBookmarkDescription": "This bookmark cannot be recovered after removal.",
+    "footnoteEditHelp": "Right-click or select text and use the formatting bar to edit or remove the footnote",
+    "colors": {
+      "yellow": "Yellow",
+      "pink": "Pink",
+      "blue": "Blue",
+      "green": "Green",
+      "purple": "Purple"
+    },
+    "slashGroups": {
+      "paragraphStyles": "Paragraph styles",
+      "alignment": "Alignment",
+      "blocks": "Blocks",
+      "insert": "Insert",
+      "utilities": "Tools",
+      "ai": "AI assistance"
+    },
+    "link": {
+      "url": "URL",
+      "lore": "Lore",
+      "unpublished": "{{title}} (unpublished)",
+      "noLore": "This project has no lore entries",
+      "noMatch": "No matching lore entries",
+      "selectLore": "Link to which lore entry?",
+      "loreHelp": "Readers can open a summary of this lore entry. If it is not published, readers see plain text only.",
+      "urlHelp": "Only http:// or https:// URLs are accepted. Switch to Lore to link an entry.",
+      "newTab": "Open in a new tab",
+      "update": "Update link",
+      "create": "Add link"
+    },
+    "syntax": {
+      "text": "text",
+      "item": "item",
+      "heading": "Heading",
+      "headingHelp": "Type # through {{hashes}} (levels 1–{{count}}) at the start of a line, followed by a space.",
+      "numberHelp": "Numbers are generated automatically; the number you type does not affect the displayed numbering.",
+      "divider": "Divider",
+      "dividerHelp": "Type three hyphens on their own line to create a divider and move to the next line.",
+      "colors": "Text / background color",
+      "colorsPath": "Select text → context menu / Bubble Menu palette",
+      "colorsHelp": "There is no typing shortcut; choose from the fixed palette.",
+      "link": "Link",
+      "linkPath": "Select text → context menu / Bubble Menu link button",
+      "linkHelp": "Only http(s) URLs are accepted.",
+      "footnote": "Footnote",
+      "footnotePath": "Select text → context menu / Bubble Menu footnote button",
+      "footnoteHelp": "Readers can see it at the end of the article.",
+      "comment": "Comment",
+      "commentPath": "Select text → context menu / Bubble Menu comment button",
+      "commentHelp": "Only the author can see it; readers never will.",
+      "imagePath": "Type /image in an empty paragraph, or right-click an empty paragraph and insert an image",
+      "imageHelp": "Choose an image from the project's asset collections.",
+      "open": "Supported syntax",
+      "title": "Syntax supported by the editor",
+      "description": "This editor uses a compact custom syntax, not full Markdown / GFM. The symbols below convert automatically; colors and links must be applied from menus.",
+      "textStyles": "Text styles",
+      "paragraphStyles": "Paragraph formats",
+      "menuOnly": "Available from menus only"
+    },
     "backToCaret": "Return to cursor",
     "placeholder": "Type / to insert a block; select text to apply styles",
     "typography": {
-      "title": "Text settings", "fontSize": "Font size", "decreaseFontSize": "Decrease font size", "increaseFontSize": "Increase font size", "fontFamily": "Font", "lineHeight": "Line spacing", "measure": "Page width", "editorCaption": "Only affects the editor display, not the work itself. Reading view has separate settings.",
-      "fontFamilies": { "system": "System", "sans": "Sans serif", "serif": "Serif" },
-      "spacing": { "tight": "Tight", "normal": "Normal", "wide": "Wide" },
-      "width": { "narrow": "Narrow", "normal": "Normal", "wide": "Wide" }
+      "title": "Text settings",
+      "fontSize": "Font size",
+      "decreaseFontSize": "Decrease font size",
+      "increaseFontSize": "Increase font size",
+      "fontFamily": "Font",
+      "lineHeight": "Line spacing",
+      "measure": "Page width",
+      "editorCaption": "Only affects the editor display, not the work itself. Reading view has separate settings.",
+      "fontFamilies": {
+        "system": "System",
+        "sans": "Sans serif",
+        "serif": "Serif"
+      },
+      "spacing": {
+        "tight": "Tight",
+        "normal": "Normal",
+        "wide": "Wide"
+      },
+      "width": {
+        "narrow": "Narrow",
+        "normal": "Normal",
+        "wide": "Wide"
+      }
     },
-    "find": { "replaced": "Replaced {{count}}", "noMatch": "No matches", "collapseReplace": "Hide replace", "expandReplace": "Show replace", "search": "Find", "caseSensitive": "Match case", "previous": "Previous", "next": "Next", "replaceWith": "Replace with", "replace": "Replace", "replaceAll": "Replace all" },
-    "bookmark": { "edit": "Edit bookmark note", "add": "Add bookmark", "attached": "This bookmark is attached to: “{{text}}”", "note": "Note (optional)", "placeholder": "For example: stopped here; revise after this", "remove": "Remove bookmark" },
-    "outline": { "title": "Outline and bookmarks", "collapse": "Collapse outline and bookmarks", "emptyParagraph": "(Empty paragraph)", "untitled": "(Untitled)", "fullDocument": "Full document", "editingOnly": "Editing only: {{title}}", "backToFull": "Back to full document", "loading": "Loading bookmarks…", "empty": "No headings or bookmarks yet. Turn a paragraph into a heading or add a bookmark to see it here.", "editing": "Editing", "editSection": "Edit only this section", "missing": "This location could not be found and may have been deleted", "editNote": "Edit note", "deleteBookmark": "Delete bookmark", "deleteTitle": "Delete this bookmark?", "deleteDescription": "The bookmark and note will be removed. This cannot be undone." },
+    "find": {
+      "replaced": "Replaced {{count}}",
+      "noMatch": "No matches",
+      "collapseReplace": "Hide replace",
+      "expandReplace": "Show replace",
+      "search": "Find",
+      "caseSensitive": "Match case",
+      "previous": "Previous",
+      "next": "Next",
+      "replaceWith": "Replace with",
+      "replace": "Replace",
+      "replaceAll": "Replace all"
+    },
+    "bookmark": {
+      "edit": "Edit bookmark note",
+      "add": "Add bookmark",
+      "attached": "This bookmark is attached to: “{{text}}”",
+      "note": "Note (optional)",
+      "placeholder": "For example: stopped here; revise after this",
+      "remove": "Remove bookmark"
+    },
+    "outline": {
+      "title": "Outline and bookmarks",
+      "collapse": "Collapse outline and bookmarks",
+      "emptyParagraph": "(Empty paragraph)",
+      "untitled": "(Untitled)",
+      "fullDocument": "Full document",
+      "editingOnly": "Editing only: {{title}}",
+      "backToFull": "Back to full document",
+      "loading": "Loading bookmarks…",
+      "empty": "No headings or bookmarks yet. Turn a paragraph into a heading or add a bookmark to see it here.",
+      "editing": "Editing",
+      "editSection": "Edit only this section",
+      "missing": "This location could not be found and may have been deleted",
+      "editNote": "Edit note",
+      "deleteBookmark": "Delete bookmark",
+      "deleteTitle": "Delete this bookmark?",
+      "deleteDescription": "The bookmark and note will be removed. This cannot be undone."
+    },
     "diff": {
-      "oldVersion": "Old version", "newVersion": "New version", "unchanged": "Unchanged", "changed": "Changed", "collapseUnchanged": "Collapse {{count}} unchanged lines", "expandUnchanged": "Expand {{count}} unchanged lines", "titleField": "Title", "summaryField": "Summary", "contentField": "Content", "footnotesField": "Footnotes", "compareTitle": "Compare versions of {{title}}", "differenceCount": "{{count}} changed lines", "noDifference": "No differences", "closeCompare": "Close version comparison",
-      "legend": { "added": { "label": "Added", "description": "Green marks content added in the new version." }, "removed": { "label": "Removed", "description": "Red marks content removed from the old version." }, "changed": { "label": "Changed", "description": "Yellow marks a changed line." }, "empty": { "label": "Empty side", "description": "Gray means there is no corresponding content on the other side." } }
+      "oldVersion": "Old version",
+      "newVersion": "New version",
+      "unchanged": "Unchanged",
+      "changed": "Changed",
+      "collapseUnchanged": "Collapse {{count}} unchanged lines",
+      "expandUnchanged": "Expand {{count}} unchanged lines",
+      "titleField": "Title",
+      "summaryField": "Summary",
+      "contentField": "Content",
+      "footnotesField": "Footnotes",
+      "compareTitle": "Compare versions of {{title}}",
+      "differenceCount": "{{count}} changed lines",
+      "noDifference": "No differences",
+      "closeCompare": "Close version comparison",
+      "legend": {
+        "added": {
+          "label": "Added",
+          "description": "Green marks content added in the new version."
+        },
+        "removed": {
+          "label": "Removed",
+          "description": "Red marks content removed from the old version."
+        },
+        "changed": {
+          "label": "Changed",
+          "description": "Yellow marks a changed line."
+        },
+        "empty": {
+          "label": "Empty side",
+          "description": "Gray means there is no corresponding content on the other side."
+        }
+      }
     },
-    "image": { "loading": "Loading asset…", "previewMissing": "Asset preview unavailable", "settings": "Image settings", "removeAsset": "Remove asset", "alt": "Alternative text", "altHelp": "Used by accessibility tools and SEO; not shown on screen", "caption": "Caption", "captionHelp": "Description shown to readers; leave blank to hide", "layout": "Layout", "size": "Size", "delete": "Delete image", "layouts": { "block": "Full width", "center": "Centered", "float-left": "Float left", "float-right": "Float right" }, "sizes": { "small": "Small", "medium": "Medium", "large": "Large (original ratio)" } },
-    "controls": { "collapse": "Collapse", "properties": "Properties and summary", "notSet": "Not set", "unpublished": "Unpublished", "published": "Published" },
-    "status": { "wordCount": "{{count}} words", "published": "Published: readers can see this", "unpublished": "Unpublished: only you can see this", "notSaved": "Not saved", "updatedAt": "Updated {{time}}", "autoSaveOff": "Auto-save is off", "autoSaveEvery": "Auto-save every {{count}} minutes" },
-    "code": { "copy": "Copy", "delete": "Delete code block", "language": "Language", "expandAll": "Expand all ({{count}} lines)", "collapse": "Collapse" },
-    "history": { "newItem": "Edit history appears after the first save.", "helper": "Select an old and a new version, then choose Compare selected versions.", "version": "Version #{{number}}", "createdAt": "Created {{date}}", "description": "Select two versions to compare title and Markdown content changes.", "compare": "Compare selected versions", "old": "Old", "new": "New", "versionNumber": "Version", "source": "Source", "words": "Words", "createdTime": "Created", "actions": "Actions", "selectOld": "Select {{id}} as the old version", "selectNew": "Select {{id}} as the new version", "revertedFrom": "Reverted from {{version}}", "conflictedWith": "Conflicts with {{version}}", "revert": "Revert to this version", "sources": { "manual": "Manual save", "auto": "Auto-save", "agent": "Saved after applying AI proposal", "mcp": "Changed through MCP", "mcpPat": "Changed through MCP using PAT “{{label}}”" } },
+    "image": {
+      "loading": "Loading asset…",
+      "previewMissing": "Asset preview unavailable",
+      "settings": "Image settings",
+      "removeAsset": "Remove asset",
+      "alt": "Alternative text",
+      "altHelp": "Used by accessibility tools and SEO; not shown on screen",
+      "caption": "Caption",
+      "captionHelp": "Description shown to readers; leave blank to hide",
+      "layout": "Layout",
+      "size": "Size",
+      "delete": "Delete image",
+      "layouts": {
+        "block": "Full width",
+        "center": "Centered",
+        "float-left": "Float left",
+        "float-right": "Float right"
+      },
+      "sizes": {
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large (original ratio)"
+      }
+    },
+    "controls": {
+      "collapse": "Collapse",
+      "properties": "Properties and summary",
+      "notSet": "Not set",
+      "unpublished": "Unpublished",
+      "published": "Published"
+    },
+    "status": {
+      "wordCount": "{{count}} words",
+      "published": "Published: readers can see this",
+      "unpublished": "Unpublished: only you can see this",
+      "notSaved": "Not saved",
+      "updatedAt": "Updated {{time}}",
+      "autoSaveOff": "Auto-save is off",
+      "autoSaveEvery": "Auto-save every {{count}} minutes"
+    },
+    "code": {
+      "copy": "Copy",
+      "delete": "Delete code block",
+      "language": "Language",
+      "expandAll": "Expand all ({{count}} lines)",
+      "collapse": "Collapse"
+    },
+    "history": {
+      "newItem": "Edit history appears after the first save.",
+      "helper": "Select an old and a new version, then choose Compare selected versions.",
+      "version": "Version #{{number}}",
+      "createdAt": "Created {{date}}",
+      "description": "Select two versions to compare title and Markdown content changes.",
+      "compare": "Compare selected versions",
+      "old": "Old",
+      "new": "New",
+      "versionNumber": "Version",
+      "source": "Source",
+      "words": "Words",
+      "createdTime": "Created",
+      "actions": "Actions",
+      "selectOld": "Select {{id}} as the old version",
+      "selectNew": "Select {{id}} as the new version",
+      "revertedFrom": "Reverted from {{version}}",
+      "conflictedWith": "Conflicts with {{version}}",
+      "revert": "Revert to this version",
+      "sources": {
+        "manual": "Manual save",
+        "auto": "Auto-save",
+        "agent": "Saved after applying AI proposal",
+        "mcp": "Changed through MCP",
+        "mcpPat": "Changed through MCP using PAT “{{label}}”"
+      }
+    },
     "commands": {
-      "bold": { "label": "Bold" }, "italic": { "label": "Italic" }, "underline": { "label": "Underline" }, "subscript": { "label": "Subscript" }, "superscript": { "label": "Superscript" }, "strike": { "label": "Strikethrough" }, "code": { "label": "Inline code" },
-      "heading-0": { "label": "Body" }, "heading-1": { "label": "Heading 1" }, "heading-2": { "label": "Heading 2" }, "heading-3": { "label": "Heading 3" }, "heading-4": { "label": "Heading 4" }, "heading-5": { "label": "Heading 5" }, "heading-6": { "label": "Heading 6" },
-      "insert-code-block": { "label": "Insert code block" }, "insert-table": { "label": "Insert table" }, "insert-image": { "label": "Insert image" }, "image-layout-block": { "label": "Full-width image" }, "image-layout-center": { "label": "Centered image" }, "image-layout-float-left": { "label": "Wrap image left" }, "image-layout-float-right": { "label": "Wrap image right" },
-      "align-left": { "label": "Align left" }, "align-center": { "label": "Align center" }, "align-right": { "label": "Align right" }, "block-kind-quote": { "label": "Quote" }, "block-kind-bullet": { "label": "Bulleted list" }, "block-kind-number": { "label": "Numbered list" }, "horizontal-rule": { "label": "Insert divider" },
-      "text-color-red": { "label": "Red" }, "text-color-orange": { "label": "Orange" }, "text-color-green": { "label": "Green" }, "text-color-blue": { "label": "Blue" }, "text-color-purple": { "label": "Purple" }, "text-color-clear": { "label": "Clear text color" }, "bg-color-yellow": { "label": "Yellow" }, "bg-color-pink": { "label": "Pink" }, "bg-color-blue": { "label": "Blue" }, "bg-color-green": { "label": "Green" }, "bg-color-purple": { "label": "Purple" }, "bg-color-clear": { "label": "Clear background color" },
-      "link": { "label": "Add link", "active": "Edit link" }, "lore-link": { "label": "Link to lore", "active": "Edit lore link" }, "footnote": { "label": "Add footnote", "active": "Edit footnote" }, "comment": { "label": "Add comment", "active": "Edit comment" }, "ask-ai": { "label": "Ask AI" }, "find-replace": { "label": "Find / Replace" }, "export-markdown": { "label": "Export markdown" }
+      "bold": {
+        "label": "Bold"
+      },
+      "italic": {
+        "label": "Italic"
+      },
+      "underline": {
+        "label": "Underline"
+      },
+      "subscript": {
+        "label": "Subscript"
+      },
+      "superscript": {
+        "label": "Superscript"
+      },
+      "strike": {
+        "label": "Strikethrough"
+      },
+      "code": {
+        "label": "Inline code"
+      },
+      "heading-0": {
+        "label": "Body"
+      },
+      "heading-1": {
+        "label": "Heading 1"
+      },
+      "heading-2": {
+        "label": "Heading 2"
+      },
+      "heading-3": {
+        "label": "Heading 3"
+      },
+      "heading-4": {
+        "label": "Heading 4"
+      },
+      "heading-5": {
+        "label": "Heading 5"
+      },
+      "heading-6": {
+        "label": "Heading 6"
+      },
+      "insert-code-block": {
+        "label": "Insert code block"
+      },
+      "insert-table": {
+        "label": "Insert table"
+      },
+      "insert-image": {
+        "label": "Insert image"
+      },
+      "image-layout-block": {
+        "label": "Full-width image"
+      },
+      "image-layout-center": {
+        "label": "Centered image"
+      },
+      "image-layout-float-left": {
+        "label": "Wrap image left"
+      },
+      "image-layout-float-right": {
+        "label": "Wrap image right"
+      },
+      "align-left": {
+        "label": "Align left"
+      },
+      "align-center": {
+        "label": "Align center"
+      },
+      "align-right": {
+        "label": "Align right"
+      },
+      "block-kind-quote": {
+        "label": "Quote"
+      },
+      "block-kind-bullet": {
+        "label": "Bulleted list"
+      },
+      "block-kind-number": {
+        "label": "Numbered list"
+      },
+      "horizontal-rule": {
+        "label": "Insert divider"
+      },
+      "text-color-red": {
+        "label": "Red"
+      },
+      "text-color-orange": {
+        "label": "Orange"
+      },
+      "text-color-green": {
+        "label": "Green"
+      },
+      "text-color-blue": {
+        "label": "Blue"
+      },
+      "text-color-purple": {
+        "label": "Purple"
+      },
+      "text-color-clear": {
+        "label": "Clear text color"
+      },
+      "bg-color-yellow": {
+        "label": "Yellow"
+      },
+      "bg-color-pink": {
+        "label": "Pink"
+      },
+      "bg-color-blue": {
+        "label": "Blue"
+      },
+      "bg-color-green": {
+        "label": "Green"
+      },
+      "bg-color-purple": {
+        "label": "Purple"
+      },
+      "bg-color-clear": {
+        "label": "Clear background color"
+      },
+      "link": {
+        "label": "Add link",
+        "active": "Edit link"
+      },
+      "lore-link": {
+        "label": "Link to lore",
+        "active": "Edit lore link"
+      },
+      "footnote": {
+        "label": "Add footnote",
+        "active": "Edit footnote"
+      },
+      "comment": {
+        "label": "Add comment",
+        "active": "Edit comment"
+      },
+      "ask-ai": {
+        "label": "Ask AI"
+      },
+      "find-replace": {
+        "label": "Find / Replace"
+      },
+      "export-markdown": {
+        "label": "Export markdown"
+      }
+    },
+    "table": {
+      "rowAbove": "Row above",
+      "rowBelow": "Row below",
+      "deleteRow": "Delete row",
+      "columnLeft": "Column left",
+      "columnRight": "Column right",
+      "deleteColumn": "Delete column",
+      "deleteTable": "Delete table"
+    },
+    "bookmarks": {
+      "added": "Bookmark added.",
+      "addFailed": "Couldn't add the bookmark.",
+      "noteUpdated": "Bookmark note updated.",
+      "updateFailed": "Couldn't update the bookmark.",
+      "removed": "Bookmark removed.",
+      "removeFailed": "Couldn't remove the bookmark."
     }
   },
   "mascot": {
-    "dangerLabel": "Cannot be undone", "dangerAlt": "Suo-suo warns that this action cannot be undone", "successLabel": "Ready", "successAlt": "Suo-suo is happy the work is complete", "thinkingLabel": "Processing", "thinkingAlt": "Suo-suo is thinking and working", "neutralLabel": "Please confirm", "neutralAlt": "Suo-suo asks you to confirm your choice"
+    "dangerLabel": "Cannot be undone",
+    "dangerAlt": "Suo-suo warns that this action cannot be undone",
+    "successLabel": "Ready",
+    "successAlt": "Suo-suo is happy the work is complete",
+    "thinkingLabel": "Processing",
+    "thinkingAlt": "Suo-suo is thinking and working",
+    "neutralLabel": "Please confirm",
+    "neutralAlt": "Suo-suo asks you to confirm your choice"
   },
   "unsaved": {
-    "toneLabel": "Unsaved changes", "eyebrow": "Leave editor", "title": "You have unsaved changes", "saveDescription": "Save before leaving this editor? Your changes will be lost if you do not save.", "discardDescription": "Unsaved changes will be lost when you leave. Discard them and leave?", "continueEditing": "Keep editing", "discardAndLeave": "Discard and leave", "saveAndContinue": "Save and continue"
+    "toneLabel": "Unsaved changes",
+    "eyebrow": "Leave editor",
+    "title": "You have unsaved changes",
+    "saveDescription": "Save before leaving this editor? Your changes will be lost if you do not save.",
+    "discardDescription": "Unsaved changes will be lost when you leave. Discard them and leave?",
+    "continueEditing": "Keep editing",
+    "discardAndLeave": "Discard and leave",
+    "saveAndContinue": "Save and continue"
   }
 }

@@ -443,7 +443,9 @@
       "publishHint": "Unpublished; works inside are hidden. Click to publish",
       "unpublishHint": "Published; click to unpublish and hide all works inside",
       "deleteBlocked": "Move all works out before deleting this volume",
-      "deleteDescription": "This cannot be undone. Enter the volume name to confirm."
+      "deleteDescription": "This cannot be undone. Enter the volume name to confirm.",
+      "name": "Volume name",
+      "namePlaceholder": "e.g. Volume 1"
     },
     "empty": {
       "allTitle": "No works yet",
@@ -716,6 +718,15 @@
       "loreCollectionDeleteFailed": "Couldn't delete the lore collection.",
       "deleteAssetDescription": "This can't be undone. Enter the asset name to confirm.",
       "deleteAssetCollectionDescription": "Other asset collections won't be affected. Enter the collection name to confirm."
+    },
+    "lastUpdated": "Updated {{date}}",
+    "sidebar": {
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "reorder": "Reorder {{title}}",
+      "create": "Add to {{title}}",
+      "collapseItems": "Collapse items",
+      "expandItems": "Expand items"
     }
   },
   "agent": {
@@ -822,6 +833,188 @@
     },
     "messages": {
       "responseCopied": "AI response copied."
+    }
+  },
+  "documentEditor": {
+    "tabs": {
+      "editor": "Edit",
+      "history": "Edit history"
+    },
+    "ungrouped": {
+      "story": "Ungrouped",
+      "lore": "Uncategorized"
+    },
+    "titlePlaceholder": {
+      "story": "Untitled story",
+      "lore": "Untitled lore",
+      "image": "Untitled image work"
+    },
+    "summaryPlaceholder": {
+      "story": "Add a summary...",
+      "lore": "Add a summary for readers...",
+      "image": "Add a description..."
+    },
+    "status": "Status",
+    "group": {
+      "story": "Volume",
+      "lore": "Collection"
+    },
+    "authors": "Byline",
+    "autoSave": {
+      "label": "Autosave",
+      "off": "Off",
+      "every": "Every {{minutes}} min",
+      "custom": "Custom",
+      "range": "{{min}}-{{max}} min"
+    },
+    "conflict": {
+      "story": "This story was updated elsewhere while you were editing. Your changes were saved as a new version after the latest one.",
+      "lore": "This lore entry was updated elsewhere while you were editing. Your changes were saved as a new version after the latest one.",
+      "viewHistory": "View history"
+    },
+    "self": "Me ({{penName}})",
+    "selfOnly": "Me",
+    "spoiler": {
+      "label": "Spoiler",
+      "no": "No spoilers",
+      "yes": "Contains spoilers"
+    },
+    "dependsOn": "Read first",
+    "dependency": {
+      "story": "Story",
+      "lore": "Lore"
+    },
+    "saveFailedBanner": "Save failed. Check that you are signed in and the fields are valid.",
+    "insertAsset": "Insert asset",
+    "insertAssetTitle": {
+      "story": "Insert story asset",
+      "lore": "Insert lore asset"
+    },
+    "assetInserted": "Asset inserted.",
+    "assetInsertFailed": "Couldn't insert the asset. Reload and try again.",
+    "historyEmpty": {
+      "story": "Edit history starts after the first save.",
+      "lore": "Edit history starts after the first save."
+    },
+    "reverted": "Reverted to this version.",
+    "scope": {
+      "only": "Editing only",
+      "backToFull": "Back to whole document"
+    },
+    "backToList": "Back to list",
+    "revertFailed": {
+      "story": "Couldn't revert the story. Please try again.",
+      "lore": "Couldn't revert the lore entry. Please try again."
+    },
+    "messages": {
+      "saved": {
+        "story": "Story saved.",
+        "lore": "Lore saved."
+      },
+      "autoSaved": "Autosaved.",
+      "agentApplied": "AI proposal applied and saved.",
+      "saveFailed": {
+        "story": "Couldn't save the story. Please try again.",
+        "lore": "Couldn't save the lore entry. Please try again."
+      },
+      "autoSaveFailed": {
+        "story": "Story autosave failed. Please save manually.",
+        "lore": "Lore autosave failed. Please save manually."
+      },
+      "titleRequired": "Enter a title first.",
+      "attributeFailed": "Couldn't update this setting. Please try again."
+    },
+    "page": {
+      "editorTitle": {
+        "story": "Story editor",
+        "lore": "Lore editor"
+      },
+      "loginDescription": {
+        "story": "Sign in to edit this story.",
+        "lore": "Sign in to edit this lore entry."
+      },
+      "loading": {
+        "story": "Loading story…",
+        "lore": "Loading lore…"
+      },
+      "create": {
+        "story": "New story",
+        "lore": "New lore"
+      },
+      "listBreadcrumb": {
+        "story": "Stories",
+        "lore": "Lore"
+      }
+    }
+  },
+  "assetUpload": {
+    "title": "Upload image assets",
+    "close": "Close upload panel",
+    "done": "Done",
+    "editMetadata": "Edit upload details",
+    "autoSaveHint": "Fields save automatically when you leave them.",
+    "saveAfterUpload": "Details are saved once the upload finishes.",
+    "saved": "Saved",
+    "saveFailed": "Save failed",
+    "errors": {
+      "quotaReached": "This project has reached its asset count or storage limit. Delete assets you no longer need before uploading.",
+      "selectImage": "Please choose image files.",
+      "upload": "Asset upload failed. Please try again later."
+    },
+    "reasons": {
+      "type": "only JPEG, PNG, WebP or GIF images are accepted",
+      "size": "each file must be under {{maxMB}}MB",
+      "count": "up to {{max}} files at a time",
+      "assetCount": "the project's asset count limit was reached",
+      "storageWithLimit": "the project's storage limit ({{maxMB}}MB) was reached",
+      "storage": "the project's storage limit was reached"
+    },
+    "partialRejected": "Some files weren't uploaded: {{reasons}}",
+    "reasonSeparator": "; ",
+    "uploaded": "Uploaded {{count}} assets.",
+    "uploadedMetadataFailed": "Uploaded {{count}} assets, but some details weren't saved. Retry in the panel.",
+    "closeWhileUploading": "Images are still uploading. Please wait until they finish.",
+    "quota": {
+      "count": "This project has reached its asset count limit. Delete assets you no longer need before uploading.",
+      "storage": "This project has reached its storage limit{{limit}}. Delete assets you no longer need before uploading.",
+      "both": "This project has reached its asset count and storage limits{{limit}}. Delete assets you no longer need before uploading.",
+      "storageLimit": " ({{maxMB}}MB)"
+    },
+    "hint": {
+      "select": "Drag images here, or click to choose files (multiple files supported)",
+      "limits": "JPEG, PNG, WebP or GIF, up to {{maxMB}}MB each, {{max}} files at a time"
+    },
+    "status": {
+      "uploaded": "Uploaded {{count}}",
+      "empty": "No images selected"
+    }
+  },
+  "imageEpisode": {
+    "uploadTitle": "Upload image work",
+    "editTitle": "Edit image work",
+    "loginDescription": "Sign in to upload image works.",
+    "loadingEpisode": "Loading episode…",
+    "maxPages": "An episode can have up to {{max}} pages",
+    "partialRejected": "Some files weren't added: {{reasons}}",
+    "processing": "Processing…",
+    "saved": "Episode saved.",
+    "overallProgress": "Overall upload progress",
+    "pageNumber": "Page {{page}}",
+    "addFromAssets": "Add pages from assets",
+    "errors": {
+      "assetIncomplete": "Some images didn't finish becoming assets. Please try again.",
+      "upload": "Upload failed. Please try again.",
+      "save": "Couldn't save the image work. Please try again."
+    },
+    "fields": {
+      "title": "Episode title",
+      "titlePlaceholder": "e.g. Episode 1: Prologue",
+      "summary": "Description",
+      "summaryPlaceholder": "Shown to readers — briefly describe this episode's highlights, plot or current status.",
+      "status": "Episode status",
+      "statusHelp": "Unpublished episodes don't appear on the public reader page or in the work index.",
+      "volumeHelp": "Leave empty to keep it ungrouped.",
+      "authorsHelp": "Multiple selections allowed; defaults to you."
     }
   }
 }

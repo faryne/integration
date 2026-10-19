@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useStorytellerAccountLimits,
   useStorytellerProject,
@@ -127,6 +128,7 @@ export function StorytellerAssetUploadDrawer({
   onUploaded,
   onNotify,
 }: StorytellerAssetUploadDrawerProps) {
+  const { t } = useTranslation();
   const uploadAssets = useUploadStorytellerAssets(projectPublicId);
   const updateAsset = useUpdateStorytellerAsset(projectPublicId);
   const { data: project } = useStorytellerProject(projectPublicId);
@@ -244,7 +246,7 @@ export function StorytellerAssetUploadDrawer({
         ),
       );
       if (notifyOnError)
-        onNotify(errorMessage(error, "資產資訊更新失敗。"), "error");
+        onNotify(errorMessage(error, t("web.assetManager.errors.assetUpdate")), "error");
       return false;
     }
   }
@@ -283,24 +285,30 @@ export function StorytellerAssetUploadDrawer({
     if (finalImages.length === 0) {
       onNotify(
         overAssetCount || overStorage
-          ? "這個專案已達資產數量或容量上限，請刪除不需要的資產後再上傳。"
-          : "請選擇圖片檔案。",
+          ? t("web.assetUpload.errors.quotaReached")
+          : t("web.assetUpload.errors.selectImage"),
         "error",
       );
       return;
     }
     if (rejectedType || rejectedSize || overCount || overAssetCount || overStorage) {
       const reasons = [
-        rejectedType && "只接受 JPEG／PNG／WebP／GIF 圖片檔",
-        rejectedSize && `單張檔案不能超過 ${maxMB}MB`,
-        overCount && `單次最多 ${STORYTELLER_IMAGE_PAGE_MAX_COUNT} 張`,
-        overAssetCount && "已達本專案資產數量上限",
+        rejectedType && t("web.assetUpload.reasons.type"),
+        rejectedSize && t("web.assetUpload.reasons.size", { maxMB }),
+        overCount &&
+          t("web.assetUpload.reasons.count", { max: STORYTELLER_IMAGE_PAGE_MAX_COUNT }),
+        overAssetCount && t("web.assetUpload.reasons.assetCount"),
         overStorage &&
           (maxStorageMB !== undefined
-            ? `已達本專案容量上限（${maxStorageMB}MB）`
-            : "已達本專案容量上限"),
+            ? t("web.assetUpload.reasons.storageWithLimit", { maxMB: maxStorageMB })
+            : t("web.assetUpload.reasons.storage")),
       ].filter(Boolean);
-      onNotify(`部分檔案未上傳：${reasons.join("、")}`, "error");
+      onNotify(
+        t("web.assetUpload.partialRejected", {
+          reasons: reasons.join(t("web.assetUpload.reasonSeparator")),
+        }),
+        "error",
+      );
     }
 
     const newItems = finalImages.map((file) => ({
@@ -360,13 +368,13 @@ export function StorytellerAssetUploadDrawer({
       }
       onNotify(
         metadataSaved
-          ? `已上傳 ${uploaded.length} 個資產。`
-          : `已上傳 ${uploaded.length} 個資產，但部分資訊未儲存，請在抽屜內重試。`,
+          ? t("web.assetUpload.uploaded", { count: uploaded.length })
+          : t("web.assetUpload.uploadedMetadataFailed", { count: uploaded.length }),
         metadataSaved ? "success" : "error",
       );
       onUploaded(uploaded);
     } catch (error) {
-      onNotify(errorMessage(error, "資產上傳失敗，請稍後再試。"), "error");
+      onNotify(errorMessage(error, t("web.assetUpload.errors.upload")), "error");
     } finally {
       setUploadPhase("idle");
     }
@@ -377,7 +385,7 @@ export function StorytellerAssetUploadDrawer({
   // 打完描述直接關掉/重新整理，內容就這樣不見。
   async function requestClose() {
     if (uploadPhase === "uploading" || closing) {
-      onNotify("圖片上傳中，請等完成後再關閉。", "info");
+      onNotify(t("web.assetUpload.closeWhileUploading"), "info");
       return;
     }
     const pending = itemsRef.current.filter(hasUnsavedMetadata);
@@ -458,9 +466,9 @@ export function StorytellerAssetUploadDrawer({
           sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider" }}
         >
           <Typography variant="h6" fontWeight={800}>
-            上傳圖像資產
+            {t("web.assetUpload.title")}
           </Typography>
-          <IconButton aria-label="關閉上傳抽屜" onClick={requestClose}>
+          <IconButton aria-label={t("web.assetUpload.close")} onClick={requestClose}>
             <CloseIcon />
           </IconButton>
         </Stack>
@@ -468,13 +476,22 @@ export function StorytellerAssetUploadDrawer({
         <Stack spacing={2} sx={{ p: 2, flex: 1, overflow: "auto" }}>
           {quotaExceeded && (
             <Alert severity="warning">
-              這個專案已達
-              {remainingAssetSlots <= 0 && "資產數量"}
-              {remainingAssetSlots <= 0 && remainingStorageBytes <= 0 && "與"}
-              {remainingStorageBytes <= 0 && "容量"}
-              上限
-              {maxStorageMB !== undefined && `（${maxStorageMB}MB）`}
-              ，請刪除不需要的資產後再上傳。
+              {/* 數量／容量哪一項滿了決定文案；容量上限有值才帶 MB */}
+              {t(
+                `web.assetUpload.quota.${
+                  remainingAssetSlots <= 0 && remainingStorageBytes <= 0
+                    ? "both"
+                    : remainingAssetSlots <= 0
+                      ? "count"
+                      : "storage"
+                }`,
+                {
+                  limit:
+                    maxStorageMB !== undefined
+                      ? t("web.assetUpload.quota.storageLimit", { maxMB: maxStorageMB })
+                      : "",
+                },
+              )}
             </Alert>
           )}
           <StorytellerAssetDropzone
@@ -482,10 +499,12 @@ export function StorytellerAssetUploadDrawer({
             disabled={uploadPhase === "uploading" || quotaExceeded}
             hint={
               <>
-                拖曳圖片到這裡，或點擊選擇檔案（可一次選多張，支援批次上傳）
+                {t("web.assetUpload.hint.select")}
                 <br />
-                支援 JPEG／PNG／WebP／GIF，單張檔案 {maxMB}MB 內，一次最多{" "}
-                {STORYTELLER_IMAGE_PAGE_MAX_COUNT} 張
+                {t("web.assetUpload.hint.limits", {
+                  maxMB,
+                  max: STORYTELLER_IMAGE_PAGE_MAX_COUNT,
+                })}
               </>
             }
             onFilesSelected={handleFilesSelected}
@@ -525,10 +544,10 @@ export function StorytellerAssetUploadDrawer({
           <Stack direction="row" justifyContent="space-between" spacing={1}>
             <Typography fontWeight={800}>
               {uploadPhase === "uploading"
-                ? "圖片上傳中"
+                ? t("web.assetManager.imageUploading")
                 : allUploaded
-                  ? `已上傳 ${uploadedCount} 張`
-                  : "尚未選擇圖片"}
+                  ? t("web.assetUpload.status.uploaded", { count: uploadedCount })
+                  : t("web.assetUpload.status.empty")}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {overallProgress}%
@@ -540,7 +559,7 @@ export function StorytellerAssetUploadDrawer({
             disabled={uploadPhase === "uploading" || closing}
             onClick={() => void requestClose()}
           >
-            {closing ? "儲存中" : "完成"}
+            {closing ? t("web.assetManager.saving") : t("web.assetUpload.done")}
           </Button>
         </Stack>
       </Box>

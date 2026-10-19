@@ -129,8 +129,8 @@
     "draft": "下書き",
     "draggable": "ドラッグして並べ替え",
     "updated": "{{date}} に更新",
-    "wordCount": "{{count}} 文字"
-    ,"pageCount": "{{count}} ページ"
+    "wordCount": "{{count}} 文字",
+    "pageCount": "{{count}} ページ"
   },
   "assets": {
     "references": "{{count}} 件の参照",
@@ -224,65 +224,519 @@
     "deleteTitle": "スオスオにこの記憶を忘れさせますか？",
     "confirmDelete": "削除",
     "operationFailed": "記憶の操作に失敗しました。後でもう一度お試しください。",
-    "scopeLabels": { "project": "プロジェクト全体", "story": "ストーリー", "lore": "設定" },
-    "contextScopeLabels": { "project": "プロジェクト全体", "story": "このストーリー", "lore": "この設定" },
+    "scopeLabels": {
+      "project": "プロジェクト全体",
+      "story": "ストーリー",
+      "lore": "設定"
+    },
+    "contextScopeLabels": {
+      "project": "プロジェクト全体",
+      "story": "このストーリー",
+      "lore": "この設定"
+    },
     "target": "{{scope}}：{{name}}",
-    "kindLabels": { "preference": "好み", "instruction": "継続指示", "decision": "確定済みの決定", "context": "背景情報" },
+    "kindLabels": {
+      "preference": "好み",
+      "instruction": "継続指示",
+      "decision": "確定済みの決定",
+      "context": "背景情報"
+    },
     "kindDescriptions": {
       "preference": "文章、書式、対話方法の好み（例：「返信を簡潔にする」）。",
       "instruction": "今後も守る要件や制限（例：「キャラクター名を変更しない」）。",
       "decision": "再検討不要の確定事項（例：「第3章は雨の夜にする」）。",
       "context": "キャラクター関係や世界観など、内容の理解に必要な長期的背景。"
     },
-    "priorityValue": "優先度 {{value}}", "unpin": "ピン留めを解除", "pin": "ピン留め", "updated": "{{date}} に更新",
-    "edit": "記憶を編集", "editTitle": "スオスオが覚える内容を調整", "name": "記憶名", "content": "記憶内容", "memoryType": "記憶の種類",
-    "priority": "優先度", "priorityHelp": "0～100。数字が大きいほどスオスオに優先して提供されます", "pinMemory": "この記憶をピン留め",
-    "tagPlaceholder": "キャラクター口調, 世界観, 要確認", "tagLength": "各タグは最大 {{count}} 文字です。", "tagCount": "タグは最大 {{count}} 個まで追加できます。", "tagHelp": "Enter キーまたはカンマで区切ります。最大 {{count}} 個、各 {{length}} 文字まで。",
+    "priorityValue": "優先度 {{value}}",
+    "unpin": "ピン留めを解除",
+    "pin": "ピン留め",
+    "updated": "{{date}} に更新",
+    "edit": "記憶を編集",
+    "editTitle": "スオスオが覚える内容を調整",
+    "name": "記憶名",
+    "content": "記憶内容",
+    "memoryType": "記憶の種類",
+    "priority": "優先度",
+    "priorityHelp": "0～100。数字が大きいほどスオスオに優先して提供されます",
+    "pinMemory": "この記憶をピン留め",
+    "tagPlaceholder": "キャラクター口調, 世界観, 要確認",
+    "tagLength": "各タグは最大 {{count}} 文字です。",
+    "tagCount": "タグは最大 {{count}} 個まで追加できます。",
+    "tagHelp": "Enter キーまたはカンマで区切ります。最大 {{count}} 個、各 {{length}} 文字まで。",
     "draft": {
-      "organizing": "会話を整理中", "candidate": "記憶候補", "loadingTitle": "残しておく価値のあることを探しています……", "failedTitle": "今回は整理できませんでした", "emptyTitle": "この会話には長期記憶が必要な内容はありません", "confirmTitle": "記憶する内容を確認",
-      "loadingDescription": "整理後に確認できます。記憶へ自動保存はしません。", "confirmDescription": "内容と適用範囲を編集できます。「記憶に保存」を押した後から会話で参照されます。",
-      "retry": "再整理", "discard": "保存しない", "save": "記憶に保存", "loading": "スオスオが今回の会話を、後で読んでも分かる明確な内容に整理しています。", "failed": "記憶を整理できませんでした。後でもう一度お試しください。", "empty": "今回は一度限りの依頼に見えるため、長期記憶に適した内容はありません。",
-      "supersedeWarning": "この候補は下の古い記憶を置き換える予定です。適用範囲を変えた場合や両方残す場合は「置き換えず新規保存」を選択してください。", "oldMemory": "古い記憶", "oldUnavailable": "古い記憶は現在の範囲から参照できません。新規保存をおすすめします。", "skipSupersede": "置き換えず新規保存", "content": "覚えておく内容", "pin": "この記憶をピン留めし、後で自動的に置き換えられないようにする"
+      "organizing": "会話を整理中",
+      "candidate": "記憶候補",
+      "loadingTitle": "残しておく価値のあることを探しています……",
+      "failedTitle": "今回は整理できませんでした",
+      "emptyTitle": "この会話には長期記憶が必要な内容はありません",
+      "confirmTitle": "記憶する内容を確認",
+      "loadingDescription": "整理後に確認できます。記憶へ自動保存はしません。",
+      "confirmDescription": "内容と適用範囲を編集できます。「記憶に保存」を押した後から会話で参照されます。",
+      "retry": "再整理",
+      "discard": "保存しない",
+      "save": "記憶に保存",
+      "loading": "スオスオが今回の会話を、後で読んでも分かる明確な内容に整理しています。",
+      "failed": "記憶を整理できませんでした。後でもう一度お試しください。",
+      "empty": "今回は一度限りの依頼に見えるため、長期記憶に適した内容はありません。",
+      "supersedeWarning": "この候補は下の古い記憶を置き換える予定です。適用範囲を変えた場合や両方残す場合は「置き換えず新規保存」を選択してください。",
+      "oldMemory": "古い記憶",
+      "oldUnavailable": "古い記憶は現在の範囲から参照できません。新規保存をおすすめします。",
+      "skipSupersede": "置き換えず新規保存",
+      "content": "覚えておく内容",
+      "pin": "この記憶をピン留めし、後で自動的に置き換えられないようにする"
     }
   },
   "editor": {
-    "formatToolbar": "文字書式ツールバー", "textColor": "文字色", "textColorOptions": "文字色の選択肢", "clearTextColor": "文字色をクリア", "backgroundColor": "文字の背景色", "backgroundColorOptions": "背景色の選択肢", "clearBackgroundColor": "背景色をクリア", "askAI": "AI に質問", "contextMenu": "エディターのコンテキストメニュー", "imageSettings": "画像設定", "deleteImage": "画像を削除", "removeLink": "リンクを解除", "removeFootnote": "脚注を削除", "removeComment": "注釈を削除", "searchSelection": "選択した文字を検索", "editBookmark": "ブックマークのメモを編集", "addBookmark": "ブックマークを追加", "slashMenu": "スラッシュコマンドメニュー", "bookmarkSaveFirst": "保存してからブックマークを追加できます", "bookmarkUnavailable": "カーソルがブックマーク可能な段落にありません", "editComment": "注釈を編集", "addComment": "注釈を追加", "commentAttached": "この注釈は次の文字列に付きます：「{{text}}」", "commentContent": "注釈内容", "updateComment": "注釈を更新", "createComment": "注釈を追加", "editFootnote": "脚注を編集", "addFootnote": "脚注を追加", "footnoteContent": "脚注内容", "footnoteHelp": "**太字**、*斜体*、++下線++ のみ対応し、その他の書式は適用されません", "updateFootnote": "脚注を更新", "createFootnote": "脚注を追加", "removeBookmark": "ブックマークを削除", "removeBookmarkTitle": "このブックマークを削除しますか？", "removeBookmarkDescription": "削除したブックマークは元に戻せません。", "footnoteEditHelp": "右クリック、または文字を選択して書式バーから脚注を編集／削除できます", "colors": { "yellow": "黄", "pink": "ピンク", "blue": "青", "green": "緑", "purple": "紫" },
-    "slashGroups": { "paragraphStyles": "段落スタイル", "alignment": "配置", "blocks": "ブロック", "insert": "挿入", "utilities": "ツール", "ai": "AI 支援" },
-    "link": { "url": "URL", "lore": "設定", "unpublished": "{{title}}（未公開）", "noLore": "このプロジェクトには設定がありません", "noMatch": "一致する設定がありません", "selectLore": "リンクする設定", "loreHelp": "読者がクリックすると設定の概要が表示されます。未公開の場合はプレーンテキストのみ表示されます。", "urlHelp": "http:// または https:// で始まる URL のみ使用できます。設定へリンクする場合は「設定」に切り替えてください。", "newTab": "新しいタブで開く", "update": "リンクを更新", "create": "リンクを追加" },
-    "syntax": { "text": "文字", "item": "項目", "heading": "見出し", "headingHelp": "行頭に # から {{hashes}}（1～{{count}} 階層）を入力し、空白を1つ続けます。", "numberHelp": "番号は自動で付き、入力した数字は実際の表示に影響しません。", "divider": "区切り線", "dividerHelp": "3つのハイフンを1行で入力すると区切り線に変換され、次の行へ移動します。", "colors": "文字色／背景色", "colorsPath": "文字を選択 → コンテキストメニュー／Bubble Menu の色パレット", "colorsHelp": "入力ショートカットはありません。固定パレットから選択します。", "link": "リンク", "linkPath": "文字を選択 → コンテキストメニュー／Bubble Menu のリンクボタン", "linkHelp": "http(s) で始まる URL のみ使用できます。", "footnote": "脚注", "footnotePath": "文字を選択 → コンテキストメニュー／Bubble Menu の脚注ボタン", "footnoteHelp": "読者には記事末尾に表示されます。", "comment": "注釈", "commentPath": "文字を選択 → コンテキストメニュー／Bubble Menu の注釈ボタン", "commentHelp": "作者だけが確認でき、読者には表示されません。", "imagePath": "空の段落で /画像 と入力するか、右クリックして画像を挿入", "imageHelp": "プロジェクトのアセット集から画像を選択します。", "open": "対応している構文", "title": "エディター対応構文", "description": "このエディター独自の簡易構文で、完全な Markdown／GFM ではありません。下記の記号は自動変換され、色やリンクはメニューから適用します。", "textStyles": "文字スタイル", "paragraphStyles": "段落書式", "menuOnly": "メニューからのみ適用" },
+    "formatToolbar": "文字書式ツールバー",
+    "textColor": "文字色",
+    "textColorOptions": "文字色の選択肢",
+    "clearTextColor": "文字色をクリア",
+    "backgroundColor": "文字の背景色",
+    "backgroundColorOptions": "背景色の選択肢",
+    "clearBackgroundColor": "背景色をクリア",
+    "askAI": "AI に質問",
+    "contextMenu": "エディターのコンテキストメニュー",
+    "imageSettings": "画像設定",
+    "deleteImage": "画像を削除",
+    "removeLink": "リンクを解除",
+    "removeFootnote": "脚注を削除",
+    "removeComment": "注釈を削除",
+    "searchSelection": "選択した文字を検索",
+    "editBookmark": "ブックマークのメモを編集",
+    "addBookmark": "ブックマークを追加",
+    "slashMenu": "スラッシュコマンドメニュー",
+    "bookmarkSaveFirst": "保存してからブックマークを追加できます",
+    "bookmarkUnavailable": "カーソルがブックマーク可能な段落にありません",
+    "editComment": "注釈を編集",
+    "addComment": "注釈を追加",
+    "commentAttached": "この注釈は次の文字列に付きます：「{{text}}」",
+    "commentContent": "注釈内容",
+    "updateComment": "注釈を更新",
+    "createComment": "注釈を追加",
+    "editFootnote": "脚注を編集",
+    "addFootnote": "脚注を追加",
+    "footnoteContent": "脚注内容",
+    "footnoteHelp": "**太字**、*斜体*、++下線++ のみ対応し、その他の書式は適用されません",
+    "updateFootnote": "脚注を更新",
+    "createFootnote": "脚注を追加",
+    "removeBookmark": "ブックマークを削除",
+    "removeBookmarkTitle": "このブックマークを削除しますか？",
+    "removeBookmarkDescription": "削除したブックマークは元に戻せません。",
+    "footnoteEditHelp": "右クリック、または文字を選択して書式バーから脚注を編集／削除できます",
+    "colors": {
+      "yellow": "黄",
+      "pink": "ピンク",
+      "blue": "青",
+      "green": "緑",
+      "purple": "紫"
+    },
+    "slashGroups": {
+      "paragraphStyles": "段落スタイル",
+      "alignment": "配置",
+      "blocks": "ブロック",
+      "insert": "挿入",
+      "utilities": "ツール",
+      "ai": "AI 支援"
+    },
+    "link": {
+      "url": "URL",
+      "lore": "設定",
+      "unpublished": "{{title}}（未公開）",
+      "noLore": "このプロジェクトには設定がありません",
+      "noMatch": "一致する設定がありません",
+      "selectLore": "リンクする設定",
+      "loreHelp": "読者がクリックすると設定の概要が表示されます。未公開の場合はプレーンテキストのみ表示されます。",
+      "urlHelp": "http:// または https:// で始まる URL のみ使用できます。設定へリンクする場合は「設定」に切り替えてください。",
+      "newTab": "新しいタブで開く",
+      "update": "リンクを更新",
+      "create": "リンクを追加"
+    },
+    "syntax": {
+      "text": "文字",
+      "item": "項目",
+      "heading": "見出し",
+      "headingHelp": "行頭に # から {{hashes}}（1～{{count}} 階層）を入力し、空白を1つ続けます。",
+      "numberHelp": "番号は自動で付き、入力した数字は実際の表示に影響しません。",
+      "divider": "区切り線",
+      "dividerHelp": "3つのハイフンを1行で入力すると区切り線に変換され、次の行へ移動します。",
+      "colors": "文字色／背景色",
+      "colorsPath": "文字を選択 → コンテキストメニュー／Bubble Menu の色パレット",
+      "colorsHelp": "入力ショートカットはありません。固定パレットから選択します。",
+      "link": "リンク",
+      "linkPath": "文字を選択 → コンテキストメニュー／Bubble Menu のリンクボタン",
+      "linkHelp": "http(s) で始まる URL のみ使用できます。",
+      "footnote": "脚注",
+      "footnotePath": "文字を選択 → コンテキストメニュー／Bubble Menu の脚注ボタン",
+      "footnoteHelp": "読者には記事末尾に表示されます。",
+      "comment": "注釈",
+      "commentPath": "文字を選択 → コンテキストメニュー／Bubble Menu の注釈ボタン",
+      "commentHelp": "作者だけが確認でき、読者には表示されません。",
+      "imagePath": "空の段落で /画像 と入力するか、右クリックして画像を挿入",
+      "imageHelp": "プロジェクトのアセット集から画像を選択します。",
+      "open": "対応している構文",
+      "title": "エディター対応構文",
+      "description": "このエディター独自の簡易構文で、完全な Markdown／GFM ではありません。下記の記号は自動変換され、色やリンクはメニューから適用します。",
+      "textStyles": "文字スタイル",
+      "paragraphStyles": "段落書式",
+      "menuOnly": "メニューからのみ適用"
+    },
     "backToCaret": "入力位置に戻る",
     "placeholder": "/ でブロックを挿入；文字を選択して書式を適用",
     "typography": {
-      "title": "文字設定", "fontSize": "文字サイズ", "decreaseFontSize": "文字を小さくする", "increaseFontSize": "文字を大きくする", "fontFamily": "フォント", "lineHeight": "行間", "measure": "ページ幅", "editorCaption": "編集画面の表示だけに適用され、作品内容は変更されません。閲覧画面には別の設定があります。",
-      "fontFamilies": { "system": "システム", "sans": "ゴシック体", "serif": "明朝体" },
-      "spacing": { "tight": "狭い", "normal": "標準", "wide": "広い" },
-      "width": { "narrow": "狭い", "normal": "標準", "wide": "広い" }
+      "title": "文字設定",
+      "fontSize": "文字サイズ",
+      "decreaseFontSize": "文字を小さくする",
+      "increaseFontSize": "文字を大きくする",
+      "fontFamily": "フォント",
+      "lineHeight": "行間",
+      "measure": "ページ幅",
+      "editorCaption": "編集画面の表示だけに適用され、作品内容は変更されません。閲覧画面には別の設定があります。",
+      "fontFamilies": {
+        "system": "システム",
+        "sans": "ゴシック体",
+        "serif": "明朝体"
+      },
+      "spacing": {
+        "tight": "狭い",
+        "normal": "標準",
+        "wide": "広い"
+      },
+      "width": {
+        "narrow": "狭い",
+        "normal": "標準",
+        "wide": "広い"
+      }
     },
-    "find": { "replaced": "{{count}} 件置換しました", "noMatch": "一致なし", "collapseReplace": "置換を閉じる", "expandReplace": "置換を開く", "search": "検索", "caseSensitive": "大文字と小文字を区別", "previous": "前へ", "next": "次へ", "replaceWith": "置換後の文字列", "replace": "置換", "replaceAll": "すべて置換" },
-    "bookmark": { "edit": "ブックマークのメモを編集", "add": "ブックマークを追加", "attached": "このブックマークの位置：「{{text}}」", "note": "メモ（任意）", "placeholder": "例：ここまで執筆、ここ以降を修正", "remove": "ブックマークを削除" },
-    "outline": { "title": "アウトラインとブックマーク", "collapse": "アウトラインとブックマークを閉じる", "emptyParagraph": "（空の段落）", "untitled": "（タイトルなし）", "fullDocument": "全文", "editingOnly": "編集中の範囲：{{title}}", "backToFull": "全文に戻る", "loading": "ブックマークを読み込み中…", "empty": "見出しまたはブックマークはまだありません。段落を見出しにするか、ブックマークを追加するとここに表示されます。", "editing": "編集中", "editSection": "この部分だけ編集", "missing": "この位置が見つかりません。削除された可能性があります", "editNote": "メモを編集", "deleteBookmark": "ブックマークを削除", "deleteTitle": "このブックマークを削除しますか？", "deleteDescription": "ブックマークとメモが削除されます。この操作は元に戻せません。" },
+    "find": {
+      "replaced": "{{count}} 件置換しました",
+      "noMatch": "一致なし",
+      "collapseReplace": "置換を閉じる",
+      "expandReplace": "置換を開く",
+      "search": "検索",
+      "caseSensitive": "大文字と小文字を区別",
+      "previous": "前へ",
+      "next": "次へ",
+      "replaceWith": "置換後の文字列",
+      "replace": "置換",
+      "replaceAll": "すべて置換"
+    },
+    "bookmark": {
+      "edit": "ブックマークのメモを編集",
+      "add": "ブックマークを追加",
+      "attached": "このブックマークの位置：「{{text}}」",
+      "note": "メモ（任意）",
+      "placeholder": "例：ここまで執筆、ここ以降を修正",
+      "remove": "ブックマークを削除"
+    },
+    "outline": {
+      "title": "アウトラインとブックマーク",
+      "collapse": "アウトラインとブックマークを閉じる",
+      "emptyParagraph": "（空の段落）",
+      "untitled": "（タイトルなし）",
+      "fullDocument": "全文",
+      "editingOnly": "編集中の範囲：{{title}}",
+      "backToFull": "全文に戻る",
+      "loading": "ブックマークを読み込み中…",
+      "empty": "見出しまたはブックマークはまだありません。段落を見出しにするか、ブックマークを追加するとここに表示されます。",
+      "editing": "編集中",
+      "editSection": "この部分だけ編集",
+      "missing": "この位置が見つかりません。削除された可能性があります",
+      "editNote": "メモを編集",
+      "deleteBookmark": "ブックマークを削除",
+      "deleteTitle": "このブックマークを削除しますか？",
+      "deleteDescription": "ブックマークとメモが削除されます。この操作は元に戻せません。"
+    },
     "diff": {
-      "oldVersion": "旧バージョン", "newVersion": "新バージョン", "unchanged": "変更なし", "changed": "変更あり", "collapseUnchanged": "変更のない {{count}} 行を折りたたむ", "expandUnchanged": "変更のない {{count}} 行を展開", "titleField": "タイトル", "summaryField": "概要", "contentField": "内容", "footnotesField": "脚注", "compareTitle": "{{title}} のバージョン比較", "differenceCount": "{{count}} 行の差分", "noDifference": "2つのバージョンに差分はありません", "closeCompare": "バージョン比較を閉じる",
-      "legend": { "added": { "label": "追加", "description": "緑色は新バージョンで追加された内容です。" }, "removed": { "label": "削除", "description": "赤色は旧バージョンから削除された内容です。" }, "changed": { "label": "変更", "description": "黄色は同じ行の内容が変更されたことを示します。" }, "empty": { "label": "空欄", "description": "灰色は反対側に対応する内容がないことを示します。" } }
+      "oldVersion": "旧バージョン",
+      "newVersion": "新バージョン",
+      "unchanged": "変更なし",
+      "changed": "変更あり",
+      "collapseUnchanged": "変更のない {{count}} 行を折りたたむ",
+      "expandUnchanged": "変更のない {{count}} 行を展開",
+      "titleField": "タイトル",
+      "summaryField": "概要",
+      "contentField": "内容",
+      "footnotesField": "脚注",
+      "compareTitle": "{{title}} のバージョン比較",
+      "differenceCount": "{{count}} 行の差分",
+      "noDifference": "2つのバージョンに差分はありません",
+      "closeCompare": "バージョン比較を閉じる",
+      "legend": {
+        "added": {
+          "label": "追加",
+          "description": "緑色は新バージョンで追加された内容です。"
+        },
+        "removed": {
+          "label": "削除",
+          "description": "赤色は旧バージョンから削除された内容です。"
+        },
+        "changed": {
+          "label": "変更",
+          "description": "黄色は同じ行の内容が変更されたことを示します。"
+        },
+        "empty": {
+          "label": "空欄",
+          "description": "灰色は反対側に対応する内容がないことを示します。"
+        }
+      }
     },
-    "image": { "loading": "アセットを読み込み中…", "previewMissing": "アセットのプレビューが見つかりません", "settings": "画像設定", "removeAsset": "アセットを削除", "alt": "代替テキスト", "altHelp": "アクセシビリティ支援ツールと SEO に使用され、画面には表示されません", "caption": "キャプション", "captionHelp": "読者に表示する説明文です。空欄の場合は表示されません", "layout": "レイアウト", "size": "サイズ", "delete": "画像を削除", "layouts": { "block": "画像を全幅表示", "center": "画像を中央表示", "float-left": "画像を左寄せ", "float-right": "画像を右寄せ" }, "sizes": { "small": "小", "medium": "中", "large": "大（元の比率）" } },
-    "controls": { "collapse": "閉じる", "properties": "プロパティと概要", "notSet": "未設定", "unpublished": "非公開", "published": "公開中" },
-    "status": { "wordCount": "{{count}} 文字", "published": "公開中：読者が閲覧できます", "unpublished": "非公開：自分だけが閲覧できます", "notSaved": "未保存", "updatedAt": "{{time}} に更新", "autoSaveOff": "自動保存はオフです", "autoSaveEvery": "{{count}} 分ごとに自動保存" },
-    "code": { "copy": "コピー", "delete": "コードブロックを削除", "language": "言語", "expandAll": "すべて展開（{{count}} 行）", "collapse": "折りたたむ" },
-    "history": { "newItem": "初回保存後に編集履歴が作成されます。", "helper": "比較する旧・新バージョンを順に選び、「選択したバージョンを比較」を押してください。", "version": "バージョン #{{number}}", "createdAt": "{{date}} に作成", "description": "2つのバージョンを選ぶと、タイトルと Markdown 内容の差分を比較できます。", "compare": "選択したバージョンを比較", "old": "旧", "new": "新", "versionNumber": "バージョン", "source": "出典", "words": "文字数", "createdTime": "作成日時", "actions": "操作", "selectOld": "{{id}} を旧バージョンとして選択", "selectNew": "{{id}} を新バージョンとして選択", "revertedFrom": "{{version}} から復元", "conflictedWith": "{{version}} と競合", "revert": "このバージョンに戻す", "sources": { "manual": "手動保存", "auto": "自動保存", "agent": "AI 提案を適用して保存", "mcp": "MCP 経由の操作", "mcpPat": "PAT「{{label}}」を使った MCP 経由の操作" } },
+    "image": {
+      "loading": "アセットを読み込み中…",
+      "previewMissing": "アセットのプレビューが見つかりません",
+      "settings": "画像設定",
+      "removeAsset": "アセットを削除",
+      "alt": "代替テキスト",
+      "altHelp": "アクセシビリティ支援ツールと SEO に使用され、画面には表示されません",
+      "caption": "キャプション",
+      "captionHelp": "読者に表示する説明文です。空欄の場合は表示されません",
+      "layout": "レイアウト",
+      "size": "サイズ",
+      "delete": "画像を削除",
+      "layouts": {
+        "block": "画像を全幅表示",
+        "center": "画像を中央表示",
+        "float-left": "画像を左寄せ",
+        "float-right": "画像を右寄せ"
+      },
+      "sizes": {
+        "small": "小",
+        "medium": "中",
+        "large": "大（元の比率）"
+      }
+    },
+    "controls": {
+      "collapse": "閉じる",
+      "properties": "プロパティと概要",
+      "notSet": "未設定",
+      "unpublished": "非公開",
+      "published": "公開中"
+    },
+    "status": {
+      "wordCount": "{{count}} 文字",
+      "published": "公開中：読者が閲覧できます",
+      "unpublished": "非公開：自分だけが閲覧できます",
+      "notSaved": "未保存",
+      "updatedAt": "{{time}} に更新",
+      "autoSaveOff": "自動保存はオフです",
+      "autoSaveEvery": "{{count}} 分ごとに自動保存"
+    },
+    "code": {
+      "copy": "コピー",
+      "delete": "コードブロックを削除",
+      "language": "言語",
+      "expandAll": "すべて展開（{{count}} 行）",
+      "collapse": "折りたたむ"
+    },
+    "history": {
+      "newItem": "初回保存後に編集履歴が作成されます。",
+      "helper": "比較する旧・新バージョンを順に選び、「選択したバージョンを比較」を押してください。",
+      "version": "バージョン #{{number}}",
+      "createdAt": "{{date}} に作成",
+      "description": "2つのバージョンを選ぶと、タイトルと Markdown 内容の差分を比較できます。",
+      "compare": "選択したバージョンを比較",
+      "old": "旧",
+      "new": "新",
+      "versionNumber": "バージョン",
+      "source": "出典",
+      "words": "文字数",
+      "createdTime": "作成日時",
+      "actions": "操作",
+      "selectOld": "{{id}} を旧バージョンとして選択",
+      "selectNew": "{{id}} を新バージョンとして選択",
+      "revertedFrom": "{{version}} から復元",
+      "conflictedWith": "{{version}} と競合",
+      "revert": "このバージョンに戻す",
+      "sources": {
+        "manual": "手動保存",
+        "auto": "自動保存",
+        "agent": "AI 提案を適用して保存",
+        "mcp": "MCP 経由の操作",
+        "mcpPat": "PAT「{{label}}」を使った MCP 経由の操作"
+      }
+    },
     "commands": {
-      "bold": { "label": "太字" }, "italic": { "label": "斜体" }, "underline": { "label": "下線" }, "subscript": { "label": "下付き" }, "superscript": { "label": "上付き" }, "strike": { "label": "取り消し線" }, "code": { "label": "インラインコード" },
-      "heading-0": { "label": "本文" }, "heading-1": { "label": "見出し 1" }, "heading-2": { "label": "見出し 2" }, "heading-3": { "label": "見出し 3" }, "heading-4": { "label": "見出し 4" }, "heading-5": { "label": "見出し 5" }, "heading-6": { "label": "見出し 6" },
-      "insert-code-block": { "label": "コードブロックを挿入" }, "insert-table": { "label": "表を挿入" }, "insert-image": { "label": "画像を挿入" }, "image-layout-block": { "label": "画像を全幅表示" }, "image-layout-center": { "label": "画像を中央表示" }, "image-layout-float-left": { "label": "画像を左に回り込み" }, "image-layout-float-right": { "label": "画像を右に回り込み" },
-      "align-left": { "label": "左揃え" }, "align-center": { "label": "中央揃え" }, "align-right": { "label": "右揃え" }, "block-kind-quote": { "label": "引用" }, "block-kind-bullet": { "label": "箇条書き" }, "block-kind-number": { "label": "番号付きリスト" }, "horizontal-rule": { "label": "区切り線を挿入" },
-      "text-color-red": { "label": "赤" }, "text-color-orange": { "label": "オレンジ" }, "text-color-green": { "label": "緑" }, "text-color-blue": { "label": "青" }, "text-color-purple": { "label": "紫" }, "text-color-clear": { "label": "文字色をクリア" }, "bg-color-yellow": { "label": "黄" }, "bg-color-pink": { "label": "ピンク" }, "bg-color-blue": { "label": "青" }, "bg-color-green": { "label": "緑" }, "bg-color-purple": { "label": "紫" }, "bg-color-clear": { "label": "背景色をクリア" },
-      "link": { "label": "リンクを追加", "active": "リンクを編集" }, "lore-link": { "label": "設定にリンク", "active": "設定リンクを編集" }, "footnote": { "label": "脚注を追加", "active": "脚注を編集" }, "comment": { "label": "注釈を追加", "active": "注釈を編集" }, "ask-ai": { "label": "AI に質問" }, "find-replace": { "label": "検索／置換" }, "export-markdown": { "label": "markdown をエクスポート" }
+      "bold": {
+        "label": "太字"
+      },
+      "italic": {
+        "label": "斜体"
+      },
+      "underline": {
+        "label": "下線"
+      },
+      "subscript": {
+        "label": "下付き"
+      },
+      "superscript": {
+        "label": "上付き"
+      },
+      "strike": {
+        "label": "取り消し線"
+      },
+      "code": {
+        "label": "インラインコード"
+      },
+      "heading-0": {
+        "label": "本文"
+      },
+      "heading-1": {
+        "label": "見出し 1"
+      },
+      "heading-2": {
+        "label": "見出し 2"
+      },
+      "heading-3": {
+        "label": "見出し 3"
+      },
+      "heading-4": {
+        "label": "見出し 4"
+      },
+      "heading-5": {
+        "label": "見出し 5"
+      },
+      "heading-6": {
+        "label": "見出し 6"
+      },
+      "insert-code-block": {
+        "label": "コードブロックを挿入"
+      },
+      "insert-table": {
+        "label": "表を挿入"
+      },
+      "insert-image": {
+        "label": "画像を挿入"
+      },
+      "image-layout-block": {
+        "label": "画像を全幅表示"
+      },
+      "image-layout-center": {
+        "label": "画像を中央表示"
+      },
+      "image-layout-float-left": {
+        "label": "画像を左に回り込み"
+      },
+      "image-layout-float-right": {
+        "label": "画像を右に回り込み"
+      },
+      "align-left": {
+        "label": "左揃え"
+      },
+      "align-center": {
+        "label": "中央揃え"
+      },
+      "align-right": {
+        "label": "右揃え"
+      },
+      "block-kind-quote": {
+        "label": "引用"
+      },
+      "block-kind-bullet": {
+        "label": "箇条書き"
+      },
+      "block-kind-number": {
+        "label": "番号付きリスト"
+      },
+      "horizontal-rule": {
+        "label": "区切り線を挿入"
+      },
+      "text-color-red": {
+        "label": "赤"
+      },
+      "text-color-orange": {
+        "label": "オレンジ"
+      },
+      "text-color-green": {
+        "label": "緑"
+      },
+      "text-color-blue": {
+        "label": "青"
+      },
+      "text-color-purple": {
+        "label": "紫"
+      },
+      "text-color-clear": {
+        "label": "文字色をクリア"
+      },
+      "bg-color-yellow": {
+        "label": "黄"
+      },
+      "bg-color-pink": {
+        "label": "ピンク"
+      },
+      "bg-color-blue": {
+        "label": "青"
+      },
+      "bg-color-green": {
+        "label": "緑"
+      },
+      "bg-color-purple": {
+        "label": "紫"
+      },
+      "bg-color-clear": {
+        "label": "背景色をクリア"
+      },
+      "link": {
+        "label": "リンクを追加",
+        "active": "リンクを編集"
+      },
+      "lore-link": {
+        "label": "設定にリンク",
+        "active": "設定リンクを編集"
+      },
+      "footnote": {
+        "label": "脚注を追加",
+        "active": "脚注を編集"
+      },
+      "comment": {
+        "label": "注釈を追加",
+        "active": "注釈を編集"
+      },
+      "ask-ai": {
+        "label": "AI に質問"
+      },
+      "find-replace": {
+        "label": "検索／置換"
+      },
+      "export-markdown": {
+        "label": "markdown をエクスポート"
+      }
+    },
+    "table": {
+      "rowAbove": "上に行",
+      "rowBelow": "下に行",
+      "deleteRow": "行を削除",
+      "columnLeft": "左に列",
+      "columnRight": "右に列",
+      "deleteColumn": "列を削除",
+      "deleteTable": "表を削除"
+    },
+    "bookmarks": {
+      "added": "ブックマークを追加しました。",
+      "addFailed": "ブックマークを追加できませんでした。",
+      "noteUpdated": "ブックマークのメモを更新しました。",
+      "updateFailed": "ブックマークを更新できませんでした。",
+      "removed": "ブックマークを削除しました。",
+      "removeFailed": "ブックマークを削除できませんでした。"
     }
   },
   "mascot": {
-    "dangerLabel": "元に戻せません", "dangerAlt": "スオスオが元に戻せない操作であることを知らせています", "successLabel": "準備完了", "successAlt": "作業完了を喜ぶスオスオ", "thinkingLabel": "処理中", "thinkingAlt": "考えながら作業中のスオスオ", "neutralLabel": "ご確認ください", "neutralAlt": "現在の選択を確認するよう促すスオスオ"
+    "dangerLabel": "元に戻せません",
+    "dangerAlt": "スオスオが元に戻せない操作であることを知らせています",
+    "successLabel": "準備完了",
+    "successAlt": "作業完了を喜ぶスオスオ",
+    "thinkingLabel": "処理中",
+    "thinkingAlt": "考えながら作業中のスオスオ",
+    "neutralLabel": "ご確認ください",
+    "neutralAlt": "現在の選択を確認するよう促すスオスオ"
   },
   "unsaved": {
-    "toneLabel": "未保存の変更", "eyebrow": "エディターを離れる", "title": "未保存の変更があります", "saveDescription": "エディターを離れる前に保存しますか？保存しない場合、変更は失われます。", "discardDescription": "エディターを離れると未保存の変更は失われます。破棄して移動しますか？", "continueEditing": "編集を続ける", "discardAndLeave": "変更を破棄して移動", "saveAndContinue": "保存して続行"
+    "toneLabel": "未保存の変更",
+    "eyebrow": "エディターを離れる",
+    "title": "未保存の変更があります",
+    "saveDescription": "エディターを離れる前に保存しますか？保存しない場合、変更は失われます。",
+    "discardDescription": "エディターを離れると未保存の変更は失われます。破棄して移動しますか？",
+    "continueEditing": "編集を続ける",
+    "discardAndLeave": "変更を破棄して移動",
+    "saveAndContinue": "保存して続行"
   }
 }

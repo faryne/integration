@@ -33,7 +33,7 @@ import TableChartIcon from "@mui/icons-material/TableChart";
 import TitleIcon from "@mui/icons-material/Title";
 import { NodeSelection } from "@tiptap/pm/state";
 import type { ComponentType } from "react";
-import type { TFunction } from "i18next";
+import i18n, { type TFunction } from "i18next";
 
 import {
   BG_COLOR_CSS,
@@ -637,9 +637,19 @@ function normalizeSlashQuery(value: string) {
     .replace(/\s+/g, "");
 }
 
+// 搜尋值含目前介面語言的翻譯名稱（全域 i18next instance，網站與 Writer 共用），
+// 中文 label／id／別名仍保留，切換語系後打中文或英文指令名也找得到。
 function slashCommandSearchValues(command: WysiwygCommand) {
-  return [command.label, command.id, ...(command.aliases ?? [])].map((value) =>
-    normalizeSlashQuery(value),
+  return (
+    [
+      translatedWysiwygCommandLabel(command, i18n.t),
+      command.label,
+      command.id,
+      ...(command.aliases ?? []),
+    ]
+      // i18next 尚未初始化（例如單元測試）時 t 會回 undefined，濾掉避免搜尋整個壞掉
+      .filter(Boolean)
+      .map((value) => normalizeSlashQuery(value))
   );
 }
 

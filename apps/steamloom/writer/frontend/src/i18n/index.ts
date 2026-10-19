@@ -30,9 +30,15 @@ import jaWriter from "@steamloom-web/i18n/ja/writer.json";
 import koWriter from "@steamloom-web/i18n/ko/writer.json";
 import zhCNWriter from "@steamloom-web/i18n/zh-CN/writer.json";
 import zhTWWriter from "@steamloom-web/i18n/zh-TW/writer.json";
+import enWeb from "@steamloom-web/i18n/en/web.json";
+import jaWeb from "@steamloom-web/i18n/ja/web.json";
+import koWeb from "@steamloom-web/i18n/ko/web.json";
+import zhCNWeb from "@steamloom-web/i18n/zh-CN/web.json";
+import zhTWWeb from "@steamloom-web/i18n/zh-TW/web.json";
 
-const pack = (app: object, auth: object, projects: object, settings: object, workspace: object, writer: object) => ({
-  translation: { app, auth, projects, settings, workspace, writer },
+// web：Writer 共用的網站元件（閱讀頁、預覽、AI 選取觸發等）會用 web.* key，一併掛上才不會顯示成 key 字串
+const pack = (app: object, auth: object, projects: object, settings: object, workspace: object, writer: object, web: object) => ({
+  translation: { app, auth, projects, settings, workspace, writer, web },
   writer,
 });
 
@@ -42,11 +48,11 @@ export const i18nReady = i18n.use(initReactI18next).init({
   fallbackLng: "zh-TW",
   supportedLngs: ["zh-TW", "zh-CN", "en", "ja", "ko"],
   resources: {
-    "zh-TW": pack(zhTWApp, zhTWAuth, zhTWProjects, zhTWSettings, zhTWWorkspace, zhTWWriter),
-    "zh-CN": pack(zhCNApp, zhCNAuth, zhCNProjects, zhCNSettings, zhCNWorkspace, zhCNWriter),
-    en: pack(enApp, enAuth, enProjects, enSettings, enWorkspace, enWriter),
-    ja: pack(jaApp, jaAuth, jaProjects, jaSettings, jaWorkspace, jaWriter),
-    ko: pack(koApp, koAuth, koProjects, koSettings, koWorkspace, koWriter),
+    "zh-TW": pack(zhTWApp, zhTWAuth, zhTWProjects, zhTWSettings, zhTWWorkspace, zhTWWriter, zhTWWeb),
+    "zh-CN": pack(zhCNApp, zhCNAuth, zhCNProjects, zhCNSettings, zhCNWorkspace, zhCNWriter, zhCNWeb),
+    en: pack(enApp, enAuth, enProjects, enSettings, enWorkspace, enWriter, enWeb),
+    ja: pack(jaApp, jaAuth, jaProjects, jaSettings, jaWorkspace, jaWriter, jaWeb),
+    ko: pack(koApp, koAuth, koProjects, koSettings, koWorkspace, koWriter, koWeb),
   },
   interpolation: { escapeValue: false },
 });

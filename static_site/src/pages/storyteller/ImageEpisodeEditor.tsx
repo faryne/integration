@@ -15,6 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   usePatchStorytellerStory,
@@ -125,6 +126,7 @@ export default function StorytellerImageEpisodeEditor({
   projectId,
   episodePublicId,
 }: StorytellerImageEpisodeEditorProps = {}) {
+  const { t } = useTranslation();
   const params = useParams();
   const id = projectId ?? params.id;
   const episodeId = episodePublicId ?? params.episodeId;
@@ -326,7 +328,9 @@ export default function StorytellerImageEpisodeEditor({
   // 缺標題或頁面等不能送出的狀態。必須在下面的 early return 之前呼叫（Rules of Hooks）。
   usePrimaryShortcut("s", () => void handleSubmit());
 
-  const pageTitle = isNewEpisode ? "上傳圖像作品" : "編輯圖像作品";
+  const pageTitle = isNewEpisode
+    ? t("web.imageEpisode.uploadTitle")
+    : t("web.imageEpisode.editTitle");
 
   useTitle(`${pageTitle} | ${STORYTELLER_APP_NAME}`, {
     path:
@@ -338,8 +342,11 @@ export default function StorytellerImageEpisodeEditor({
 
   const shellBreadcrumbs = [
     { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-    { label: "我的工作台", to: steamloomPath("my") },
-    { label: "創作專案", to: steamloomPath("my/projects") },
+    { label: t("web.home.workspace"), to: steamloomPath("my") },
+    {
+      label: t("web.projectWorkspace.projects"),
+      to: steamloomPath("my/projects"),
+    },
     ...(project
       ? [
           {
@@ -358,7 +365,9 @@ export default function StorytellerImageEpisodeEditor({
         breadcrumbs={embedded ? [] : shellBreadcrumbs}
       >
         <Stack alignItems="center" sx={{ py: 8 }}>
-          <Typography color="text.secondary">正在確認登入狀態...</Typography>
+          <Typography color="text.secondary">
+            {t("web.home.checkingLogin")}
+          </Typography>
         </Stack>
       </StorytellerShell>
     );
@@ -371,7 +380,7 @@ export default function StorytellerImageEpisodeEditor({
         breadcrumbs={embedded ? [] : shellBreadcrumbs}
       >
         <CustomLoginRequiredState
-          description="登入後即可上傳圖像作品。"
+          description={t("web.imageEpisode.loginDescription")}
           onLogin={() => void login()}
           submitting={submitting}
         />
@@ -385,7 +394,7 @@ export default function StorytellerImageEpisodeEditor({
         title={pageTitle}
         breadcrumbs={embedded ? [] : shellBreadcrumbs}
       >
-        <StorytellerLoading label="正在載入專案資料..." />
+        <StorytellerLoading label={t("web.projectWorkspace.loadingProject")} />
       </StorytellerShell>
     );
   }
@@ -419,7 +428,7 @@ export default function StorytellerImageEpisodeEditor({
           title={pageTitle}
           breadcrumbs={embedded ? [] : shellBreadcrumbs}
         >
-          <StorytellerLoading label="正在載入話的資料..." />
+          <StorytellerLoading label={t("web.imageEpisode.loadingEpisode")} />
         </StorytellerShell>
       );
     }
@@ -466,11 +475,18 @@ export default function StorytellerImageEpisodeEditor({
     if (rejectedType || rejectedSize || overCount > 0) {
       const maxMB = Math.floor(STORYTELLER_IMAGE_PAGE_MAX_BYTES / 1024 / 1024);
       const reasons = [
-        rejectedType && "只接受 JPEG／PNG／WebP／GIF 圖片檔",
-        rejectedSize && `單張檔案不能超過 ${maxMB}MB`,
-        overCount > 0 && `一話最多 ${STORYTELLER_IMAGE_PAGE_MAX_COUNT} 頁`,
+        rejectedType && t("web.assetUpload.reasons.type"),
+        rejectedSize && t("web.assetUpload.reasons.size", { maxMB }),
+        overCount > 0 &&
+          t("web.imageEpisode.maxPages", {
+            max: STORYTELLER_IMAGE_PAGE_MAX_COUNT,
+          }),
       ].filter(Boolean);
-      setFileWarning(`部分檔案未加入：${reasons.join("、")}`);
+      setFileWarning(
+        t("web.imageEpisode.partialRejected", {
+          reasons: reasons.join(t("web.assetUpload.reasonSeparator")),
+        }),
+      );
     } else {
       setFileWarning(null);
     }
@@ -486,7 +502,11 @@ export default function StorytellerImageEpisodeEditor({
 
   function addAssetPage(asset: EditorPickerAsset) {
     if (pages.length >= STORYTELLER_IMAGE_PAGE_MAX_COUNT) {
-      setFileWarning(`一話最多 ${STORYTELLER_IMAGE_PAGE_MAX_COUNT} 頁`);
+      setFileWarning(
+        t("web.imageEpisode.maxPages", {
+          max: STORYTELLER_IMAGE_PAGE_MAX_COUNT,
+        }),
+      );
       setAssetPickerOpen(false);
       return;
     }
@@ -562,7 +582,9 @@ export default function StorytellerImageEpisodeEditor({
         onError: (error) => {
           apply(previous);
           setUploadError(
-            error instanceof Error ? error.message : "屬性更新失敗，請重試。",
+            error instanceof Error
+              ? error.message
+              : t("web.documentEditor.messages.attributeFailed"),
           );
           setSaveErrorSnackOpen(true);
         },
@@ -641,7 +663,7 @@ export default function StorytellerImageEpisodeEditor({
           );
         });
         if (uploadedAssets.length !== pendingIndexes.length) {
-          throw new Error("部分圖片沒有完成資產建立，請重試。");
+          throw new Error(t("web.imageEpisode.errors.assetIncomplete"));
         }
       }
 
@@ -701,7 +723,9 @@ export default function StorytellerImageEpisodeEditor({
     } catch (error) {
       setPhase("error");
       setUploadError(
-        error instanceof Error ? error.message : "上傳失敗，請重試。",
+        error instanceof Error
+          ? error.message
+          : t("web.imageEpisode.errors.upload"),
       );
       setSaveErrorSnackOpen(true);
       return false;
@@ -726,19 +750,21 @@ export default function StorytellerImageEpisodeEditor({
   const statusOptions = [
     {
       value: "draft",
-      label: "未公開",
+      label: t("web.projectWorkspace.status.unpublished"),
       icon: <VisibilityOffIcon fontSize="small" />,
     },
     {
       value: "completed",
-      label: "公開中",
+      label: t("web.projectWorkspace.status.published"),
       icon: <VisibilityIcon fontSize="small" />,
     },
   ];
   const profileOptions = [
     {
       value: String(ACCOUNT_PROFILE_ID),
-      label: userProfile?.pen_name ? `本人（${userProfile.pen_name}）` : "本人",
+      label: userProfile?.pen_name
+        ? t("web.documentEditor.self", { penName: userProfile.pen_name })
+        : t("web.documentEditor.selfOnly"),
       icon: <PersonIcon fontSize="small" />,
     },
     ...(userProfile?.profiles ?? []).map((profile) => ({
@@ -748,7 +774,11 @@ export default function StorytellerImageEpisodeEditor({
     })),
   ];
   const volumeOptions = [
-    { value: "", label: "不分冊", icon: <FolderIcon fontSize="small" /> },
+    {
+      value: "",
+      label: t("web.documentEditor.ungrouped.story"),
+      icon: <FolderIcon fontSize="small" />,
+    },
     ...apiVolumes.map((volume) => ({
       value: volume.public_id,
       label: volume.title,
@@ -765,7 +795,11 @@ export default function StorytellerImageEpisodeEditor({
       disabled={!title.trim() || pages.length === 0 || isSubmitting}
       onClick={() => void handleSubmit()}
     >
-      {isSubmitting ? "處理中..." : phase === "error" ? "重試" : "儲存"}
+      {isSubmitting
+        ? t("web.imageEpisode.processing")
+        : phase === "error"
+          ? t("web.common.retry")
+          : t("web.common.save")}
       <ShortcutHint shortcutKey="S" />
     </Button>
   ) : undefined;
@@ -787,7 +821,7 @@ export default function StorytellerImageEpisodeEditor({
           <WorkspaceEditableTitle
             value={title}
             disabled={isSubmitting}
-            placeholder="未命名圖像作品"
+            placeholder={t("web.documentEditor.titlePlaceholder.image")}
             onChange={setTitle}
           />
         }
@@ -826,7 +860,7 @@ export default function StorytellerImageEpisodeEditor({
                 <VisibilityOffIcon fontSize="small" />
               )
             }
-            label="狀態"
+            label={t("web.documentEditor.status")}
             value={status}
             options={statusOptions}
             disabled={isSubmitting}
@@ -834,7 +868,7 @@ export default function StorytellerImageEpisodeEditor({
           />
           <WorkspaceEditorSelectButton
             icon={<FolderIcon fontSize="small" />}
-            label="冊"
+            label={t("web.documentEditor.group.story")}
             value={selectedVolumeId}
             options={volumeOptions}
             // 沒有冊（只剩不分冊）、沒有其他筆名時沒得選，停用
@@ -845,7 +879,7 @@ export default function StorytellerImageEpisodeEditor({
           />
           <WorkspaceEditorMultiSelectButton
             icon={<PersonIcon fontSize="small" />}
-            label="署名"
+            label={t("web.documentEditor.authors")}
             values={selectedProfileIds.map(String)}
             options={profileOptions}
             disabled={isSubmitting || profileOptions.length <= 1}
@@ -859,7 +893,7 @@ export default function StorytellerImageEpisodeEditor({
         <WorkspaceEditableSummary
           value={summary}
           disabled={isSubmitting}
-          placeholder="新增描述..."
+          placeholder={t("web.documentEditor.summaryPlaceholder.image")}
           onChange={setSummary}
         />
       </WorkspaceEditorMetaPanel>
@@ -877,7 +911,7 @@ export default function StorytellerImageEpisodeEditor({
       <Stack spacing={2}>
         <CustomSnackbar
           open={saveSnackOpen}
-          message="圖片話已儲存。"
+          message={t("web.imageEpisode.saved")}
           autoHideDuration={saveSuccessTarget ? 1200 : 2500}
           onClose={() => {
             setSaveSnackOpen(false);
@@ -894,7 +928,7 @@ export default function StorytellerImageEpisodeEditor({
         />
         <CustomSnackbar
           open={saveErrorSnackOpen}
-          message={uploadError ?? "圖像作品儲存失敗，請重試。"}
+          message={uploadError ?? t("web.imageEpisode.errors.save")}
           severity="error"
           onClose={() => setSaveErrorSnackOpen(false)}
         />
@@ -927,8 +961,8 @@ export default function StorytellerImageEpisodeEditor({
                 <TextField
                   required
                   fullWidth
-                  label="話名稱"
-                  placeholder="例如：第一話　序章"
+                  label={t("web.imageEpisode.fields.title")}
+                  placeholder={t("web.imageEpisode.fields.titlePlaceholder")}
                   value={title}
                   disabled={isSubmitting}
                   onChange={(event) => setTitle(event.target.value)}
@@ -938,8 +972,8 @@ export default function StorytellerImageEpisodeEditor({
                   multiline
                   minRows={2}
                   maxRows={12}
-                  label="基本描述"
-                  placeholder="這段文字給讀者看，簡短描述這一話的重點、劇情或目前狀態。"
+                  label={t("web.imageEpisode.fields.summary")}
+                  placeholder={t("web.imageEpisode.fields.summaryPlaceholder")}
                   value={summary}
                   disabled={isSubmitting}
                   onChange={(event) => setSummary(event.target.value)}
@@ -947,21 +981,25 @@ export default function StorytellerImageEpisodeEditor({
                 <TextField
                   fullWidth
                   select
-                  label="話狀態"
+                  label={t("web.imageEpisode.fields.status")}
                   value={status}
                   disabled={isSubmitting}
                   onChange={(event) =>
                     changeStatus(event.target.value as "draft" | "completed")
                   }
-                  helperText="未公開的話不會出現在公開閱讀頁與作品索引。"
+                  helperText={t("web.imageEpisode.fields.statusHelp")}
                 >
-                  <MenuItem value="draft">未公開</MenuItem>
-                  <MenuItem value="completed">公開中</MenuItem>
+                  <MenuItem value="draft">
+                    {t("web.projectWorkspace.status.unpublished")}
+                  </MenuItem>
+                  <MenuItem value="completed">
+                    {t("web.projectWorkspace.status.published")}
+                  </MenuItem>
                 </TextField>
                 <TextField
                   fullWidth
                   select
-                  label="冊"
+                  label={t("web.documentEditor.group.story")}
                   value={selectedVolumeId}
                   disabled={isSubmitting || apiVolumes.length === 0}
                   onChange={(event) =>
@@ -969,9 +1007,11 @@ export default function StorytellerImageEpisodeEditor({
                       selectedVolumeId: event.target.value,
                     })
                   }
-                  helperText="未選擇時視為不分冊。"
+                  helperText={t("web.imageEpisode.fields.volumeHelp")}
                 >
-                  <MenuItem value="">不分冊</MenuItem>
+                  <MenuItem value="">
+                    {t("web.documentEditor.ungrouped.story")}
+                  </MenuItem>
                   {apiVolumes.map((volume) => (
                     <MenuItem key={volume.public_id} value={volume.public_id}>
                       {volume.title}
@@ -981,7 +1021,7 @@ export default function StorytellerImageEpisodeEditor({
                 <TextField
                   fullWidth
                   select
-                  label="署名"
+                  label={t("web.documentEditor.authors")}
                   value={selectedProfileIds.map(String)}
                   disabled={isSubmitting || profileOptions.length <= 1}
                   slotProps={{
@@ -997,7 +1037,7 @@ export default function StorytellerImageEpisodeEditor({
                         .filter((id) => !Number.isNaN(id)),
                     });
                   }}
-                  helperText="可多選；預設為本人。"
+                  helperText={t("web.imageEpisode.fields.authorsHelp")}
                 >
                   {profileOptions.map((option) => (
                     <MenuItem key={option.value} value={option.value}>
@@ -1013,7 +1053,7 @@ export default function StorytellerImageEpisodeEditor({
               addControl={
                 <StorytellerAssetDropzone
                   accept={STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES}
-                  hint="拖曳圖片到這裡，或點擊選擇檔案（可一次選多張，支援批次上傳）"
+                  hint={t("web.assetUpload.hint.select")}
                   onFilesSelected={addFiles}
                 />
               }
@@ -1029,7 +1069,9 @@ export default function StorytellerImageEpisodeEditor({
                   justifyContent="space-between"
                   sx={{ mb: 0.5 }}
                 >
-                  <Typography variant="subtitle2">總體上傳進度</Typography>
+                  <Typography variant="subtitle2">
+                    {t("web.imageEpisode.overallProgress")}
+                  </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {overallPercent}%
                   </Typography>
@@ -1058,7 +1100,9 @@ export default function StorytellerImageEpisodeEditor({
                           sx={{ mb: 0.25 }}
                         >
                           <Typography variant="caption" color="text.secondary">
-                            第 {index + 1} 頁
+                            {t("web.imageEpisode.pageNumber", {
+                              page: index + 1,
+                            })}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
                             {percent}%
@@ -1078,7 +1122,7 @@ export default function StorytellerImageEpisodeEditor({
                   variant="text"
                   disabled={isSubmitting}
                 >
-                  返回列表
+                  {t("web.documentEditor.backToList")}
                 </Button>
                 <Button
                   variant="contained"
@@ -1087,12 +1131,12 @@ export default function StorytellerImageEpisodeEditor({
                   onClick={() => void handleSubmit()}
                 >
                   {isSubmitting
-                    ? "處理中..."
+                    ? t("web.imageEpisode.processing")
                     : phase === "error"
-                      ? "重試"
+                      ? t("web.common.retry")
                       : isNewEpisode
-                        ? "上傳"
-                        : "儲存"}
+                        ? t("web.common.upload")
+                        : t("web.common.save")}
                 </Button>
               </Stack>
             )}
@@ -1103,7 +1147,7 @@ export default function StorytellerImageEpisodeEditor({
       <StorytellerAssetPickerDialog
         open={assetPickerOpen}
         projectPublicId={project.public_id}
-        title="從資產集加入頁面"
+        title={t("web.imageEpisode.addFromAssets")}
         onClose={() => setAssetPickerOpen(false)}
         onSelect={addAssetPage}
       />

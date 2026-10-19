@@ -8,6 +8,7 @@ import {
   TextField,
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   workspaceDialogActionsSx,
   workspaceDialogBackdropSx,
@@ -30,6 +31,7 @@ export interface StorytellerVolumeDialogProps {
 // 沒有 AI Agent 面板／字數統計的需求，用一個輕量對話框處理就好。冊本身是通用容器，
 // 文字故事跟話（圖像作品）可以混著放在同一冊裡，不需要選類型。
 export function StorytellerVolumeDialog(props: StorytellerVolumeDialogProps) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState(props.initialTitle ?? "");
   const isEditing = Boolean(props.initialTitle);
 
@@ -51,29 +53,35 @@ export function StorytellerVolumeDialog(props: StorytellerVolumeDialogProps) {
       }}
     >
       <DialogTitle sx={workspaceDialogTitleSx}>
-        {isEditing ? "重新命名冊" : "新增冊"}
+        {isEditing
+          ? t("web.workspacePreview.actions.renameVolume")
+          : t("web.projectWorkspace.volume.add")}
       </DialogTitle>
       <DialogContent sx={workspaceDialogContentSx}>
         <Stack spacing={2} sx={{ pt: 1 }}>
           <TextField
             autoFocus
             fullWidth
-            label="冊名稱"
+            label={t("web.projectWorkspace.volume.name")}
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder="例如：第一冊"
+            placeholder={t("web.projectWorkspace.volume.namePlaceholder")}
             sx={workspaceTextFieldSx}
           />
         </Stack>
       </DialogContent>
       <DialogActions sx={workspaceDialogActionsSx}>
-        <Button onClick={props.onClose}>取消</Button>
+        <Button onClick={props.onClose}>{t("web.common.cancel")}</Button>
         <Button
           variant="contained"
           disabled={!title.trim() || props.loading}
           onClick={() => props.onSubmit(title.trim())}
         >
-          {props.loading ? "儲存中" : isEditing ? "儲存" : "新增"}
+          {props.loading
+            ? t("web.assetManager.saving")
+            : isEditing
+              ? t("web.common.save")
+              : t("web.common.add")}
         </Button>
       </DialogActions>
     </Dialog>

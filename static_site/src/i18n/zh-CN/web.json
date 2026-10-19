@@ -443,7 +443,9 @@
       "publishHint": "未公开，下面故事目前一律不对外显示，点击改为公开中",
       "unpublishHint": "公开中，点击改为未公开（下面故事会一并隐藏）",
       "deleteBlocked": "卷非空不能删除，请先移出下面的故事",
-      "deleteDescription": "删除后无法恢复。请输入卷名称确认。"
+      "deleteDescription": "删除后无法恢复。请输入卷名称确认。",
+      "name": "册名称",
+      "namePlaceholder": "例如：第一册"
     },
     "empty": {
       "allTitle": "尚未建立任何作品",
@@ -716,6 +718,15 @@
       "loreCollectionDeleteFailed": "设定集删除失败。",
       "deleteAssetDescription": "删除后无法恢复。请输入资产名称确认。",
       "deleteAssetCollectionDescription": "删除后不会影响其他资产集。请输入资产集名称确认。"
+    },
+    "lastUpdated": "最后更新 {{date}}",
+    "sidebar": {
+      "collapse": "收起",
+      "expand": "展开",
+      "reorder": "调整{{title}}顺序",
+      "create": "新增{{title}}",
+      "collapseItems": "收起项目",
+      "expandItems": "展开项目"
     }
   },
   "agent": {
@@ -822,6 +833,188 @@
     },
     "messages": {
       "responseCopied": "AI 回复已复制。"
+    }
+  },
+  "documentEditor": {
+    "tabs": {
+      "editor": "编辑",
+      "history": "编辑历史"
+    },
+    "ungrouped": {
+      "story": "未分册",
+      "lore": "未归类"
+    },
+    "titlePlaceholder": {
+      "story": "未命名故事",
+      "lore": "未命名设定",
+      "image": "未命名图像作品"
+    },
+    "summaryPlaceholder": {
+      "story": "添加摘要...",
+      "lore": "添加给读者看的摘要...",
+      "image": "添加描述..."
+    },
+    "status": "状态",
+    "group": {
+      "story": "册",
+      "lore": "设定集"
+    },
+    "authors": "署名",
+    "autoSave": {
+      "label": "自动保存",
+      "off": "不自动保存",
+      "every": "每 {{minutes}} 分钟",
+      "custom": "自定义频率",
+      "range": "{{min}}-{{max}} 分钟"
+    },
+    "conflict": {
+      "story": "刚刚保存完成后才发现这篇故事在中途被更新过，已经接在最新版本后面保存为新版本。",
+      "lore": "刚刚保存完成后才发现这篇设定在中途被更新过，已经接在最新版本后面保存为新版本。",
+      "viewHistory": "查看编辑历史"
+    },
+    "self": "本人（{{penName}}）",
+    "selfOnly": "本人",
+    "spoiler": {
+      "label": "剧透",
+      "no": "无剧透",
+      "yes": "含剧透"
+    },
+    "dependsOn": "需先读过",
+    "dependency": {
+      "story": "故事",
+      "lore": "设定"
+    },
+    "saveFailedBanner": "保存失败，请确认登录状态与字段内容。",
+    "insertAsset": "插入资产",
+    "insertAssetTitle": {
+      "story": "插入故事资产",
+      "lore": "插入设定资产"
+    },
+    "assetInserted": "已插入资产。",
+    "assetInsertFailed": "无法插入资产，请刷新后再试。",
+    "historyEmpty": {
+      "story": "新故事第一次保存后才会产生编辑历史。",
+      "lore": "新设定第一次保存后才会产生编辑历史。"
+    },
+    "reverted": "已恢复到这个版本。",
+    "scope": {
+      "only": "只编辑",
+      "backToFull": "回到全文"
+    },
+    "backToList": "返回列表",
+    "revertFailed": {
+      "story": "恢复故事版本失败，请重试。",
+      "lore": "恢复设定版本失败，请重试。"
+    },
+    "messages": {
+      "saved": {
+        "story": "故事已保存。",
+        "lore": "设定已保存。"
+      },
+      "autoSaved": "已自动保存。",
+      "agentApplied": "已套用 AI 提案并保存。",
+      "saveFailed": {
+        "story": "故事保存失败，请重试。",
+        "lore": "设定保存失败，请重试。"
+      },
+      "autoSaveFailed": {
+        "story": "故事自动保存失败，请手动重试。",
+        "lore": "设定自动保存失败，请手动重试。"
+      },
+      "titleRequired": "请先输入标题。",
+      "attributeFailed": "属性更新失败，请重试。"
+    },
+    "page": {
+      "editorTitle": {
+        "story": "故事编辑器",
+        "lore": "设定编辑器"
+      },
+      "loginDescription": {
+        "story": "登录后即可编辑这篇故事。",
+        "lore": "登录后即可编辑这篇设定。"
+      },
+      "loading": {
+        "story": "正在加载故事...",
+        "lore": "正在加载设定..."
+      },
+      "create": {
+        "story": "创建故事",
+        "lore": "创建设定"
+      },
+      "listBreadcrumb": {
+        "story": "故事",
+        "lore": "设定集"
+      }
+    }
+  },
+  "assetUpload": {
+    "title": "上传图像资产",
+    "close": "关闭上传抽屉",
+    "done": "完成",
+    "editMetadata": "编辑上传信息",
+    "autoSaveHint": "字段失去焦点后会自动保存。",
+    "saveAfterUpload": "上传完成后才会保存。",
+    "saved": "已保存",
+    "saveFailed": "保存失败",
+    "errors": {
+      "quotaReached": "这个项目已达资产数量或容量上限，请删除不需要的资产后再上传。",
+      "selectImage": "请选择图片文件。",
+      "upload": "资产上传失败，请稍后再试。"
+    },
+    "reasons": {
+      "type": "只接受 JPEG／PNG／WebP／GIF 图片文件",
+      "size": "单个文件不能超过 {{maxMB}}MB",
+      "count": "单次最多 {{max}} 张",
+      "assetCount": "已达本项目资产数量上限",
+      "storageWithLimit": "已达本项目容量上限（{{maxMB}}MB）",
+      "storage": "已达本项目容量上限"
+    },
+    "partialRejected": "部分文件未上传：{{reasons}}",
+    "reasonSeparator": "、",
+    "uploaded": "已上传 {{count}} 个资产。",
+    "uploadedMetadataFailed": "已上传 {{count}} 个资产，但部分信息未保存，请在抽屉内重试。",
+    "closeWhileUploading": "图片上传中，请等完成后再关闭。",
+    "quota": {
+      "count": "这个项目已达资产数量上限，请删除不需要的资产后再上传。",
+      "storage": "这个项目已达容量上限{{limit}}，请删除不需要的资产后再上传。",
+      "both": "这个项目已达资产数量与容量上限{{limit}}，请删除不需要的资产后再上传。",
+      "storageLimit": "（{{maxMB}}MB）"
+    },
+    "hint": {
+      "select": "拖动图片到这里，或点击选择文件（可一次选多张，支持批量上传）",
+      "limits": "支持 JPEG／PNG／WebP／GIF，单个文件 {{maxMB}}MB 以内，一次最多 {{max}} 张"
+    },
+    "status": {
+      "uploaded": "已上传 {{count}} 张",
+      "empty": "尚未选择图片"
+    }
+  },
+  "imageEpisode": {
+    "uploadTitle": "上传图像作品",
+    "editTitle": "编辑图像作品",
+    "loginDescription": "登录后即可上传图像作品。",
+    "loadingEpisode": "正在加载这一话的数据...",
+    "maxPages": "一话最多 {{max}} 页",
+    "partialRejected": "部分文件未加入：{{reasons}}",
+    "processing": "处理中...",
+    "saved": "图片话已保存。",
+    "overallProgress": "总体上传进度",
+    "pageNumber": "第 {{page}} 页",
+    "addFromAssets": "从资产集加入页面",
+    "errors": {
+      "assetIncomplete": "部分图片没有完成资产创建，请重试。",
+      "upload": "上传失败，请重试。",
+      "save": "图像作品保存失败，请重试。"
+    },
+    "fields": {
+      "title": "话名称",
+      "titlePlaceholder": "例如：第一话　序章",
+      "summary": "基本描述",
+      "summaryPlaceholder": "这段文字给读者看，简短描述这一话的重点、剧情或当前状态。",
+      "status": "话状态",
+      "statusHelp": "未公开的话不会出现在公开阅读页与作品索引。",
+      "volumeHelp": "未选择时视为不分册。",
+      "authorsHelp": "可多选；默认为本人。"
     }
   }
 }

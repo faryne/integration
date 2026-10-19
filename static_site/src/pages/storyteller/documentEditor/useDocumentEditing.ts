@@ -1,5 +1,6 @@
 import { usePrimaryShortcut } from "@/helpers/shortcut.ts";
 import { contentWordCount } from "@/pages/storyteller/storytellerContentWordCount.ts";
+import type { TFunction } from "i18next";
 import { useEffect, useRef, useState } from "react";
 
 // 故事與設定共用的草稿／存檔邏輯，網站（StoryEditor／LoreEditor）與 SteamLoom Writer 都用這一份
@@ -80,20 +81,19 @@ export interface DocumentEditingMessages {
   attributeFailed: string;
 }
 
+// 網站的預設存檔訊息（web.documentEditor.messages.*）；Writer 另有自己的一份（結尾接錯誤原因）
 export const defaultDocumentEditingMessages = (
   kind: DocumentKind,
-): DocumentEditingMessages => {
-  const name = kind === "story" ? "故事" : "設定";
-  return {
-    saved: `${name}已存檔。`,
-    autoSaved: "已自動存檔。",
-    agentApplied: "已套用 AI 提案並存檔。",
-    saveFailed: `${name}存檔失敗，請重試。`,
-    autoSaveFailed: `${name}自動存檔失敗，請手動重試。`,
-    titleRequired: "請先輸入標題。",
-    attributeFailed: "屬性更新失敗，請重試。",
-  };
-};
+  t: TFunction,
+): DocumentEditingMessages => ({
+  saved: t(`web.documentEditor.messages.saved.${kind}`),
+  autoSaved: t("web.documentEditor.messages.autoSaved"),
+  agentApplied: t("web.documentEditor.messages.agentApplied"),
+  saveFailed: t(`web.documentEditor.messages.saveFailed.${kind}`),
+  autoSaveFailed: t(`web.documentEditor.messages.autoSaveFailed.${kind}`),
+  titleRequired: t("web.documentEditor.messages.titleRequired"),
+  attributeFailed: t("web.documentEditor.messages.attributeFailed"),
+});
 
 export type DocumentNotify = (
   message: string,

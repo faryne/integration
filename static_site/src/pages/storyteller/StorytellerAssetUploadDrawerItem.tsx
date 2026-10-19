@@ -13,6 +13,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import type {
   UploadItem,
   UploadMetadata,
@@ -55,6 +56,7 @@ export function StorytellerAssetUploadDrawerItem({
   onMetadataChange,
   onMetadataBlur,
 }: StorytellerAssetUploadDrawerItemProps) {
+  const { t } = useTranslation();
   const percent = uploadPercent(item, progress);
 
   return (
@@ -88,7 +90,7 @@ export function StorytellerAssetUploadDrawerItem({
                   {formatFileSize(item.file.size)}
                 </Typography>
               </Box>
-              <Tooltip title="編輯上傳資訊">
+              <Tooltip title={t("web.assetUpload.editMetadata")}>
                 <IconButton
                   size="small"
                   onClick={() => onToggleMetadata(item.id)}
@@ -126,27 +128,31 @@ export function StorytellerAssetUploadDrawerItem({
             >
               <Typography variant="caption" color="text.secondary">
                 {item.asset
-                  ? "欄位離開焦點後會自動儲存。"
-                  : "上傳完成後才會儲存。"}
+                  ? t("web.assetUpload.autoSaveHint")
+                  : t("web.assetUpload.saveAfterUpload")}
               </Typography>
               {item.metadataStatus === "saving" && (
-                <Chip size="small" label="儲存中" />
+                <Chip size="small" label={t("web.assetManager.saving")} />
               )}
               {item.metadataStatus === "saved" && (
                 <Chip
                   size="small"
                   color="success"
                   icon={<CheckCircleIcon />}
-                  label="已儲存"
+                  label={t("web.assetUpload.saved")}
                 />
               )}
               {item.metadataStatus === "error" && (
-                <Chip size="small" color="error" label="儲存失敗" />
+                <Chip
+                  size="small"
+                  color="error"
+                  label={t("web.assetUpload.saveFailed")}
+                />
               )}
             </Stack>
             <TextField
               size="small"
-              label="標題"
+              label={t("web.assetManager.fields.title")}
               value={item.metadata.title}
               onChange={(event) =>
                 onMetadataChange(item.id, "title", event.target.value)
@@ -155,7 +161,7 @@ export function StorytellerAssetUploadDrawerItem({
             />
             <TextField
               size="small"
-              label="替代文字"
+              label={t("web.assetManager.fields.altText")}
               value={item.metadata.alt_text}
               onChange={(event) =>
                 onMetadataChange(item.id, "alt_text", event.target.value)
@@ -164,7 +170,7 @@ export function StorytellerAssetUploadDrawerItem({
             />
             <TextField
               size="small"
-              label="備註"
+              label={t("web.assetManager.fields.notes")}
               value={item.metadata.description}
               multiline
               minRows={3}

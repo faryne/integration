@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { DocumentKind } from "@/pages/storyteller/documentEditor/useDocumentEditing.ts";
 
 // 共用編輯頁（SteamLoomDocumentEditor 與底下的頁首、歷史、自動存檔）的介面文字。
@@ -40,43 +41,46 @@ export interface DocumentEditorLabels {
   revertFailed: string;
 }
 
+// 網站的預設文字取 web.documentEditor.*；譯文與 Writer 的 workspace.editor.* 同一份，兩端用詞一致。
 export const defaultDocumentEditorLabels = (
   kind: DocumentKind,
+  t: TFunction,
 ): DocumentEditorLabels => {
-  const name = kind === "story" ? "故事" : "設定";
+  const k = (key: string) => t(`web.documentEditor.${key}`);
   return {
-    tabs: { editor: "編輯", history: "編輯歷史" },
-    scope: { only: "只編輯", backToFull: "回到全文" },
-    titlePlaceholder: kind === "story" ? "未命名故事" : "未命名設定",
-    summaryPlaceholder: "新增摘要...",
-    status: "狀態",
-    group: kind === "story" ? "冊" : "設定集",
-    authors: "署名",
-    self: (penName) => (penName ? `本人（${penName}）` : "本人"),
-    ungrouped: kind === "story" ? "不分冊" : "未歸類",
-    spoiler: "劇透",
-    spoilerNo: "無劇透",
-    spoilerYes: "含劇透",
-    dependsOn: "需先讀過",
-    dependencyStory: "故事",
-    dependencyLore: "設定",
+    tabs: { editor: k("tabs.editor"), history: k("tabs.history") },
+    scope: { only: k("scope.only"), backToFull: k("scope.backToFull") },
+    titlePlaceholder: k(`titlePlaceholder.${kind}`),
+    summaryPlaceholder: k(`summaryPlaceholder.${kind}`),
+    status: k("status"),
+    group: k(`group.${kind}`),
+    authors: k("authors"),
+    self: (penName) =>
+      penName ? t("web.documentEditor.self", { penName }) : k("selfOnly"),
+    ungrouped: k(`ungrouped.${kind}`),
+    spoiler: k("spoiler.label"),
+    spoilerNo: k("spoiler.no"),
+    spoilerYes: k("spoiler.yes"),
+    dependsOn: k("dependsOn"),
+    dependencyStory: k("dependency.story"),
+    dependencyLore: k("dependency.lore"),
     autoSave: {
-      label: "自動存檔",
-      off: "不自動存檔",
-      every: (minutes) => `每 ${minutes} 分鐘`,
-      custom: "自訂頻率",
-      range: (min, max) => `${min}-${max} 分鐘`,
+      label: k("autoSave.label"),
+      off: k("autoSave.off"),
+      every: (minutes) => t("web.documentEditor.autoSave.every", { minutes }),
+      custom: k("autoSave.custom"),
+      range: (min, max) => t("web.documentEditor.autoSave.range", { min, max }),
     },
-    conflict: `剛剛存檔完成後才發現這篇${name}在中途被更新過，已經接在最新版本後面存成新版了。`,
-    viewHistory: "查看編輯歷史",
-    saveFailedBanner: "存檔失敗，請確認登入狀態與欄位內容。",
-    insertAsset: "插入資產",
-    insertAssetTitle: `插入${name}資產`,
-    assetInserted: "已插入資產。",
-    assetInsertFailed: "無法插入資產，請重新整理後再試。",
-    backToList: "回列表",
-    historyEmpty: `新${name}第一次存檔後才會產生編輯歷史。`,
-    reverted: "已回復到這個版本。",
-    revertFailed: `回復${name}版本失敗，請重試。`,
+    conflict: k(`conflict.${kind}`),
+    viewHistory: k("conflict.viewHistory"),
+    saveFailedBanner: k("saveFailedBanner"),
+    insertAsset: k("insertAsset"),
+    insertAssetTitle: k(`insertAssetTitle.${kind}`),
+    assetInserted: k("assetInserted"),
+    assetInsertFailed: k("assetInsertFailed"),
+    backToList: k("backToList"),
+    historyEmpty: k(`historyEmpty.${kind}`),
+    reverted: k("reverted"),
+    revertFailed: k(`revertFailed.${kind}`),
   };
 };

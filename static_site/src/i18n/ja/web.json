@@ -443,7 +443,9 @@
       "publishHint": "非公開です。配下の作品も表示されません。クリックして公開",
       "unpublishHint": "公開中です。クリックすると配下の作品も非公開になります",
       "deleteBlocked": "配下の作品をすべて移動してから巻を削除してください",
-      "deleteDescription": "この操作は元に戻せません。確認のため巻名を入力してください。"
+      "deleteDescription": "この操作は元に戻せません。確認のため巻名を入力してください。",
+      "name": "巻の名前",
+      "namePlaceholder": "例：第一巻"
     },
     "empty": {
       "allTitle": "作品がまだありません",
@@ -716,6 +718,15 @@
       "loreCollectionDeleteFailed": "設定集を削除できませんでした。",
       "deleteAssetDescription": "削除すると元に戻せません。確認のためアセット名を入力してください。",
       "deleteAssetCollectionDescription": "ほかのアセット集には影響しません。確認のためアセット集名を入力してください。"
+    },
+    "lastUpdated": "最終更新 {{date}}",
+    "sidebar": {
+      "collapse": "折りたたむ",
+      "expand": "展開",
+      "reorder": "{{title}}の並び替え",
+      "create": "{{title}}を追加",
+      "collapseItems": "項目を折りたたむ",
+      "expandItems": "項目を展開"
     }
   },
   "agent": {
@@ -822,6 +833,188 @@
     },
     "messages": {
       "responseCopied": "AI の返信をコピーしました。"
+    }
+  },
+  "documentEditor": {
+    "tabs": {
+      "editor": "編集",
+      "history": "編集履歴"
+    },
+    "ungrouped": {
+      "story": "未分冊",
+      "lore": "未分類"
+    },
+    "titlePlaceholder": {
+      "story": "無題のストーリー",
+      "lore": "無題の設定",
+      "image": "無題の画像作品"
+    },
+    "summaryPlaceholder": {
+      "story": "あらすじを追加...",
+      "lore": "読者向けの概要を追加...",
+      "image": "説明を追加..."
+    },
+    "status": "状態",
+    "group": {
+      "story": "巻",
+      "lore": "設定集"
+    },
+    "authors": "名義",
+    "autoSave": {
+      "label": "自動保存",
+      "off": "自動保存しない",
+      "every": "{{minutes}} 分ごと",
+      "custom": "カスタム",
+      "range": "{{min}}-{{max}} 分"
+    },
+    "conflict": {
+      "story": "保存後、このストーリーが途中で別の場所から更新されていたことがわかりました。最新版の後ろに新しい版として保存しました。",
+      "lore": "保存後、この設定が途中で別の場所から更新されていたことがわかりました。最新版の後ろに新しい版として保存しました。",
+      "viewHistory": "編集履歴を見る"
+    },
+    "self": "本人（{{penName}}）",
+    "selfOnly": "本人",
+    "spoiler": {
+      "label": "ネタバレ",
+      "no": "ネタバレなし",
+      "yes": "ネタバレあり"
+    },
+    "dependsOn": "先に読むもの",
+    "dependency": {
+      "story": "作品",
+      "lore": "設定"
+    },
+    "saveFailedBanner": "保存に失敗しました。ログイン状態と入力内容を確認してください。",
+    "insertAsset": "アセットを挿入",
+    "insertAssetTitle": {
+      "story": "作品のアセットを挿入",
+      "lore": "設定のアセットを挿入"
+    },
+    "assetInserted": "アセットを挿入しました。",
+    "assetInsertFailed": "アセットを挿入できませんでした。再読み込みしてからお試しください。",
+    "historyEmpty": {
+      "story": "最初に保存すると編集履歴が作られます。",
+      "lore": "最初に保存すると編集履歴が作られます。"
+    },
+    "reverted": "このバージョンに戻しました。",
+    "scope": {
+      "only": "編集範囲",
+      "backToFull": "全文に戻る"
+    },
+    "backToList": "一覧に戻る",
+    "revertFailed": {
+      "story": "物語のバージョンを戻せませんでした。もう一度お試しください。",
+      "lore": "設定のバージョンを戻せませんでした。もう一度お試しください。"
+    },
+    "messages": {
+      "saved": {
+        "story": "物語を保存しました。",
+        "lore": "設定を保存しました。"
+      },
+      "autoSaved": "自動保存しました。",
+      "agentApplied": "AI の提案を適用して保存しました。",
+      "saveFailed": {
+        "story": "物語を保存できませんでした。もう一度お試しください。",
+        "lore": "設定を保存できませんでした。もう一度お試しください。"
+      },
+      "autoSaveFailed": {
+        "story": "物語の自動保存に失敗しました。手動で保存してください。",
+        "lore": "設定の自動保存に失敗しました。手動で保存してください。"
+      },
+      "titleRequired": "先にタイトルを入力してください。",
+      "attributeFailed": "属性を更新できませんでした。もう一度お試しください。"
+    },
+    "page": {
+      "editorTitle": {
+        "story": "物語エディター",
+        "lore": "設定エディター"
+      },
+      "loginDescription": {
+        "story": "ログインするとこの物語を編集できます。",
+        "lore": "ログインするとこの設定を編集できます。"
+      },
+      "loading": {
+        "story": "物語を読み込み中…",
+        "lore": "設定を読み込み中…"
+      },
+      "create": {
+        "story": "物語を作成",
+        "lore": "設定を作成"
+      },
+      "listBreadcrumb": {
+        "story": "物語",
+        "lore": "設定集"
+      }
+    }
+  },
+  "assetUpload": {
+    "title": "画像アセットをアップロード",
+    "close": "アップロードパネルを閉じる",
+    "done": "完了",
+    "editMetadata": "アップロード情報を編集",
+    "autoSaveHint": "入力欄からフォーカスが外れると自動保存されます。",
+    "saveAfterUpload": "アップロード完了後に保存されます。",
+    "saved": "保存済み",
+    "saveFailed": "保存に失敗",
+    "errors": {
+      "quotaReached": "このプロジェクトはアセット数または容量の上限に達しています。不要なアセットを削除してからアップロードしてください。",
+      "selectImage": "画像ファイルを選択してください。",
+      "upload": "アセットをアップロードできませんでした。しばらくしてからお試しください。"
+    },
+    "reasons": {
+      "type": "JPEG／PNG／WebP／GIF の画像のみ対応しています",
+      "size": "1 ファイルあたり {{maxMB}}MB までです",
+      "count": "一度に {{max}} 枚までです",
+      "assetCount": "このプロジェクトのアセット数の上限に達しました",
+      "storageWithLimit": "このプロジェクトの容量上限（{{maxMB}}MB）に達しました",
+      "storage": "このプロジェクトの容量上限に達しました"
+    },
+    "partialRejected": "一部のファイルはアップロードされませんでした：{{reasons}}",
+    "reasonSeparator": "、",
+    "uploaded": "{{count}} 件のアセットをアップロードしました。",
+    "uploadedMetadataFailed": "{{count}} 件のアセットをアップロードしましたが、一部の情報が保存されていません。パネル内で再試行してください。",
+    "closeWhileUploading": "画像をアップロード中です。完了してから閉じてください。",
+    "quota": {
+      "count": "このプロジェクトはアセット数の上限に達しています。不要なアセットを削除してからアップロードしてください。",
+      "storage": "このプロジェクトは容量の上限{{limit}}に達しています。不要なアセットを削除してからアップロードしてください。",
+      "both": "このプロジェクトはアセット数と容量の上限{{limit}}に達しています。不要なアセットを削除してからアップロードしてください。",
+      "storageLimit": "（{{maxMB}}MB）"
+    },
+    "hint": {
+      "select": "ここに画像をドラッグするか、クリックしてファイルを選択（複数選択・一括アップロード可）",
+      "limits": "JPEG／PNG／WebP／GIF、1 ファイル {{maxMB}}MB まで、一度に {{max}} 枚まで"
+    },
+    "status": {
+      "uploaded": "{{count}} 枚アップロード済み",
+      "empty": "画像が選択されていません"
+    }
+  },
+  "imageEpisode": {
+    "uploadTitle": "画像作品をアップロード",
+    "editTitle": "画像作品を編集",
+    "loginDescription": "ログインすると画像作品をアップロードできます。",
+    "loadingEpisode": "話のデータを読み込み中…",
+    "maxPages": "1 話あたり最大 {{max}} ページです",
+    "partialRejected": "一部のファイルは追加されませんでした：{{reasons}}",
+    "processing": "処理中…",
+    "saved": "画像の話を保存しました。",
+    "overallProgress": "全体のアップロード進捗",
+    "pageNumber": "{{page}} ページ目",
+    "addFromAssets": "アセット集からページを追加",
+    "errors": {
+      "assetIncomplete": "一部の画像がアセットとして作成されませんでした。もう一度お試しください。",
+      "upload": "アップロードに失敗しました。もう一度お試しください。",
+      "save": "画像作品を保存できませんでした。もう一度お試しください。"
+    },
+    "fields": {
+      "title": "話のタイトル",
+      "titlePlaceholder": "例：第一話　序章",
+      "summary": "基本の説明",
+      "summaryPlaceholder": "読者向けの文章です。この話の見どころ、あらすじ、現在の状況を簡単に書いてください。",
+      "status": "話の状態",
+      "statusHelp": "非公開の話は公開の閲覧ページや作品目次に表示されません。",
+      "volumeHelp": "未選択の場合は巻なしになります。",
+      "authorsHelp": "複数選択できます。既定は本人です。"
     }
   }
 }
