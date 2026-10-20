@@ -3,9 +3,9 @@
   "save": "Save settings",
   "saving": "Saving",
   "general": {
-    "title": "General", "description": "Manage SteamLoom Writer interface preferences on this device.", "interface": "Interface", "language": "Interface language", "languageHelp": "Choose a language and save to apply it immediately.",
+    "title": "General", "description": "Manage SteamLoom Writer's interface and local data on this device.", "interface": "Interface", "language": "Interface language", "languageHelp": "Choose a language and save to apply it immediately.",
     "languages": { "zh-TW": "正體中文（台灣）", "zh-CN": "简体中文", "en": "English", "ja": "日本語", "ko": "한국어" },
-    "storageTitle": "Storage", "storageDescription": "The setting is written to Writer's local settings file. On the next launch, screens, date and number formats, and application menus use this language. Agent responses and creative content are not translated.", "saved": "Interface language saved and applied"
+    "storageTitle": "Storage", "storageLabel": "Local data folder", "storageHelp": "Conversations, Worker settings, and Agent working data are stored in this folder. Existing data is copied when the location changes, and the new location takes effect after Writer restarts.", "chooseFolder": "Choose folder", "resetStorage": "Restore default location", "saved": "Settings saved and applied", "savedRestart": "Settings saved; restart Writer to use the new storage location"
   },
   "unsaved": { "tone": "Unsaved changes", "eyebrow": "Leave settings", "title": "You have unsaved changes", "saveDescription": "Save before leaving this settings page? Unsaved changes will be lost.", "discardDescription": "Unsaved changes will be lost after leaving this settings page. Discard them and leave?", "continueEditing": "Continue editing", "discardAndLeave": "Discard and leave", "saveAndContinue": "Save and continue" },
   "workers": {

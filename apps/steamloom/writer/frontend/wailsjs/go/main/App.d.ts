@@ -42,6 +42,8 @@ export function ChatThreads(arg1:string):Promise<Array<agent.ProjectThread>>;
 
 export function CheckForUpdate():Promise<updater.Info>;
 
+export function ChooseStorageDirectory(arg1:string):Promise<string>;
+
 export function CodexModels():Promise<Array<agent.CodexModel>>;
 
 export function CompatibleMediaWorkers(arg1:string):Promise<Array<mediaworker.WorkerOption>>;

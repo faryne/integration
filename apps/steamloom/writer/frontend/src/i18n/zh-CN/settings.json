@@ -3,9 +3,9 @@
   "save": "保存设置",
   "saving": "保存中",
   "general": {
-    "title": "常规设置", "description": "管理此设备上的 SteamLoom Writer 界面偏好。", "interface": "界面", "language": "界面语言", "languageHelp": "选择语言并保存后，Writer 会立即应用。",
+    "title": "常规设置", "description": "管理此设备上的 SteamLoom Writer 界面和本地数据。", "interface": "界面", "language": "界面语言", "languageHelp": "选择语言并保存后，Writer 会立即应用。",
     "languages": { "zh-TW": "正體中文（台灣）", "zh-CN": "简体中文", "en": "English", "ja": "日本語", "ko": "한국어" },
-    "storageTitle": "保存位置", "storageDescription": "设置会写入 Writer 的本地配置文件。下次启动时，界面、日期和数字格式以及应用菜单会直接使用此语言；Agent 回复和作品内容不会翻译。", "saved": "界面语言已保存并应用"
+    "storageTitle": "保存位置", "storageLabel": "本地数据目录", "storageHelp": "对话记录、Worker 设置和 Agent 工作数据会存放在此文件夹；更改位置时会复制现有数据，重新启动 Writer 后应用。", "chooseFolder": "选择文件夹", "resetStorage": "恢复默认位置", "saved": "设置已保存并应用", "savedRestart": "设置已保存；重新启动 Writer 后应用新的保存位置"
   },
   "unsaved": { "tone": "更改尚未保存", "eyebrow": "离开设置页", "title": "你有尚未保存的更改", "saveDescription": "离开此设置页前要先保存吗？不保存的话，更改将会丢失。", "discardDescription": "离开此设置页后，尚未保存的更改将会丢失。确定要放弃更改并离开吗？", "continueEditing": "继续编辑", "discardAndLeave": "放弃更改并离开", "saveAndContinue": "保存并继续" },
   "workers": {

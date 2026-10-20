@@ -260,11 +260,11 @@ func (r Request) dir() (string, error) {
 	if r.workDir != "" {
 		return r.workDir, nil
 	}
-	base, err := os.UserConfigDir()
+	base, err := storageRoot()
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(base, "SteamLoom Writer", "agent-sessions", segment(r.ProjectID))
+	dir := filepath.Join(base, "agent-sessions", segment(r.ProjectID))
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}

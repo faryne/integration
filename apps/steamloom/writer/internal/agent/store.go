@@ -283,12 +283,12 @@ func loadChat(agentID, projectID string) (string, chatIndex, error) {
 	if err := validChatKey(agentID, projectID); err != nil {
 		return "", chatIndex{}, err
 	}
-	base, err := userConfigDir()
+	base, err := storageRoot()
 	if err != nil {
 		return "", chatIndex{}, err
 	}
 	// 路徑是 [agent]/[project]。跟 CLI 的工作目錄分開，避免問答紀錄被 agent 讀走。
-	dir := filepath.Join(base, "SteamLoom Writer", "chats", segment(agentID), segment(projectID))
+	dir := filepath.Join(base, "chats", segment(agentID), segment(projectID))
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", chatIndex{}, err
 	}

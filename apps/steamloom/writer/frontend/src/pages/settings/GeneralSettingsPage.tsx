@@ -1,5 +1,7 @@
-import { Alert, Box, FormControl, InputLabel, MenuItem, Select, Stack, Typography } from "@mui/material";
-import { useCallback, useMemo, useState } from "react";
+import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import { Box, Button, FormControl, InputLabel, MenuItem, Select, TextField, Typography } from "@mui/material";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSnack } from "@writer/components/SnackProvider.tsx";
 import i18n from "@writer/i18n/index.ts";
@@ -16,30 +18,60 @@ export function GeneralSettingsPage() {
   const { showError, showSuccess } = useSnack();
   const [savedLanguage, setSavedLanguage] = useState<Language>(currentLanguage);
   const [language, setLanguage] = useState<Language>(savedLanguage);
+  const [savedStoragePath, setSavedStoragePath] = useState("");
+  const [storagePath, setStoragePath] = useState("");
+  const [defaultStoragePath, setDefaultStoragePath] = useState("");
+  const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    let active = true;
+    backend.ApplicationSettings().then((settings) => {
+      if (!active) return;
+      const saved = languages.includes(settings.language as Language) ? settings.language as Language : "zh-TW";
+      setSavedLanguage(saved);
+      setLanguage(saved);
+      setSavedStoragePath(settings.storage_path);
+      setStoragePath(settings.storage_path);
+      setDefaultStoragePath(settings.default_storage_path);
+      setLoaded(true);
+    }).catch((error) => showError(errorMessage(error)));
+    return () => { active = false; };
+  }, [showError]);
+  const chooseStorage = useCallback(async () => {
+    try {
+      const selected = await backend.ChooseStorageDirectory(storagePath);
+      if (selected) setStoragePath(selected);
+    } catch (error) {
+      showError(errorMessage(error));
+    }
+  }, [showError, storagePath]);
   const save = useCallback(async () => {
     setSaving(true);
     try {
-      const settings = await backend.SaveApplicationSettings({ language });
+      const storageChanged = storagePath !== savedStoragePath;
+      const settings = await backend.SaveApplicationSettings({ language, storage_path: storagePath, default_storage_path: defaultStoragePath });
       const saved = languages.includes(settings.language as Language) ? settings.language as Language : "zh-TW";
       await i18n.changeLanguage(saved);
       setSavedLanguage(saved);
       setLanguage(saved);
-      showSuccess(i18n.t("settings.general.saved"));
+      setSavedStoragePath(settings.storage_path);
+      setStoragePath(settings.storage_path);
+      setDefaultStoragePath(settings.default_storage_path);
+      showSuccess(i18n.t(storageChanged ? "settings.general.savedRestart" : "settings.general.saved"));
     } catch (error) {
       showError(errorMessage(error));
       throw error;
     } finally {
       setSaving(false);
     }
-  }, [language, showError, showSuccess]);
+  }, [defaultStoragePath, language, savedStoragePath, showError, showSuccess, storagePath]);
   const controller = useMemo(() => ({
-    dirty: language !== savedLanguage,
-    canSave: true,
+    dirty: language !== savedLanguage || storagePath !== savedStoragePath,
+    canSave: loaded && Boolean(storagePath),
     saving,
     save,
-    discard: () => setLanguage(savedLanguage),
-  }), [language, save, savedLanguage, saving]);
+    discard: () => { setLanguage(savedLanguage); setStoragePath(savedStoragePath); },
+  }), [language, loaded, save, savedLanguage, savedStoragePath, saving, storagePath]);
   useSettingsForm(controller);
 
   return (
@@ -60,12 +92,22 @@ export function GeneralSettingsPage() {
             </Select>
           </FormControl>
         </Box>
-        <Alert severity="info" sx={{ mt: 3 }}>
-          <Stack component="span" spacing={0.25}>
-            <strong>{t("settings.general.storageTitle")}</strong>
-            <span>{t("settings.general.storageDescription")}</span>
-          </Stack>
-        </Alert>
+        <Typography fontWeight={700} sx={{ mt: 3.75, mb: 1.5 }}>{t("settings.general.storageTitle")}</Typography>
+        <Box sx={{ display: "grid", gridTemplateColumns: "210px minmax(260px, 1fr)", gap: 3, alignItems: "start", p: 2.5, border: 1, borderColor: "divider", borderRadius: 2 }}>
+          <Box>
+            <Typography fontWeight={650} variant="body2">{t("settings.general.storageLabel")}</Typography>
+            <Typography color="text.secondary" variant="caption">{t("settings.general.storageHelp")}</Typography>
+          </Box>
+          <Box>
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <TextField fullWidth value={storagePath} slotProps={{ input: { readOnly: true } }} />
+              <Button variant="outlined" startIcon={<FolderOpenOutlinedIcon />} disabled={!loaded || saving} onClick={() => void chooseStorage()} sx={{ flex: "none", whiteSpace: "nowrap" }}>{t("settings.general.chooseFolder")}</Button>
+            </Box>
+            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 0.5 }}>
+              <Button size="small" startIcon={<RestartAltIcon />} disabled={!loaded || storagePath === defaultStoragePath} onClick={() => setStoragePath(defaultStoragePath)}>{t("settings.general.resetStorage")}</Button>
+            </Box>
+          </Box>
+        </Box>
       </Box>
     </Box>
   );

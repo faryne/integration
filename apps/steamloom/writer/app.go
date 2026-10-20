@@ -47,7 +47,10 @@ type App struct {
 
 func NewApp() *App {
 	cfg := config.Load()
-	app := &App{recoveredProjects: map[string]bool{}, siteOrigin: cfg.WebURL, settings: appsettings.NewDefault()}
+	settings := appsettings.NewDefault()
+	storageRoot := settings.StorageRoot()
+	agent.ConfigureStorageRoot(storageRoot)
+	app := &App{recoveredProjects: map[string]bool{}, siteOrigin: cfg.WebURL, settings: settings}
 	app.session = auth.New(cfg, tokenstore.New(cfg.Issuer), func(url string) {
 		// 授權網址也印到 log，瀏覽器沒有自動打開時可以手動複製
 		log.Printf("open authorize url: %s", url)
@@ -55,7 +58,7 @@ func NewApp() *App {
 	})
 	app.api = api.New(cfg.APIBase, app.session)
 	app.skill = skillupdate.New(cfg.SkillURL)
-	app.workers = mediaworker.NewDefault(version == "dev")
+	app.workers = mediaworker.NewDefault(version == "dev", storageRoot)
 	var err error
 	app.updater, err = appupdate.New(version)
 	if err != nil {
@@ -66,6 +69,11 @@ func NewApp() *App {
 
 // ApplicationSettings 回傳 Writer 的裝置層級設定；前端在 render 前先據此初始化語系。
 func (a *App) ApplicationSettings() appsettings.Settings { return a.settings.Get() }
+
+// ChooseStorageDirectory 開啟原生資料夾選擇器；取消時回傳空字串。
+func (a *App) ChooseStorageDirectory(current string) (string, error) {
+	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{Title: "SteamLoom Writer", DefaultDirectory: current})
+}
 
 // SaveApplicationSettings 以 atomic write 保存設定，成功後立即重建原生應用程式選單。
 func (a *App) SaveApplicationSettings(input appsettings.Settings) (*appsettings.Settings, error) {

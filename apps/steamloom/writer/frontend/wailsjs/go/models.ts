@@ -1,6 +1,8 @@
 export namespace appsettings {
 	export class Settings {
 	    language: string;
+	    storage_path: string;
+	    default_storage_path: string;
 
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -9,6 +11,8 @@ export namespace appsettings {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.language = source["language"];
+	        this.storage_path = source["storage_path"];
+	        this.default_storage_path = source["default_storage_path"];
 	    }
 	}
 }

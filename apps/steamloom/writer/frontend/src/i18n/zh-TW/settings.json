@@ -4,14 +4,18 @@
   "saving": "儲存中",
   "general": {
     "title": "一般設定",
-    "description": "管理 SteamLoom Writer 在這台裝置上的介面偏好。",
+    "description": "管理 SteamLoom Writer 在這台裝置上的介面與本機資料。",
     "interface": "介面",
     "language": "介面語言",
     "languageHelp": "選擇語言後儲存，Writer 會立即套用。",
     "languages": { "zh-TW": "正體中文（台灣）", "zh-CN": "简体中文", "en": "English", "ja": "日本語", "ko": "한국어" },
     "storageTitle": "儲存位置",
-    "storageDescription": "設定會寫入 Writer 的本機設定檔。下次啟動時，畫面、日期與數字格式及應用程式選單會直接使用這個語言；Agent 回答與作品內容不會翻譯。",
-    "saved": "介面語言已儲存並套用"
+    "storageLabel": "本機資料目錄",
+    "storageHelp": "對話記錄、Worker 設定與 Agent 工作資料會存放在這個資料夾；變更位置時會複製現有資料，重新啟動 Writer 後套用。",
+    "chooseFolder": "選擇資料夾",
+    "resetStorage": "恢復預設位置",
+    "saved": "設定已儲存並套用",
+    "savedRestart": "設定已儲存；重新啟動 Writer 後套用新的儲存位置"
   },
   "unsaved": {
     "tone": "變更尚未儲存",

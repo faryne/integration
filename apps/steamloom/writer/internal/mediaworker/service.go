@@ -23,17 +23,13 @@ type Service struct {
 	vault    secretVault
 }
 
-// NewDefault 建立桌面應用程式用的預設 Registry 與全域設定儲存位置；未完成實機驗證的 adapter 只在 dev 版註冊。
-func NewDefault(dev bool) *Service {
-	dir, err := os.UserConfigDir()
-	if err != nil {
-		dir = "."
-	}
+// NewDefault 建立桌面應用程式用的預設 Registry；未完成實機驗證的 adapter 只在 dev 版註冊。
+func NewDefault(dev bool, storageRoot string) *Service {
 	registry, err := NewRegistry(defaultAdapters(dev)...)
 	if err != nil {
 		panic(err)
 	}
-	return NewService(registry, filepath.Join(dir, "SteamLoom Writer", "workers.json"), keyringVault{})
+	return NewService(registry, filepath.Join(storageRoot, "workers.json"), keyringVault{})
 }
 
 func defaultAdapters(dev bool) []Adapter {

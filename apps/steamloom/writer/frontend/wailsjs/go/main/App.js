@@ -70,6 +70,10 @@ export function CheckForUpdate() {
   return window['go']['main']['App']['CheckForUpdate']();
 }
 
+export function ChooseStorageDirectory(arg1) {
+  return window['go']['main']['App']['ChooseStorageDirectory'](arg1);
+}
+
 export function CodexModels() {
   return window['go']['main']['App']['CodexModels']();
 }
