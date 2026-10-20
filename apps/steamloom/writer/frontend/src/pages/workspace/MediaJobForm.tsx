@@ -1,4 +1,7 @@
-import { Box, Chip, FormControlLabel, MenuItem, Stack, Switch, TextField, Typography } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import { Box, Button, Chip, FormControlLabel, IconButton, MenuItem, Stack, Switch, TextField, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import type { AgentProposal, AgentProposalItem, WorkerJobSpec } from "@writer/lib/backend.ts";
 import { useWorkerI18n } from "@writer/pages/settings/workerI18n.ts";
 
@@ -16,6 +19,14 @@ function fitJobValue(field: JobField, value: unknown): unknown {
     // 只保留仍在選項裡的值（例如常用 LoRA 被移除後重跑），並截到 Max 上限
     const picked = (Array.isArray(value) ? value : []).map(String).filter((item) => field.options?.some((option) => option.value === item));
     return picked.length ? picked.slice(0, field.max ?? picked.length) : undefined;
+  }
+  if (field.kind === "weighted_select") {
+    const rows = (Array.isArray(value) ? value : []).flatMap((item) => {
+      const row = typeof item === "string" ? { value: item, weight: field.item_number?.default ?? 0.7 } : item;
+      if (!row || typeof row !== "object" || !("value" in row) || !field.options?.some((option) => option.value === String(row.value))) return [];
+      return [{ value: String(row.value), weight: Number("weight" in row ? row.weight : field.item_number?.default ?? 0.7) }];
+    });
+    return rows.length ? rows : undefined;
   }
   if (field.kind === "number") {
     const number = Number(value);
@@ -50,10 +61,13 @@ export function MediaJobForm({ spec, values, disabled, onChange }: {
 }) {
   const workerText = useWorkerI18n();
   const update = (key: string, value: unknown) => onChange({ ...values, [key]: value });
+  const visibleFields = spec.fields.filter((field) => !field.visible_when || field.visible_when.values.includes(String(values[field.visible_when.key] ?? "")));
   return (
     <Stack spacing={2}>
       <Typography fontWeight={700}>{spec.worker_name}</Typography>
-      {spec.fields.map((field) => field.kind === "multiselect" ? (
+      {visibleFields.map((field) => field.kind === "weighted_select" ? (
+        <WeightedSelectList key={field.key} field={field} value={Array.isArray(values[field.key]) ? values[field.key] as WeightedSelection[] : []} disabled={disabled} onChange={(next) => update(field.key, next.length ? next : undefined)} />
+      ) : field.kind === "multiselect" ? (
         <MultiSelectChips key={field.key} field={field} value={Array.isArray(values[field.key]) ? (values[field.key] as string[]) : []} disabled={disabled} onChange={(next) => update(field.key, next.length ? next : undefined)} />
       ) : field.kind === "boolean" ? (
         <FormControlLabel
@@ -80,6 +94,44 @@ export function MediaJobForm({ spec, values, disabled, onChange }: {
           {field.kind === "select" && field.options?.map((option) => <MenuItem key={option.value} value={option.value}>{workerText.optionLabel(field, option.value, option.label)}</MenuItem>)}
         </TextField>
       ))}
+    </Stack>
+  );
+}
+
+type WeightedSelection = { value: string; weight: number };
+
+// WeightedSelectList 是 provider-neutral 的可增減選單列；PixAI LoRA 只是第一個使用者。
+function WeightedSelectList({ field, value, disabled, onChange }: { field: JobField; value: WeightedSelection[]; disabled: boolean; onChange: (value: WeightedSelection[]) => void }) {
+  const { t } = useTranslation();
+  const workerText = useWorkerI18n();
+  const itemNumber = field.item_number!;
+  const selected = new Set(value.map((item) => item.value));
+  const add = () => {
+    const option = field.options?.find((item) => !selected.has(item.value));
+    if (option) onChange([...value, { value: option.value, weight: itemNumber.default }]);
+  };
+  return (
+    <Stack spacing={1}>
+      <Typography fontWeight={600}>{workerText.jobLabel(field)}</Typography>
+      {value.map((item, index) => (
+        <Stack key={`${item.value}-${index}`} direction="row" spacing={1} alignItems="flex-start">
+          <TextField select fullWidth size="small" value={item.value} disabled={disabled} onChange={(event) => onChange(value.map((row, rowIndex) => rowIndex === index ? { ...row, value: event.target.value } : row))}>
+            {field.options?.map((option) => <MenuItem key={option.value} value={option.value} disabled={selected.has(option.value) && option.value !== item.value}>{workerText.optionLabel(field, option.value, option.label)}</MenuItem>)}
+          </TextField>
+          <TextField
+            size="small"
+            type="number"
+            label={t("settings.workers.catalogWeight")}
+            value={item.weight}
+            disabled={disabled}
+            slotProps={{ htmlInput: { min: itemNumber.min, max: itemNumber.max, step: itemNumber.step } }}
+            onChange={(event) => onChange(value.map((row, rowIndex) => rowIndex === index ? { ...row, weight: Number(event.target.value) } : row))}
+            sx={{ width: 120, flex: "none" }}
+          />
+          <IconButton disabled={disabled} color="error" aria-label={t("settings.workers.catalogRemove")} onClick={() => onChange(value.filter((_, rowIndex) => rowIndex !== index))}><DeleteOutlineIcon /></IconButton>
+        </Stack>
+      ))}
+      <Button startIcon={<AddIcon />} disabled={disabled || value.length >= (field.max ?? Infinity) || value.length >= (field.options?.length ?? 0)} onClick={add} sx={{ alignSelf: "flex-start" }}>{t("settings.workers.catalogAdd")}</Button>
     </Stack>
   );
 }

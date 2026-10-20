@@ -34,13 +34,20 @@ func TestTaskManagerPersistsToolActivity(t *testing.T) {
 		t.Fatal(err)
 	}
 	var activity []ChatLine
+	var durationMS int64
 	for _, line := range chat.Messages {
 		if line.Type == EventTaskToolStarted || line.Type == EventTaskToolFinished {
 			activity = append(activity, line)
 		}
+		if line.Type == EventTaskCompleted {
+			durationMS = line.DurationMS
+		}
 	}
 	if len(activity) != 2 || activity[0].ToolName != "storyteller_get_story" || activity[0].ToolTarget != "story-id" || activity[1].ToolName != "storyteller_get_story" || activity[1].ToolTarget != "story-id" {
 		t.Fatalf("tool activity was not persisted: %#v", activity)
+	}
+	if durationMS <= 0 {
+		t.Fatal("task completion did not persist duration")
 	}
 }
 
@@ -321,15 +328,17 @@ func TestTaskManagerPersistsProposalAndEmitsAwaitingConfirmation(t *testing.T) {
 		t.Fatal(err)
 	}
 	assistant, completed := 0, 0
+	var durationMS int64
 	for _, line := range chat.Messages {
 		if line.Role == "assistant" {
 			assistant++
 		}
 		if line.Type == EventTaskCompleted {
 			completed++
+			durationMS = line.DurationMS
 		}
 	}
-	if assistant != 1 || completed != 1 || chat.SessionID != "session" {
+	if assistant != 1 || completed != 1 || durationMS <= 0 || chat.SessionID != "session" {
 		t.Fatalf("proposal reply was not persisted exactly once: assistants=%d completed=%d session=%q", assistant, completed, chat.SessionID)
 	}
 	stored, err := Proposals("claude", "project", page.CurrentID)
@@ -449,8 +458,57 @@ func TestTaskManagerAppliesApprovedProposalOnSameThread(t *testing.T) {
 	if fmt.Sprint(types) != fmt.Sprint(wantTypes) {
 		t.Fatalf("apply lifecycle = %#v, want %#v", types, wantTypes)
 	}
-	if texts[2] != "新增設定「角色 A」……開始" || texts[3] != "新增設定「角色 A」……完成" {
+	if texts[2] != "新增設定「角色 A」……第 1/1 開始" || texts[3] != "新增設定「角色 A」……第 1/1 完成" {
 		t.Fatalf("item lifecycle leaked internal event names: %#v", texts)
+	}
+	if chat.Messages[len(chat.Messages)-1].DurationMS <= 0 {
+		t.Fatalf("apply completion did not persist duration: %#v", chat.Messages[len(chat.Messages)-1])
+	}
+}
+
+func TestTaskManagerNumbersEveryApprovedItem(t *testing.T) {
+	withTempConfig(t)
+	page, err := NewChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskID, _ := newThreadID()
+	proposal, err := SaveProposal("claude", "project", page.CurrentID, taskID, "", []ProposalItem{
+		{Kind: ProposalKindLore, Title: "角色 A", Content: "A", Operations: []ProposalOperation{{Tool: "storyteller_upsert_lore", Arguments: map[string]any{"project_public_id": "project", "title": "角色 A", "content": "A"}}}},
+		{Kind: ProposalKindLore, Title: "角色 B", Content: "B", Operations: []ProposalOperation{{Tool: "storyteller_upsert_lore", Arguments: map[string]any{"project_public_id": "project", "title": "角色 B", "content": "B"}}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposal, err = DecideProposal("claude", "project", page.CurrentID, proposal.ID, ProposalDecisionApprove)
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := make(chan TaskEvent, 20)
+	manager := NewTaskManager(context.Background(), nil, func(event TaskEvent) { events <- event })
+	manager.SetProposalApplyRunner(func(context.Context, Proposal, ProposalItem) (string, error) { return "", nil })
+	defer manager.Close()
+	applyTask, err := manager.Apply(proposal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitTaskEvent(t, events, applyTask.ID, EventApplyCompleted)
+	chat, err := OpenChat("claude", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	progress := []string{}
+	for _, line := range chat.Messages {
+		if line.TaskID == applyTask.ID && (line.Type == EventApplyItemStarted || line.Type == EventApplyItemDone) {
+			progress = append(progress, line.Text)
+		}
+	}
+	want := []string{
+		"新增設定「角色 A」……第 1/2 開始", "新增設定「角色 A」……第 1/2 完成",
+		"新增設定「角色 B」……第 2/2 開始", "新增設定「角色 B」……第 2/2 完成",
+	}
+	if fmt.Sprint(progress) != fmt.Sprint(want) {
+		t.Fatalf("numbered lifecycle = %#v, want %#v", progress, want)
 	}
 }
 

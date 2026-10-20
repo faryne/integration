@@ -51,7 +51,7 @@ export function ProposalReviewDialog({
   deciding: boolean;
   onClose: () => void;
   onDecision: (decision: "approve" | "reject") => void;
-  onMediaDecision: (workerID: string, inputs: Record<string, unknown>) => void;
+  onMediaDecision: (workerID: string, executionCount: number, inputs: Record<string, unknown>) => void;
   onArtifactSelectionChange: (ids: string[]) => void;
 }) {
   const { t } = useTranslation();
@@ -64,6 +64,7 @@ export function ProposalReviewDialog({
   const [jobInputs, setJobInputs] = useState<Record<string, unknown>>({});
   const [workerOptions, setWorkerOptions] = useState<MediaWorkerOption[]>([]);
   const [selectedWorkerID, setSelectedWorkerID] = useState("");
+  const [executionCount, setExecutionCount] = useState(1);
   const open = Boolean(proposal && item);
 
   useEffect(() => {
@@ -75,6 +76,7 @@ export function ProposalReviewDialog({
     setJobInputs({});
     setWorkerOptions([]);
     setSelectedWorkerID("");
+    setExecutionCount(1);
     if (!proposal || !item) return;
     const recommendedWorkerID = item.recommended_worker_id || item.worker_id;
     const request = proposalType(item) === "media.brief" && recommendedWorkerID
@@ -85,6 +87,7 @@ export function ProposalReviewDialog({
         if (!canceled) {
           setWorkerOptions(options);
           setSelectedWorkerID(workerID);
+          setExecutionCount(Math.min(10, Math.max(1, item.execution_count || 1)));
           setJobSpec(spec);
           setJobInputs(initialMediaJobInputs(spec, item));
         }
@@ -127,8 +130,9 @@ export function ProposalReviewDialog({
   const versions = useMemo(() => buildVersions(proposal, item, document, t), [document, item, proposal, t]);
   const type = proposalType(item);
   const mediaBrief = type === "media.brief";
+  const assetUpload = type === "asset.upload";
   const mediaRetry = Boolean(proposal && canRetryMedia(proposal));
-  const mediaProposal = mediaBrief || type === "asset.upload" || type.startsWith("image_story.");
+  const mediaProposal = mediaBrief || assetUpload || type.startsWith("image_story.");
   if (proposal && item && !mediaProposal && item.target_id && document && versions) {
     const currentVersion = document.latest_version_id?.toString() ?? "";
     const stale = Boolean(item.base_version_id && currentVersion && item.base_version_id !== currentVersion);
@@ -171,7 +175,17 @@ export function ProposalReviewDialog({
             <TextField select label={t("workspace.chat.proposal.executionWorker")} value={selectedWorkerID} disabled={deciding} onChange={(event) => void selectWorker(event.target.value)}>
               {workerOptions.map((option) => <MenuItem key={option.worker_id} value={option.worker_id}>{option.name}{option.recommended ? ` ${t("workspace.chat.proposal.agentRecommended")}` : ""}</MenuItem>)}
             </TextField>
+            <TextField
+              type="number"
+              label={t("workspace.chat.proposal.executionCount")}
+              value={executionCount}
+              disabled={deciding}
+              helperText={t("workspace.chat.proposal.executionCountHint")}
+              slotProps={{ htmlInput: { min: 1, max: 10, step: 1 } }}
+              onChange={(event) => setExecutionCount(Math.min(10, Math.max(1, Number(event.target.value) || 1)))}
+            />
             <MediaJobForm spec={jobSpec} values={jobInputs} disabled={proposal?.status !== "awaiting_confirmation" && !mediaRetry} onChange={setJobInputs} />
+            <Alert severity="info">{t("workspace.chat.proposal.executionSummary", { jobs: executionCount, results: executionCount * Math.max(1, Number(jobInputs.candidate_count) || 1) })}</Alert>
           </Stack>
         )}
         {!loading && !loadError && item && artifactsRequired && proposal && (
@@ -213,11 +227,11 @@ export function ProposalReviewDialog({
       <DialogActions>{mediaRetry ? (
         <>
           <Button disabled={deciding} onClick={onClose}>{t("workspace.chat.proposal.close")}</Button>
-          <Button variant="contained" disabled={deciding || !jobSpec || !selectedWorkerID} onClick={() => onMediaDecision(selectedWorkerID, jobInputs)}>
+          <Button variant="contained" disabled={deciding || !jobSpec || !selectedWorkerID} onClick={() => onMediaDecision(selectedWorkerID, executionCount, jobInputs)}>
             {deciding ? <CircularProgress size={16} color="inherit" /> : t("workspace.chat.proposal.regenerate")}
           </Button>
         </>
-      ) : <ProposalActions proposal={proposal} selectedCount={selectedCount} deciding={deciding} stale={stale} selectionMissing={itemSelected && artifactsRequired && selectedArtifactIDs.length === 0} approveLabel={mediaBrief ? t("workspace.chat.proposal.generate") : undefined} onClose={onClose} onDecision={(decision) => decision === "approve" && mediaBrief ? onMediaDecision(selectedWorkerID, jobInputs) : onDecision(decision)} />}</DialogActions>
+      ) : <ProposalActions proposal={proposal} selectedCount={selectedCount} deciding={deciding} stale={stale} selectionMissing={itemSelected && artifactsRequired && selectedArtifactIDs.length === 0} approveLabel={mediaBrief ? t("workspace.chat.proposal.generate") : assetUpload ? t("workspace.chat.proposal.approveAssetUpload", { count: selectedCount }) : undefined} onClose={onClose} onDecision={(decision) => decision === "approve" && mediaBrief ? onMediaDecision(selectedWorkerID, executionCount, jobInputs) : onDecision(decision)} />}</DialogActions>
     </Dialog>
   );
 }

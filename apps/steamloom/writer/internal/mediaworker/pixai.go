@@ -50,9 +50,17 @@ func (pixaiAdapter) Descriptor() AdapterDescriptor {
 			{Key: "api_key", Label: "API Key", Kind: "password", Required: true, Secret: true},
 			// 常用清單：貼 pixai.art 模型網址加入，由 ResolveCatalogItem 解析版本與名稱（pixai_catalog.go）。
 			{Key: pixaiFavoriteModel, Label: "常用模型", Kind: "catalog", Placeholder: "貼上 PixAI 模型網址"},
-			{Key: pixaiFavoriteLoRA, Label: "常用 LoRA", Kind: "catalog", Placeholder: "貼上 PixAI LoRA 網址", ItemWeight: true},
+			{Key: pixaiFavoriteLoRA, Label: "常用 LoRA", Kind: "catalog", Placeholder: "貼上 PixAI LoRA 網址"},
 		},
 	}
+}
+
+func (pixaiAdapter) Capabilities(settings map[string]string) []string {
+	capabilities := []string{"text_to_image", "batch_candidates"}
+	if len(pixaiFavorites(settings, pixaiFavoriteLoRA)) > 0 {
+		capabilities = append(capabilities, "lora")
+	}
+	return capabilities
 }
 
 // Discover 以查詢不存在的 task 驗證 API key：有效 key 回 404、無效 key 回 401，不會送出生成工作或扣額度。
@@ -73,11 +81,7 @@ func (a pixaiAdapter) Discover(ctx context.Context, settings, secrets map[string
 	default:
 		return Discovery{}, pixaiError(status, body)
 	}
-	capabilities := []string{"text_to_image", "batch_candidates"}
-	if len(pixaiFavorites(settings, pixaiFavoriteLoRA)) > 0 {
-		capabilities = append(capabilities, "lora")
-	}
-	return Discovery{Capabilities: capabilities, Message: "PixAI API Key 驗證成功"}, nil
+	return Discovery{Capabilities: a.Capabilities(settings), Message: "PixAI API Key 驗證成功"}, nil
 }
 
 // JobFields 的模型選單是「常用模型＋官方推薦」（去重，第一個為預設）；有常用 LoRA 才出現 LoRA 多選。
@@ -91,9 +95,15 @@ func (pixaiAdapter) JobFields(settings map[string]string) []JobField {
 			models = append(models, option)
 		}
 	}
+	tsubakiModelIDs := []string{}
+	for _, option := range models {
+		if strings.Contains(strings.ToLower(option.Label), "tsubaki") {
+			tsubakiModelIDs = append(tsubakiModelIDs, option.Value)
+		}
+	}
 	loras := []JobOption{}
 	for _, item := range pixaiFavorites(settings, pixaiFavoriteLoRA) {
-		loras = append(loras, JobOption{Value: item.ID, Label: fmt.Sprintf("%s · %g", item.Name, item.Weight)})
+		loras = append(loras, JobOption{Value: item.ID, Label: item.Name})
 	}
 	ratios := []JobOption{}
 	for _, ratio := range []string{"1:1", "2:3", "3:2", "3:4", "4:3", "3:5", "5:3", "9:16", "16:9", "1:3", "3:1"} {
@@ -102,21 +112,21 @@ func (pixaiAdapter) JobFields(settings map[string]string) []JobField {
 	fields := []JobField{
 		{Key: "prompt", Label: "Prompt", Kind: "textarea", Required: true},
 		{Key: "negative_prompt", Label: "Negative prompt", Kind: "textarea"},
+		{Key: "prompt_helper", Label: "PixAI Prompt 自動強化", Kind: "boolean", Default: false},
 		{Key: "model_version_id", Label: "模型", Kind: "select", Required: true, Default: models[0].Value, Options: models},
 	}
 	if len(loras) > 0 {
-		// PixAI 一次最多 5 個 LoRA；權重沿用常用清單的設定。
-		fields = append(fields, JobField{Key: "loras", Label: "LoRA", Kind: "multiselect", Max: number(5), Options: loras})
+		// PixAI 一次最多 5 個 LoRA；權重由作者在每次提案中調整。
+		fields = append(fields, JobField{Key: "loras", Label: "LoRA", Kind: "weighted_select", Max: number(5), Options: loras, ItemNumber: &JobItemNumber{Label: "權重", Default: 0.7, Min: 0, Max: 1, Step: 0.05}})
 	}
 	return append(fields, []JobField{
 		{Key: "aspect_ratio", Label: "長寬比", Kind: "select", Default: "1:1", Options: ratios},
 		{Key: "size", Label: "解析度", Kind: "select", Default: "1k", Options: []JobOption{{Value: "1k", Label: "1k（約 1MP）"}, {Value: "1.5k", Label: "1.5k（最長邊 1536px）"}}},
 		// 空字串 option 讓作者能退回「不指定」；validateJobInput 會把空值視為未填。
-		{Key: "mode", Label: "Tsubaki 模式", Kind: "select", Description: "只有 Tsubaki 系列模型接受，其他模型請留空", Options: []JobOption{{Value: "", Label: "不指定"}, {Value: "lite", Label: "Lite"}, {Value: "standard", Label: "Standard"}, {Value: "pro", Label: "Pro"}, {Value: "ultra", Label: "Ultra"}}},
+		{Key: "mode", Label: "Tsubaki 模式", Kind: "select", VisibleWhen: &JobFieldCondition{Key: "model_version_id", Values: tsubakiModelIDs}, Options: []JobOption{{Value: "", Label: "不指定"}, {Value: "lite", Label: "Lite"}, {Value: "standard", Label: "Standard"}, {Value: "pro", Label: "Pro"}, {Value: "ultra", Label: "Ultra"}}},
 		// PixAI batchSize 只接受 1 或 4，所以用 select 而不是 number。
 		{Key: "candidate_count", Label: "候選張數", Kind: "select", Default: "1", Options: []JobOption{{Value: "1", Label: "1"}, {Value: "4", Label: "4"}}},
 		{Key: "seed", Label: "Seed", Kind: "number", Description: "留空代表隨機", Min: number(0), Max: number(2147483647), Step: number(1)},
-		{Key: "prompt_helper", Label: "PixAI Prompt 自動強化", Kind: "boolean", Default: true},
 	}...)
 }
 
@@ -152,44 +162,41 @@ func (a pixaiAdapter) Generate(ctx context.Context, settings, secrets map[string
 	if helper, ok := inputs["prompt_helper"].(bool); ok && !helper {
 		request["promptHelper"] = "disable"
 	}
-	if selected, ok := inputs["loras"].([]string); ok && len(selected) > 0 {
-		weights := map[string]float64{}
-		for _, item := range pixaiFavorites(settings, pixaiFavoriteLoRA) {
-			weights[item.ID] = item.Weight
-		}
+	if selected, ok := inputs["loras"].([]JobWeightedSelection); ok && len(selected) > 0 {
 		loras := make([]map[string]any, 0, len(selected))
-		for _, id := range selected {
-			loras = append(loras, map[string]any{"modelId": id, "weight": weights[id]})
+		for _, item := range selected {
+			loras = append(loras, map[string]any{"modelId": item.Value, "weight": item.Weight})
 		}
 		request["loras"] = loras
 	}
+	audit := auditRequest("pixai", http.MethodPost, a.baseURL+"/v2/image/create", request)
 	task, err := a.task(ctx, http.MethodPost, "/v2/image/create", key, request, http.StatusCreated)
 	if err != nil {
-		return GenerateResult{}, err
+		return GenerateResult{Request: audit}, err
 	}
 	// 作者中途停止或逾時時 PixAI 端仍會繼續跑（API 未提供取消），錯誤訊息要讓作者知道額度可能已扣。
 	for task.Status == "waiting" || task.Status == "running" {
 		select {
 		case <-ctx.Done():
-			return GenerateResult{}, fmt.Errorf("已停止等待 PixAI task %s（PixAI 端可能仍會完成並扣除額度）：%w", task.ID, ctx.Err())
+			return GenerateResult{Request: audit}, fmt.Errorf("已停止等待 PixAI task %s（PixAI 端可能仍會完成並扣除額度）：%w", task.ID, ctx.Err())
 		case <-time.After(a.pollInterval):
 		}
 		if task, err = a.task(ctx, http.MethodGet, "/v1/task/"+task.ID, key, nil, http.StatusOK); err != nil {
-			return GenerateResult{}, err
+			return GenerateResult{Request: audit}, err
 		}
 	}
 	if task.Status != "completed" {
-		return GenerateResult{}, fmt.Errorf("PixAI task %s 結束狀態為 %s", task.ID, task.Status)
+		return GenerateResult{Request: audit}, fmt.Errorf("PixAI task %s 結束狀態為 %s", task.ID, task.Status)
 	}
 	if len(task.Outputs.MediaURLs) == 0 {
-		return GenerateResult{}, fmt.Errorf("PixAI task %s 完成但沒有回傳圖片", task.ID)
+		return GenerateResult{Request: audit}, fmt.Errorf("PixAI task %s 完成但沒有回傳圖片", task.ID)
 	}
 	model := fmt.Sprint(inputs["model_version_id"])
-	result := GenerateResult{Root: root, Artifacts: make([]GeneratedArtifact, 0, len(task.Outputs.MediaURLs))}
+	result := GenerateResult{Root: root, Artifacts: make([]GeneratedArtifact, 0, len(task.Outputs.MediaURLs)), Request: audit}
 	for index, mediaURL := range task.Outputs.MediaURLs {
 		artifact, err := a.download(ctx, mediaURL, filepath.Join(root, fmt.Sprintf("pixai-%s-%d", task.ID, index+1)))
 		if err != nil {
-			return GenerateResult{}, fmt.Errorf("下載 PixAI 第 %d 張圖片失敗：%w", index+1, err)
+			return GenerateResult{Request: audit}, fmt.Errorf("下載 PixAI 第 %d 張圖片失敗：%w", index+1, err)
 		}
 		parameters := cloneAnyMap(inputs)
 		if task.MediaSafetyLevel != "" {

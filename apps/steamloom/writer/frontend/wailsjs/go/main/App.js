@@ -86,8 +86,8 @@ export function Create(arg1, arg2) {
   return window['go']['main']['App']['Create'](arg1, arg2);
 }
 
-export function DecideMediaProposal(arg1, arg2, arg3, arg4, arg5, arg6) {
-  return window['go']['main']['App']['DecideMediaProposal'](arg1, arg2, arg3, arg4, arg5, arg6);
+export function DecideMediaProposal(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['DecideMediaProposal'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
 
 export function DecideProposal(arg1, arg2, arg3, arg4, arg5, arg6) {

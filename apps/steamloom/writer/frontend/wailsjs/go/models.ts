@@ -15,6 +15,24 @@ export namespace appsettings {
 
 export namespace agent {
 	
+	export class EventOperation {
+	    proposal_type: string;
+	    kind?: string;
+	    title?: string;
+	    count?: number;
+
+	    static createFrom(source: any = {}) {
+	        return new EventOperation(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.proposal_type = source["proposal_type"];
+	        this.kind = source["kind"];
+	        this.title = source["title"];
+	        this.count = source["count"];
+	    }
+	}
 	export class PromptReference {
 	    type: string;
 	    id: string;
@@ -62,9 +80,19 @@ export namespace agent {
 	    references?: PromptReference[];
 	    model?: string;
 	    reasoning_effort?: string;
+	    duration_ms?: number;
+	    operation_type?: string;
+	    operation_kind?: string;
+	    operation_title?: string;
+	    current?: number;
+	    total?: number;
+	    count?: number;
+	    detail?: string;
+	    operations?: EventOperation[];
 	    worker_id?: string;
 	    provider_job_ids?: string[];
 	    provider_models?: string[];
+	    worker_requests?: mediaworker.RequestAudit[];
 	
 	    static createFrom(source: any = {}) {
 	        return new ChatLine(source);
@@ -88,9 +116,19 @@ export namespace agent {
 	        this.references = this.convertValues(source["references"], PromptReference);
 	        this.model = source["model"];
 	        this.reasoning_effort = source["reasoning_effort"];
+	        this.duration_ms = source["duration_ms"];
+	        this.operation_type = source["operation_type"];
+	        this.operation_kind = source["operation_kind"];
+	        this.operation_title = source["operation_title"];
+	        this.current = source["current"];
+	        this.total = source["total"];
+	        this.count = source["count"];
+	        this.detail = source["detail"];
+	        this.operations = this.convertValues(source["operations"], EventOperation);
 	        this.worker_id = source["worker_id"];
 	        this.provider_job_ids = source["provider_job_ids"];
 	        this.provider_models = source["provider_models"];
+	        this.worker_requests = this.convertValues(source["worker_requests"], mediaworker.RequestAudit);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -460,6 +498,7 @@ export namespace agent {
 	    recommended_worker_id?: string;
 	    brief?: MediaBrief;
 	    job_inputs?: Record<string, any>;
+	    execution_count?: number;
 	    artifacts?: ProposalArtifact[];
 	    edits?: ProposalEdit[];
 	    content_hash: string;
@@ -494,6 +533,7 @@ export namespace agent {
 	        this.recommended_worker_id = source["recommended_worker_id"];
 	        this.brief = this.convertValues(source["brief"], MediaBrief);
 	        this.job_inputs = source["job_inputs"];
+	        this.execution_count = source["execution_count"];
 	        this.artifacts = this.convertValues(source["artifacts"], ProposalArtifact);
 	        this.edits = this.convertValues(source["edits"], ProposalEdit);
 	        this.content_hash = source["content_hash"];
@@ -1424,6 +1464,40 @@ export namespace mediaworker {
 	        this.weight = source["weight"];
 	    }
 	}
+	export class JobItemNumber {
+	    label: string;
+	    default: number;
+	    min: number;
+	    max: number;
+	    step: number;
+
+	    static createFrom(source: any = {}) {
+	        return new JobItemNumber(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.label = source["label"];
+	        this.default = source["default"];
+	        this.min = source["min"];
+	        this.max = source["max"];
+	        this.step = source["step"];
+	    }
+	}
+	export class JobFieldCondition {
+	    key: string;
+	    values: string[];
+
+	    static createFrom(source: any = {}) {
+	        return new JobFieldCondition(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.values = source["values"];
+	    }
+	}
 	export class JobOption {
 	    value: string;
 	    label: string;
@@ -1449,6 +1523,8 @@ export namespace mediaworker {
 	    max?: number;
 	    step?: number;
 	    options?: JobOption[];
+	    visible_when?: JobFieldCondition;
+	    item_number?: JobItemNumber;
 	
 	    static createFrom(source: any = {}) {
 	        return new JobField(source);
@@ -1466,6 +1542,8 @@ export namespace mediaworker {
 	        this.max = source["max"];
 	        this.step = source["step"];
 	        this.options = this.convertValues(source["options"], JobOption);
+	        this.visible_when = this.convertValues(source["visible_when"], JobFieldCondition);
+	        this.item_number = this.convertValues(source["item_number"], JobItemNumber);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -1520,6 +1598,22 @@ export namespace mediaworker {
 		    }
 		    return a;
 		}
+	}
+	export class RequestAudit {
+	    method: string;
+	    endpoint: string;
+	    payload?: Record<string, any>;
+
+	    static createFrom(source: any = {}) {
+	        return new RequestAudit(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.method = source["method"];
+	        this.endpoint = source["endpoint"];
+	        this.payload = source["payload"];
+	    }
 	}
 	export class SaveInput {
 	    id: string;

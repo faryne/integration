@@ -2,6 +2,7 @@ package mediaworker
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,12 +26,13 @@ func TestWorkerJobSpecValidationAndExecution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.Test(context.Background(), worker.ID); err != nil {
-		t.Fatal(err)
-	}
 	spec, err := service.JobSpec(worker.ID)
 	if err != nil || len(spec.Fields) == 0 {
 		t.Fatalf("job spec = %#v, err = %v", spec, err)
+	}
+	policy, err := service.ExecutionPolicy(worker.ID)
+	if err != nil || policy != DefaultExecutionPolicy {
+		t.Fatalf("execution policy = %#v, err = %v", policy, err)
 	}
 	input, err := service.ValidateJob(worker.ID, map[string]any{"prompt": "藍髮少女", "candidate_count": 1})
 	if err != nil || input["width"] != float64(768) {
@@ -61,9 +63,13 @@ func (fakeAdapter) Descriptor() AdapterDescriptor {
 		{Key: "token", Label: "Token", Secret: true},
 	}}
 }
-func (fakeAdapter) Discover(context.Context, map[string]string, map[string]string) (Discovery, error) {
+func (fakeAdapter) Discover(_ context.Context, settings map[string]string, _ map[string]string) (Discovery, error) {
+	if settings["endpoint"] == "https://offline.example.com" {
+		return Discovery{}, errors.New("offline")
+	}
 	return Discovery{Capabilities: []string{"text_to_image"}, Message: "ok"}, nil
 }
+func (fakeAdapter) Capabilities(map[string]string) []string { return []string{"text_to_image"} }
 func (fakeAdapter) JobFields(map[string]string) []JobField {
 	return []JobField{
 		{Key: "prompt", Label: "Prompt", Kind: "textarea", Required: true},
@@ -151,7 +157,7 @@ func TestDefaultAdaptersHideUnverifiedWorkersOutsideDev(t *testing.T) {
 	}
 }
 
-func TestAgentCapabilitiesOnlyIncludeEnabledOnlineWorkers(t *testing.T) {
+func TestAgentCapabilitiesIncludeEnabledWorkersWithoutConnectionTest(t *testing.T) {
 	registry, err := NewRegistry(fakeAdapter{})
 	if err != nil {
 		t.Fatal(err)
@@ -167,6 +173,13 @@ func TestAgentCapabilitiesOnlyIncludeEnabledOnlineWorkers(t *testing.T) {
 	if _, err := service.Save(SaveInput{AdapterID: "fake", Name: "未測試 Worker", Enabled: true, Settings: map[string]string{"endpoint": "https://untested.example.com"}}); err != nil {
 		t.Fatal(err)
 	}
+	offline, err := service.Save(SaveInput{AdapterID: "fake", Name: "連線異常 Worker", Enabled: true, Settings: map[string]string{"endpoint": "https://offline.example.com"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tested, err := service.Test(context.Background(), offline.ID); err != nil || tested.Status != StatusError {
+		t.Fatalf("failed diagnostic = %#v, err = %v", tested, err)
+	}
 	if _, err := service.Save(SaveInput{AdapterID: "fake", Name: "停用 Worker", Enabled: false, Settings: map[string]string{"endpoint": "https://disabled.example.com"}}); err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +188,11 @@ func TestAgentCapabilitiesOnlyIncludeEnabledOnlineWorkers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(capabilities) != 1 || capabilities[0].WorkerID != online.ID || capabilities[0].Name != "可用 Worker" {
+	names := map[string]bool{}
+	for _, capability := range capabilities {
+		names[capability.Name] = true
+	}
+	if len(capabilities) != 3 || !names["可用 Worker"] || !names["未測試 Worker"] || !names["連線異常 Worker"] {
 		t.Fatalf("agent capabilities = %#v", capabilities)
 	}
 }
@@ -256,9 +273,26 @@ func TestSaveValidatesCatalogSettings(t *testing.T) {
 	if err := save(`[{"id":"1","name":"A","weight":0.5}]`); err != nil {
 		t.Fatal(err)
 	}
-	for _, bad := range []string{`[{"id":"1","name":"","weight":1}]`, `[{"id":"1","name":"A","weight":1},{"id":"1","name":"B","weight":1}]`, `[{"id":"1","name":"A","weight":1.5}]`, `not json`} {
+	for _, bad := range []string{`[{"id":"1","name":"","weight":1}]`, `[{"id":"1","name":"A","weight":1},{"id":"1","name":"B","weight":1}]`, `not json`} {
 		if err := save(bad); err == nil {
 			t.Fatalf("catalog %s should fail", bad)
+		}
+	}
+}
+
+func TestWeightedSelectJobField(t *testing.T) {
+	fields := []JobField{{Key: "loras", Label: "LoRA", Kind: "weighted_select", Max: number(2), Options: []JobOption{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}, ItemNumber: &JobItemNumber{Label: "權重", Default: 0.7, Min: 0, Max: 1, Step: 0.05}}}
+	got, err := validateJobInput(fields, map[string]any{"loras": []any{map[string]any{"value": "a", "weight": 0.7}}})
+	if err != nil || len(got["loras"].([]JobWeightedSelection)) != 1 || got["loras"].([]JobWeightedSelection)[0].Weight != 0.7 {
+		t.Fatalf("weighted selection = %#v, %v", got, err)
+	}
+	for _, bad := range []any{
+		[]any{map[string]any{"value": "a", "weight": 1.1}},
+		[]any{map[string]any{"value": "a", "weight": 0.7}, map[string]any{"value": "a", "weight": 0.5}},
+		[]any{map[string]any{"value": "unknown", "weight": 0.7}},
+	} {
+		if _, err := validateJobInput(fields, map[string]any{"loras": bad}); err == nil {
+			t.Fatalf("selection %#v should fail", bad)
 		}
 	}
 }
@@ -276,5 +310,26 @@ func TestMultiselectJobField(t *testing.T) {
 		if _, err := validateJobInput(fields, map[string]any{"loras": bad}); err == nil {
 			t.Fatalf("selection %v should fail", bad)
 		}
+	}
+}
+
+func TestConditionalJobField(t *testing.T) {
+	fields := []JobField{
+		{Key: "model", Label: "Model", Kind: "select", Required: true, Default: "other", Options: []JobOption{{Value: "other", Label: "Other"}, {Value: "tsubaki", Label: "Tsubaki"}}},
+		{Key: "mode", Label: "Mode", Kind: "select", Required: true, VisibleWhen: &JobFieldCondition{Key: "model", Values: []string{"tsubaki"}}, Options: []JobOption{{Value: "pro", Label: "Pro"}}},
+	}
+	hidden, err := validateJobInput(fields, map[string]any{"mode": "pro"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := hidden["mode"]; exists {
+		t.Fatalf("hidden field should be omitted: %#v", hidden)
+	}
+	visible, err := validateJobInput(fields, map[string]any{"model": "tsubaki", "mode": "pro"})
+	if err != nil || visible["mode"] != "pro" {
+		t.Fatalf("visible field = %#v, err = %v", visible, err)
+	}
+	if _, err := validateJobInput(fields, map[string]any{"model": "tsubaki"}); err == nil {
+		t.Fatal("visible required field should fail validation")
 	}
 }

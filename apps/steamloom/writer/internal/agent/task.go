@@ -77,6 +77,7 @@ type managedTask struct {
 	task           Task
 	req            Request
 	cancel         context.CancelFunc
+	startedAt      time.Time
 	proposal       *Proposal
 	applyProposal  *Proposal
 	proposalFilter proposalDeltaFilter
@@ -217,9 +218,9 @@ func (m *TaskManager) Cancel(taskID string) error {
 	case TaskQueued:
 		var err error
 		if managed.applyProposal != nil {
-			_, err = recordApplyFailed(managed.task.AgentID, managed.task.ProjectID, managed.task.ThreadID, managed.applyProposal.ID, managed.task.ID, "工作已停止", managed.task.Partial)
+			_, err = recordApplyFailed(managed.task.AgentID, managed.task.ProjectID, managed.task.ThreadID, managed.applyProposal.ID, managed.task.ID, "工作已停止", managed.task.Partial, 0)
 		} else {
-			err = recordTaskStopped(managed.task.AgentID, managed.task.ProjectID, managed.task.ThreadID, managed.task.ID, TaskCanceled, managed.task.Partial, nil)
+			err = recordTaskStopped(managed.task.AgentID, managed.task.ProjectID, managed.task.ThreadID, managed.task.ID, TaskCanceled, managed.task.Partial, nil, 0)
 		}
 		if err != nil {
 			m.mu.Unlock()
@@ -270,6 +271,7 @@ func (m *TaskManager) runQueue(key string) {
 		queue.items = queue.items[1:]
 		ctx, cancel := context.WithCancel(m.ctx)
 		managed.cancel = cancel
+		managed.startedAt = time.Now()
 		managed.task.State = TaskRunning
 		if managed.applyProposal != nil {
 			managed.task.State = TaskApplying
@@ -370,7 +372,7 @@ func (m *TaskManager) draftOnce(ctx context.Context, managed *managedTask, task 
 		return reply, err
 	}
 	if len(reply.proposals) == 0 {
-		return reply, recordTaskCompleted(task.AgentID, task.ProjectID, task.ThreadID, task.ID, reply)
+		return reply, recordTaskCompleted(task.AgentID, task.ProjectID, task.ThreadID, task.ID, reply, managed.elapsedMS())
 	}
 	if m.prepare != nil {
 		if reply.proposals, err = m.prepare(ctx, task.ProjectID, reply.proposals); err != nil {
@@ -383,93 +385,12 @@ func (m *TaskManager) draftOnce(ctx context.Context, managed *managedTask, task 
 			return reply, err
 		}
 	}
-	proposal, err := saveTaskProposal(task.AgentID, task.ProjectID, task.ThreadID, task.ID, assetRoot, reply, reply.proposals)
+	proposal, err := saveTaskProposal(task.AgentID, task.ProjectID, task.ThreadID, task.ID, assetRoot, reply, reply.proposals, managed.elapsedMS())
 	if err != nil {
 		return reply, err
 	}
 	managed.proposal = &proposal
 	return reply, nil
-}
-
-func (m *TaskManager) runApply(ctx context.Context, managed *managedTask) {
-	task := managed.task
-	proposal, err := recordApplyStarted(task.AgentID, task.ProjectID, task.ThreadID, managed.applyProposal.ID, task.ID)
-	if err == nil {
-		managed.applyProposal = &proposal
-		m.emit(TaskEvent{Type: EventApplyStarted, Task: task, Proposal: &proposal})
-		if m.apply == nil {
-			err = errors.New("Writer 尚未設定提案寫入器")
-		} else {
-			for _, item := range proposal.ApplyItems() {
-				proposal, err = recordApplyItem(task.AgentID, task.ProjectID, task.ThreadID, proposal.ID, task.ID, item.ID, EventApplyItemStarted, "")
-				if err != nil {
-					break
-				}
-				m.emit(TaskEvent{Type: EventApplyItemStarted, Task: task, Proposal: &proposal})
-				_, err = m.apply(ctx, proposal, item)
-				if ctx.Err() != nil && (err == nil || !task.Background) {
-					err = ctx.Err()
-				}
-				if err != nil {
-					_, _ = recordApplyItem(task.AgentID, task.ProjectID, task.ThreadID, proposal.ID, task.ID, item.ID, EventApplyItemFailed, err.Error())
-					m.emit(TaskEvent{Type: EventApplyItemFailed, Task: task, Proposal: &proposal})
-					break
-				}
-				proposal, err = recordApplyItem(task.AgentID, task.ProjectID, task.ThreadID, proposal.ID, task.ID, item.ID, EventApplyItemDone, "")
-				if err != nil {
-					break
-				}
-				m.emit(TaskEvent{Type: EventApplyItemDone, Task: task, Proposal: &proposal})
-			}
-			if err == nil {
-				summary := fmt.Sprintf("Writer 已依你的核准套用 %d 項提案。", len(proposal.ApplyItems()))
-				proposal, err = recordApplyCompleted(task.AgentID, task.ProjectID, task.ThreadID, proposal.ID, task.ID, summary)
-			}
-		}
-	}
-	contextErr := ctx.Err()
-	conflicted := errors.Is(err, ErrApplyConflict)
-	if err != nil {
-		detail := err.Error()
-		// 媒體 Worker 停止時保留 adapter 訊息，作者才知道外部服務可能仍會完成並扣額度。
-		if contextErr != nil && !task.Background {
-			detail = "工作已停止"
-		}
-		var failed Proposal
-		var saveErr error
-		if conflicted {
-			failed, saveErr = recordApplyConflict(task.AgentID, task.ProjectID, task.ThreadID, managed.applyProposal.ID, task.ID, detail, managed.task.Partial)
-		} else {
-			failed, saveErr = recordApplyFailed(task.AgentID, task.ProjectID, task.ThreadID, managed.applyProposal.ID, task.ID, detail, managed.task.Partial)
-		}
-		if saveErr == nil {
-			proposal = failed
-		} else {
-			err = fmt.Errorf("%v；保存失敗狀態時發生：%w", err, saveErr)
-		}
-	}
-	m.mu.Lock()
-	managed.task.FinishedAt = now()
-	managed.task.State = TaskApplied
-	if err != nil {
-		managed.task.State, managed.task.Error = TaskFailed, err.Error()
-	}
-	if conflicted {
-		managed.task.State = TaskConflict
-	}
-	if contextErr != nil {
-		managed.task.State = TaskCanceled
-	}
-	task = managed.task
-	m.mu.Unlock()
-	eventType := EventApplyCompleted
-	if err != nil {
-		eventType = EventApplyFailed
-	}
-	if conflicted {
-		eventType = EventApplyConflict
-	}
-	m.emit(TaskEvent{Type: eventType, Task: task, Proposal: &proposal})
 }
 
 func (m *TaskManager) finish(managed *managedTask, runErr, contextErr error) {
@@ -494,7 +415,7 @@ func (m *TaskManager) finish(managed *managedTask, runErr, contextErr error) {
 	if task.State == TaskAwaitingConfirmation {
 		eventType = EventProposalReady
 	} else if task.State != TaskCompleted {
-		_ = recordTaskStopped(task.AgentID, task.ProjectID, task.ThreadID, task.ID, task.State, task.Partial, runErr)
+		_ = recordTaskStopped(task.AgentID, task.ProjectID, task.ThreadID, task.ID, task.State, task.Partial, runErr, managed.elapsedMS())
 		if task.State == TaskCanceled {
 			eventType = EventTaskCanceled
 		} else {
@@ -559,27 +480,4 @@ func (m *TaskManager) flushProposalStream(managed *managedTask) {
 	m.mu.Unlock()
 	stream := StreamEvent{Type: StreamAssistantDelta, Text: text}
 	m.emit(TaskEvent{Type: stream.Type, Task: task, Stream: &stream})
-}
-
-func proposalHasAsset(items []ProposalItem) bool {
-	for _, item := range items {
-		if item.Kind == ProposalKindAsset {
-			return true
-		}
-	}
-	return false
-}
-
-func taskQueueKey(task Task) string { return task.AgentID + "/" + task.ProjectID + "/" + task.ThreadID }
-
-func removeQueuedTask(queue *taskQueue, taskID string) {
-	if queue == nil {
-		return
-	}
-	for i, managed := range queue.items {
-		if managed.task.ID == taskID {
-			queue.items = append(queue.items[:i], queue.items[i+1:]...)
-			return
-		}
-	}
 }

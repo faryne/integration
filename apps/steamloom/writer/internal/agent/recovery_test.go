@@ -133,7 +133,7 @@ func TestLateRESTSuccessRepairsPrematureInterruption(t *testing.T) {
 	if err := RecoverInterruptedApplies("project", nil); err != nil {
 		t.Fatal(err)
 	}
-	completed, err := recordApplyCompleted("claude", "project", page.CurrentID, proposal.ID, applyTaskID, "Writer 已收到 REST API 的成功結果。")
+	completed, err := recordApplyCompleted("claude", "project", page.CurrentID, proposal.ID, applyTaskID, "Writer 已收到 REST API 的成功結果。", 1)
 	if err != nil || completed.Status != ProposalApplied {
 		t.Fatalf("late REST success did not repair interruption: %#v, %v", completed, err)
 	}

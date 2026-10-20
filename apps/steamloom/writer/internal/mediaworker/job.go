@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-// multiselect 的值是 []string，Max 代表最多可選幾項（例如 PixAI LoRA 上限 5）。
-var supportedJobFieldKinds = map[string]bool{"text": true, "textarea": true, "select": true, "multiselect": true, "number": true, "boolean": true}
+// multiselect 的值是 []string；weighted_select 是可增減的「選項＋數值」列，Max 皆代表最多可選幾項。
+var supportedJobFieldKinds = map[string]bool{"text": true, "textarea": true, "select": true, "multiselect": true, "weighted_select": true, "number": true, "boolean": true}
 
 func number(value float64) *float64 { return &value }
 
@@ -20,13 +20,24 @@ func validateJobSchema(fields []JobField) error {
 			return errors.New("Worker 提供的 Job schema 不正確")
 		}
 		seen[field.Key] = true
-		if (field.Kind == "select" || field.Kind == "multiselect") && len(field.Options) == 0 {
+		if (field.Kind == "select" || field.Kind == "multiselect" || field.Kind == "weighted_select") && len(field.Options) == 0 {
 			return fmt.Errorf("%s 沒有可用選項", field.Label)
+		}
+		if field.Kind == "weighted_select" && (field.ItemNumber == nil || field.ItemNumber.Label == "" || field.ItemNumber.Min > field.ItemNumber.Default || field.ItemNumber.Default > field.ItemNumber.Max || field.ItemNumber.Step <= 0) {
+			return fmt.Errorf("%s 的列數值設定不正確", field.Label)
 		}
 		if field.Default != nil {
 			if _, err := normalizeJobValue(field, field.Default); err != nil {
 				return fmt.Errorf("%s 的預設值不正確：%w", field.Label, err)
 			}
+		}
+	}
+	for _, field := range fields {
+		if field.VisibleWhen == nil {
+			continue
+		}
+		if !seen[field.VisibleWhen.Key] || len(field.VisibleWhen.Values) == 0 {
+			return fmt.Errorf("%s 的顯示條件不正確", field.Label)
 		}
 	}
 	return nil
@@ -40,6 +51,9 @@ func validateJobInput(fields []JobField, input map[string]any) (map[string]any, 
 	result := make(map[string]any, len(fields))
 	for _, field := range fields {
 		known[field.Key] = true
+		if !jobFieldVisible(field, fields, input) {
+			continue
+		}
 		value, exists := input[field.Key]
 		if !exists || value == nil || emptyJobValue(field, value) {
 			value, exists = field.Default, field.Default != nil
@@ -62,6 +76,27 @@ func validateJobInput(fields []JobField, input map[string]any) (map[string]any, 
 		}
 	}
 	return result, nil
+}
+
+func jobFieldVisible(field JobField, fields []JobField, input map[string]any) bool {
+	if field.VisibleWhen == nil {
+		return true
+	}
+	value, exists := input[field.VisibleWhen.Key]
+	if !exists || value == nil || strings.TrimSpace(fmt.Sprint(value)) == "" {
+		for _, source := range fields {
+			if source.Key == field.VisibleWhen.Key {
+				value = source.Default
+				break
+			}
+		}
+	}
+	for _, expected := range field.VisibleWhen.Values {
+		if fmt.Sprint(value) == expected {
+			return true
+		}
+	}
+	return false
 }
 
 func normalizeJobValue(field JobField, value any) (any, error) {
@@ -90,6 +125,8 @@ func normalizeJobValue(field JobField, value any) (any, error) {
 		return number, nil
 	case "multiselect":
 		return multiselectValue(field, value)
+	case "weighted_select":
+		return weightedSelectValue(field, value)
 	case "boolean":
 		boolean, ok := value.(bool)
 		if !ok {
@@ -134,12 +171,52 @@ func emptyJobValue(field JobField, value any) bool {
 	switch field.Kind {
 	case "boolean":
 		return false
-	case "multiselect":
+	case "multiselect", "weighted_select":
 		// []any{} 與 []string{} 印出來都是 "[]"
 		return fmt.Sprint(value) == "[]"
 	default:
 		return strings.TrimSpace(fmt.Sprint(value)) == ""
 	}
+}
+
+// weightedSelectValue 接受前端的 [{value, weight}]，驗證選項、重複值、權重與列數上限。
+func weightedSelectValue(field JobField, value any) ([]JobWeightedSelection, error) {
+	raw, ok := value.([]any)
+	if !ok {
+		if selections, typed := value.([]JobWeightedSelection); typed {
+			raw = make([]any, 0, len(selections))
+			for _, selection := range selections {
+				raw = append(raw, map[string]any{"value": selection.Value, "weight": selection.Weight})
+			}
+		} else {
+			return nil, errors.New("必須是可加權的選項清單")
+		}
+	}
+	if field.Max != nil && float64(len(raw)) > *field.Max {
+		return nil, fmt.Errorf("最多只能選 %d 項", int(*field.Max))
+	}
+	result := make([]JobWeightedSelection, 0, len(raw))
+	seen := make(map[string]bool, len(raw))
+	for _, item := range raw {
+		row, ok := item.(map[string]any)
+		if !ok {
+			return nil, errors.New("選項資料格式不正確")
+		}
+		selected, ok := row["value"].(string)
+		weight, err := numberValue(row["weight"])
+		if !ok || !optionExists(field.Options, selected) || seen[selected] {
+			return nil, errors.New("包含不可用或重複的選項")
+		}
+		if err != nil || weight < field.ItemNumber.Min || weight > field.ItemNumber.Max {
+			return nil, errors.New("權重超出允許範圍")
+		}
+		seen[selected] = true
+		result = append(result, JobWeightedSelection{Value: selected, Weight: weight})
+	}
+	if field.Required && len(result) == 0 {
+		return nil, errors.New("至少要選一項")
+	}
+	return result, nil
 }
 
 // multiselectValue 接受前端傳來的 []any 或 Go 端的 []string，逐項檢查是否為可用選項、不重複、不超過 Max。

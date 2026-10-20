@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 
 	"faryne.dev/apps/steamloom/writer/internal/agent"
@@ -33,33 +32,6 @@ func (a *App) applyProposal(ctx context.Context, proposal agent.Proposal, item a
 	default:
 		return "", fmt.Errorf("不支援的提案類型：%s", item.ProposalType)
 	}
-}
-
-func (a *App) applyMediaBrief(ctx context.Context, proposal agent.Proposal, item agent.ProposalItem) error {
-	spec, err := a.workers.JobSpec(item.WorkerID)
-	if err != nil {
-		return err
-	}
-	result, err := a.workers.Execute(ctx, item.WorkerID, item.JobInputs)
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(result.Root)
-	artifacts := make([]agent.ProposalArtifact, 0, len(result.Artifacts))
-	for _, artifact := range result.Artifacts {
-		artifacts = append(artifacts, agent.ProposalArtifact{
-			ProviderID: item.WorkerID, ProviderJobID: artifact.ProviderJobID, Model: artifact.Model, Parameters: artifact.Parameters,
-			CandidateGroup: artifact.CandidateGroup, DefaultSelected: true, LocalPath: artifact.LocalPath, FileName: artifact.FileName,
-			MIMEType: artifact.MIMEType, AltText: artifact.AltText, Description: artifact.Description, Width: artifact.Width, Height: artifact.Height,
-		})
-	}
-	if len(artifacts) == 0 {
-		return errors.New("Worker 沒有回傳任何媒體成果")
-	}
-	_, err = agent.SaveGeneratedProposal(proposal.AgentID, proposal.ProjectID, proposal.ThreadID, proposal.TaskID, result.Root, spec.WorkerName, []agent.ProposalItem{{
-		ProposalType: agent.ProposalTypeAssetUpload, Kind: agent.ProposalKindAsset, Title: item.Title, Summary: item.Summary, CollectionID: item.CollectionID, Artifacts: artifacts,
-	}})
-	return err
 }
 
 func (a *App) applyTextProposal(ctx context.Context, proposal agent.Proposal, item agent.ProposalItem) error {
@@ -101,26 +73,43 @@ func (a *App) saveProposalDocument(ctx context.Context, projectID string, kind a
 
 func (a *App) applyAssetProposal(ctx context.Context, proposal agent.Proposal, item agent.ProposalItem) error {
 	if len(item.Artifacts) == 0 {
-		path, err := agent.ProposalAssetPath(proposal.AgentID, proposal.ProjectID, proposal.ThreadID, proposal.ID, item.ID)
-		if err != nil {
+		if err := agent.ReportApplyItemProgress(ctx, agent.EventApplyItemStarted, "第 1/1 開始"); err != nil {
 			return err
 		}
+		path, err := agent.ProposalAssetPath(proposal.AgentID, proposal.ProjectID, proposal.ThreadID, proposal.ID, item.ID)
+		if err != nil {
+			return numberedApplyError(1, 1, err)
+		}
 		_, err = a.uploadProposalArtifact(ctx, proposal.ProjectID, item.CollectionID, path, item.Title, item.AltText, item.Summary)
-		return err
+		if err != nil {
+			return numberedApplyError(1, 1, err)
+		}
+		return agent.ReportApplyItemProgress(ctx, agent.EventApplyItemDone, "第 1/1 完成")
 	}
-	for _, artifact := range item.Artifacts {
+	for index, artifact := range item.Artifacts {
+		current, total := index+1, len(item.Artifacts)
+		if err := agent.ReportApplyItemProgress(ctx, agent.EventApplyItemStarted, fmt.Sprintf("第 %d/%d 開始", current, total)); err != nil {
+			return err
+		}
 		if artifact.LocalPath == "" {
-			continue
+			return numberedApplyError(current, total, errors.New("候選結果缺少 Writer 本機檔案"))
 		}
 		path, err := agent.ProposalArtifactPath(proposal.AgentID, proposal.ProjectID, proposal.ThreadID, proposal.ID, item.ID, artifact.ID)
 		if err != nil {
-			return err
+			return numberedApplyError(current, total, err)
 		}
 		if _, err := a.uploadProposalArtifact(ctx, proposal.ProjectID, item.CollectionID, path, artifact.FileName, artifact.AltText, artifact.Description); err != nil {
+			return numberedApplyError(current, total, err)
+		}
+		if err := agent.ReportApplyItemProgress(ctx, agent.EventApplyItemDone, fmt.Sprintf("第 %d/%d 完成", current, total)); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func numberedApplyError(current, total int, err error) error {
+	return fmt.Errorf("第 %d/%d 失敗：%w", current, total, err)
 }
 
 func (a *App) uploadProposalArtifact(ctx context.Context, projectID, collectionID, path, title, altText, description string) (string, error) {

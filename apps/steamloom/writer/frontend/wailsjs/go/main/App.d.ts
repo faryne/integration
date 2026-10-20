@@ -50,7 +50,7 @@ export function ConfirmProposalApplied(arg1:string,arg2:string,arg3:string,arg4:
 
 export function Create(arg1:string,arg2:api.CreateRequest):Promise<api.Created>;
 
-export function DecideMediaProposal(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:Record<string, any>):Promise<agent.Proposal>;
+export function DecideMediaProposal(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:number,arg7:Record<string, any>):Promise<agent.Proposal>;
 
 export function DecideProposal(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:Array<string>):Promise<agent.Proposal>;
 

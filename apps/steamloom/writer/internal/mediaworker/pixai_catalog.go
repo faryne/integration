@@ -57,9 +57,6 @@ func (a pixaiAdapter) ResolveCatalogItem(ctx context.Context, fieldKey, rawURL s
 	if item.Name == "" {
 		item.Name = map[bool]string{false: "模型 ", true: "LoRA "}[wantLoRA] + versionID[max(0, len(versionID)-6):]
 	}
-	if wantLoRA {
-		item.Weight = 1
-	}
 	return item, nil
 }
 

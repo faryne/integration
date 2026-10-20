@@ -19,7 +19,7 @@ func TestProjectThreadsKeepsLaterQueuedTaskVisible(t *testing.T) {
 	if _, err := prepareTask("codex", req, "task-two"); err != nil {
 		t.Fatal(err)
 	}
-	if err := recordTaskCompleted("codex", "project", page.CurrentID, "task-one", Reply{Text: "done", SessionID: "session-one"}); err != nil {
+	if err := recordTaskCompleted("codex", "project", page.CurrentID, "task-one", Reply{Text: "done", SessionID: "session-one"}, 1); err != nil {
 		t.Fatal(err)
 	}
 
@@ -53,7 +53,7 @@ func TestProjectThreadsIgnoresStaleRunningTaskBeforeNewerCompletion(t *testing.T
 	if err := recordTaskStarted("claude", "project", page.CurrentID, "newer-task"); err != nil {
 		t.Fatal(err)
 	}
-	if err := recordTaskCompleted("claude", "project", page.CurrentID, "newer-task", Reply{Text: "done", SessionID: "session"}); err != nil {
+	if err := recordTaskCompleted("claude", "project", page.CurrentID, "newer-task", Reply{Text: "done", SessionID: "session"}, 1); err != nil {
 		t.Fatal(err)
 	}
 

@@ -176,6 +176,7 @@ type ProposalItem struct {
 	RecommendedWorkerID string             `json:"recommended_worker_id,omitempty"`
 	Brief               *MediaBrief        `json:"brief,omitempty"`
 	JobInputs           map[string]any     `json:"job_inputs,omitempty"`
+	ExecutionCount      int                `json:"execution_count,omitempty"`
 	Artifacts           []ProposalArtifact `json:"artifacts,omitempty"`
 	Edits               []ProposalEdit     `json:"edits,omitempty"`
 	ContentHash         string             `json:"content_hash"`
@@ -427,7 +428,8 @@ func setProposalHashesWithLegacyArtifacts(proposal *Proposal, legacy bool) error
 			WorkerID, RecommendedWorkerID string         `json:",omitempty"`
 			Brief                         *MediaBrief    `json:",omitempty"`
 			JobInputs                     map[string]any `json:",omitempty"`
-		}{item.ProposalType, item.Kind, item.TargetID, item.BaseVersionID, item.Title, item.Summary, item.ContentType, item.Content, item.MarkerID, item.AfterMarkerID, item.Base, item.Operations, item.FileName, item.MIMEType, item.FileSHA256, item.AltText, item.CollectionID, artifacts, item.Edits, item.WorkerID, item.RecommendedWorkerID, item.Brief, item.JobInputs}
+			ExecutionCount                int            `json:",omitempty"`
+		}{item.ProposalType, item.Kind, item.TargetID, item.BaseVersionID, item.Title, item.Summary, item.ContentType, item.Content, item.MarkerID, item.AfterMarkerID, item.Base, item.Operations, item.FileName, item.MIMEType, item.FileSHA256, item.AltText, item.CollectionID, artifacts, item.Edits, item.WorkerID, item.RecommendedWorkerID, item.Brief, item.JobInputs, item.ExecutionCount}
 		hash, err := hashJSON(fingerprint)
 		if err != nil {
 			return err

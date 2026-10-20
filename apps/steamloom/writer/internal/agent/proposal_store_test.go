@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"faryne.dev/apps/steamloom/writer/internal/mediaworker"
 )
 
 func TestSaveProposalPersistsBatchHashesAndReadyEvent(t *testing.T) {
@@ -151,6 +153,17 @@ func TestApproveProposalPersistsSelectedArtifacts(t *testing.T) {
 	if selected.ProviderID != "grok" || len(approved.SelectedArtifactIDs) != 1 || approved.SelectedArtifactIDs[0] != selected.ID || len(approved.ApplyItems()[0].Artifacts) != 1 || approved.ApplyItems()[0].Artifacts[0].ID != selected.ID {
 		t.Fatalf("selected artifacts were not sealed into the decision: %#v", approved)
 	}
+	chat, err := OpenChat("grok", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	decision := chat.Messages[len(chat.Messages)-1]
+	if got := decision.Text; got != "已核准上傳資產：圖片〈候選圖〉，共 1 項" {
+		t.Fatalf("asset approval text = %q", got)
+	}
+	if len(decision.Operations) != 1 || decision.Operations[0].ProposalType != ProposalTypeAssetUpload || decision.Operations[0].Title != "候選圖" || decision.Operations[0].Count != 1 {
+		t.Fatalf("asset approval metadata = %#v", decision.Operations)
+	}
 }
 
 func TestSaveProposalStagesAssetAndDeleteChatRemovesIt(t *testing.T) {
@@ -215,7 +228,7 @@ func TestSaveGeneratedProposalPreservesWorkerAndStagesArtifacts(t *testing.T) {
 		t.Fatal(err)
 	}
 	taskID, _ := newThreadID()
-	proposal, err := SaveGeneratedProposal("codex", "project", page.CurrentID, taskID, root, "Mock Image Worker", []ProposalItem{{
+	proposal, err := SaveGeneratedProposal("codex", "project", page.CurrentID, taskID, root, "Mock Image Worker", []*mediaworker.RequestAudit{{Method: "POST", Endpoint: "https://worker.example/generate", Payload: map[string]any{"prompt": "test"}}}, 1, 1, "", []ProposalItem{{
 		ProposalType: ProposalTypeAssetUpload, Kind: ProposalKindAsset, Title: "角色圖",
 		Artifacts: []ProposalArtifact{{ProviderID: "worker-1", ProviderJobID: "job-1", Model: "model-1", LocalPath: source, FileName: "candidate.png", MIMEType: "image/png", DefaultSelected: true}},
 	}})
@@ -230,11 +243,11 @@ func TestSaveGeneratedProposalPreservesWorkerAndStagesArtifacts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(page.Messages[len(page.Messages)-1].Text, "Mock Image Worker 已產生 1 項媒體成果") {
+	if !strings.Contains(page.Messages[len(page.Messages)-1].Text, "Mock Image Worker 已完成 1/1 次執行並產生 1 項媒體成果") {
 		t.Fatalf("generated proposal event missing: %#v", page.Messages)
 	}
 	event := page.Messages[len(page.Messages)-1]
-	if event.WorkerID != "worker-1" || len(event.ProviderJobIDs) != 1 || event.ProviderJobIDs[0] != "job-1" || len(event.ProviderModels) != 1 || event.ProviderModels[0] != "model-1" {
+	if event.WorkerID != "worker-1" || len(event.ProviderJobIDs) != 1 || event.ProviderJobIDs[0] != "job-1" || len(event.ProviderModels) != 1 || event.ProviderModels[0] != "model-1" || len(event.WorkerRequests) != 1 || event.WorkerRequests[0].Payload["prompt"] != "test" {
 		t.Fatalf("generated proposal audit missing from JSONL: %#v", event)
 	}
 }
@@ -263,6 +276,9 @@ func TestApproveProposalPersistsUserDecisionAndClearsPendingState(t *testing.T) 
 	decision := chat.Messages[len(chat.Messages)-1]
 	if decision.Type != EventProposalApproved || decision.Role != "system" || decision.Text != "已核准套用：設定〈許芷瑄〉" {
 		t.Fatalf("approval was not persisted as a user decision: %#v", decision)
+	}
+	if len(decision.Operations) != 1 || decision.Operations[0].Kind != ProposalKindLore || decision.Operations[0].Title != "許芷瑄" {
+		t.Fatalf("approval metadata was not persisted: %#v", decision.Operations)
 	}
 	threads, err := ProjectThreads("project")
 	if err != nil || len(threads) != 1 || threads[0].LastTaskState != TaskApproved {

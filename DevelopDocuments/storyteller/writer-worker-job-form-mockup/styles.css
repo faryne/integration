@@ -1,0 +1,22 @@
+:root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #090d16; color: #e7edf8; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 32px; background: radial-gradient(circle at top, #17233b 0, #090d16 48%); }
+main { width: min(850px, 100%); border: 1px solid #34435d; background: #111827; box-shadow: 0 24px 80px #0008; }
+header, footer { display: flex; align-items: center; gap: 16px; padding: 20px 24px; background: #172238; }
+header > div { flex: 1; } small { color: #93a4bf; } h1 { margin: 4px 0 0; font-size: 22px; }
+.close { border: 0; background: none; color: white; font-size: 28px; }
+.notice, .summary { margin: 20px 24px 0; padding: 12px 14px; border: 1px solid #36547d; background: #0d1727; color: #bcd6fa; }
+.form { padding: 20px 24px 28px; display: grid; gap: 18px; }
+label { display: grid; gap: 7px; color: #cbd5e1; } input, select, textarea { width: 100%; border: 1px solid #465772; border-radius: 5px; background: #111b2d; color: #f8fafc; padding: 11px 12px; font: inherit; }
+textarea { resize: vertical; }
+.toggle { grid-template-columns: auto auto 1fr; align-items: center; border: 1px solid #34435d; padding: 12px; }
+.toggle input { width: auto; } .toggle small { grid-column: 3; }
+fieldset { border: 1px solid #34435d; padding: 16px; } legend { padding: 0 7px; font-weight: 700; } fieldset p { color: #93a4bf; margin: 0 0 14px; }
+#loraRows { display: grid; gap: 10px; margin-bottom: 12px; }
+.lora-row { display: grid; grid-template-columns: 1fr 140px 40px; gap: 10px; align-items: end; }
+.remove { height: 42px; border: 1px solid #7f3540; color: #ff8794; background: #29151b; border-radius: 5px; font-size: 20px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+button { cursor: pointer; font: inherit; } .secondary, footer button { border: 1px solid #4b5d7b; border-radius: 5px; padding: 10px 14px; color: #dbeafe; background: #18243a; }
+footer { justify-content: flex-end; border-top: 1px solid #34435d; } footer .ghost { margin-right: auto; background: transparent; border-color: transparent; } footer .danger { color: #ff8794; background: transparent; border-color: transparent; } footer .primary { background: #35588d; border-color: #527abb; }
+.summary { margin: 0; }
+@media (max-width: 620px) { body { padding: 0; } .grid, .lora-row { grid-template-columns: 1fr; } main { border: 0; } }

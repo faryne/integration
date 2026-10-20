@@ -281,12 +281,12 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
     }
   };
 
-  const decideMediaProposal = async (workerID: string, inputs: Record<string, unknown>) => {
+  const decideMediaProposal = async (workerID: string, executionCount: number, inputs: Record<string, unknown>) => {
     if (!review || !selected || !currentThreadID || deciding) return;
     const threadID = currentThreadID;
     setDeciding(true);
     try {
-      await backend.DecideMediaProposal(selected, projectID, threadID, review.proposal.id, workerID, inputs);
+      await backend.DecideMediaProposal(selected, projectID, threadID, review.proposal.id, workerID, executionCount, inputs);
       setReview(null);
       setProposalRevision((value) => value + 1);
       await Promise.all([chat.refreshVisibleThread(threadID), loadThreads()]);
@@ -430,7 +430,7 @@ export function ChatPanel({ projectID, projectName, workspace, initialReference,
         deciding={deciding}
         onClose={() => setReview(null)}
         onDecision={(decision) => void decideProposal(decision)}
-        onMediaDecision={(workerID, inputs) => void decideMediaProposal(workerID, inputs)}
+        onMediaDecision={(workerID, executionCount, inputs) => void decideMediaProposal(workerID, executionCount, inputs)}
       />
     </Box>
   );

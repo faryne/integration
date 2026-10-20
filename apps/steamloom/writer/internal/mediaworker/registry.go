@@ -15,8 +15,15 @@ type Adapter interface {
 // JobFields 每次都由 adapter 程式碼即時產生（只依非敏感設定），不存進 workers.json；
 // adapter 改版後表單立刻跟著新 schema，不必重新連線測試。
 type Generator interface {
+	// Capabilities 宣告不需連線測試也能確定的能力；測試結果只提供診斷資訊，不作為執行門檻。
+	Capabilities(settings map[string]string) []string
 	JobFields(settings map[string]string) []JobField
 	Generate(context.Context, map[string]string, map[string]string, map[string]any, string) (GenerateResult, error)
+}
+
+// ExecutionPolicyProvider 讓 adapter 覆寫通用的錯峰派送策略；未實作時採保守預設值。
+type ExecutionPolicyProvider interface {
+	ExecutionPolicy(settings map[string]string) ExecutionPolicy
 }
 
 // Registry 是 Writer 內唯一的 adapter 清單；UI 與後續 Media Job 都從這裡取得實作。

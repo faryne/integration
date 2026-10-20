@@ -21,6 +21,15 @@ export type ChatLine = {
   references?: PromptReference[];
   model?: string;
   reasoning_effort?: string;
+  duration_ms?: number;
+  operation_type?: string;
+  operation_kind?: string;
+  operation_title?: string;
+  current?: number;
+  total?: number;
+  count?: number;
+  detail?: string;
+  operations?: Array<{ proposal_type: string; kind?: string; title?: string; count?: number }>;
 };
 type ChatPage = {
   threads: ChatThread[];

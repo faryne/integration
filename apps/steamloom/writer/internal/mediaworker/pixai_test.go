@@ -33,7 +33,7 @@ func fakePixAI(t *testing.T, created *map[string]any) *httptest.Server {
 		case r.URL.Path == "/v1/task/0":
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"message":"not found","code":40400000}`))
-		case r.URL.Path == "/v2/image/create":
+		case r.URL.Path == "/v2/image/create" && r.Method == http.MethodPost:
 			_ = json.NewDecoder(r.Body).Decode(created)
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"id":"t1","status":"waiting","outputs":{"mediaIds":[],"mediaUrls":[]}}`))
@@ -61,12 +61,12 @@ func TestPixAIDiscoverAndGenerate(t *testing.T) {
 	if _, err := adapter.Discover(context.Background(), nil, map[string]string{"api_key": "good-key"}); err != nil {
 		t.Fatal(err)
 	}
-	// 常用模型排在最前面當預設；選了常用 LoRA 時，權重要沿用清單設定。
+	// 常用模型排在最前面當預設；LoRA 權重由這次提案輸入，不受常用清單舊資料影響。
 	settings := map[string]string{
 		pixaiFavoriteModel: `[{"id":"custom-1","name":"Moonbeam","weight":0}]`,
 		pixaiFavoriteLoRA:  `[{"id":"lora-1","name":"Detail","weight":0.7},{"id":"lora-2","name":"Unused","weight":1}]`,
 	}
-	inputs, err := validateJobInput(adapter.JobFields(settings), map[string]any{"prompt": "藍髮少女", "candidate_count": "4", "seed": 7.0, "prompt_helper": false, "mode": "", "loras": []any{"lora-1"}})
+	inputs, err := validateJobInput(adapter.JobFields(settings), map[string]any{"prompt": "藍髮少女", "candidate_count": "4", "seed": 7.0, "prompt_helper": false, "mode": "", "loras": []any{map[string]any{"value": "lora-1", "weight": 0.55}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestPixAIDiscoverAndGenerate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]any{"modelVersionId": "custom-1", "prompt": "藍髮少女", "aspectRatio": "1:1", "size": "1k", "batchSize": 4.0, "seed": 7.0, "promptHelper": "disable", "loras": []any{map[string]any{"modelId": "lora-1", "weight": 0.7}}}
+	want := map[string]any{"modelVersionId": "custom-1", "prompt": "藍髮少女", "aspectRatio": "1:1", "size": "1k", "batchSize": 4.0, "seed": 7.0, "promptHelper": "disable", "loras": []any{map[string]any{"modelId": "lora-1", "weight": 0.55}}}
 	gotJSON, _ := json.Marshal(created)
 	wantJSON, _ := json.Marshal(want)
 	if !bytes.Equal(gotJSON, wantJSON) {
@@ -87,6 +87,9 @@ func TestPixAIDiscoverAndGenerate(t *testing.T) {
 	if len(result.Artifacts) != 1 {
 		t.Fatalf("artifacts = %#v", result.Artifacts)
 	}
+	if result.Request == nil || result.Request.Method != http.MethodPost || result.Request.Endpoint != server.URL+"/v2/image/create" || !equalJSON(result.Request.Payload, created) {
+		t.Fatalf("request audit = %#v", result.Request)
+	}
 	artifact := result.Artifacts[0]
 	if artifact.MIMEType != "image/png" || artifact.Width != 32 || artifact.Height != 48 || artifact.ProviderJobID != "t1" || artifact.Parameters["media_safety_level"] != "safe" {
 		t.Fatalf("artifact = %#v", artifact)
@@ -94,6 +97,31 @@ func TestPixAIDiscoverAndGenerate(t *testing.T) {
 	if _, err := os.Stat(artifact.LocalPath); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestPixAITsubakiModeOnlyAppliesToTsubakiModels(t *testing.T) {
+	adapter := pixaiAdapter{}
+	settings := map[string]string{pixaiFavoriteModel: `[{"id":"custom-1","name":"Moonbeam","weight":0}]`}
+	fields := adapter.JobFields(settings)
+
+	custom, err := validateJobInput(fields, map[string]any{"prompt": "test", "model_version_id": "custom-1", "mode": "ultra"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := custom["mode"]; exists {
+		t.Fatalf("non-Tsubaki input should omit mode: %#v", custom)
+	}
+
+	tsubaki, err := validateJobInput(fields, map[string]any{"prompt": "test", "model_version_id": pixaiDefaultModel, "mode": "ultra"})
+	if err != nil || tsubaki["mode"] != "ultra" {
+		t.Fatalf("Tsubaki input = %#v, err = %v", tsubaki, err)
+	}
+}
+
+func equalJSON(left, right any) bool {
+	leftJSON, _ := json.Marshal(left)
+	rightJSON, _ := json.Marshal(right)
+	return bytes.Equal(leftJSON, rightJSON)
 }
 
 // fakeModelPage 產生最小的 turbo-stream 模型頁：GenerationModel 物件帶 title、type、latestAvailableVersion。
@@ -127,7 +155,7 @@ func TestPixAIResolveCatalogItem(t *testing.T) {
 		t.Fatalf("model without version = %#v, %v", item, err)
 	}
 	// 網址自帶版本時以網址為準；LoRA 預設權重 1。
-	if item, err := adapter.ResolveCatalogItem(ctx, pixaiFavoriteLoRA, "https://pixai.art/model/222/999"); err != nil || item.ID != "999" || item.Weight != 1 {
+	if item, err := adapter.ResolveCatalogItem(ctx, pixaiFavoriteLoRA, "https://pixai.art/model/222/999"); err != nil || item.ID != "999" || item.Weight != 0 {
 		t.Fatalf("lora with version = %#v, %v", item, err)
 	}
 	// 貼錯區塊要擋下。

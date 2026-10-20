@@ -34,10 +34,12 @@ export function useWorkerI18n() {
       t(`settings.workers.jobFields.${field.key}.label`, {
         defaultValue: field.label,
       }),
-    jobDescription: (field: JobField) =>
-      t(`settings.workers.jobFields.${field.key}.description`, {
-        defaultValue: field.description,
-      }),
+    // 沒有說明的 schema 欄位不要呼叫 t；defaultValue 為空時 i18next 會把完整 key 顯示在畫面上。
+    jobDescription: (field: JobField) => field.description
+      ? t(`settings.workers.jobFields.${field.key}.description`, {
+          defaultValue: field.description,
+        })
+      : "",
     optionLabel: (field: JobField, value: string, fallback: string) =>
       t(`settings.workers.jobFields.${field.key}.options.${optionKey(value)}`, {
         defaultValue: fallback,

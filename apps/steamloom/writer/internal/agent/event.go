@@ -1,5 +1,7 @@
 package agent
 
+import "faryne.dev/apps/steamloom/writer/internal/mediaworker"
+
 const (
 	EventMessageUser      = "message.user"
 	EventMessageAssistant = "message.agent"
@@ -30,30 +32,51 @@ const (
 	EventApplyConflict    = "apply.conflict"
 	EventApplyInterrupted = "apply.interrupted"
 	EventApplyVerified    = "apply.verified"
+
+	ActionApplyInterrupted = "writer.apply.interrupted"
+	ActionMediaInterrupted = "worker.media.interrupted"
 )
+
+// EventOperation 是可翻譯的提案操作資料；Text 僅保留給舊版 Writer 當 fallback。
+type EventOperation struct {
+	ProposalType string `json:"proposal_type"`
+	Kind         string `json:"kind,omitempty"`
+	Title        string `json:"title,omitempty"`
+	Count        int    `json:"count,omitempty"`
+}
 
 // ChatLine 是 thread 的 append-only event。舊版只有 role/text；讀取時會補上 type，
 // 讓既有對話不需 migration，也能逐步加入 proposal／decision／apply event。
 type ChatLine struct {
-	Type            string            `json:"type,omitempty"`
-	Role            string            `json:"role,omitempty"`
-	Text            string            `json:"text"`
-	CreatedAt       string            `json:"created_at,omitempty"`
-	TaskID          string            `json:"task_id,omitempty"`
-	ProposalID      string            `json:"proposal_id,omitempty"`
-	ItemID          string            `json:"item_id,omitempty"`
-	ContentHash     string            `json:"content_hash,omitempty"`
-	EventID         string            `json:"event_id,omitempty"`
-	ToolName        string            `json:"tool_name,omitempty"`
-	ToolTarget      string            `json:"tool_target,omitempty"`
-	Action          string            `json:"action,omitempty"`
-	Commands        []string          `json:"commands,omitempty"`
-	References      []PromptReference `json:"references,omitempty"`
-	Model           string            `json:"model,omitempty"`
-	ReasoningEffort string            `json:"reasoning_effort,omitempty"`
-	WorkerID        string            `json:"worker_id,omitempty"`
-	ProviderJobIDs  []string          `json:"provider_job_ids,omitempty"`
-	ProviderModels  []string          `json:"provider_models,omitempty"`
+	Type            string                      `json:"type,omitempty"`
+	Role            string                      `json:"role,omitempty"`
+	Text            string                      `json:"text"`
+	CreatedAt       string                      `json:"created_at,omitempty"`
+	TaskID          string                      `json:"task_id,omitempty"`
+	ProposalID      string                      `json:"proposal_id,omitempty"`
+	ItemID          string                      `json:"item_id,omitempty"`
+	ContentHash     string                      `json:"content_hash,omitempty"`
+	EventID         string                      `json:"event_id,omitempty"`
+	ToolName        string                      `json:"tool_name,omitempty"`
+	ToolTarget      string                      `json:"tool_target,omitempty"`
+	Action          string                      `json:"action,omitempty"`
+	Commands        []string                    `json:"commands,omitempty"`
+	References      []PromptReference           `json:"references,omitempty"`
+	Model           string                      `json:"model,omitempty"`
+	ReasoningEffort string                      `json:"reasoning_effort,omitempty"`
+	DurationMS      int64                       `json:"duration_ms,omitempty"`
+	OperationType   string                      `json:"operation_type,omitempty"`
+	OperationKind   string                      `json:"operation_kind,omitempty"`
+	OperationTitle  string                      `json:"operation_title,omitempty"`
+	Current         int                         `json:"current,omitempty"`
+	Total           int                         `json:"total,omitempty"`
+	Count           int                         `json:"count,omitempty"`
+	Detail          string                      `json:"detail,omitempty"`
+	Operations      []EventOperation            `json:"operations,omitempty"`
+	WorkerID        string                      `json:"worker_id,omitempty"`
+	ProviderJobIDs  []string                    `json:"provider_job_ids,omitempty"`
+	ProviderModels  []string                    `json:"provider_models,omitempty"`
+	WorkerRequests  []*mediaworker.RequestAudit `json:"worker_requests,omitempty"`
 }
 
 func messageEvent(role, text string) ChatLine {
@@ -91,5 +114,6 @@ func normalizeEvent(line ChatLine) (ChatLine, bool) {
 		// proposal／decision／apply 等事件在對話裡以 system card 顯示。
 		line.Role = "system"
 	}
+	hydrateLegacyOperation(&line)
 	return line, true
 }

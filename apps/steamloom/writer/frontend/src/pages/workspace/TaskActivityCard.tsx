@@ -8,7 +8,7 @@ import { Box, Button, Collapse, IconButton, Paper, Stack, Typography } from "@mu
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AgentLoginCard } from "@writer/pages/workspace/AgentLoginCard.tsx";
-import { activityEventLabel, activityEventTone } from "@writer/pages/workspace/chatEventRegistry.ts";
+import { activityEventDetail, activityEventLabel, activityEventTone } from "@writer/pages/workspace/chatEventRegistry.ts";
 import type { Workspace } from "@writer/lib/backend.ts";
 import type { ChatLine } from "@writer/pages/workspace/useChatLog.ts";
 
@@ -45,7 +45,7 @@ function compactToolEvents(events: ChatLine[]) {
 }
 
 export function TaskActivityCard({ agentID, events, workspace, onViewRawOutput }: { agentID: string; events: ChatLine[]; workspace: Workspace; onViewRawOutput: (eventID: string) => void }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [expanded, setExpanded] = useState(true);
   const last = events[events.length - 1];
   // 終局事件決定卡片狀態；例如作者確認已套用後，不應再被前面的 interrupted 維持成警告。
@@ -79,7 +79,7 @@ export function TaskActivityCard({ agentID, events, workspace, onViewRawOutput }
               <Typography color={activityEventTone(event) === "failed" ? "error.main" : activityEventTone(event) === "attention" ? "warning.main" : "text.secondary"} sx={{ fontSize: 12.5 }}>
                 {activityEventLabel(event, workspace, t)}
               </Typography>
-              {(activityEventTone(event) === "failed" || activityEventTone(event) === "attention") && event.text && !event.type?.startsWith("apply.item.") && <Typography sx={{ mt: 0.25, fontSize: 12.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{event.text}</Typography>}
+              {(activityEventTone(event) === "failed" || activityEventTone(event) === "attention") && activityEventDetail(event, t) && !event.type?.startsWith("apply.item.") && <Typography sx={{ mt: 0.25, fontSize: 12.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{activityEventDetail(event, t)}</Typography>}
               {/* 提案無法使用時保存了完整原文，作者可自行取回草稿 */}
               {event.type === "proposal.invalid" && event.event_id && (
                 <Button size="small" onClick={() => onViewRawOutput(event.event_id!)} sx={{ mt: 0.25, px: 0.5, minWidth: 0, fontSize: 12 }}>{t("workspace.chat.activity.viewRawOutput")}</Button>
@@ -88,7 +88,27 @@ export function TaskActivityCard({ agentID, events, workspace, onViewRawOutput }
           ))}
         </Stack>
         {commands.length > 0 && <AgentLoginCard commands={commands} kind={loginEvent?.action === "mcp.login" ? "mcp" : "agent"} />}
+        {Boolean(last?.duration_ms) && (
+          <Typography color="text.secondary" sx={{ mt: 1, fontSize: 12.5 }}>
+            {t("workspace.chat.activity.duration", { duration: formatDuration(last!.duration_ms!, i18n.resolvedLanguage || i18n.language, t) })}
+          </Typography>
+        )}
       </Collapse>
     </Paper>
   );
+}
+
+function formatDuration(durationMS: number, language: string, t: (key: string, values?: Record<string, unknown>) => string) {
+  if (durationMS < 1000) return t("workspace.chat.activity.lessThanSecond");
+  let seconds = Math.ceil(durationMS / 1000);
+  const hours = Math.floor(seconds / 3600);
+  seconds %= 3600;
+  const minutes = Math.floor(seconds / 60);
+  seconds %= 60;
+  const parts = [
+    hours > 0 ? t("workspace.chat.activity.hours", { count: hours }) : "",
+    minutes > 0 ? t("workspace.chat.activity.minutes", { count: minutes }) : "",
+    seconds > 0 ? t("workspace.chat.activity.seconds", { count: seconds }) : "",
+  ].filter(Boolean);
+  return parts.join(language.startsWith("ja") ? "" : " ");
 }

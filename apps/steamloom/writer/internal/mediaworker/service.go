@@ -58,7 +58,7 @@ func NewService(registry *Registry, path string, vault secretVault) *Service {
 // Adapters 回傳正式註冊清單，前端不另外維護 provider 名單。
 func (s *Service) Adapters() []AdapterDescriptor { return s.registry.List() }
 
-// AgentCapabilities 只暴露已啟用且連線正常的安全摘要；設定與密鑰不會離開 Service。
+// AgentCapabilities 只暴露已啟用 Worker 的安全摘要；連線測試是選用診斷，不是執行門檻。
 func (s *Service) AgentCapabilities() ([]AgentCapability, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -69,13 +69,17 @@ func (s *Service) AgentCapabilities() ([]AgentCapability, error) {
 	result := []AgentCapability{}
 	for _, worker := range workers {
 		adapter, exists := s.registry.Get(worker.AdapterID)
-		_, executable := adapter.(Generator)
-		if !exists || !executable || !worker.Enabled || worker.Status != StatusOnline || len(worker.Capabilities) == 0 {
+		generator, executable := adapter.(Generator)
+		if !exists || !executable || !worker.Enabled {
+			continue
+		}
+		capabilities := generator.Capabilities(worker.Settings)
+		if len(capabilities) == 0 {
 			continue
 		}
 		result = append(result, AgentCapability{
 			WorkerID: worker.ID, Name: worker.Name,
-			MediaTypes: append([]string{}, adapter.Descriptor().MediaTypes...), Capabilities: append([]string{}, worker.Capabilities...),
+			MediaTypes: append([]string{}, adapter.Descriptor().MediaTypes...), Capabilities: capabilities,
 		})
 	}
 	sort.SliceStable(result, func(i, j int) bool { return result[i].Name < result[j].Name })
@@ -310,6 +314,25 @@ func (s *Service) JobSpec(id string) (*JobSpec, error) {
 	return &JobSpec{WorkerID: worker.ID, WorkerName: worker.Name, Fields: generator.JobFields(worker.Settings)}, nil
 }
 
+// ExecutionPolicy 回傳 adapter 的內部派送策略；無效值會收斂到安全範圍。
+func (s *Service) ExecutionPolicy(id string) (ExecutionPolicy, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	worker, generator, err := s.executableWorker(id)
+	if err != nil {
+		return ExecutionPolicy{}, err
+	}
+	policy := DefaultExecutionPolicy
+	if provider, ok := generator.(ExecutionPolicyProvider); ok {
+		policy = provider.ExecutionPolicy(worker.Settings)
+	}
+	policy.MaxConcurrency = min(max(policy.MaxConcurrency, 1), 10)
+	if policy.LaunchInterval < 0 {
+		policy.LaunchInterval = 0
+	}
+	return policy, nil
+}
+
 // ValidateJob 套用 Worker schema 的預設值並拒絕未知或不合法欄位。
 func (s *Service) ValidateJob(id string, input map[string]any) (map[string]any, error) {
 	s.mu.Lock()
@@ -346,7 +369,7 @@ func (s *Service) Execute(ctx context.Context, id string, input map[string]any) 
 	result, err := generator.Generate(ctx, cloneMap(worker.Settings), secrets, validated, root)
 	if err != nil {
 		_ = os.RemoveAll(root)
-		return GenerateResult{}, err
+		return result, err
 	}
 	// 輸出目錄由 Writer 建立與回收，不信任 adapter 自行指定可遞迴刪除的路徑。
 	result.Root = root
@@ -368,8 +391,8 @@ func (s *Service) executableWorker(id string) (storedWorker, Generator, error) {
 		return storedWorker{}, nil, errors.New("這個 Worker 的 adapter 已不存在")
 	}
 	generator, ok := adapter.(Generator)
-	if !ok || !worker.Enabled || worker.Status != StatusOnline {
-		return storedWorker{}, nil, errors.New("這個 Worker 尚未啟用、連線或提供可執行的 Job schema")
+	if !ok || !worker.Enabled {
+		return storedWorker{}, nil, errors.New("這個 Worker 尚未啟用或沒有提供可執行的 Job schema")
 	}
 	return worker, generator, nil
 }

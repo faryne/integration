@@ -41,6 +41,10 @@ func (falAdapter) Descriptor() AdapterDescriptor {
 	}
 }
 
+func (falAdapter) Capabilities(map[string]string) []string {
+	return []string{"text_to_image", "batch_candidates"}
+}
+
 // Discover 查詢不存在的 request 驗證 key，不送出推論工作也不消耗額度。
 func (a falAdapter) Discover(ctx context.Context, _, secrets map[string]string) (Discovery, error) {
 	key := strings.TrimSpace(secrets["api_key"])
@@ -54,7 +58,7 @@ func (a falAdapter) Discover(ctx context.Context, _, secrets map[string]string) 
 	}
 	switch status {
 	case http.StatusOK, http.StatusNotFound:
-		return Discovery{Capabilities: []string{"text_to_image", "batch_candidates"}, Message: "fal API Key 驗證成功"}, nil
+		return Discovery{Capabilities: a.Capabilities(nil), Message: "fal API Key 驗證成功"}, nil
 	case http.StatusUnauthorized, http.StatusForbidden:
 		return Discovery{}, errors.New("fal API Key 無效或已被撤銷")
 	default:
@@ -114,20 +118,22 @@ func (a falAdapter) Generate(ctx context.Context, _ map[string]string, secrets m
 	if seed, ok := inputs["seed"].(float64); ok {
 		request["seed"] = int64(seed)
 	}
+	audit := auditRequest("fal", http.MethodPost, a.queueURL+"/"+model, request)
+	result = GenerateResult{Request: audit}
 	ctx, cancel := context.WithTimeout(ctx, falMaxWait)
 	defer cancel()
 	status, body, err := a.call(ctx, http.MethodPost, "/"+model, key, request)
 	if err != nil {
-		return GenerateResult{}, err
+		return result, err
 	}
 	if status < 200 || status >= 300 {
-		return GenerateResult{}, falError(status, body)
+		return result, falError(status, body)
 	}
 	var submitted struct {
 		RequestID string `json:"request_id"`
 	}
 	if json.Unmarshal(body, &submitted) != nil || submitted.RequestID == "" {
-		return GenerateResult{}, errors.New("fal 回傳無法解析的 request 資料")
+		return result, errors.New("fal 回傳無法解析的 request 資料")
 	}
 	requestPath := "/" + model + "/requests/" + submitted.RequestID
 	// Writer 中斷等待時同步要求 fal 取消；取消失敗不覆蓋原本的 context 錯誤。
@@ -140,23 +146,23 @@ func (a falAdapter) Generate(ctx context.Context, _ map[string]string, secrets m
 	for {
 		queue, queueErr := a.status(ctx, requestPath, key)
 		if queueErr != nil {
-			return GenerateResult{}, queueErr
+			return result, queueErr
 		}
 		switch queue.Status {
 		case "COMPLETED":
 			if len(queue.Error) > 0 && string(queue.Error) != "null" {
-				return GenerateResult{}, fmt.Errorf("fal 推論失敗%s：%s", falErrorType(queue.ErrorType), falErrorText(queue.Error))
+				return result, fmt.Errorf("fal 推論失敗%s：%s", falErrorType(queue.ErrorType), falErrorText(queue.Error))
 			}
 			goto completed
 		case "IN_QUEUE", "IN_PROGRESS":
 		case "FAILED", "CANCELLED":
-			return GenerateResult{}, fmt.Errorf("fal request %s 結束狀態為 %s", submitted.RequestID, queue.Status)
+			return result, fmt.Errorf("fal request %s 結束狀態為 %s", submitted.RequestID, queue.Status)
 		default:
-			return GenerateResult{}, fmt.Errorf("fal request %s 回傳未知狀態 %q", submitted.RequestID, queue.Status)
+			return result, fmt.Errorf("fal request %s 回傳未知狀態 %q", submitted.RequestID, queue.Status)
 		}
 		select {
 		case <-ctx.Done():
-			return GenerateResult{}, fmt.Errorf("已停止等待 fal request %s：%w", submitted.RequestID, ctx.Err())
+			return result, fmt.Errorf("已停止等待 fal request %s：%w", submitted.RequestID, ctx.Err())
 		case <-time.After(a.pollInterval):
 		}
 	}
@@ -164,20 +170,20 @@ func (a falAdapter) Generate(ctx context.Context, _ map[string]string, secrets m
 completed:
 	status, body, err = a.call(ctx, http.MethodGet, requestPath, key, nil)
 	if err != nil {
-		return GenerateResult{}, err
+		return result, err
 	}
 	if status < 200 || status >= 300 {
-		return GenerateResult{}, falError(status, body)
+		return result, falError(status, body)
 	}
 	var output falResult
 	if json.Unmarshal(body, &output) != nil || len(output.Images) == 0 {
-		return GenerateResult{}, fmt.Errorf("fal request %s 完成但沒有回傳圖片", submitted.RequestID)
+		return result, fmt.Errorf("fal request %s 完成但沒有回傳圖片", submitted.RequestID)
 	}
-	result = GenerateResult{Root: root, Artifacts: make([]GeneratedArtifact, 0, len(output.Images))}
+	result = GenerateResult{Root: root, Artifacts: make([]GeneratedArtifact, 0, len(output.Images)), Request: audit}
 	for index, image := range output.Images {
 		artifact, downloadErr := downloadImage(ctx, a.client, image.URL, filepath.Join(root, fmt.Sprintf("fal-candidate-%d", index+1)), falMaxDownload)
 		if downloadErr != nil {
-			return GenerateResult{}, fmt.Errorf("下載 fal 第 %d 張圖片失敗：%w", index+1, downloadErr)
+			return result, fmt.Errorf("下載 fal 第 %d 張圖片失敗：%w", index+1, downloadErr)
 		}
 		// fal metadata 尺寸可補足 WebP 無 decoder 的情況；實際內容格式仍以下載結果偵測。
 		if artifact.Width == 0 || artifact.Height == 0 {

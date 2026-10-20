@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 )
 
@@ -20,7 +21,7 @@ func TestMediaBriefRunsInBackgroundAndCanRetry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ConfigureMediaProposal("codex", "project", page.CurrentID, proposal.ID, "worker-2", map[string]any{"mode": "pro"}); err != nil {
+	if _, err := ConfigureMediaProposal("codex", "project", page.CurrentID, proposal.ID, "worker-2", map[string]any{"mode": "pro"}, 2); err != nil {
 		t.Fatal(err)
 	}
 	proposal, err = ProposalByID("codex", "project", page.CurrentID, proposal.ID)
@@ -30,14 +31,29 @@ func TestMediaBriefRunsInBackgroundAndCanRetry(t *testing.T) {
 	if proposal, err = DecideProposal("codex", "project", page.CurrentID, proposal.ID, ProposalDecisionApprove); err != nil {
 		t.Fatal(err)
 	}
+	chat, err := OpenChat("codex", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := chat.Messages[len(chat.Messages)-1].Text; got != "已核准執行：媒體生成〈角色圖〉，執行 2 次" {
+		t.Fatalf("approval text = %q", got)
+	}
 	events := make(chan TaskEvent, 50)
 	release := make(chan error)
 	manager := NewTaskManager(context.Background(), func(context.Context, string, Request) (Reply, error) {
 		return Reply{Text: "done"}, nil
 	}, func(event TaskEvent) { events <- event })
-	manager.SetProposalApplyRunner(func(_ context.Context, _ Proposal, item ProposalItem) (string, error) {
-		if item.JobInputs["mode"] == "pro" {
-			return "", <-release
+	manager.SetProposalApplyRunner(func(ctx context.Context, _ Proposal, item ProposalItem) (string, error) {
+		for run := 1; run <= item.ExecutionCount; run++ {
+			if err := ReportApplyItemProgress(ctx, EventApplyItemStarted, fmt.Sprintf("第 %d/%d 開始", run, item.ExecutionCount)); err != nil {
+				return "", err
+			}
+			if item.JobInputs["mode"] == "pro" && item.ExecutionCount == 2 {
+				return "", <-release
+			}
+			if err := ReportApplyItemProgress(ctx, EventApplyItemDone, fmt.Sprintf("第 %d/%d 完成", run, item.ExecutionCount)); err != nil {
+				return "", err
+			}
 		}
 		return "", nil
 	})
@@ -61,7 +77,7 @@ func TestMediaBriefRunsInBackgroundAndCanRetry(t *testing.T) {
 		t.Fatalf("failed proposal = %#v, err = %v", failed, err)
 	}
 
-	retried, err := RetryMediaProposal("codex", "project", page.CurrentID, proposal.ID, "worker-1", map[string]any{"mode": "standard"})
+	retried, err := RetryMediaProposal("codex", "project", page.CurrentID, proposal.ID, "worker-1", map[string]any{"mode": "standard"}, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,10 +87,28 @@ func TestMediaBriefRunsInBackgroundAndCanRetry(t *testing.T) {
 	}
 	waitTaskEvent(t, events, retryTask.ID, EventApplyCompleted)
 	applied, err := ProposalByID("codex", "project", page.CurrentID, proposal.ID)
-	if err != nil || applied.Status != ProposalApplied || applied.Items[0].JobInputs["mode"] != "standard" {
+	if err != nil || applied.Status != ProposalApplied || applied.Items[0].JobInputs["mode"] != "standard" || applied.Items[0].ExecutionCount != 3 {
 		t.Fatalf("retried proposal = %#v, err = %v", applied, err)
 	}
-	if _, err := RetryMediaProposal("codex", "project", page.CurrentID, proposal.ID, "worker-1", nil); err == nil {
+	if _, err := RetryMediaProposal("codex", "project", page.CurrentID, proposal.ID, "worker-1", nil, 1); err == nil {
 		t.Fatal("applied media proposal must not be retried")
+	}
+	chat, err = OpenChat("codex", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	progress := []string{}
+	for _, line := range chat.Messages {
+		if line.TaskID == retryTask.ID && (line.Type == EventApplyItemStarted || line.Type == EventApplyItemDone) {
+			progress = append(progress, line.Text)
+		}
+	}
+	want := []string{
+		"生成媒體「角色圖」……第 1/3 開始", "生成媒體「角色圖」……第 1/3 完成",
+		"生成媒體「角色圖」……第 2/3 開始", "生成媒體「角色圖」……第 2/3 完成",
+		"生成媒體「角色圖」……第 3/3 開始", "生成媒體「角色圖」……第 3/3 完成",
+	}
+	if fmt.Sprint(progress) != fmt.Sprint(want) {
+		t.Fatalf("media progress = %#v, want %#v", progress, want)
 	}
 }

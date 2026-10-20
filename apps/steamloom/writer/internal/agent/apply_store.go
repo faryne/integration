@@ -67,8 +67,8 @@ func recordApplyStarted(agentID, projectID, threadID, proposalID, taskID string)
 	return proposal, nil
 }
 
-func recordApplyCompleted(agentID, projectID, threadID, proposalID, taskID, reply string) (Proposal, error) {
-	return recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, ProposalApplied, TaskApplied, EventApplyCompleted, "Writer 已完成提案套用", reply)
+func recordApplyCompleted(agentID, projectID, threadID, proposalID, taskID, reply string, durationMS int64) (Proposal, error) {
+	return recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, ProposalApplied, TaskApplied, EventApplyCompleted, "Writer 已完成提案套用", "", reply, durationMS)
 }
 
 func recordApplyItem(agentID, projectID, threadID, proposalID, taskID, itemID, eventType, detail string) (Proposal, error) {
@@ -94,19 +94,25 @@ func recordApplyItem(agentID, projectID, threadID, proposalID, taskID, itemID, e
 	text := ProposalItemApplyLabel(item)
 	switch eventType {
 	case EventApplyItemStarted:
-		text += "……開始"
+		text += "……" + applyItemProgressDetail(detail, "開始")
 	case EventApplyItemDone:
-		text += "……完成"
+		text += "……" + applyItemProgressDetail(detail, "完成")
 	case EventApplyItemFailed:
-		text += "……失敗"
-		if detail != "" {
-			text += "：" + detail
+		if strings.HasPrefix(detail, "第 ") {
+			text += "……" + detail
+		} else {
+			text += "……失敗"
+			if detail != "" {
+				text += "：" + detail
+			}
 		}
 	default:
 		return Proposal{}, errors.New("不支援的單項套用事件")
 	}
 	event := taskEvent(eventType, taskID, text)
 	event.ProposalID, event.ItemID, event.ContentHash = proposal.ID, item.ID, item.ContentHash
+	setOperationMetadata(&event, item)
+	setProgressMetadata(&event, detail)
 	if err := appendLines(filepath.Join(dir, threadID+".jsonl"), []ChatLine{event}); err != nil {
 		return Proposal{}, err
 	}
@@ -116,6 +122,13 @@ func recordApplyItem(agentID, projectID, threadID, proposalID, taskID, itemID, e
 		return Proposal{}, err
 	}
 	return proposal, nil
+}
+
+func applyItemProgressDetail(detail, fallback string) string {
+	if detail != "" {
+		return detail
+	}
+	return fallback
 }
 
 // ProposalItemApplyLabel 回傳對作者可讀的具體操作，不把內部 event type 當 UI 文案。
@@ -134,6 +147,14 @@ func ProposalItemApplyLabel(item ProposalItem) string {
 	if verb := map[string]string{ProposalTypeDocumentCreate: "新增", ProposalTypeDocumentReplace: "更新", ProposalTypeDocumentPatch: "修改"}[item.ProposalType]; verb != "" {
 		action = verb + map[string]string{ProposalKindStory: "故事", ProposalKindLore: "設定"}[item.Kind]
 	}
+	title := proposalItemOperationTitle(item)
+	if title == "" {
+		return action
+	}
+	return fmt.Sprintf("%s「%s」", action, title)
+}
+
+func proposalItemOperationTitle(item ProposalItem) string {
 	title := item.Title
 	if item.ProposalType == ProposalTypeChapterAppend || item.ProposalType == ProposalTypeChapterReplace {
 		title = proposalChapterTitle(item.Content)
@@ -141,10 +162,7 @@ func ProposalItemApplyLabel(item ProposalItem) string {
 	if title == "" {
 		title = item.FileName
 	}
-	if title == "" {
-		return action
-	}
-	return fmt.Sprintf("%s「%s」", action, title)
+	return title
 }
 
 func proposalChapterTitle(content string) string {
@@ -161,20 +179,20 @@ func proposalChapterTitle(content string) string {
 	return strings.TrimSpace(line)
 }
 
-func recordApplyFailed(agentID, projectID, threadID, proposalID, taskID, detail, partial string) (Proposal, error) {
+func recordApplyFailed(agentID, projectID, threadID, proposalID, taskID, detail, partial string, durationMS int64) (Proposal, error) {
 	text := "Writer 套用提案失敗"
 	if detail != "" {
 		text += "：" + detail
 	}
-	return recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, ProposalApplyFailed, TaskFailed, EventApplyFailed, text, partial)
+	return recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, ProposalApplyFailed, TaskFailed, EventApplyFailed, text, detail, partial, durationMS)
 }
 
-func recordApplyConflict(agentID, projectID, threadID, proposalID, taskID, detail, partial string) (Proposal, error) {
+func recordApplyConflict(agentID, projectID, threadID, proposalID, taskID, detail, partial string, durationMS int64) (Proposal, error) {
 	text := "資料已在確認後變更，Writer 未覆寫新版本"
 	if detail != "" {
 		text += "：" + detail
 	}
-	return recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, ProposalConflict, TaskConflict, EventApplyConflict, text, partial)
+	return recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, ProposalConflict, TaskConflict, EventApplyConflict, text, detail, partial, durationMS)
 }
 
 // ConfirmProposalApplied 只在作者已自行確認 REST 寫入成功時修正本機狀態；不會再次送出 mutation。
@@ -209,7 +227,7 @@ func ConfirmProposalApplied(agentID, projectID, threadID, proposalID string) (Pr
 	return proposal, nil
 }
 
-func recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, proposalState, taskState, eventType, eventText, reply string) (Proposal, error) {
+func recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, proposalState, taskState, eventType, eventText, detail, reply string, durationMS int64) (Proposal, error) {
 	chatMu.Lock()
 	defer chatMu.Unlock()
 	dir, idx, thread, proposal, path, err := loadProposalForApply(agentID, projectID, threadID, proposalID)
@@ -228,6 +246,11 @@ func recordApplyOutcome(agentID, projectID, threadID, proposalID, taskID, propos
 		eventText = reply
 	}
 	event := taskEvent(eventType, taskID, eventText)
+	event.Detail = detail
+	event.DurationMS = durationMS
+	if eventType == EventApplyCompleted {
+		event.Count = len(proposal.ApplyItems())
+	}
 	event.ProposalID, event.ContentHash = proposal.ID, proposal.ContentHash
 	if err := appendLines(filepath.Join(dir, threadID+".jsonl"), []ChatLine{event}); err != nil {
 		return Proposal{}, err

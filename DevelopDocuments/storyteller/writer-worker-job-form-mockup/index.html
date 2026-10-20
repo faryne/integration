@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SteamLoom Writer · Worker 提案表單 Mockup</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <div><small>媒體提案</small><h1>林曉薇（妹妹）角色設定圖</h1></div>
+      <button class="close" aria-label="關閉">×</button>
+    </header>
+    <div class="notice">Agent 推薦 PixAI；送出前仍可調整 Worker 與生成參數。</div>
+    <section class="form">
+      <label><span>執行 Worker</span><select><option>PixAI（Agent 推薦）</option><option>本機 ComfyUI</option></select></label>
+      <label><span>執行次數</span><input id="runs" type="number" min="1" max="10" value="1" /><small>Writer 會依序送出；不要求 Agent 重做提案。</small></label>
+      <label><span>Prompt</span><textarea rows="4">masterpiece, character sheet, black hair, school uniform</textarea></label>
+      <label class="toggle"><input type="checkbox" /><i></i><span>PixAI Prompt 自動強化</span><small>預設關閉，開啟後 PixAI 可能改寫 Prompt。</small></label>
+      <label><span>模型</span><select><option>Moonbeam</option><option>Tsubaki.2</option></select></label>
+
+      <fieldset>
+        <legend>LoRA</legend>
+        <p>逐筆選擇 LoRA 與這次生成使用的權重；Worker 設定頁只管理常用清單。</p>
+        <div id="loraRows"></div>
+        <button class="secondary" id="addLora" type="button">＋ 增加 LoRA</button>
+      </fieldset>
+
+      <label><span>候選張數</span><select><option>4</option><option>1</option></select></label>
+      <div class="summary" id="summary">將執行 1 個 job，最多產生 4 張候選結果。</div>
+    </section>
+    <footer><button class="ghost">稍後確認</button><button class="danger">否決變更</button><button class="primary">由 Writer 執行</button></footer>
+  </main>
+  <template id="loraTemplate">
+    <div class="lora-row">
+      <select aria-label="LoRA"><option>Detail Tweaker</option><option>Soft Lighting</option><option>Character Style</option></select>
+      <label><span>權重</span><input type="number" min="0" max="1" step="0.05" value="0.7" /></label>
+      <button class="remove" type="button" aria-label="移除 LoRA">×</button>
+    </div>
+  </template>
+  <script src="app.js"></script>
+</body>
+</html>

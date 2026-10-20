@@ -347,13 +347,16 @@ func (a *App) DecideProposal(agentID, projectID, threadID, proposalID, decision 
 
 // DecideMediaProposal 先以 Worker schema 驗證作者調整的參數，再沿用一般 proposal apply lifecycle；
 // 生成失敗過的提案走重跑路徑，換上新參數後重新排入背景佇列。
-func (a *App) DecideMediaProposal(agentID, projectID, threadID, proposalID, workerID string, inputs map[string]any) (*agent.Proposal, error) {
+func (a *App) DecideMediaProposal(agentID, projectID, threadID, proposalID, workerID string, executionCount int, inputs map[string]any) (*agent.Proposal, error) {
 	proposal, err := agent.ProposalByID(agentID, projectID, threadID, proposalID)
 	if err != nil {
 		return nil, err
 	}
 	if !proposal.IsMediaBrief() {
 		return nil, errors.New("這批提案不是媒體生成需求")
+	}
+	if executionCount < 1 || executionCount > 10 {
+		return nil, errors.New("執行次數必須介於 1～10")
 	}
 	item := proposal.Items[0]
 	recommendedID := item.RecommendedWorkerID
@@ -379,7 +382,7 @@ func (a *App) DecideMediaProposal(agentID, projectID, threadID, proposalID, work
 		return nil, err
 	}
 	if proposal.Status == agent.ProposalApplyFailed {
-		retried, err := agent.RetryMediaProposal(agentID, projectID, threadID, proposalID, workerID, validated)
+		retried, err := agent.RetryMediaProposal(agentID, projectID, threadID, proposalID, workerID, validated, executionCount)
 		if err != nil {
 			return nil, err
 		}
@@ -388,7 +391,7 @@ func (a *App) DecideMediaProposal(agentID, projectID, threadID, proposalID, work
 		}
 		return &retried, nil
 	}
-	configured, err := agent.ConfigureMediaProposal(agentID, projectID, threadID, proposalID, workerID, validated)
+	configured, err := agent.ConfigureMediaProposal(agentID, projectID, threadID, proposalID, workerID, validated, executionCount)
 	if err != nil {
 		return nil, err
 	}

@@ -55,7 +55,7 @@ func recordTaskStarted(agentID, projectID, threadID, taskID string) error {
 	return recordTaskState(agentID, projectID, threadID, taskID, TaskRunning, taskEvent(EventTaskStarted, taskID, "Agent 已開始處理"))
 }
 
-func recordTaskCompleted(agentID, projectID, threadID, taskID string, reply Reply) error {
+func recordTaskCompleted(agentID, projectID, threadID, taskID string, reply Reply, durationMS int64) error {
 	chatMu.Lock()
 	defer chatMu.Unlock()
 	dir, idx, err := loadChat(agentID, projectID)
@@ -68,10 +68,9 @@ func recordTaskCompleted(agentID, projectID, threadID, taskID string, reply Repl
 	}
 	message := messageEvent("assistant", reply.Text)
 	message.TaskID = taskID
-	if err := appendLines(filepath.Join(dir, thread.ID+".jsonl"), []ChatLine{
-		message,
-		taskEvent(EventTaskCompleted, taskID, "Agent 已完成工作"),
-	}); err != nil {
+	completed := taskEvent(EventTaskCompleted, taskID, "Agent 已完成工作")
+	completed.DurationMS = durationMS
+	if err := appendLines(filepath.Join(dir, thread.ID+".jsonl"), []ChatLine{message, completed}); err != nil {
 		return err
 	}
 	thread.SessionID = reply.SessionID
@@ -83,7 +82,7 @@ func recordTaskCompleted(agentID, projectID, threadID, taskID string, reply Repl
 }
 
 // recordTaskStopped 保存失敗／停止事件；cause 用來決定失敗卡片要附哪一種修復指令，停止時傳 nil。
-func recordTaskStopped(agentID, projectID, threadID, taskID, state, partial string, cause error) error {
+func recordTaskStopped(agentID, projectID, threadID, taskID, state, partial string, cause error, durationMS int64) error {
 	detail := ""
 	if cause != nil {
 		detail = cause.Error()
@@ -97,6 +96,8 @@ func recordTaskStopped(agentID, projectID, threadID, taskID, state, partial stri
 		events = append(events, ChatLine{Type: EventMessagePartial, Role: "assistant", Text: partial, CreatedAt: now(), TaskID: taskID})
 	}
 	event := taskEvent(typeName, taskID, text)
+	event.Detail = detail
+	event.DurationMS = durationMS
 	event.Action, event.Commands = failureAction(agentID, cause)
 	events = append(events, event)
 	return recordTaskState(agentID, projectID, threadID, taskID, state, events...)

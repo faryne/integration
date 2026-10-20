@@ -54,6 +54,10 @@ func (stableDiffusionWebUIAdapter) Descriptor() AdapterDescriptor {
 	}
 }
 
+func (stableDiffusionWebUIAdapter) Capabilities(map[string]string) []string {
+	return []string{"text_to_image", "batch_candidates"}
+}
+
 func (a stableDiffusionWebUIAdapter) Discover(ctx context.Context, settings, secrets map[string]string) (Discovery, error) {
 	var options map[string]any
 	if err := a.get(ctx, settings, secrets, "/sdapi/v1/options", &options); err != nil {
@@ -71,7 +75,7 @@ func (a stableDiffusionWebUIAdapter) Discover(ctx context.Context, settings, sec
 		return Discovery{}, errors.New("已連上 Stable Diffusion WebUI，但找不到 Checkpoint 或 Sampler")
 	}
 	return Discovery{
-		Capabilities: []string{"text_to_image", "batch_candidates"},
+		Capabilities: a.Capabilities(settings),
 		Message:      fmt.Sprintf("已連上 Stable Diffusion WebUI（%d 個 Checkpoint、%d 個 Sampler）", len(models), len(samplers)),
 	}, nil
 }
@@ -109,18 +113,19 @@ func (a stableDiffusionWebUIAdapter) Generate(ctx context.Context, settings, sec
 		payload["override_settings"] = map[string]any{"sd_model_checkpoint": checkpoint}
 		payload["override_settings_restore_afterwards"] = true
 	}
+	audit := auditRequest("stable-diffusion-webui", http.MethodPost, strings.TrimRight(settings["endpoint"], "/")+"/sdapi/v1/txt2img", payload)
 	var response stableDiffusionWebUIResponse
 	if err := a.post(ctx, settings, secrets, "/sdapi/v1/txt2img", payload, &response); err != nil {
-		return GenerateResult{}, err
+		return GenerateResult{Request: audit}, err
 	}
 	if len(response.Images) == 0 {
-		return GenerateResult{}, errors.New("Stable Diffusion WebUI 沒有回傳圖片")
+		return GenerateResult{Request: audit}, errors.New("Stable Diffusion WebUI 沒有回傳圖片")
 	}
-	result := GenerateResult{Root: root, Artifacts: make([]GeneratedArtifact, 0, len(response.Images))}
+	result := GenerateResult{Root: root, Artifacts: make([]GeneratedArtifact, 0, len(response.Images)), Request: audit}
 	for index, encoded := range response.Images {
 		artifact, err := saveStableDiffusionImage(root, index, encoded, inputs)
 		if err != nil {
-			return GenerateResult{}, err
+			return GenerateResult{Request: audit}, err
 		}
 		result.Artifacts = append(result.Artifacts, artifact)
 	}

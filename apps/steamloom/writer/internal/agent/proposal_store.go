@@ -13,6 +13,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"faryne.dev/apps/steamloom/writer/internal/mediaworker"
 )
 
 // 與 SteamLoom asset upload API 同步，避免能 review 卻在 apply 時才被拒絕。
@@ -27,24 +29,28 @@ var proposalAssetExtensions = map[string]string{
 
 // SaveProposal 將 Agent 回傳的成果搬進 Writer 管理的本機目錄，再追加 proposal.ready event。
 func SaveProposal(agentID, projectID, threadID, taskID, assetRoot string, items []ProposalItem) (Proposal, error) {
-	return saveProposal(agentID, projectID, threadID, taskID, assetRoot, Reply{}, items, "")
+	return saveProposal(agentID, projectID, threadID, taskID, assetRoot, Reply{}, items, "", nil, 0)
 }
 
 // SaveGeneratedProposal 保存 Worker 的本機產物，轉成第二階段 asset.upload 確認，不會直接上傳。
-func SaveGeneratedProposal(agentID, projectID, threadID, taskID, assetRoot, workerName string, items []ProposalItem) (Proposal, error) {
+func SaveGeneratedProposal(agentID, projectID, threadID, taskID, assetRoot, workerName string, requests []*mediaworker.RequestAudit, completedRuns, requestedRuns int, warning string, items []ProposalItem) (Proposal, error) {
 	count := 0
 	for _, item := range items {
 		count += len(item.Artifacts)
 	}
-	return saveProposal(agentID, projectID, threadID, taskID, assetRoot, Reply{}, items, fmt.Sprintf("%s 已產生 %d 項媒體成果，等待確認上傳", workerName, count))
+	readyText := fmt.Sprintf("%s 已完成 %d/%d 次執行並產生 %d 項媒體成果，等待確認上傳", workerName, completedRuns, requestedRuns, count)
+	if warning != "" {
+		readyText += "；" + warning
+	}
+	return saveProposal(agentID, projectID, threadID, taskID, assetRoot, Reply{}, items, readyText, requests, 0)
 }
 
 // saveTaskProposal 在提案驗證成功後才把摘要、completed 與 proposal.ready 一起落盤。
-func saveTaskProposal(agentID, projectID, threadID, taskID, assetRoot string, reply Reply, items []ProposalItem) (Proposal, error) {
-	return saveProposal(agentID, projectID, threadID, taskID, assetRoot, reply, items, "")
+func saveTaskProposal(agentID, projectID, threadID, taskID, assetRoot string, reply Reply, items []ProposalItem, durationMS int64) (Proposal, error) {
+	return saveProposal(agentID, projectID, threadID, taskID, assetRoot, reply, items, "", nil, durationMS)
 }
 
-func saveProposal(agentID, projectID, threadID, taskID, assetRoot string, reply Reply, items []ProposalItem, readyText string) (Proposal, error) {
+func saveProposal(agentID, projectID, threadID, taskID, assetRoot string, reply Reply, items []ProposalItem, readyText string, workerRequests []*mediaworker.RequestAudit, durationMS int64) (Proposal, error) {
 	chatMu.Lock()
 	defer chatMu.Unlock()
 	dir, idx, err := loadChat(agentID, projectID)
@@ -104,10 +110,16 @@ func saveProposal(agentID, projectID, threadID, taskID, assetRoot string, reply 
 	if readyText != "" {
 		// Worker 細節只留在 append-only JSONL 供稽核，不在候選卡片暴露內部 ID。
 		event.WorkerID, event.ProviderJobIDs, event.ProviderModels = generatedProposalAudit(proposal)
+		event.WorkerRequests = workerRequests
 	}
 	events := make([]ChatLine, 0, 3)
 	if reply.Text != "" {
-		events = append(events, messageEvent("assistant", reply.Text), taskEvent(EventTaskCompleted, taskID, "Agent 已完成工作"))
+		events = append(events, messageEvent("assistant", reply.Text))
+	}
+	if reply.Text != "" || len(reply.proposals) > 0 {
+		completed := taskEvent(EventTaskCompleted, taskID, "Agent 已完成工作")
+		completed.DurationMS = durationMS
+		events = append(events, completed)
 	}
 	events = append(events, event)
 	if err := appendLines(filepath.Join(dir, thread.ID+".jsonl"), events); err != nil {
@@ -156,7 +168,7 @@ func sortedKeys(values map[string]bool) []string {
 }
 
 // ConfigureMediaProposal 保存作者在動態表單確認過的輸入，並重算授權用 hash。
-func ConfigureMediaProposal(agentID, projectID, threadID, proposalID, workerID string, inputs map[string]any) (Proposal, error) {
+func ConfigureMediaProposal(agentID, projectID, threadID, proposalID, workerID string, inputs map[string]any, executionCount int) (Proposal, error) {
 	chatMu.Lock()
 	defer chatMu.Unlock()
 	if !validThread(threadID) || !validThread(proposalID) {
@@ -184,7 +196,7 @@ func ConfigureMediaProposal(agentID, projectID, threadID, proposalID, workerID s
 	if _, decided := decisions[proposalID]; decided {
 		return Proposal{}, errors.New("這批提案已經完成決策")
 	}
-	proposal.Items[0].WorkerID, proposal.Items[0].JobInputs = workerID, inputs
+	proposal.Items[0].WorkerID, proposal.Items[0].JobInputs, proposal.Items[0].ExecutionCount = workerID, inputs, executionCount
 	if err := setProposalHashes(&proposal); err != nil {
 		return Proposal{}, err
 	}
@@ -196,7 +208,7 @@ func ConfigureMediaProposal(agentID, projectID, threadID, proposalID, workerID s
 
 // RetryMediaProposal 讓生成失敗的媒體提案換上新參數、回到 approved，再由 TaskManager 重新排入背景佇列。
 // 沿用原本的核准事件：作者按「重新生成」本身就是對新參數的確認。
-func RetryMediaProposal(agentID, projectID, threadID, proposalID, workerID string, inputs map[string]any) (Proposal, error) {
+func RetryMediaProposal(agentID, projectID, threadID, proposalID, workerID string, inputs map[string]any, executionCount int) (Proposal, error) {
 	chatMu.Lock()
 	defer chatMu.Unlock()
 	dir, _, _, proposal, path, err := loadProposalForApply(agentID, projectID, threadID, proposalID)
@@ -207,7 +219,7 @@ func RetryMediaProposal(agentID, projectID, threadID, proposalID, workerID strin
 	if !proposal.IsMediaBrief() || proposal.Status != ProposalApplyFailed || !found || lifecycle.status != ProposalApplyFailed {
 		return Proposal{}, errors.New("只有生成失敗的媒體需求可以重新生成")
 	}
-	proposal.Items[0].WorkerID, proposal.Items[0].JobInputs, proposal.Status, proposal.AppliedAt = workerID, inputs, ProposalApproved, ""
+	proposal.Items[0].WorkerID, proposal.Items[0].JobInputs, proposal.Items[0].ExecutionCount, proposal.Status, proposal.AppliedAt = workerID, inputs, executionCount, ProposalApproved, ""
 	if err := setProposalHashes(&proposal); err != nil {
 		return Proposal{}, err
 	}
@@ -533,6 +545,23 @@ func DecideProposal(agentID, projectID, threadID, proposalID, decision string, s
 	text := proposalDecisionText(proposal, decision)
 	event := taskEvent(eventType, proposal.TaskID, text)
 	event.ProposalID, event.ContentHash = proposal.ID, proposal.ContentHash
+	decisionItems := proposal.Items
+	if decision == ProposalDecisionApprove {
+		decisionItems = proposal.ApplyItems()
+	}
+	for _, item := range decisionItems {
+		operation := proposalEventOperation(item)
+		if decision == ProposalDecisionApprove && item.ProposalType == ProposalTypeMediaBrief {
+			operation.Count = max(item.ExecutionCount, 1)
+		} else if decision == ProposalDecisionApprove && item.ProposalType == ProposalTypeAssetUpload {
+			operation.Count = max(len(item.Artifacts), 1)
+		}
+		event.Operations = append(event.Operations, operation)
+	}
+	if len(event.Operations) == 1 {
+		operation := event.Operations[0]
+		event.OperationType, event.OperationKind, event.OperationTitle, event.Count = operation.ProposalType, operation.Kind, operation.Title, operation.Count
+	}
 	if err := appendLines(logPath, []ChatLine{event}); err != nil {
 		return Proposal{}, err
 	}
@@ -571,8 +600,32 @@ func proposalDecisionText(proposal Proposal, decision string) string {
 		action = "已否決"
 	} else if proposal.IsMediaBrief() {
 		action = "已核准執行"
+	} else if _, assetUpload := approvedAssetCount(proposal); assetUpload {
+		action = "已核准上傳資產"
 	}
-	return decisionStatusText(action, len(items), strings.Join(items, "、"))
+	text := decisionStatusText(action, len(items), strings.Join(items, "、"))
+	if decision == ProposalDecisionApprove && proposal.IsMediaBrief() {
+		return fmt.Sprintf("%s，執行 %d 次", text, max(proposal.ApplyItems()[0].ExecutionCount, 1))
+	}
+	if count, assetUpload := approvedAssetCount(proposal); decision == ProposalDecisionApprove && assetUpload {
+		return fmt.Sprintf("%s，共 %d 項", text, count)
+	}
+	return text
+}
+
+// approvedAssetCount 只辨識純資產上傳提案，並以作者實際勾選的候選結果計數。
+func approvedAssetCount(proposal Proposal) (int, bool) {
+	items, count := proposal.ApplyItems(), 0
+	if len(items) == 0 {
+		return 0, false
+	}
+	for _, item := range items {
+		if item.ProposalType != ProposalTypeAssetUpload {
+			return 0, false
+		}
+		count += max(len(item.Artifacts), 1)
+	}
+	return count, true
 }
 
 // decisionStatusText 把決策寫成狀態句（不是作者的發言）；多項時才標數量。

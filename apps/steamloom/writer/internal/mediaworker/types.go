@@ -51,18 +51,41 @@ type JobOption struct {
 	Label string `json:"label"`
 }
 
+// JobFieldCondition 讓共用動態表單依另一個欄位值顯示進階設定，不把 provider 規則寫死在前端。
+type JobFieldCondition struct {
+	Key    string   `json:"key"`
+	Values []string `json:"values"`
+}
+
+// JobItemNumber 宣告 repeatable select 每列附帶的數值欄位，例如 LoRA 權重。
+type JobItemNumber struct {
+	Label   string  `json:"label"`
+	Default float64 `json:"default"`
+	Min     float64 `json:"min"`
+	Max     float64 `json:"max"`
+	Step    float64 `json:"step"`
+}
+
+// JobWeightedSelection 是 weighted_select 正規化後的單列資料。
+type JobWeightedSelection struct {
+	Value  string  `json:"value"`
+	Weight float64 `json:"weight"`
+}
+
 // JobField 是 Worker discovery 回傳的動態表單欄位；Writer 依 schema 驗證後才執行。
 type JobField struct {
-	Key         string      `json:"key"`
-	Label       string      `json:"label"`
-	Kind        string      `json:"kind"`
-	Description string      `json:"description,omitempty"`
-	Required    bool        `json:"required"`
-	Default     any         `json:"default,omitempty"`
-	Min         *float64    `json:"min,omitempty"`
-	Max         *float64    `json:"max,omitempty"`
-	Step        *float64    `json:"step,omitempty"`
-	Options     []JobOption `json:"options,omitempty"`
+	Key         string             `json:"key"`
+	Label       string             `json:"label"`
+	Kind        string             `json:"kind"`
+	Description string             `json:"description,omitempty"`
+	Required    bool               `json:"required"`
+	Default     any                `json:"default,omitempty"`
+	Min         *float64           `json:"min,omitempty"`
+	Max         *float64           `json:"max,omitempty"`
+	Step        *float64           `json:"step,omitempty"`
+	Options     []JobOption        `json:"options,omitempty"`
+	VisibleWhen *JobFieldCondition `json:"visible_when,omitempty"`
+	ItemNumber  *JobItemNumber     `json:"item_number,omitempty"`
 }
 
 // JobSpec 是前端 render job 表單需要的安全資料，不含連線設定與密鑰。
@@ -89,6 +112,22 @@ type GeneratedArtifact struct {
 type GenerateResult struct {
 	Root      string
 	Artifacts []GeneratedArtifact
+	Request   *RequestAudit
+}
+
+// ExecutionPolicy 控制同一份媒體提案的錯峰派送；不暴露到提案表單，避免作者需要理解 provider 限流。
+type ExecutionPolicy struct {
+	LaunchInterval time.Duration
+	MaxConcurrency int
+}
+
+var DefaultExecutionPolicy = ExecutionPolicy{LaunchInterval: 2 * time.Second, MaxConcurrency: 2}
+
+// RequestAudit 保存實際送到 provider 的 method、endpoint 與 payload；認證 header 永遠不記錄。
+type RequestAudit struct {
+	Method   string         `json:"method"`
+	Endpoint string         `json:"endpoint"`
+	Payload  map[string]any `json:"payload,omitempty"`
 }
 
 func cloneAnyMap(input map[string]any) map[string]any {

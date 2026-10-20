@@ -49,10 +49,12 @@ func RecoverInterruptedApplies(projectID string, activeTaskIDs map[string]bool) 
 				}
 				// REST request 可能已抵達伺服器；Writer 重啟後不猜測結果也不自動重送。
 				event := taskEvent(EventApplyInterrupted, lifecycle.taskID, "Writer 在取得套用結果前中斷；不會自動重送，請先確認內容")
+				event.Action = ActionApplyInterrupted
 				proposal.Status, proposal.InterruptedAt, thread.LastTaskState = ProposalVerificationRequired, event.CreatedAt, TaskVerificationRequired
 				if proposal.IsMediaBrief() {
 					// 媒體生成沒有寫入 SteamLoom，不需要作者確認；直接視為失敗，讓作者調整參數重跑。
 					event = taskEvent(EventApplyFailed, lifecycle.taskID, "Writer 在 Worker 生成完成前中斷，可以調整參數重新生成（外部服務可能仍會完成並扣除額度）")
+					event.Action = ActionMediaInterrupted
 					proposal.Status, proposal.InterruptedAt, proposal.AppliedAt, thread.LastTaskState = ProposalApplyFailed, "", event.CreatedAt, TaskFailed
 				}
 				event.ProposalID, event.ContentHash = proposal.ID, proposal.ContentHash
