@@ -1,22 +1,3 @@
-export namespace appsettings {
-	export class Settings {
-	    language: string;
-	    storage_path: string;
-	    default_storage_path: string;
-
-	    static createFrom(source: any = {}) {
-	        return new Settings(source);
-	    }
-
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.language = source["language"];
-	        this.storage_path = source["storage_path"];
-	        this.default_storage_path = source["default_storage_path"];
-	    }
-	}
-}
-
 export namespace agent {
 	
 	export class EventOperation {
@@ -24,11 +5,11 @@ export namespace agent {
 	    kind?: string;
 	    title?: string;
 	    count?: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new EventOperation(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.proposal_type = source["proposal_type"];
@@ -269,6 +250,7 @@ export namespace agent {
 		    return a;
 		}
 	}
+	
 	
 	export class Installed {
 	    id: string;
@@ -1315,6 +1297,27 @@ export namespace api {
 
 }
 
+export namespace appsettings {
+	
+	export class Settings {
+	    language: string;
+	    storage_path: string;
+	    default_storage_path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Settings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.language = source["language"];
+	        this.storage_path = source["storage_path"];
+	        this.default_storage_path = source["default_storage_path"];
+	    }
+	}
+
+}
+
 export namespace main {
 	
 	export class LocalImage {
@@ -1474,11 +1477,11 @@ export namespace mediaworker {
 	    min: number;
 	    max: number;
 	    step: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new JobItemNumber(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.label = source["label"];
@@ -1491,11 +1494,11 @@ export namespace mediaworker {
 	export class JobFieldCondition {
 	    key: string;
 	    values: string[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new JobFieldCondition(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.key = source["key"];
@@ -1569,6 +1572,8 @@ export namespace mediaworker {
 		}
 	}
 	
+	
+	
 	export class JobSpec {
 	    worker_id: string;
 	    worker_name: string;
@@ -1607,11 +1612,11 @@ export namespace mediaworker {
 	    method: string;
 	    endpoint: string;
 	    payload?: Record<string, any>;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new RequestAudit(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.method = source["method"];
@@ -1730,3 +1735,4 @@ export namespace updater {
 	}
 
 }
+

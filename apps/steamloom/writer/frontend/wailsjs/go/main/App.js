@@ -202,12 +202,12 @@ export function ResolveWorkerCatalogItem(arg1, arg2, arg3) {
   return window['go']['main']['App']['ResolveWorkerCatalogItem'](arg1, arg2, arg3);
 }
 
-export function SaveDocument(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['SaveDocument'](arg1, arg2, arg3, arg4);
-}
-
 export function SaveApplicationSettings(arg1) {
   return window['go']['main']['App']['SaveApplicationSettings'](arg1);
+}
+
+export function SaveDocument(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SaveDocument'](arg1, arg2, arg3, arg4);
 }
 
 export function SaveWorker(arg1) {
