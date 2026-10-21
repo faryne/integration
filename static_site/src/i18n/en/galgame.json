@@ -1,25 +1,24 @@
 {
   "layout": {
     "nav": {
-      "allVideos": "All videos",
-      "recentVideos": "Latest",
       "brands": "Brands",
       "favorites": "Favorites",
       "submitChannel": "Add channel",
       "submitVideo": "Add video",
-      "admin": "Admin"
+      "admin": "Admin",
+      "submit": "Submit",
+      "videos": "Videos"
     },
     "search": {
-      "videos": "Videos",
-      "brands": "Brands",
-      "placeholder": "Search",
+      "placeholder": "Search videos or brands",
       "submit": "Search"
     },
     "auth": {
       "signedIn": "Signed in",
       "userAvatar": "User",
       "logout": "Sign out",
-      "login": "Sign in with Google"
+      "login": "Sign in with Google",
+      "menu": "Account menu"
     }
   },
   "breadcrumb": {
@@ -28,27 +27,22 @@
   },
   "home": {
     "pageTitle": "Galgame videos",
-    "heading": "Latest Galgame videos",
-    "subtitle": "The latest PVs, OPs, and related videos from official game brand channels.",
-    "tabs": {
-      "ariaLabel": "Video time range",
-      "all": "All videos",
-      "recent": "Released in the last 24 hours",
-      "brands": "Brands"
-    },
-    "brands": {
-      "loading": "Loading brands...",
-      "error": "Couldn't load brands. Please try again later.",
-      "notFound": "No brands match your search.",
-      "empty": "No brands yet.",
-      "favorited": "Favorite brand"
-    },
     "videos": {
       "loading": "Loading videos...",
       "error": "Couldn't load videos. Please try again later.",
       "notFound": "No videos match your search.",
-      "empty": "No videos yet."
-    }
+      "empty": "No videos yet.",
+      "emptyInRange": "No new videos in this period."
+    },
+    "searchPageTitle": "Search: {{keyword}}",
+    "searchCrumb": "Search: {{keyword}}",
+    "searchHeading": "Results for “{{keyword}}”",
+    "matchedBrands": "Brands · {{count}}",
+    "matchedVideos": "Videos · {{count}}",
+    "recentBrands": "Brands with new videos",
+    "allBrands": "All brands",
+    "recentBrandCaption": "New: {{count}}",
+    "latestVideos": "Latest videos"
   },
   "videoCard": {
     "favorite": "Add to favorites",
@@ -84,14 +78,12 @@
     "pageTitleFallback": "Brand videos",
     "loading": "Loading brand...",
     "error": "Couldn't load this brand. Please try again later.",
-    "tabs": {
-      "ariaLabel": "Brand video categories",
-      "all": "All videos",
-      "recent": "Latest releases"
-    },
     "videosLoading": "Loading brand videos...",
     "videosError": "Couldn't load videos. Please try again later.",
-    "videosEmpty": "This brand has no videos yet."
+    "videosEmpty": "This brand has no videos yet.",
+    "stats": "Indexed videos: {{count}} · Latest: {{date}}",
+    "videosHeading": "Videos",
+    "videosEmptyInRange": "No new videos in this period."
   },
   "video": {
     "pageTitleFallback": "Galgame video",
@@ -105,7 +97,12 @@
     "noNext": "No next video",
     "description": "Description",
     "noDescription": "This video has no description.",
-    "related": "Related videos"
+    "info": {
+      "brand": "Brand",
+      "published": "Released",
+      "tags": "Tags"
+    },
+    "watchOnYouTube": "Watch on YouTube"
   },
   "favorites": {
     "pageTitle": "Favorites",
@@ -128,7 +125,8 @@
     "heading": "Related videos",
     "loading": "Loading related videos...",
     "error": "Couldn't load related videos.",
-    "empty": "No related videos yet."
+    "empty": "No related videos yet.",
+    "sameWork": "More from this title"
   },
   "submitBrand": {
     "pageTitle": "Add Galgame channels",
@@ -228,5 +226,19 @@
       "enabled": "Enabled",
       "disabled": "Disabled"
     }
+  },
+  "brands": {
+    "pageTitle": "Brands",
+    "heading": "Brands",
+    "loading": "Loading brands...",
+    "error": "Couldn't load brands. Please try again later.",
+    "empty": "No brands yet.",
+    "favorited": "Favorite brand"
+  },
+  "timeFilter": {
+    "ariaLabel": "Release date",
+    "all": "All",
+    "7d": "Last 7 days",
+    "30d": "Last 30 days"
   }
 }

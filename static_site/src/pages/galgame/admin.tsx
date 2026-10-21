@@ -37,6 +37,7 @@ import {
   useUpdateGalgameVideoTitleKeyword,
 } from "@/apis/galgame/catalog.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { GalgamePageHeader } from "@/components/galgame/GalgamePageHeader.tsx";
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 
@@ -143,21 +144,22 @@ export default function GalgameAdmin() {
     return <GalgameState loading message={t("galgame.authGate.checking")} />;
   }
   if (!session?.user.is_admin) {
-    return <GalgameState message={t("galgame.admin.noPermission")} />;
+    return (
+      <>
+        <GalgamePageHeader current={t("galgame.admin.heading")} />
+        <GalgameState message={t("galgame.admin.noPermission")} />
+      </>
+    );
   }
 
   return (
     <Box sx={{ pb: 6 }}>
+      <GalgamePageHeader
+        current={t("galgame.admin.heading")}
+        title={t("galgame.admin.heading")}
+        subtitle={t("galgame.admin.subtitle")}
+      />
       <Stack spacing={4}>
-        <Box>
-          <Typography variant="h3" component="h1">
-            {t("galgame.admin.heading")}
-          </Typography>
-          <Typography color="text.secondary">
-            {t("galgame.admin.subtitle")}
-          </Typography>
-        </Box>
-
         <Tabs
           value={adminTab}
           onChange={(_, value: AdminTab) => setAdminTab(value)}

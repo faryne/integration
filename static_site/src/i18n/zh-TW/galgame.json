@@ -1,25 +1,24 @@
 {
   "layout": {
     "nav": {
-      "allVideos": "全部影片",
-      "recentVideos": "最新影片",
       "brands": "品牌",
       "favorites": "我的最愛",
       "submitChannel": "追加頻道",
       "submitVideo": "追加影片",
-      "admin": "管理"
+      "admin": "管理",
+      "submit": "投稿",
+      "videos": "影片"
     },
     "search": {
-      "videos": "影片",
-      "brands": "品牌",
-      "placeholder": "搜尋",
+      "placeholder": "搜尋影片或品牌",
       "submit": "搜尋"
     },
     "auth": {
       "signedIn": "已登入",
       "userAvatar": "使用者",
       "logout": "登出",
-      "login": "使用 Google 登入"
+      "login": "使用 Google 登入",
+      "menu": "帳號選單"
     }
   },
   "breadcrumb": {
@@ -28,27 +27,22 @@
   },
   "home": {
     "pageTitle": "Galgame 影片",
-    "heading": "Galgame 最新影片",
-    "subtitle": "各遊戲品牌官方頻道的最新 PV、OP 與相關影片。",
-    "tabs": {
-      "ariaLabel": "影片時間範圍",
-      "all": "所有影片",
-      "recent": "最近一天內上檔影片",
-      "brands": "品牌列表"
-    },
-    "brands": {
-      "loading": "正在載入品牌...",
-      "error": "品牌載入失敗，請稍後再試。",
-      "notFound": "找不到符合搜尋條件的品牌。",
-      "empty": "目前尚無品牌資料。",
-      "favorited": "已收藏品牌"
-    },
     "videos": {
       "loading": "正在載入影片...",
       "error": "影片載入失敗，請稍後再試。",
       "notFound": "找不到符合搜尋條件的影片。",
-      "empty": "目前尚無影片資料。"
-    }
+      "empty": "目前尚無影片資料。",
+      "emptyInRange": "這段期間沒有新影片。"
+    },
+    "searchPageTitle": "搜尋「{{keyword}}」",
+    "searchCrumb": "搜尋「{{keyword}}」",
+    "searchHeading": "「{{keyword}}」的搜尋結果",
+    "matchedBrands": "品牌 · {{count}}",
+    "matchedVideos": "影片 · {{count}}",
+    "recentBrands": "近期有新片的品牌",
+    "allBrands": "查看全部品牌",
+    "recentBrandCaption": "{{count}} 部新片",
+    "latestVideos": "最新影片"
   },
   "videoCard": {
     "favorite": "收藏影片",
@@ -84,14 +78,12 @@
     "pageTitleFallback": "品牌影片",
     "loading": "正在載入品牌資料...",
     "error": "品牌資料載入失敗，請稍後再試。",
-    "tabs": {
-      "ariaLabel": "品牌影片分類",
-      "all": "所有影片",
-      "recent": "最新上檔影片"
-    },
     "videosLoading": "正在載入品牌影片...",
     "videosError": "影片載入失敗，請稍後再試。",
-    "videosEmpty": "此品牌目前尚無影片。"
+    "videosEmpty": "此品牌目前尚無影片。",
+    "stats": "收錄 {{count}} 部影片 · 最新上檔 {{date}}",
+    "videosHeading": "影片",
+    "videosEmptyInRange": "這段期間沒有新影片。"
   },
   "video": {
     "pageTitleFallback": "Galgame 影片",
@@ -105,7 +97,12 @@
     "noNext": "沒有下一則影片",
     "description": "影片介紹",
     "noDescription": "此影片沒有介紹。",
-    "related": "相關影片"
+    "info": {
+      "brand": "品牌",
+      "published": "發佈",
+      "tags": "標籤"
+    },
+    "watchOnYouTube": "在 YouTube 觀看"
   },
   "favorites": {
     "pageTitle": "我的最愛",
@@ -128,7 +125,8 @@
     "heading": "相關影片",
     "loading": "正在載入相關影片...",
     "error": "相關影片載入失敗。",
-    "empty": "目前沒有相關影片。"
+    "empty": "目前沒有相關影片。",
+    "sameWork": "同一作品的其他影片"
   },
   "submitBrand": {
     "pageTitle": "追加 Galgame 頻道",
@@ -228,5 +226,19 @@
       "enabled": "啟用",
       "disabled": "停用"
     }
+  },
+  "brands": {
+    "pageTitle": "品牌列表",
+    "heading": "品牌",
+    "loading": "正在載入品牌...",
+    "error": "品牌載入失敗，請稍後再試。",
+    "empty": "目前尚無品牌資料。",
+    "favorited": "已收藏品牌"
+  },
+  "timeFilter": {
+    "ariaLabel": "上檔時間",
+    "all": "全部",
+    "7d": "7 天內",
+    "30d": "30 天內"
   }
 }

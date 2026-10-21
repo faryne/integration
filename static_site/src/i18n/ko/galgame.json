@@ -1,25 +1,24 @@
 {
   "layout": {
     "nav": {
-      "allVideos": "전체 영상",
-      "recentVideos": "최신 영상",
       "brands": "브랜드",
       "favorites": "즐겨찾기",
       "submitChannel": "채널 추가",
       "submitVideo": "영상 추가",
-      "admin": "관리"
+      "admin": "관리",
+      "submit": "제출",
+      "videos": "영상"
     },
     "search": {
-      "videos": "영상",
-      "brands": "브랜드",
-      "placeholder": "검색",
+      "placeholder": "영상 또는 브랜드 검색",
       "submit": "검색"
     },
     "auth": {
       "signedIn": "로그인됨",
       "userAvatar": "사용자",
       "logout": "로그아웃",
-      "login": "Google로 로그인"
+      "login": "Google로 로그인",
+      "menu": "계정 메뉴"
     }
   },
   "breadcrumb": {
@@ -28,27 +27,22 @@
   },
   "home": {
     "pageTitle": "미연시 영상",
-    "heading": "미연시 최신 영상",
-    "subtitle": "각 게임 브랜드 공식 채널의 최신 PV, OP 및 관련 영상을 모았습니다.",
-    "tabs": {
-      "ariaLabel": "영상 공개 기간",
-      "all": "전체 영상",
-      "recent": "최근 24시간 내 공개된 영상",
-      "brands": "브랜드 목록"
-    },
-    "brands": {
-      "loading": "브랜드를 불러오는 중...",
-      "error": "브랜드를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
-      "notFound": "검색 조건에 맞는 브랜드가 없습니다.",
-      "empty": "아직 등록된 브랜드가 없습니다.",
-      "favorited": "즐겨찾기한 브랜드"
-    },
     "videos": {
       "loading": "영상을 불러오는 중...",
       "error": "영상을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "notFound": "검색 조건에 맞는 영상이 없습니다.",
-      "empty": "아직 등록된 영상이 없습니다."
-    }
+      "empty": "아직 등록된 영상이 없습니다.",
+      "emptyInRange": "이 기간에 새 영상이 없습니다."
+    },
+    "searchPageTitle": "“{{keyword}}” 검색",
+    "searchCrumb": "“{{keyword}}” 검색",
+    "searchHeading": "“{{keyword}}” 검색 결과",
+    "matchedBrands": "브랜드 · {{count}}",
+    "matchedVideos": "영상 · {{count}}",
+    "recentBrands": "새 영상이 올라온 브랜드",
+    "allBrands": "전체 브랜드",
+    "recentBrandCaption": "새 영상 {{count}}개",
+    "latestVideos": "최신 영상"
   },
   "videoCard": {
     "favorite": "즐겨찾기에 추가",
@@ -84,14 +78,12 @@
     "pageTitleFallback": "브랜드 영상",
     "loading": "브랜드 정보를 불러오는 중...",
     "error": "브랜드 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
-    "tabs": {
-      "ariaLabel": "브랜드 영상 분류",
-      "all": "전체 영상",
-      "recent": "최신 공개 영상"
-    },
     "videosLoading": "브랜드 영상을 불러오는 중...",
     "videosError": "영상을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
-    "videosEmpty": "이 브랜드에는 아직 영상이 없습니다."
+    "videosEmpty": "이 브랜드에는 아직 영상이 없습니다.",
+    "stats": "수록 영상 {{count}}개 · 최신 {{date}}",
+    "videosHeading": "영상",
+    "videosEmptyInRange": "이 기간에 새 영상이 없습니다."
   },
   "video": {
     "pageTitleFallback": "미연시 영상",
@@ -105,7 +97,12 @@
     "noNext": "다음 영상이 없습니다",
     "description": "영상 소개",
     "noDescription": "이 영상에는 소개가 없습니다.",
-    "related": "관련 영상"
+    "info": {
+      "brand": "브랜드",
+      "published": "공개일",
+      "tags": "태그"
+    },
+    "watchOnYouTube": "YouTube에서 보기"
   },
   "favorites": {
     "pageTitle": "즐겨찾기",
@@ -128,7 +125,8 @@
     "heading": "관련 영상",
     "loading": "관련 영상을 불러오는 중...",
     "error": "관련 영상을 불러오지 못했습니다.",
-    "empty": "관련 영상이 없습니다."
+    "empty": "관련 영상이 없습니다.",
+    "sameWork": "같은 작품의 다른 영상"
   },
   "submitBrand": {
     "pageTitle": "미연시 채널 추가",
@@ -228,5 +226,19 @@
       "enabled": "사용 중",
       "disabled": "사용 안 함"
     }
+  },
+  "brands": {
+    "pageTitle": "브랜드 목록",
+    "heading": "브랜드",
+    "loading": "브랜드를 불러오는 중...",
+    "error": "브랜드를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "empty": "아직 등록된 브랜드가 없습니다.",
+    "favorited": "즐겨찾기한 브랜드"
+  },
+  "timeFilter": {
+    "ariaLabel": "공개 기간",
+    "all": "전체",
+    "7d": "최근 7일",
+    "30d": "최근 30일"
   }
 }

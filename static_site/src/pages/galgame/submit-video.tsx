@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 
 import { useSubmitGalgameVideos } from "@/apis/galgame/catalog.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { GalgamePageHeader } from "@/components/galgame/GalgamePageHeader.tsx";
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 
@@ -44,16 +45,12 @@ export default function GalgameSubmitVideo() {
 
   return (
     <Box sx={{ pb: 6 }}>
+      <GalgamePageHeader
+        current={t("galgame.submitVideo.heading")}
+        title={t("galgame.submitVideo.heading")}
+        subtitle={t("galgame.submitVideo.hint")}
+      />
       <Stack spacing={3}>
-        <Box>
-          <Typography variant="h3" component="h1">
-            {t("galgame.submitVideo.heading")}
-          </Typography>
-          <Typography color="text.secondary">
-            {t("galgame.submitVideo.hint")}
-          </Typography>
-        </Box>
-
         <Card variant="outlined">
           <CardContent>
             <Stack spacing={2}>

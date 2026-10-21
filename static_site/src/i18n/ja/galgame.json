@@ -1,25 +1,24 @@
 {
   "layout": {
     "nav": {
-      "allVideos": "動画一覧",
-      "recentVideos": "新着動画",
       "brands": "ブランド",
       "favorites": "お気に入り",
       "submitChannel": "チャンネル追加",
       "submitVideo": "動画追加",
-      "admin": "管理"
+      "admin": "管理",
+      "submit": "投稿",
+      "videos": "動画"
     },
     "search": {
-      "videos": "動画",
-      "brands": "ブランド",
-      "placeholder": "検索",
+      "placeholder": "動画・ブランドを検索",
       "submit": "検索"
     },
     "auth": {
       "signedIn": "ログイン中",
       "userAvatar": "ユーザー",
       "logout": "ログアウト",
-      "login": "Google でログイン"
+      "login": "Google でログイン",
+      "menu": "アカウントメニュー"
     }
   },
   "breadcrumb": {
@@ -28,27 +27,22 @@
   },
   "home": {
     "pageTitle": "ギャルゲー動画",
-    "heading": "ギャルゲー新着動画",
-    "subtitle": "各ゲームブランド公式チャンネルの最新 PV・OP・関連動画をまとめています。",
-    "tabs": {
-      "ariaLabel": "動画の公開期間",
-      "all": "すべての動画",
-      "recent": "24時間以内に公開された動画",
-      "brands": "ブランド一覧"
-    },
-    "brands": {
-      "loading": "ブランドを読み込み中...",
-      "error": "ブランドを読み込めませんでした。しばらくしてから再度お試しください。",
-      "notFound": "検索条件に一致するブランドが見つかりません。",
-      "empty": "ブランドはまだ登録されていません。",
-      "favorited": "お気に入りのブランド"
-    },
     "videos": {
       "loading": "動画を読み込み中...",
       "error": "動画を読み込めませんでした。しばらくしてから再度お試しください。",
       "notFound": "検索条件に一致する動画が見つかりません。",
-      "empty": "動画はまだ登録されていません。"
-    }
+      "empty": "動画はまだ登録されていません。",
+      "emptyInRange": "この期間の新着動画はありません。"
+    },
+    "searchPageTitle": "「{{keyword}}」の検索",
+    "searchCrumb": "「{{keyword}}」の検索",
+    "searchHeading": "「{{keyword}}」の検索結果",
+    "matchedBrands": "ブランド · {{count}}",
+    "matchedVideos": "動画 · {{count}}",
+    "recentBrands": "新着動画のあるブランド",
+    "allBrands": "すべてのブランド",
+    "recentBrandCaption": "新着 {{count}} 本",
+    "latestVideos": "新着動画"
   },
   "videoCard": {
     "favorite": "お気に入りに追加",
@@ -84,14 +78,12 @@
     "pageTitleFallback": "ブランドの動画",
     "loading": "ブランド情報を読み込み中...",
     "error": "ブランド情報を読み込めませんでした。しばらくしてから再度お試しください。",
-    "tabs": {
-      "ariaLabel": "ブランド動画の分類",
-      "all": "すべての動画",
-      "recent": "新着動画"
-    },
     "videosLoading": "ブランドの動画を読み込み中...",
     "videosError": "動画を読み込めませんでした。しばらくしてから再度お試しください。",
-    "videosEmpty": "このブランドの動画はまだありません。"
+    "videosEmpty": "このブランドの動画はまだありません。",
+    "stats": "収録 {{count}} 本 · 最新 {{date}}",
+    "videosHeading": "動画",
+    "videosEmptyInRange": "この期間の新着動画はありません。"
   },
   "video": {
     "pageTitleFallback": "ギャルゲー動画",
@@ -105,7 +97,12 @@
     "noNext": "次の動画はありません",
     "description": "動画の説明",
     "noDescription": "この動画には説明がありません。",
-    "related": "関連動画"
+    "info": {
+      "brand": "ブランド",
+      "published": "公開日",
+      "tags": "タグ"
+    },
+    "watchOnYouTube": "YouTube で見る"
   },
   "favorites": {
     "pageTitle": "お気に入り",
@@ -128,7 +125,8 @@
     "heading": "関連動画",
     "loading": "関連動画を読み込み中...",
     "error": "関連動画を読み込めませんでした。",
-    "empty": "関連動画はまだありません。"
+    "empty": "関連動画はまだありません。",
+    "sameWork": "同じ作品の動画"
   },
   "submitBrand": {
     "pageTitle": "ギャルゲーチャンネルを追加",
@@ -228,5 +226,19 @@
       "enabled": "有効",
       "disabled": "無効"
     }
+  },
+  "brands": {
+    "pageTitle": "ブランド一覧",
+    "heading": "ブランド",
+    "loading": "ブランドを読み込み中...",
+    "error": "ブランドを読み込めませんでした。しばらくしてから再度お試しください。",
+    "empty": "ブランドはまだ登録されていません。",
+    "favorited": "お気に入りのブランド"
+  },
+  "timeFilter": {
+    "ariaLabel": "公開日",
+    "all": "すべて",
+    "7d": "7日以内",
+    "30d": "30日以内"
   }
 }

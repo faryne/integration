@@ -23,6 +23,7 @@ import {
   useFavoriteGalgameVideos,
 } from "@/apis/galgame/catalog.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { GalgamePageHeader } from "@/components/galgame/GalgamePageHeader.tsx";
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { GalgameVideoCard } from "@/components/galgame/GalgameVideoCard.tsx";
 import { galgameBrandSlug, galgamePath } from "@/helpers/galgame.ts";
@@ -54,6 +55,7 @@ export default function GalgameFavorites() {
   if (!session) {
     return (
       <Stack spacing={2} alignItems="flex-start">
+        <GalgamePageHeader current={t("galgame.favorites.heading")} />
         <GalgameState message={t("galgame.favorites.loginPrompt")} />
         <Button
           variant="contained"
@@ -70,13 +72,11 @@ export default function GalgameFavorites() {
 
   return (
     <Box sx={{ pb: 6 }}>
+      <GalgamePageHeader
+        current={t("galgame.favorites.heading")}
+        title={t("galgame.favorites.heading")}
+      />
       <Stack spacing={3}>
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <StarIcon color="warning" />
-          <Typography variant="h3" component="h1">
-            {t("galgame.favorites.heading")}
-          </Typography>
-        </Stack>
         <Tabs
           value={tab}
           onChange={(_, value: "videos" | "brands") =>
@@ -115,7 +115,7 @@ export default function GalgameFavorites() {
                       }
                       to={
                         brand.latest_video_count > 0 && !brand.deleted_at
-                          ? `${galgamePath(galgameBrandSlug(brand.public_id, brand.name))}?tab=recent`
+                          ? `${galgamePath(galgameBrandSlug(brand.public_id, brand.name))}?time=7d`
                           : undefined
                       }
                       disabled={

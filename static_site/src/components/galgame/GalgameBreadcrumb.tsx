@@ -3,16 +3,20 @@ import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import { galgameBrandSlug, galgamePath } from "@/helpers/galgame.ts";
 
-interface Props {
+export interface GalgameBreadcrumbProps {
   brand?: { public_id: string; name: string };
   current?: string;
   videoTitle?: string;
 }
 
-export function GalgameBreadcrumb({ brand, current, videoTitle }: Props) {
+export function GalgameBreadcrumb({
+  brand,
+  current,
+  videoTitle,
+}: GalgameBreadcrumbProps) {
   const { t } = useTranslation();
   return (
-    <Breadcrumbs aria-label={t("galgame.breadcrumb.ariaLabel")} sx={{ mb: 3 }}>
+    <Breadcrumbs aria-label={t("galgame.breadcrumb.ariaLabel")} sx={{ mb: 2 }}>
       {brand || current || videoTitle ? (
         <Link component={RouterLink} to={galgamePath()} underline="hover">
           {t("galgame.breadcrumb.home")}

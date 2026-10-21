@@ -1,20 +1,16 @@
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import {
   Avatar,
   Box,
   Button,
   Grid,
-  Pagination,
   Paper,
   Stack,
-  Tab,
-  Tabs,
   Typography,
 } from "@mui/material";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import { useMemo, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import axios from "axios";
+import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import {
   useGalgameBrand,
@@ -22,45 +18,45 @@ import {
   useGalgameFavoriteStatus,
   useGalgameVideos,
 } from "@/apis/galgame/catalog.ts";
-import { GalgameBreadcrumb } from "@/components/galgame/GalgameBreadcrumb.tsx";
-import { FavoriteButton } from "@/components/galgame/FavoriteButton.tsx";
-import { GalgameVideoCard } from "@/components/galgame/GalgameVideoCard.tsx";
-import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { ExpandableText } from "@/components/common/ExpandableText.tsx";
-import { useTitle } from "@/helpers/title.tsx";
+import { FavoriteButton } from "@/components/galgame/FavoriteButton.tsx";
+import { GalgameBreadcrumb } from "@/components/galgame/GalgameBreadcrumb.tsx";
+import { GalgamePagination } from "@/components/galgame/GalgamePagination.tsx";
+import { GalgameState } from "@/components/galgame/GalgameState.tsx";
+import { GalgameTimeFilterChips } from "@/components/galgame/GalgameTimeFilterChips.tsx";
+import { GalgameVideoCard } from "@/components/galgame/GalgameVideoCard.tsx";
 import { galgamePath } from "@/helpers/galgame.ts";
+import {
+  useGalgamePage,
+  useGalgameTimeFilter,
+} from "@/helpers/galgameTimeFilter.ts";
+import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 
+const perPage = 24;
+
+/** 品牌頁：頁首（頭像、收錄數、最新上檔、介紹、連結、收藏）＋時間篩選＋影片列表 */
 export default function GalgameBrand() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { brandSlug } = useParams();
-  const [params, setParams] = useSearchParams();
-  const tab = params.get("tab") === "recent" ? "recent" : "all";
-  const page = Math.max(1, Number(params.get("page")) || 1);
+  const { time, publishedAtFrom, setTime } = useGalgameTimeFilter();
+  const { page } = useGalgamePage();
   const brandQuery = useGalgameBrand(brandSlug);
   const favorite = useGalgameBrandFavorite(brandSlug);
   const brand = brandQuery.data;
-  const [recentFrom] = useState(() =>
-    new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  );
   const videos = useGalgameVideos(brandSlug, {
     page,
-    per_page: 24,
-    published_at_from: tab === "recent" ? recentFrom : undefined,
+    per_page: perPage,
+    published_at_from: publishedAtFrom,
   });
+  // 頁首統計不受時間篩選影響：另抓 1 筆拿總收錄數與最新上檔日期（galgame.tv 自己的數字，不用 YouTube 頻道數據）
+  const summary = useGalgameVideos(brandSlug, { page: 1, per_page: 1 });
+  const latestVideo = summary.data?.data[0];
   const videoFavoriteStatus = useGalgameFavoriteStatus(
     [],
     videos.data?.data.map((video) => video.id) ?? [],
   );
   const favoriteVideoIDs = new Set(videoFavoriteStatus.data?.video_ids ?? []);
-  const pages = useMemo(
-    () =>
-      Math.max(
-        1,
-        Math.ceil((videos.data?.total ?? 0) / (videos.data?.per_page || 24)),
-      ),
-    [videos.data],
-  );
   useTitle(
     brand
       ? t("galgame.brand.pageTitle", { name: brand.name })
@@ -72,39 +68,63 @@ export default function GalgameBrand() {
     axios.isAxiosError(brandQuery.error) &&
     brandQuery.error.response?.status === 404
   ) {
-    return <ErrorPage code={404} backUrl={`${galgamePath()}?tab=brands`} />;
+    return <ErrorPage code={404} backUrl={galgamePath("brands")} />;
   }
 
   return (
-    <Box sx={{ pb: 6 }}>
+    <Stack sx={{ pb: 6 }}>
       <GalgameBreadcrumb brand={brand} />
-      <Stack spacing={3}>
-        {brandQuery.isPending ? (
-          <GalgameState loading message={t("galgame.brand.loading")} />
-        ) : brandQuery.isError ? (
-          <GalgameState severity="error" message={t("galgame.brand.error")} />
-        ) : brand ? (
-          <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+      {brandQuery.isPending ? (
+        <GalgameState loading message={t("galgame.brand.loading")} />
+      ) : brandQuery.isError || !brand ? (
+        <GalgameState severity="error" message={t("galgame.brand.error")} />
+      ) : (
+        <>
+          <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, mb: 4 }}>
             <Stack
-              direction={{ xs: "column", md: "row" }}
-              spacing={3}
-              alignItems={{ xs: "center", md: "flex-start" }}
+              direction={{ xs: "column", sm: "row" }}
+              spacing={{ xs: 2, sm: 3 }}
+              alignItems={{ xs: "center", sm: "flex-start" }}
             >
               <Avatar
                 src={brand.avatar_url}
                 alt={brand.name}
-                sx={{ width: 144, height: 144, flexShrink: 0 }}
+                sx={{ width: 112, height: 112, flexShrink: 0 }}
               />
-              <Stack spacing={2} sx={{ minWidth: 0, flex: 1 }}>
-                <Stack direction="row" alignItems="center" spacing={0.5}>
-                  <Typography variant="h3" component="h1">
+              <Stack
+                spacing={1.5}
+                sx={{
+                  minWidth: 0,
+                  flex: 1,
+                  alignItems: { xs: "center", sm: "flex-start" },
+                  textAlign: { xs: "center", sm: "left" },
+                }}
+              >
+                <Box>
+                  <Typography variant="h4" component="h1" fontWeight={800}>
                     {brand.name}
                   </Typography>
-                </Stack>
+                  {latestVideo && (
+                    <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                      {t("galgame.brand.stats", {
+                        count: summary.data?.total ?? 0,
+                        date: new Date(
+                          latestVideo.published_at,
+                        ).toLocaleDateString(i18n.language),
+                      })}
+                    </Typography>
+                  )}
+                </Box>
                 {brand.description && (
-                  <ExpandableText text={brand.description} />
+                  <ExpandableText text={brand.description} collapsedLines={3} />
                 )}
-                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  useFlexGap
+                  flexWrap="wrap"
+                  justifyContent={{ xs: "center", sm: "flex-start" }}
+                >
                   <FavoriteButton
                     kind="brand"
                     variant="button"
@@ -120,7 +140,6 @@ export default function GalgameBrand() {
                       target="_blank"
                       rel="noopener noreferrer"
                       variant="outlined"
-                      size="small"
                       endIcon={<OpenInNewIcon />}
                     >
                       {link.label}
@@ -130,28 +149,20 @@ export default function GalgameBrand() {
               </Stack>
             </Stack>
           </Paper>
-        ) : null}
-        {brand && (
-          <Tabs
-            value={tab}
-            onChange={(_, value: "all" | "recent") => {
-              const next = new URLSearchParams(params);
-              if (value === "recent") {
-                next.set("tab", "recent");
-              } else {
-                next.delete("tab");
-              }
-              next.delete("page");
-              setParams(next);
-            }}
-            aria-label={t("galgame.brand.tabs.ariaLabel")}
+
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.5}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            sx={{ mb: 2 }}
           >
-            <Tab value="all" label={t("galgame.brand.tabs.all")} />
-            <Tab value="recent" label={t("galgame.brand.tabs.recent")} />
-          </Tabs>
-        )}
-        {brand &&
-          (videos.isPending ? (
+            <Typography variant="h6" component="h2" fontWeight={700}>
+              {t("galgame.brand.videosHeading")}
+            </Typography>
+            <GalgameTimeFilterChips value={time} onChange={setTime} />
+          </Stack>
+          {videos.isPending ? (
             <GalgameState loading message={t("galgame.brand.videosLoading")} />
           ) : videos.isError ? (
             <GalgameState
@@ -159,41 +170,34 @@ export default function GalgameBrand() {
               message={t("galgame.brand.videosError")}
             />
           ) : videos.data.data.length === 0 ? (
-            <GalgameState message={t("galgame.brand.videosEmpty")} />
+            <GalgameState
+              message={
+                time !== "all"
+                  ? t("galgame.brand.videosEmptyInRange")
+                  : t("galgame.brand.videosEmpty")
+              }
+            />
           ) : (
-            <>
-              <Grid container spacing={3}>
-                {videos.data.data.map((video) => (
-                  <Grid
-                    key={video.youtube_video_id}
-                    size={{ xs: 12, sm: 6, md: 4 }}
-                  >
-                    <GalgameVideoCard
-                      video={video}
-                      favorite={favoriteVideoIDs.has(video.id)}
-                    />
-                  </Grid>
-                ))}
-              </Grid>
-              <Pagination
-                page={page}
-                count={pages}
-                onChange={(_, value) =>
-                  setParams((current) => {
-                    const next = new URLSearchParams(current);
-                    if (value > 1) {
-                      next.set("page", String(value));
-                    } else {
-                      next.delete("page");
-                    }
-                    return next;
-                  })
-                }
-                sx={{ alignSelf: "center" }}
-              />
-            </>
-          ))}
-      </Stack>
-    </Box>
+            <Grid container spacing={2.5}>
+              {videos.data.data.map((video) => (
+                <Grid
+                  key={video.youtube_video_id}
+                  size={{ xs: 12, sm: 6, md: 4, lg: 3 }}
+                >
+                  <GalgameVideoCard
+                    video={video}
+                    favorite={favoriteVideoIDs.has(video.id)}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          )}
+          <GalgamePagination
+            total={videos.data?.total ?? 0}
+            perPage={videos.data?.per_page || perPage}
+          />
+        </>
+      )}
+    </Stack>
   );
 }

@@ -1,25 +1,24 @@
 {
   "layout": {
     "nav": {
-      "allVideos": "全部视频",
-      "recentVideos": "最新视频",
       "brands": "品牌",
       "favorites": "我的收藏",
       "submitChannel": "添加频道",
       "submitVideo": "添加视频",
-      "admin": "管理"
+      "admin": "管理",
+      "submit": "投稿",
+      "videos": "视频"
     },
     "search": {
-      "videos": "视频",
-      "brands": "品牌",
-      "placeholder": "搜索",
+      "placeholder": "搜索视频或品牌",
       "submit": "搜索"
     },
     "auth": {
       "signedIn": "已登录",
       "userAvatar": "用户",
       "logout": "退出登录",
-      "login": "使用 Google 登录"
+      "login": "使用 Google 登录",
+      "menu": "账号菜单"
     }
   },
   "breadcrumb": {
@@ -28,27 +27,22 @@
   },
   "home": {
     "pageTitle": "Galgame 视频",
-    "heading": "Galgame 最新视频",
-    "subtitle": "各游戏品牌官方频道的最新 PV、OP 与相关视频。",
-    "tabs": {
-      "ariaLabel": "视频时间范围",
-      "all": "所有视频",
-      "recent": "最近一天内上线的视频",
-      "brands": "品牌列表"
-    },
-    "brands": {
-      "loading": "正在加载品牌...",
-      "error": "品牌加载失败，请稍后再试。",
-      "notFound": "找不到符合搜索条件的品牌。",
-      "empty": "目前还没有品牌数据。",
-      "favorited": "已收藏品牌"
-    },
     "videos": {
       "loading": "正在加载视频...",
       "error": "视频加载失败，请稍后再试。",
       "notFound": "找不到符合搜索条件的视频。",
-      "empty": "目前还没有视频数据。"
-    }
+      "empty": "目前还没有视频数据。",
+      "emptyInRange": "这段时间没有新视频。"
+    },
+    "searchPageTitle": "搜索「{{keyword}}」",
+    "searchCrumb": "搜索「{{keyword}}」",
+    "searchHeading": "「{{keyword}}」的搜索结果",
+    "matchedBrands": "品牌 · {{count}}",
+    "matchedVideos": "视频 · {{count}}",
+    "recentBrands": "近期有新视频的品牌",
+    "allBrands": "查看全部品牌",
+    "recentBrandCaption": "{{count}} 个新视频",
+    "latestVideos": "最新视频"
   },
   "videoCard": {
     "favorite": "收藏视频",
@@ -84,14 +78,12 @@
     "pageTitleFallback": "品牌视频",
     "loading": "正在加载品牌信息...",
     "error": "品牌信息加载失败，请稍后再试。",
-    "tabs": {
-      "ariaLabel": "品牌视频分类",
-      "all": "所有视频",
-      "recent": "最新上线视频"
-    },
     "videosLoading": "正在加载品牌视频...",
     "videosError": "视频加载失败，请稍后再试。",
-    "videosEmpty": "该品牌暂无视频。"
+    "videosEmpty": "该品牌暂无视频。",
+    "stats": "收录 {{count}} 个视频 · 最新上线 {{date}}",
+    "videosHeading": "视频",
+    "videosEmptyInRange": "这段时间没有新视频。"
   },
   "video": {
     "pageTitleFallback": "Galgame 视频",
@@ -105,7 +97,12 @@
     "noNext": "没有下一个视频",
     "description": "视频简介",
     "noDescription": "该视频没有简介。",
-    "related": "相关视频"
+    "info": {
+      "brand": "品牌",
+      "published": "发布",
+      "tags": "标签"
+    },
+    "watchOnYouTube": "在 YouTube 观看"
   },
   "favorites": {
     "pageTitle": "我的收藏",
@@ -128,7 +125,8 @@
     "heading": "相关视频",
     "loading": "正在加载相关视频...",
     "error": "相关视频加载失败。",
-    "empty": "暂无相关视频。"
+    "empty": "暂无相关视频。",
+    "sameWork": "同一作品的其他视频"
   },
   "submitBrand": {
     "pageTitle": "添加 Galgame 频道",
@@ -228,5 +226,19 @@
       "enabled": "已启用",
       "disabled": "已停用"
     }
+  },
+  "brands": {
+    "pageTitle": "品牌列表",
+    "heading": "品牌",
+    "loading": "正在加载品牌...",
+    "error": "品牌加载失败，请稍后再试。",
+    "empty": "暂无品牌数据。",
+    "favorited": "已收藏品牌"
+  },
+  "timeFilter": {
+    "ariaLabel": "上线时间",
+    "all": "全部",
+    "7d": "7 天内",
+    "30d": "30 天内"
   }
 }

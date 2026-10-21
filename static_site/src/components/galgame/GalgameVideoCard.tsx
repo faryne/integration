@@ -1,4 +1,5 @@
 import {
+  alpha,
   Box,
   Card,
   CardActionArea,
@@ -25,6 +26,10 @@ import {
 import { useGalgameVideoFavorite } from "@/apis/galgame/catalog.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 
+/**
+ * 影片卡。summary：縮圖在上、品牌 chip＋日期＋兩行標題在下（列表用）；
+ * simple：縮圖在左的橫式小卡（影片頁側欄用）。
+ */
 export function GalgameVideoCard({
   video,
   favorite = false,
@@ -54,70 +59,45 @@ export function GalgameVideoCard({
     }
     await favoriteQuery.mutation.mutateAsync(!isFavorite);
   };
+  const simple = variant === "simple";
   const duration = formatGalgameDuration(video.duration_seconds);
   const disabled = Boolean(video.deleted_at);
   const videoPath = galgamePath(
     `${galgameBrandSlug(video.brand_public_id, video.brand_name)}/video/${video.youtube_video_id}`,
   );
-  const media = (
-    <Box sx={{ position: "relative", flexShrink: 0 }}>
-      <CardMedia
-        component="img"
-        height={variant === "summary" ? "180" : undefined}
-        image={video.thumbnail_url}
-        alt={video.title}
-        sx={{
-          objectFit: "cover",
-          width: variant === "simple" ? 144 : "100%",
-          minHeight: variant === "simple" ? 82 : undefined,
-        }}
-      />
-      {duration && (
-        <Box
-          sx={{
-            position: "absolute",
-            right: 6,
-            bottom: 6,
-            px: 0.75,
-            py: 0.25,
-            borderRadius: 0.75,
-            bgcolor: "rgba(0, 0, 0, 0.78)",
-            color: "common.white",
-            fontSize: 12,
-            fontWeight: 700,
-            lineHeight: 1.4,
-          }}
-        >
-          {duration}
-        </Box>
-      )}
-    </Box>
-  );
 
   return (
     <Card
-      variant={variant === "simple" ? "outlined" : undefined}
+      variant="outlined"
       sx={{
         height: "100%",
         position: "relative",
         opacity: disabled ? 0.58 : 1,
+        // 可 hover 的裝置上，未收藏的星星只在滑過卡片時出現，縮圖比較乾淨；觸控裝置一律顯示
+        "@media (hover: hover)": {
+          "& .galgame-card-favorite:not(.is-favorite)": { opacity: 0 },
+          "&:hover .galgame-card-favorite, &:focus-within .galgame-card-favorite":
+            { opacity: 1 },
+        },
       }}
     >
       <Tooltip title={favoriteLabel}>
         <Box
+          className={`galgame-card-favorite${isFavorite ? " is-favorite" : ""}`}
           sx={{
             position: "absolute",
             zIndex: 1,
-            top: variant === "simple" ? 6 : 8,
-            right: variant === "simple" ? 6 : 8,
+            top: 6,
+            // simple 卡的縮圖在左，星星放在縮圖左上角，避免壓到右側標題
+            ...(simple ? { left: 6 } : { right: 6 }),
             display: "grid",
             placeItems: "center",
-            width: variant === "simple" ? 30 : 34,
-            height: variant === "simple" ? 30 : 34,
+            width: simple ? 28 : 32,
+            height: simple ? 28 : 32,
             borderRadius: "50%",
-            bgcolor: "rgba(255, 255, 255, 0.92)",
+            bgcolor: (theme) => alpha(theme.palette.background.paper, 0.9),
             boxShadow: 1,
-            color: "warning.main",
+            transition: "opacity .15s",
           }}
         >
           <IconButton
@@ -146,47 +126,83 @@ export function GalgameVideoCard({
         disabled={disabled}
         sx={{
           height: "100%",
+          display: simple ? "flex" : "block",
           alignItems: "stretch",
-          display: variant === "simple" ? "flex" : "block",
           justifyContent: "flex-start",
         }}
       >
-        {media}
-        <CardContent
-          sx={
-            variant === "simple"
-              ? { minWidth: 0, p: 1.25, "&:last-child": { pb: 1.25 } }
-              : undefined
-          }
+        <Box
+          sx={{ position: "relative", flexShrink: 0, width: simple ? 150 : 1 }}
         >
-          <Stack direction="row" sx={{ mb: variant === "summary" ? 1 : 0.5 }}>
-            <Chip label={video.brand_name} color="primary" size="small" />
+          <CardMedia
+            component="img"
+            image={video.thumbnail_url}
+            alt={video.title}
+            sx={{ objectFit: "cover", width: 1, aspectRatio: "16 / 9" }}
+          />
+          {duration && (
+            <Box
+              sx={{
+                position: "absolute",
+                right: 6,
+                bottom: 6,
+                px: 0.75,
+                py: 0.25,
+                borderRadius: 0.75,
+                bgcolor: "rgba(0, 0, 0, 0.78)",
+                color: "common.white",
+                fontSize: 12,
+                fontWeight: 700,
+                lineHeight: 1.4,
+              }}
+            >
+              {duration}
+            </Box>
+          )}
+        </Box>
+        <CardContent
+          sx={{
+            minWidth: 0,
+            p: simple ? 1.25 : 1.5,
+            "&:last-child": { pb: simple ? 1.25 : 1.5 },
+            // summary：品牌 chip＋日期在上、標題在下；simple：標題在上、品牌 · 日期在下
+            display: "flex",
+            flexDirection: simple ? "column-reverse" : "column",
+            justifyContent: "flex-end",
+            gap: simple ? 0.5 : 0.75,
+          }}
+        >
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={1}
+            useFlexGap
+            flexWrap="wrap"
+          >
+            {!simple && (
+              <Chip label={video.brand_name} color="primary" size="small" />
+            )}
+            <Typography variant="caption" color="text.secondary">
+              {simple && `${video.brand_name} · `}
+              {new Date(video.published_at).toLocaleDateString(i18n.language)}
+            </Typography>
             {disabled && (
-              <Chip
-                label={t("galgame.videoCard.deleted")}
-                size="small"
-                sx={{ ml: 1 }}
-              />
+              <Chip label={t("galgame.videoCard.deleted")} size="small" />
             )}
           </Stack>
           <Typography
-            variant={variant === "summary" ? "h6" : "subtitle2"}
+            variant={simple ? "body2" : "subtitle1"}
             component="h2"
+            fontWeight={700}
             sx={{
+              lineHeight: 1.4,
               display: "-webkit-box",
               overflow: "hidden",
               WebkitBoxOrient: "vertical",
-              WebkitLineClamp: variant === "summary" ? 3 : 2,
+              WebkitLineClamp: 2,
             }}
           >
             {video.title}
-          </Typography>
-          <Typography
-            variant={variant === "summary" ? "body2" : "caption"}
-            color="text.secondary"
-            sx={{ mt: variant === "summary" ? 1 : 0.75, display: "block" }}
-          >
-            {new Date(video.published_at).toLocaleDateString(i18n.language)}
           </Typography>
         </CardContent>
       </CardActionArea>
