@@ -71,7 +71,7 @@ curl -X POST http://localhost:8080/mcp \
 ## 如何開始
 
 1. 複製 `.env.example` 為 `.env` 並填入必要的設定值。
-2. 使用 `go run main.go` 啟動後端服務。
+2. 使用 `go run .` 啟動後端服務（main package 已拆成多檔，不能只跑 main.go）。
 3. 前端網站位於 `static_site` 目錄，請參考該目錄下的說明進行建置。
 
 ## 前端多語系（i18n）規則
