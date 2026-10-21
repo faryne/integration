@@ -1,6 +1,7 @@
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import { Button, IconButton, Tooltip } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/components/auth/AuthContext.ts";
 
@@ -8,7 +9,8 @@ interface FavoriteButtonProps {
   favorite: boolean;
   loading?: boolean;
   onToggle: (favorite: boolean) => Promise<unknown>;
-  label: string;
+  // 收藏對象；各語系的整句寫在 galgame.favoriteButton.<kind>.*，不在程式裡拼字
+  kind: "brand" | "video";
   variant?: "icon" | "button";
 }
 
@@ -16,10 +18,15 @@ export function FavoriteButton({
   favorite,
   loading = false,
   onToggle,
-  label,
+  kind,
   variant = "icon",
 }: FavoriteButtonProps) {
+  const { t } = useTranslation();
   const { session, login, submitting } = useAuth();
+
+  const iconLabel = t(
+    `galgame.favoriteButton.${kind}.${favorite ? "remove" : "favorite"}`,
+  );
 
   const toggle = async () => {
     if (!session) {
@@ -46,17 +53,17 @@ export function FavoriteButton({
           },
         }}
       >
-        {favorite ? `已收藏${label}` : `加入收藏${label}`}
+        {t(`galgame.favoriteButton.${kind}.${favorite ? "added" : "add"}`)}
       </Button>
     );
   }
 
   return (
-    <Tooltip title={favorite ? `取消收藏${label}` : `收藏${label}`}>
+    <Tooltip title={iconLabel}>
       <span>
         <IconButton
           color={favorite ? "warning" : "default"}
-          aria-label={favorite ? `取消收藏${label}` : `收藏${label}`}
+          aria-label={iconLabel}
           disabled={loading || submitting}
           onClick={() => void toggle()}
         >

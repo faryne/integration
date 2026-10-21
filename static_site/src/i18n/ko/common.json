@@ -1,0 +1,28 @@
+{
+  "language": {
+    "buttonLabel": "인터페이스 언어",
+    "current": "인터페이스 언어: {{language}}",
+    "title": "인터페이스 언어",
+    "options": {
+      "zh-TW": "正體中文",
+      "zh-CN": "简体中文",
+      "en": "English",
+      "ja": "日本語",
+      "ko": "한국어"
+    }
+  },
+  "expandableText": {
+    "collapse": "소개 접기",
+    "expand": "소개 전체 보기"
+  },
+  "videoViewer": {
+    "loading": "영상을 불러오는 중",
+    "play": "재생",
+    "pause": "일시정지",
+    "stop": "정지",
+    "collapseInfo": "영상 정보 접기",
+    "expandInfo": "클릭하면 영상 정보와 관련 콘텐츠를 펼칩니다",
+    "hideInfo": "정보 숨기기",
+    "showInfo": "정보 보기"
+  }
+}

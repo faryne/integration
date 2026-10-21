@@ -1,4 +1,5 @@
 import { Stack, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { GalgameVideoCard } from "@/components/galgame/GalgameVideoCard.tsx";
@@ -15,19 +16,20 @@ export function RelatedVideoList({
   videos: GalgameVideo[];
   showTitle?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <Stack spacing={1.5}>
       {showTitle && (
         <Typography variant="h5" component="h2">
-          相關影片
+          {t("galgame.related.heading")}
         </Typography>
       )}
       {loading ? (
-        <GalgameState loading message="正在載入相關影片..." />
+        <GalgameState loading message={t("galgame.related.loading")} />
       ) : error ? (
-        <GalgameState severity="error" message="相關影片載入失敗。" />
+        <GalgameState severity="error" message={t("galgame.related.error")} />
       ) : videos.length === 0 ? (
-        <GalgameState message="目前沒有相關影片。" />
+        <GalgameState message={t("galgame.related.empty")} />
       ) : (
         videos.map((video) => (
           <GalgameVideoCard

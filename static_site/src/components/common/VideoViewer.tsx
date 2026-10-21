@@ -15,6 +15,7 @@ import StopIcon from "@mui/icons-material/Stop";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface VideoViewerSource {
   autoPlay?: boolean;
@@ -179,6 +180,7 @@ export function VideoViewer({
   title: string;
   videos: VideoViewerSource[];
 }) {
+  const { t } = useTranslation();
   const [childrenVisible, setChildrenVisible] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -314,7 +316,7 @@ export function VideoViewer({
               >
                 <CircularProgress color="inherit" size={28} thickness={4} />
                 <Typography fontWeight={800} variant="body2">
-                  影片載入中
+                  {t("common.videoViewer.loading")}
                 </Typography>
               </Stack>
             )}
@@ -405,10 +407,10 @@ export function VideoViewer({
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                     {!isEmbedded && (
                       <>
-                        <Tooltip title="播放">
+                        <Tooltip title={t("common.videoViewer.play")}>
                           <span>
                             <IconButton
-                              aria-label="播放"
+                              aria-label={t("common.videoViewer.play")}
                               disabled={isPlaying}
                               onClick={play}
                               sx={{
@@ -421,10 +423,10 @@ export function VideoViewer({
                             </IconButton>
                           </span>
                         </Tooltip>
-                        <Tooltip title="暫停">
+                        <Tooltip title={t("common.videoViewer.pause")}>
                           <span>
                             <IconButton
-                              aria-label="暫停"
+                              aria-label={t("common.videoViewer.pause")}
                               disabled={!isPlaying}
                               onClick={pause}
                               sx={{
@@ -436,10 +438,10 @@ export function VideoViewer({
                             </IconButton>
                           </span>
                         </Tooltip>
-                        <Tooltip title="停止">
+                        <Tooltip title={t("common.videoViewer.stop")}>
                           <span>
                             <IconButton
-                              aria-label="停止"
+                              aria-label={t("common.videoViewer.stop")}
                               disabled={!isPlaying && currentTime === 0}
                               onClick={stop}
                               sx={{
@@ -457,8 +459,8 @@ export function VideoViewer({
                       <Tooltip
                         title={
                           childrenVisible
-                            ? "收合影片資訊"
-                            : "點擊展開影片資訊與相關內容"
+                            ? t("common.videoViewer.collapseInfo")
+                            : t("common.videoViewer.expandInfo")
                         }
                       >
                         <Button
@@ -491,7 +493,9 @@ export function VideoViewer({
                           }
                           variant="outlined"
                         >
-                          {childrenVisible ? "隱藏資訊" : "顯示資訊"}
+                          {childrenVisible
+                            ? t("common.videoViewer.hideInfo")
+                            : t("common.videoViewer.showInfo")}
                         </Button>
                       </Tooltip>
                     )}

@@ -22,6 +22,7 @@ import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import { useMemo } from "react";
 import { Link as RouterLink, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import {
   useGalgameBrandFavorite,
@@ -42,6 +43,7 @@ import { FavoriteButton } from "@/components/galgame/FavoriteButton.tsx";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 
 export default function GalgameVideo() {
+  const { t, i18n } = useTranslation();
   const { brandSlug, videoId } = useParams();
   const query = useGalgameVideo(brandSlug, videoId);
   const related = useRelatedGalgameVideos(brandSlug, videoId);
@@ -62,7 +64,7 @@ export default function GalgameVideo() {
         .filter(Boolean),
     [video?.tags],
   );
-  useTitle(video?.title ?? "Galgame 影片");
+  useTitle(video?.title ?? t("galgame.video.pageTitleFallback"));
 
   return (
     <Box sx={{ pb: 6 }}>
@@ -75,9 +77,9 @@ export default function GalgameVideo() {
         videoTitle={video?.title}
       />
       {query.isPending ? (
-        <GalgameState loading message="正在載入影片..." />
+        <GalgameState loading message={t("galgame.video.loading")} />
       ) : query.isError || !video ? (
-        <GalgameState severity="error" message="影片不存在或載入失敗。" />
+        <GalgameState severity="error" message={t("galgame.video.notFound")} />
       ) : (
         <Stack spacing={3}>
           <Typography variant="h4" component="h1">
@@ -110,7 +112,7 @@ export default function GalgameVideo() {
                 }}
               >
                 <FavoriteButton
-                  label="影片"
+                  kind="video"
                   variant="button"
                   favorite={favorite.favorite}
                   loading={favorite.isFetching || favorite.mutation.isPending}
@@ -147,7 +149,9 @@ export default function GalgameVideo() {
                     );
                   }}
                 >
-                  喜歡 {reaction.likes ?? video.likes}
+                  {t("galgame.video.like", {
+                    count: reaction.likes ?? video.likes,
+                  })}
                 </Button>
                 <Button
                   variant={
@@ -172,7 +176,9 @@ export default function GalgameVideo() {
                     );
                   }}
                 >
-                  不喜歡 {reaction.dislikes ?? video.dislikes}
+                  {t("galgame.video.dislike", {
+                    count: reaction.dislikes ?? video.dislikes,
+                  })}
                 </Button>
               </Stack>
               <Stack
@@ -211,7 +217,7 @@ export default function GalgameVideo() {
                       >
                         <NavigateBeforeIcon fontSize="small" />
                         <Typography variant="caption" fontWeight={700}>
-                          上一則影片
+                          {t("galgame.video.previous")}
                         </Typography>
                       </Stack>
                       <Typography
@@ -225,7 +231,8 @@ export default function GalgameVideo() {
                           WebkitLineClamp: 2,
                         }}
                       >
-                        {navigation.data?.previous?.title ?? "沒有上一則影片"}
+                        {navigation.data?.previous?.title ??
+                          t("galgame.video.noPrevious")}
                       </Typography>
                     </CardContent>
                   </CardActionArea>
@@ -259,7 +266,7 @@ export default function GalgameVideo() {
                         color="text.secondary"
                       >
                         <Typography variant="caption" fontWeight={700}>
-                          下一則影片
+                          {t("galgame.video.next")}
                         </Typography>
                         <NavigateNextIcon fontSize="small" />
                       </Stack>
@@ -274,7 +281,8 @@ export default function GalgameVideo() {
                           WebkitLineClamp: 2,
                         }}
                       >
-                        {navigation.data?.next?.title ?? "沒有下一則影片"}
+                        {navigation.data?.next?.title ??
+                          t("galgame.video.noNext")}
                       </Typography>
                     </CardContent>
                   </CardActionArea>
@@ -315,11 +323,11 @@ export default function GalgameVideo() {
                       {video.brand_name}
                     </Link>
                     <Typography variant="body2" color="text.secondary">
-                      {new Date(video.published_at).toLocaleDateString("zh-TW")}
+                      {new Date(video.published_at).toLocaleDateString(i18n.language)}
                     </Typography>
                   </Box>
                   <FavoriteButton
-                    label="品牌"
+                    kind="brand"
                     variant="button"
                     favorite={brandFavorite.favorite}
                     loading={
@@ -337,7 +345,9 @@ export default function GalgameVideo() {
                     aria-controls="video-description-content"
                     id="video-description-header"
                   >
-                    <Typography variant="h6">影片介紹</Typography>
+                    <Typography variant="h6">
+                      {t("galgame.video.description")}
+                    </Typography>
                   </AccordionSummary>
                   <AccordionDetails>
                     {displayTags.length > 0 || video.description ? (
@@ -370,7 +380,7 @@ export default function GalgameVideo() {
                       </Stack>
                     ) : (
                       <Typography color="text.secondary">
-                        此影片沒有介紹。
+                        {t("galgame.video.noDescription")}
                       </Typography>
                     )}
                   </AccordionDetails>
@@ -381,7 +391,9 @@ export default function GalgameVideo() {
                     aria-controls="related-videos-content"
                     id="related-videos-header"
                   >
-                    <Typography variant="h6">相關影片</Typography>
+                    <Typography variant="h6">
+                      {t("galgame.video.related")}
+                    </Typography>
                   </AccordionSummary>
                   <AccordionDetails>
                     <RelatedVideoList

@@ -1,4 +1,5 @@
 import { Breadcrumbs, Link, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import { galgameBrandSlug, galgamePath } from "@/helpers/galgame.ts";
 
@@ -9,14 +10,17 @@ interface Props {
 }
 
 export function GalgameBreadcrumb({ brand, current, videoTitle }: Props) {
+  const { t } = useTranslation();
   return (
-    <Breadcrumbs aria-label="galgame breadcrumb" sx={{ mb: 3 }}>
+    <Breadcrumbs aria-label={t("galgame.breadcrumb.ariaLabel")} sx={{ mb: 3 }}>
       {brand || current || videoTitle ? (
         <Link component={RouterLink} to={galgamePath()} underline="hover">
-          首頁
+          {t("galgame.breadcrumb.home")}
         </Link>
       ) : (
-        <Typography color="text.primary">首頁</Typography>
+        <Typography color="text.primary">
+          {t("galgame.breadcrumb.home")}
+        </Typography>
       )}
       {brand &&
         (videoTitle ? (

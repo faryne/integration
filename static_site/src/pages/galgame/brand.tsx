@@ -13,6 +13,7 @@ import {
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import axios from "axios";
 
 import {
@@ -31,6 +32,7 @@ import { galgamePath } from "@/helpers/galgame.ts";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 
 export default function GalgameBrand() {
+  const { t } = useTranslation();
   const { brandSlug } = useParams();
   const [params, setParams] = useSearchParams();
   const tab = params.get("tab") === "recent" ? "recent" : "all";
@@ -59,7 +61,11 @@ export default function GalgameBrand() {
       ),
     [videos.data],
   );
-  useTitle(brand ? `${brand.name} 影片` : "品牌影片");
+  useTitle(
+    brand
+      ? t("galgame.brand.pageTitle", { name: brand.name })
+      : t("galgame.brand.pageTitleFallback"),
+  );
 
   if (
     brandQuery.isError &&
@@ -74,12 +80,9 @@ export default function GalgameBrand() {
       <GalgameBreadcrumb brand={brand} />
       <Stack spacing={3}>
         {brandQuery.isPending ? (
-          <GalgameState loading message="正在載入品牌資料..." />
+          <GalgameState loading message={t("galgame.brand.loading")} />
         ) : brandQuery.isError ? (
-          <GalgameState
-            severity="error"
-            message="品牌資料載入失敗，請稍後再試。"
-          />
+          <GalgameState severity="error" message={t("galgame.brand.error")} />
         ) : brand ? (
           <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
             <Stack
@@ -103,7 +106,7 @@ export default function GalgameBrand() {
                 )}
                 <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
                   <FavoriteButton
-                    label="品牌"
+                    kind="brand"
                     variant="button"
                     favorite={favorite.favorite}
                     loading={favorite.isFetching || favorite.mutation.isPending}
@@ -141,22 +144,22 @@ export default function GalgameBrand() {
               next.delete("page");
               setParams(next);
             }}
-            aria-label="品牌影片分類"
+            aria-label={t("galgame.brand.tabs.ariaLabel")}
           >
-            <Tab value="all" label="所有影片" />
-            <Tab value="recent" label="最新上檔影片" />
+            <Tab value="all" label={t("galgame.brand.tabs.all")} />
+            <Tab value="recent" label={t("galgame.brand.tabs.recent")} />
           </Tabs>
         )}
         {brand &&
           (videos.isPending ? (
-            <GalgameState loading message="正在載入品牌影片..." />
+            <GalgameState loading message={t("galgame.brand.videosLoading")} />
           ) : videos.isError ? (
             <GalgameState
               severity="error"
-              message="影片載入失敗，請稍後再試。"
+              message={t("galgame.brand.videosError")}
             />
           ) : videos.data.data.length === 0 ? (
-            <GalgameState message="此品牌目前尚無影片。" />
+            <GalgameState message={t("galgame.brand.videosEmpty")} />
           ) : (
             <>
               <Grid container spacing={3}>

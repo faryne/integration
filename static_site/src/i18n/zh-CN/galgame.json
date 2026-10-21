@@ -1,0 +1,232 @@
+{
+  "layout": {
+    "nav": {
+      "allVideos": "全部视频",
+      "recentVideos": "最新视频",
+      "brands": "品牌",
+      "favorites": "我的收藏",
+      "submitChannel": "添加频道",
+      "submitVideo": "添加视频",
+      "admin": "管理"
+    },
+    "search": {
+      "videos": "视频",
+      "brands": "品牌",
+      "placeholder": "搜索",
+      "submit": "搜索"
+    },
+    "auth": {
+      "signedIn": "已登录",
+      "userAvatar": "用户",
+      "logout": "退出登录",
+      "login": "使用 Google 登录"
+    }
+  },
+  "breadcrumb": {
+    "ariaLabel": "导航路径",
+    "home": "首页"
+  },
+  "home": {
+    "pageTitle": "Galgame 视频",
+    "heading": "Galgame 最新视频",
+    "subtitle": "各游戏品牌官方频道的最新 PV、OP 与相关视频。",
+    "tabs": {
+      "ariaLabel": "视频时间范围",
+      "all": "所有视频",
+      "recent": "最近一天内上线的视频",
+      "brands": "品牌列表"
+    },
+    "brands": {
+      "loading": "正在加载品牌...",
+      "error": "品牌加载失败，请稍后再试。",
+      "notFound": "找不到符合搜索条件的品牌。",
+      "empty": "目前还没有品牌数据。",
+      "favorited": "已收藏品牌"
+    },
+    "videos": {
+      "loading": "正在加载视频...",
+      "error": "视频加载失败，请稍后再试。",
+      "notFound": "找不到符合搜索条件的视频。",
+      "empty": "目前还没有视频数据。"
+    }
+  },
+  "videoCard": {
+    "favorite": "收藏视频",
+    "unfavorite": "取消收藏视频",
+    "deleted": "已删除"
+  },
+  "authGate": {
+    "checking": "正在确认登录状态..."
+  },
+  "status": {
+    "pending": "待审核",
+    "approved": "已通过",
+    "rejected": "已拒绝",
+    "failed": "失败",
+    "unknown": "未知"
+  },
+  "favoriteButton": {
+    "brand": {
+      "added": "已收藏品牌",
+      "add": "收藏品牌",
+      "remove": "取消收藏品牌",
+      "favorite": "收藏品牌"
+    },
+    "video": {
+      "added": "已收藏视频",
+      "add": "收藏视频",
+      "remove": "取消收藏视频",
+      "favorite": "收藏视频"
+    }
+  },
+  "brand": {
+    "pageTitle": "{{name}} 视频",
+    "pageTitleFallback": "品牌视频",
+    "loading": "正在加载品牌信息...",
+    "error": "品牌信息加载失败，请稍后再试。",
+    "tabs": {
+      "ariaLabel": "品牌视频分类",
+      "all": "所有视频",
+      "recent": "最新上线视频"
+    },
+    "videosLoading": "正在加载品牌视频...",
+    "videosError": "视频加载失败，请稍后再试。",
+    "videosEmpty": "该品牌暂无视频。"
+  },
+  "video": {
+    "pageTitleFallback": "Galgame 视频",
+    "loading": "正在加载视频...",
+    "notFound": "视频不存在或加载失败。",
+    "like": "喜欢 {{count}}",
+    "dislike": "不喜欢 {{count}}",
+    "previous": "上一个视频",
+    "noPrevious": "没有上一个视频",
+    "next": "下一个视频",
+    "noNext": "没有下一个视频",
+    "description": "视频简介",
+    "noDescription": "该视频没有简介。",
+    "related": "相关视频"
+  },
+  "favorites": {
+    "pageTitle": "我的收藏",
+    "loginPrompt": "登录后即可查看收藏的品牌与视频。",
+    "loggingIn": "登录中...",
+    "login": "使用 Google 登录",
+    "heading": "我的收藏",
+    "tabs": {
+      "videos": "收藏的视频",
+      "brands": "收藏的品牌"
+    },
+    "loading": "正在加载我的收藏...",
+    "error": "我的收藏加载失败。",
+    "brandsEmpty": "暂无收藏的品牌。",
+    "deleted": "已删除",
+    "latestCount": "最新上线 {{count}}",
+    "videosEmpty": "暂无收藏的视频。"
+  },
+  "related": {
+    "heading": "相关视频",
+    "loading": "正在加载相关视频...",
+    "error": "相关视频加载失败。",
+    "empty": "暂无相关视频。"
+  },
+  "submitBrand": {
+    "pageTitle": "添加 Galgame 频道",
+    "heading": "添加 YouTube 频道",
+    "hint": "每行填写一个网址，支持 YouTube @handle 或 /channel/UC... 格式。",
+    "fieldLabel": "YouTube 频道",
+    "placeholder": "每行填写一个网址\nhttps://www.youtube.com/@name\nhttps://www.youtube.com/channel/UCxxxxxxxxxxxxxxxxxxxxxxxx",
+    "submitting": "提交中...",
+    "submit": "提交",
+    "submitCount": "提交 {{count}}",
+    "submitError": "提交失败，请稍后再试。",
+    "parsing": "正在解析 YouTube 频道，请稍候。",
+    "nothingSubmitted": "没有提交任何频道，请确认每行都填写了 YouTube 频道网址。",
+    "submitted": "已提交，等待管理员审核。",
+    "alreadyExists": "已存在（{{status}}）"
+  },
+  "submitVideo": {
+    "pageTitle": "添加 Galgame 视频",
+    "heading": "添加 YouTube 视频",
+    "hint": "每行填写一个网址，支持 youtu.be 或 youtube.com/watch?v= 格式。",
+    "fieldLabel": "YouTube 视频",
+    "placeholder": "每行填写一个网址\nhttps://youtu.be/xxxxxxxxxxx\nhttps://www.youtube.com/watch?v=xxxxxxxxxxx",
+    "submitting": "提交中...",
+    "submit": "提交",
+    "submitCount": "提交 {{count}}",
+    "submitError": "提交失败，请稍后再试。",
+    "parsing": "正在解析 YouTube 视频，请稍候。",
+    "nothingSubmitted": "没有提交任何视频，请确认每行都填写了 YouTube 视频网址。",
+    "submitted": "已提交，等待管理员审核。",
+    "alreadyExists": "已存在（{{status}}）",
+    "duplicateExists": "视频已存在",
+    "duplicatePending": "视频已被提交，正在等待审核"
+  },
+  "admin": {
+    "heading": "Galgame 管理后台",
+    "noPermission": "需要管理员权限。",
+    "subtitle": "管理待审核内容、索引状态、删除与视频审核。",
+    "tabs": {
+      "brands": "频道管理",
+      "videos": "视频管理",
+      "pendingBrands": "待审核频道",
+      "pendingVideos": "待审核视频",
+      "titleKeywords": "视频关键词"
+    },
+    "brands": {
+      "search": "搜索频道",
+      "tabs": {
+        "all": "全部频道",
+        "deleted": "已删除频道",
+        "paused": "已暂停索引的频道"
+      },
+      "loading": "正在加载频道...",
+      "empty": "没有符合条件的频道。",
+      "paused": "已暂停索引"
+    },
+    "deleted": "已删除",
+    "actions": {
+      "approve": "通过",
+      "reject": "拒绝",
+      "restore": "撤销删除",
+      "resumeIndexing": "重新启动索引",
+      "delete": "删除",
+      "deleteVideo": "删除视频",
+      "pauseIndexing": "暂停索引",
+      "fullIndex": "完整索引",
+      "add": "添加",
+      "enable": "启用",
+      "disable": "停用"
+    },
+    "videos": {
+      "search": "搜索视频",
+      "tabs": {
+        "all": "全部视频",
+        "deleted": "已删除视频"
+      },
+      "loading": "正在加载视频...",
+      "empty": "没有符合条件的视频。"
+    },
+    "pendingBrands": {
+      "loading": "正在加载待审核频道...",
+      "empty": "暂无待审核频道。"
+    },
+    "pendingVideos": {
+      "loading": "正在加载待审核视频...",
+      "empty": "暂无待审核视频。"
+    },
+    "keywords": {
+      "new": "新增关键词",
+      "search": "搜索关键词",
+      "tabs": {
+        "all": "全部",
+        "enabled": "已启用",
+        "disabled": "已停用"
+      },
+      "loading": "正在加载关键词...",
+      "empty": "没有符合条件的关键词。",
+      "enabled": "已启用",
+      "disabled": "已停用"
+    }
+  }
+}

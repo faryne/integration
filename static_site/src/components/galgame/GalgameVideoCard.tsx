@@ -13,6 +13,7 @@ import {
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import type { MouseEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 
 import type { GalgameVideo } from "@/types/galgame.ts";
@@ -33,6 +34,7 @@ export function GalgameVideoCard({
   favorite?: boolean;
   variant?: "summary" | "simple";
 }) {
+  const { t, i18n } = useTranslation();
   const { session, login, submitting } = useAuth();
   const favoriteQuery = useGalgameVideoFavorite(
     galgameBrandSlug(video.brand_public_id, video.brand_name),
@@ -40,6 +42,9 @@ export function GalgameVideoCard({
     false,
   );
   const isFavorite = favoriteQuery.data?.favorite ?? favorite;
+  const favoriteLabel = t(
+    isFavorite ? "galgame.videoCard.unfavorite" : "galgame.videoCard.favorite",
+  );
   const toggleFavorite = async (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -98,7 +103,7 @@ export function GalgameVideoCard({
         opacity: disabled ? 0.58 : 1,
       }}
     >
-      <Tooltip title={isFavorite ? "取消收藏影片" : "收藏影片"}>
+      <Tooltip title={favoriteLabel}>
         <Box
           sx={{
             position: "absolute",
@@ -118,7 +123,7 @@ export function GalgameVideoCard({
           <IconButton
             size="small"
             color={isFavorite ? "warning" : "default"}
-            aria-label={isFavorite ? "取消收藏影片" : "收藏影片"}
+            aria-label={favoriteLabel}
             disabled={
               submitting ||
               disabled ||
@@ -156,7 +161,13 @@ export function GalgameVideoCard({
         >
           <Stack direction="row" sx={{ mb: variant === "summary" ? 1 : 0.5 }}>
             <Chip label={video.brand_name} color="primary" size="small" />
-            {disabled && <Chip label="已刪除" size="small" sx={{ ml: 1 }} />}
+            {disabled && (
+              <Chip
+                label={t("galgame.videoCard.deleted")}
+                size="small"
+                sx={{ ml: 1 }}
+              />
+            )}
           </Stack>
           <Typography
             variant={variant === "summary" ? "h6" : "subtitle2"}
@@ -175,7 +186,7 @@ export function GalgameVideoCard({
             color="text.secondary"
             sx={{ mt: variant === "summary" ? 1 : 0.75, display: "block" }}
           >
-            {new Date(video.published_at).toLocaleDateString("zh-TW")}
+            {new Date(video.published_at).toLocaleDateString(i18n.language)}
           </Typography>
         </CardContent>
       </CardActionArea>

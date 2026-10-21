@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import StarIcon from "@mui/icons-material/Star";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 
 import {
@@ -27,6 +28,7 @@ import { useTitle } from "@/helpers/title.tsx";
 import { galgameBrandSlug, galgamePath } from "@/helpers/galgame.ts";
 
 export default function GalgameHome() {
+  const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const keyword = params.get("keyword") ?? "";
   const tab =
@@ -52,7 +54,7 @@ export default function GalgameHome() {
   );
   const favoriteBrandIDs = new Set(favoriteStatus.data?.brand_ids ?? []);
   const favoriteVideoIDs = new Set(favoriteStatus.data?.video_ids ?? []);
-  useTitle("Galgame 影片");
+  useTitle(t("galgame.home.pageTitle"));
 
   const pages = useMemo(() => {
     const result = tab === "brands" ? brands.data : videos.data;
@@ -73,10 +75,10 @@ export default function GalgameHome() {
         >
           <Box>
             <Typography variant="h3" component="h1">
-              Galgame 最新影片
+              {t("galgame.home.heading")}
             </Typography>
             <Typography color="text.secondary">
-              各遊戲品牌官方頻道的最新 PV、OP 與相關影片。
+              {t("galgame.home.subtitle")}
             </Typography>
           </Box>
         </Stack>
@@ -93,24 +95,29 @@ export default function GalgameHome() {
             next.delete("keyword");
             setParams(next);
           }}
-          aria-label="影片時間範圍"
+          aria-label={t("galgame.home.tabs.ariaLabel")}
+          // 手機寬度（尤其外語）三個分頁放不下，改成可橫向捲動
+          variant="scrollable"
+          allowScrollButtonsMobile
         >
-          <Tab value="all" label="所有影片" />
-          <Tab value="recent" label="最近一天內上檔影片" />
-          <Tab value="brands" label="品牌列表" />
+          <Tab value="all" label={t("galgame.home.tabs.all")} />
+          <Tab value="recent" label={t("galgame.home.tabs.recent")} />
+          <Tab value="brands" label={t("galgame.home.tabs.brands")} />
         </Tabs>
         {tab === "brands" ? (
           brands.isPending ? (
-            <GalgameState loading message="正在載入品牌..." />
+            <GalgameState loading message={t("galgame.home.brands.loading")} />
           ) : brands.isError ? (
             <GalgameState
               severity="error"
-              message="品牌載入失敗，請稍後再試。"
+              message={t("galgame.home.brands.error")}
             />
           ) : brands.data.data.length === 0 ? (
             <GalgameState
               message={
-                keyword ? "找不到符合搜尋條件的品牌。" : "目前尚無品牌資料。"
+                keyword
+                  ? t("galgame.home.brands.notFound")
+                  : t("galgame.home.brands.empty")
               }
             />
           ) : (
@@ -144,7 +151,7 @@ export default function GalgameHome() {
                               <StarIcon
                                 color="warning"
                                 fontSize="small"
-                                aria-label="已收藏品牌"
+                                aria-label={t("galgame.home.brands.favorited")}
                               />
                             )}
                           </Stack>
@@ -157,13 +164,18 @@ export default function GalgameHome() {
             </Grid>
           )
         ) : videos.isPending ? (
-          <GalgameState loading message="正在載入影片..." />
+          <GalgameState loading message={t("galgame.home.videos.loading")} />
         ) : videos.isError ? (
-          <GalgameState severity="error" message="影片載入失敗，請稍後再試。" />
+          <GalgameState
+            severity="error"
+            message={t("galgame.home.videos.error")}
+          />
         ) : videos.data.data.length === 0 ? (
           <GalgameState
             message={
-              keyword ? "找不到符合搜尋條件的影片。" : "目前尚無影片資料。"
+              keyword
+                ? t("galgame.home.videos.notFound")
+                : t("galgame.home.videos.empty")
             }
           />
         ) : (

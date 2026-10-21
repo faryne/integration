@@ -1,0 +1,232 @@
+{
+  "layout": {
+    "nav": {
+      "allVideos": "動画一覧",
+      "recentVideos": "新着動画",
+      "brands": "ブランド",
+      "favorites": "お気に入り",
+      "submitChannel": "チャンネル追加",
+      "submitVideo": "動画追加",
+      "admin": "管理"
+    },
+    "search": {
+      "videos": "動画",
+      "brands": "ブランド",
+      "placeholder": "検索",
+      "submit": "検索"
+    },
+    "auth": {
+      "signedIn": "ログイン中",
+      "userAvatar": "ユーザー",
+      "logout": "ログアウト",
+      "login": "Google でログイン"
+    }
+  },
+  "breadcrumb": {
+    "ariaLabel": "パンくずリスト",
+    "home": "ホーム"
+  },
+  "home": {
+    "pageTitle": "ギャルゲー動画",
+    "heading": "ギャルゲー新着動画",
+    "subtitle": "各ゲームブランド公式チャンネルの最新 PV・OP・関連動画をまとめています。",
+    "tabs": {
+      "ariaLabel": "動画の公開期間",
+      "all": "すべての動画",
+      "recent": "24時間以内に公開された動画",
+      "brands": "ブランド一覧"
+    },
+    "brands": {
+      "loading": "ブランドを読み込み中...",
+      "error": "ブランドを読み込めませんでした。しばらくしてから再度お試しください。",
+      "notFound": "検索条件に一致するブランドが見つかりません。",
+      "empty": "ブランドはまだ登録されていません。",
+      "favorited": "お気に入りのブランド"
+    },
+    "videos": {
+      "loading": "動画を読み込み中...",
+      "error": "動画を読み込めませんでした。しばらくしてから再度お試しください。",
+      "notFound": "検索条件に一致する動画が見つかりません。",
+      "empty": "動画はまだ登録されていません。"
+    }
+  },
+  "videoCard": {
+    "favorite": "お気に入りに追加",
+    "unfavorite": "お気に入りから削除",
+    "deleted": "削除済み"
+  },
+  "authGate": {
+    "checking": "ログイン状態を確認中..."
+  },
+  "status": {
+    "pending": "審査待ち",
+    "approved": "承認済み",
+    "rejected": "却下",
+    "failed": "失敗",
+    "unknown": "不明"
+  },
+  "favoriteButton": {
+    "brand": {
+      "added": "お気に入り登録済み",
+      "add": "ブランドをお気に入りに追加",
+      "remove": "ブランドをお気に入りから削除",
+      "favorite": "ブランドをお気に入りに追加"
+    },
+    "video": {
+      "added": "お気に入り登録済み",
+      "add": "動画をお気に入りに追加",
+      "remove": "動画をお気に入りから削除",
+      "favorite": "動画をお気に入りに追加"
+    }
+  },
+  "brand": {
+    "pageTitle": "{{name}} の動画",
+    "pageTitleFallback": "ブランドの動画",
+    "loading": "ブランド情報を読み込み中...",
+    "error": "ブランド情報を読み込めませんでした。しばらくしてから再度お試しください。",
+    "tabs": {
+      "ariaLabel": "ブランド動画の分類",
+      "all": "すべての動画",
+      "recent": "新着動画"
+    },
+    "videosLoading": "ブランドの動画を読み込み中...",
+    "videosError": "動画を読み込めませんでした。しばらくしてから再度お試しください。",
+    "videosEmpty": "このブランドの動画はまだありません。"
+  },
+  "video": {
+    "pageTitleFallback": "ギャルゲー動画",
+    "loading": "動画を読み込み中...",
+    "notFound": "動画が存在しないか、読み込みに失敗しました。",
+    "like": "高評価 {{count}}",
+    "dislike": "低評価 {{count}}",
+    "previous": "前の動画",
+    "noPrevious": "前の動画はありません",
+    "next": "次の動画",
+    "noNext": "次の動画はありません",
+    "description": "動画の説明",
+    "noDescription": "この動画には説明がありません。",
+    "related": "関連動画"
+  },
+  "favorites": {
+    "pageTitle": "お気に入り",
+    "loginPrompt": "ログインすると、お気に入りのブランドと動画を確認できます。",
+    "loggingIn": "ログイン中...",
+    "login": "Google でログイン",
+    "heading": "お気に入り",
+    "tabs": {
+      "videos": "お気に入り動画",
+      "brands": "お気に入りブランド"
+    },
+    "loading": "お気に入りを読み込み中...",
+    "error": "お気に入りを読み込めませんでした。",
+    "brandsEmpty": "お気に入りのブランドはまだありません。",
+    "deleted": "削除済み",
+    "latestCount": "新着 {{count}} 件",
+    "videosEmpty": "お気に入りの動画はまだありません。"
+  },
+  "related": {
+    "heading": "関連動画",
+    "loading": "関連動画を読み込み中...",
+    "error": "関連動画を読み込めませんでした。",
+    "empty": "関連動画はまだありません。"
+  },
+  "submitBrand": {
+    "pageTitle": "ギャルゲーチャンネルを追加",
+    "heading": "YouTube チャンネルを追加",
+    "hint": "1行に1つずつ URL を入力してください。YouTube の @handle または /channel/UC... 形式に対応しています。",
+    "fieldLabel": "YouTube チャンネル",
+    "placeholder": "1行に1つずつ URL を入力\nhttps://www.youtube.com/@name\nhttps://www.youtube.com/channel/UCxxxxxxxxxxxxxxxxxxxxxxxx",
+    "submitting": "送信中...",
+    "submit": "送信",
+    "submitCount": "{{count}} 件を送信",
+    "submitError": "送信に失敗しました。しばらくしてから再度お試しください。",
+    "parsing": "YouTube チャンネルを解析しています。しばらくお待ちください。",
+    "nothingSubmitted": "送信された項目はありません。各行に YouTube チャンネルの URL が入力されているか確認してください。",
+    "submitted": "送信しました。管理者の承認をお待ちください。",
+    "alreadyExists": "登録済み（{{status}}）"
+  },
+  "submitVideo": {
+    "pageTitle": "ギャルゲー動画を追加",
+    "heading": "YouTube 動画を追加",
+    "hint": "1行に1つずつ URL を入力してください。youtu.be または youtube.com/watch?v= 形式に対応しています。",
+    "fieldLabel": "YouTube 動画",
+    "placeholder": "1行に1つずつ URL を入力\nhttps://youtu.be/xxxxxxxxxxx\nhttps://www.youtube.com/watch?v=xxxxxxxxxxx",
+    "submitting": "送信中...",
+    "submit": "送信",
+    "submitCount": "{{count}} 件を送信",
+    "submitError": "送信に失敗しました。しばらくしてから再度お試しください。",
+    "parsing": "YouTube 動画を解析しています。しばらくお待ちください。",
+    "nothingSubmitted": "送信された項目はありません。各行に YouTube 動画の URL が入力されているか確認してください。",
+    "submitted": "送信しました。管理者の承認をお待ちください。",
+    "alreadyExists": "登録済み（{{status}}）",
+    "duplicateExists": "この動画はすでに登録されています。",
+    "duplicatePending": "この動画はすでに申請済みで、審査待ちです。"
+  },
+  "admin": {
+    "heading": "ギャルゲー管理画面",
+    "noPermission": "管理者権限が必要です。",
+    "subtitle": "審査待ち、インデックス状態、削除、動画の審査を管理します。",
+    "tabs": {
+      "brands": "チャンネル管理",
+      "videos": "動画管理",
+      "pendingBrands": "審査待ちチャンネル",
+      "pendingVideos": "審査待ち動画",
+      "titleKeywords": "動画キーワード"
+    },
+    "brands": {
+      "search": "チャンネルを検索",
+      "tabs": {
+        "all": "すべてのチャンネル",
+        "deleted": "削除済みチャンネル",
+        "paused": "インデックス停止中"
+      },
+      "loading": "チャンネルを読み込み中...",
+      "empty": "条件に一致するチャンネルはありません。",
+      "paused": "インデックス停止中"
+    },
+    "deleted": "削除済み",
+    "actions": {
+      "approve": "承認",
+      "reject": "却下",
+      "restore": "削除を取り消す",
+      "resumeIndexing": "インデックスを再開",
+      "delete": "削除",
+      "deleteVideo": "動画を削除",
+      "pauseIndexing": "インデックスを停止",
+      "fullIndex": "全件インデックス",
+      "add": "追加",
+      "enable": "有効にする",
+      "disable": "無効にする"
+    },
+    "videos": {
+      "search": "動画を検索",
+      "tabs": {
+        "all": "すべての動画",
+        "deleted": "削除済み動画"
+      },
+      "loading": "動画を読み込み中...",
+      "empty": "条件に一致する動画はありません。"
+    },
+    "pendingBrands": {
+      "loading": "審査待ちチャンネルを読み込み中...",
+      "empty": "審査待ちのチャンネルはありません。"
+    },
+    "pendingVideos": {
+      "loading": "審査待ち動画を読み込み中...",
+      "empty": "審査待ちの動画はありません。"
+    },
+    "keywords": {
+      "new": "新しいキーワード",
+      "search": "キーワードを検索",
+      "tabs": {
+        "all": "すべて",
+        "enabled": "有効",
+        "disabled": "無効"
+      },
+      "loading": "キーワードを読み込み中...",
+      "empty": "条件に一致するキーワードはありません。",
+      "enabled": "有効",
+      "disabled": "無効"
+    }
+  }
+}

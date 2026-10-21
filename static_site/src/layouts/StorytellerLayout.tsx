@@ -3,7 +3,7 @@ import { PenNameDialog } from "@/components/storyteller/PenNameDialog.tsx";
 import { SteamLoomMark } from "@/components/storyteller/SteamLoomMark.tsx";
 import { SteamLoomFooter } from "@/components/storyteller/SteamLoomFooter.tsx";
 import { StorytellerAppearanceMenu } from "@/components/storyteller/StorytellerAppearanceMenu.tsx";
-import { StorytellerLanguageMenu } from "@/components/storyteller/StorytellerLanguageMenu.tsx";
+import { LanguageMenu } from "@/components/common/LanguageMenu.tsx";
 import { WelcomeGuideDialog } from "@/components/storyteller/WelcomeGuideDialog.tsx";
 import { ReportProvider } from "@/components/storyteller/report/ReportProvider.tsx";
 import { useAdminMe, useStorytellerUserProfile } from "@/apis/storyteller.ts";
@@ -355,7 +355,7 @@ export function StorytellerLayout() {
                           </Tooltip>
                         )}
                         <StorytellerAppearanceMenu />
-                        <StorytellerLanguageMenu />
+                        <LanguageMenu />
                       </Stack>
                     </Stack>
                     {readerHeaderVisible && (

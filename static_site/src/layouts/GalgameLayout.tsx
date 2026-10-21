@@ -18,6 +18,7 @@ import LoginIcon from "@mui/icons-material/Login";
 import LogoutIcon from "@mui/icons-material/Logout";
 import SearchIcon from "@mui/icons-material/Search";
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Link as RouterLink,
   Outlet,
@@ -29,9 +30,11 @@ import { useAuth } from "@/components/auth/AuthContext.ts";
 import { BilingualDisclaimer } from "@/components/common/BilingualDisclaimer.tsx";
 import { FaryneLogo } from "@/components/common/FaryneLogo.tsx";
 import IndependentFooter from "@/components/common/IndependentFooter.tsx";
+import { LanguageMenu } from "@/components/common/LanguageMenu.tsx";
 import { galgamePath } from "@/helpers/galgame.ts";
 
 export function GalgameLayout() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { user, session, loading, submitting, login, logout } = useAuth();
@@ -40,15 +43,33 @@ export function GalgameLayout() {
   );
   const [keyword, setKeyword] = useState(params.get("keyword") ?? "");
   const navigation = [
-    { title: "全部影片", href: galgamePath() },
-    { title: "最新影片", href: `${galgamePath()}?tab=recent` },
-    { title: "品牌", href: `${galgamePath()}?tab=brands` },
-    { title: "我的最愛", href: galgamePath("favorites") },
-    { title: "追加頻道", href: galgamePath("submit") },
-    { title: "追加影片", href: galgamePath("submit-video") },
+    { title: t("galgame.layout.nav.allVideos"), href: galgamePath() },
+    {
+      title: t("galgame.layout.nav.recentVideos"),
+      href: `${galgamePath()}?tab=recent`,
+    },
+    {
+      title: t("galgame.layout.nav.brands"),
+      href: `${galgamePath()}?tab=brands`,
+    },
+    {
+      title: t("galgame.layout.nav.favorites"),
+      href: galgamePath("favorites"),
+    },
+    {
+      title: t("galgame.layout.nav.submitChannel"),
+      href: galgamePath("submit"),
+    },
+    {
+      title: t("galgame.layout.nav.submitVideo"),
+      href: galgamePath("submit-video"),
+    },
   ];
   if (session?.user.is_admin) {
-    navigation.push({ title: "管理", href: galgamePath("admin") });
+    navigation.push({
+      title: t("galgame.layout.nav.admin"),
+      href: galgamePath("admin"),
+    });
   }
 
   const submitSearch = (event: FormEvent) => {
@@ -79,10 +100,19 @@ export function GalgameLayout() {
                 textDecoration: "none",
                 mr: "auto",
                 minWidth: 0,
+                // md 以上導覽列很擠，logo 不能被壓縮
+                flexShrink: { md: 0 },
               }}
             >
               <FaryneLogo width={36} alt="Galgame TV" />
-              <Typography variant="h6" component="span" fontWeight={800} noWrap>
+              {/* md～lg 之間導覽列（尤其外語）會擠到站名，這段寬度只留 logo */}
+              <Typography
+                variant="h6"
+                component="span"
+                fontWeight={800}
+                noWrap
+                sx={{ display: { xs: "block", md: "none", lg: "block" } }}
+              >
                 Galgame TV
               </Typography>
             </Stack>
@@ -95,6 +125,13 @@ export function GalgameLayout() {
                   to={item.href}
                   color="inherit"
                   size="small"
+                  // 外語標籤較長，不折行以免撐高 AppBar
+                  sx={{
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    minWidth: 0,
+                    textTransform: "none",
+                  }}
                 >
                   {item.title}
                 </Button>
@@ -119,19 +156,28 @@ export function GalgameLayout() {
                   minWidth: 84,
                 }}
               >
-                <MenuItem value="videos">影片</MenuItem>
-                <MenuItem value="brands">品牌</MenuItem>
+                <MenuItem value="videos">
+                  {t("galgame.layout.search.videos")}
+                </MenuItem>
+                <MenuItem value="brands">
+                  {t("galgame.layout.search.brands")}
+                </MenuItem>
               </Select>
               <TextField
                 value={keyword}
                 onChange={(event) => setKeyword(event.target.value)}
-                placeholder="搜尋"
+                placeholder={t("galgame.layout.search.placeholder")}
                 size="small"
                 slotProps={{
                   input: {
                     endAdornment: (
                       <InputAdornment position="end">
-                        <IconButton type="submit" edge="end" size="small">
+                        <IconButton
+                          type="submit"
+                          edge="end"
+                          size="small"
+                          aria-label={t("galgame.layout.search.submit")}
+                        >
                           <SearchIcon />
                         </IconButton>
                       </InputAdornment>
@@ -139,7 +185,8 @@ export function GalgameLayout() {
                   },
                 }}
                 sx={{
-                  width: { sm: 180, lg: 240 },
+                  // md～lg 讓位給導覽列
+                  width: { sm: 180, md: 140, lg: 240 },
                   bgcolor: "background.paper",
                   borderRadius: "0 6px 6px 0",
                   "& fieldset": { borderLeft: 0 },
@@ -147,17 +194,26 @@ export function GalgameLayout() {
               />
             </Stack>
 
+            <LanguageMenu />
             {!loading &&
               (user ? (
                 <Stack direction="row" alignItems="center" spacing={0.5}>
-                  <Tooltip title={user.displayName ?? user.email ?? "已登入"}>
+                  <Tooltip
+                    title={
+                      user.displayName ??
+                      user.email ??
+                      t("galgame.layout.auth.signedIn")
+                    }
+                  >
                     <Avatar
                       src={user.photoURL ?? undefined}
-                      alt={user.displayName ?? "使用者"}
+                      alt={
+                        user.displayName ?? t("galgame.layout.auth.userAvatar")
+                      }
                       sx={{ width: 32, height: 32 }}
                     />
                   </Tooltip>
-                  <Tooltip title="登出">
+                  <Tooltip title={t("galgame.layout.auth.logout")}>
                     <IconButton
                       color="inherit"
                       onClick={() => void logout()}
@@ -168,7 +224,7 @@ export function GalgameLayout() {
                   </Tooltip>
                 </Stack>
               ) : (
-                <Tooltip title="使用 Google 登入">
+                <Tooltip title={t("galgame.layout.auth.login")}>
                   <IconButton
                     color="inherit"
                     onClick={() => void login()}

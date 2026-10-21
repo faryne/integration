@@ -1,5 +1,6 @@
 import { Box, Button, Link, Stack, Typography } from "@mui/material";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 const urlPattern = /(https?:\/\/[^\s<>"'）)]+)/g;
 
@@ -28,6 +29,7 @@ export function ExpandableText({
   text: string;
   collapsedLines?: number;
 }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const isLong = text.length > 360 || text.split("\n").length > collapsedLines;
   const content = useMemo(() => linkedText(text), [text]);
@@ -55,7 +57,9 @@ export function ExpandableText({
       </Box>
       {isLong && (
         <Button size="small" onClick={() => setExpanded((value) => !value)}>
-          {expanded ? "收合介紹" : "展開完整介紹"}
+          {expanded
+            ? t("common.expandableText.collapse")
+            : t("common.expandableText.expand")}
         </Button>
       )}
     </Stack>

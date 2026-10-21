@@ -1,0 +1,28 @@
+{
+  "language": {
+    "buttonLabel": "界面语言",
+    "current": "界面语言，当前为{{language}}",
+    "title": "界面语言",
+    "options": {
+      "zh-TW": "正體中文",
+      "zh-CN": "简体中文",
+      "en": "English",
+      "ja": "日本語",
+      "ko": "한국어"
+    }
+  },
+  "expandableText": {
+    "collapse": "收起简介",
+    "expand": "展开完整简介"
+  },
+  "videoViewer": {
+    "loading": "视频加载中",
+    "play": "播放",
+    "pause": "暂停",
+    "stop": "停止",
+    "collapseInfo": "收起视频信息",
+    "expandInfo": "点击展开视频信息与相关内容",
+    "hideInfo": "隐藏信息",
+    "showInfo": "显示信息"
+  }
+}

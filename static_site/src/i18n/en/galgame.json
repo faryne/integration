@@ -1,0 +1,232 @@
+{
+  "layout": {
+    "nav": {
+      "allVideos": "All videos",
+      "recentVideos": "Latest",
+      "brands": "Brands",
+      "favorites": "Favorites",
+      "submitChannel": "Add channel",
+      "submitVideo": "Add video",
+      "admin": "Admin"
+    },
+    "search": {
+      "videos": "Videos",
+      "brands": "Brands",
+      "placeholder": "Search",
+      "submit": "Search"
+    },
+    "auth": {
+      "signedIn": "Signed in",
+      "userAvatar": "User",
+      "logout": "Sign out",
+      "login": "Sign in with Google"
+    }
+  },
+  "breadcrumb": {
+    "ariaLabel": "Breadcrumb",
+    "home": "Home"
+  },
+  "home": {
+    "pageTitle": "Galgame videos",
+    "heading": "Latest Galgame videos",
+    "subtitle": "The latest PVs, OPs, and related videos from official game brand channels.",
+    "tabs": {
+      "ariaLabel": "Video time range",
+      "all": "All videos",
+      "recent": "Released in the last 24 hours",
+      "brands": "Brands"
+    },
+    "brands": {
+      "loading": "Loading brands...",
+      "error": "Couldn't load brands. Please try again later.",
+      "notFound": "No brands match your search.",
+      "empty": "No brands yet.",
+      "favorited": "Favorite brand"
+    },
+    "videos": {
+      "loading": "Loading videos...",
+      "error": "Couldn't load videos. Please try again later.",
+      "notFound": "No videos match your search.",
+      "empty": "No videos yet."
+    }
+  },
+  "videoCard": {
+    "favorite": "Add to favorites",
+    "unfavorite": "Remove from favorites",
+    "deleted": "Deleted"
+  },
+  "authGate": {
+    "checking": "Checking sign-in status..."
+  },
+  "status": {
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "failed": "Failed",
+    "unknown": "Unknown"
+  },
+  "favoriteButton": {
+    "brand": {
+      "added": "Brand in favorites",
+      "add": "Add brand to favorites",
+      "remove": "Remove brand from favorites",
+      "favorite": "Add brand to favorites"
+    },
+    "video": {
+      "added": "Video in favorites",
+      "add": "Add video to favorites",
+      "remove": "Remove video from favorites",
+      "favorite": "Add video to favorites"
+    }
+  },
+  "brand": {
+    "pageTitle": "{{name}} videos",
+    "pageTitleFallback": "Brand videos",
+    "loading": "Loading brand...",
+    "error": "Couldn't load this brand. Please try again later.",
+    "tabs": {
+      "ariaLabel": "Brand video categories",
+      "all": "All videos",
+      "recent": "Latest releases"
+    },
+    "videosLoading": "Loading brand videos...",
+    "videosError": "Couldn't load videos. Please try again later.",
+    "videosEmpty": "This brand has no videos yet."
+  },
+  "video": {
+    "pageTitleFallback": "Galgame video",
+    "loading": "Loading video...",
+    "notFound": "This video doesn't exist or couldn't be loaded.",
+    "like": "Like {{count}}",
+    "dislike": "Dislike {{count}}",
+    "previous": "Previous video",
+    "noPrevious": "No previous video",
+    "next": "Next video",
+    "noNext": "No next video",
+    "description": "Description",
+    "noDescription": "This video has no description.",
+    "related": "Related videos"
+  },
+  "favorites": {
+    "pageTitle": "Favorites",
+    "loginPrompt": "Sign in to see your favorite brands and videos.",
+    "loggingIn": "Signing in...",
+    "login": "Sign in with Google",
+    "heading": "Favorites",
+    "tabs": {
+      "videos": "Favorite videos",
+      "brands": "Favorite brands"
+    },
+    "loading": "Loading favorites...",
+    "error": "Couldn't load your favorites.",
+    "brandsEmpty": "No favorite brands yet.",
+    "deleted": "Deleted",
+    "latestCount": "Recent releases: {{count}}",
+    "videosEmpty": "No favorite videos yet."
+  },
+  "related": {
+    "heading": "Related videos",
+    "loading": "Loading related videos...",
+    "error": "Couldn't load related videos.",
+    "empty": "No related videos yet."
+  },
+  "submitBrand": {
+    "pageTitle": "Add Galgame channels",
+    "heading": "Add YouTube channels",
+    "hint": "One URL per line. YouTube @handle and /channel/UC... formats are supported.",
+    "fieldLabel": "YouTube channels",
+    "placeholder": "One URL per line\nhttps://www.youtube.com/@name\nhttps://www.youtube.com/channel/UCxxxxxxxxxxxxxxxxxxxxxxxx",
+    "submitting": "Submitting...",
+    "submit": "Submit",
+    "submitCount": "Submit {{count}}",
+    "submitError": "Submission failed. Please try again later.",
+    "parsing": "Resolving YouTube channels, please wait.",
+    "nothingSubmitted": "Nothing was submitted. Make sure each line contains a YouTube channel URL.",
+    "submitted": "Submitted. Waiting for admin approval.",
+    "alreadyExists": "Already exists ({{status}})"
+  },
+  "submitVideo": {
+    "pageTitle": "Add Galgame videos",
+    "heading": "Add YouTube videos",
+    "hint": "One URL per line. youtu.be and youtube.com/watch?v= formats are supported.",
+    "fieldLabel": "YouTube videos",
+    "placeholder": "One URL per line\nhttps://youtu.be/xxxxxxxxxxx\nhttps://www.youtube.com/watch?v=xxxxxxxxxxx",
+    "submitting": "Submitting...",
+    "submit": "Submit",
+    "submitCount": "Submit {{count}}",
+    "submitError": "Submission failed. Please try again later.",
+    "parsing": "Resolving YouTube videos, please wait.",
+    "nothingSubmitted": "Nothing was submitted. Make sure each line contains a YouTube video URL.",
+    "submitted": "Submitted. Waiting for admin approval.",
+    "alreadyExists": "Already exists ({{status}})",
+    "duplicateExists": "This video already exists.",
+    "duplicatePending": "This video has already been submitted and is awaiting review."
+  },
+  "admin": {
+    "heading": "Galgame admin",
+    "noPermission": "Admin permission is required.",
+    "subtitle": "Manage pending reviews, indexing status, deletions, and video submissions.",
+    "tabs": {
+      "brands": "Channels",
+      "videos": "Videos",
+      "pendingBrands": "Pending channels",
+      "pendingVideos": "Pending videos",
+      "titleKeywords": "Video keywords"
+    },
+    "brands": {
+      "search": "Search channels",
+      "tabs": {
+        "all": "All channels",
+        "deleted": "Deleted channels",
+        "paused": "Indexing paused"
+      },
+      "loading": "Loading channels...",
+      "empty": "No channels match these filters.",
+      "paused": "Indexing paused"
+    },
+    "deleted": "Deleted",
+    "actions": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "restore": "Undo delete",
+      "resumeIndexing": "Resume indexing",
+      "delete": "Delete",
+      "deleteVideo": "Delete video",
+      "pauseIndexing": "Pause indexing",
+      "fullIndex": "Full reindex",
+      "add": "Add",
+      "enable": "Enable",
+      "disable": "Disable"
+    },
+    "videos": {
+      "search": "Search videos",
+      "tabs": {
+        "all": "All videos",
+        "deleted": "Deleted videos"
+      },
+      "loading": "Loading videos...",
+      "empty": "No videos match these filters."
+    },
+    "pendingBrands": {
+      "loading": "Loading pending channels...",
+      "empty": "No pending channels."
+    },
+    "pendingVideos": {
+      "loading": "Loading pending videos...",
+      "empty": "No pending videos."
+    },
+    "keywords": {
+      "new": "New keyword",
+      "search": "Search keywords",
+      "tabs": {
+        "all": "All",
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
+      "loading": "Loading keywords...",
+      "empty": "No keywords match these filters.",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    }
+  }
+}

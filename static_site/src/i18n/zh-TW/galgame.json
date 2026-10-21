@@ -1,0 +1,232 @@
+{
+  "layout": {
+    "nav": {
+      "allVideos": "全部影片",
+      "recentVideos": "最新影片",
+      "brands": "品牌",
+      "favorites": "我的最愛",
+      "submitChannel": "追加頻道",
+      "submitVideo": "追加影片",
+      "admin": "管理"
+    },
+    "search": {
+      "videos": "影片",
+      "brands": "品牌",
+      "placeholder": "搜尋",
+      "submit": "搜尋"
+    },
+    "auth": {
+      "signedIn": "已登入",
+      "userAvatar": "使用者",
+      "logout": "登出",
+      "login": "使用 Google 登入"
+    }
+  },
+  "breadcrumb": {
+    "ariaLabel": "導覽路徑",
+    "home": "首頁"
+  },
+  "home": {
+    "pageTitle": "Galgame 影片",
+    "heading": "Galgame 最新影片",
+    "subtitle": "各遊戲品牌官方頻道的最新 PV、OP 與相關影片。",
+    "tabs": {
+      "ariaLabel": "影片時間範圍",
+      "all": "所有影片",
+      "recent": "最近一天內上檔影片",
+      "brands": "品牌列表"
+    },
+    "brands": {
+      "loading": "正在載入品牌...",
+      "error": "品牌載入失敗，請稍後再試。",
+      "notFound": "找不到符合搜尋條件的品牌。",
+      "empty": "目前尚無品牌資料。",
+      "favorited": "已收藏品牌"
+    },
+    "videos": {
+      "loading": "正在載入影片...",
+      "error": "影片載入失敗，請稍後再試。",
+      "notFound": "找不到符合搜尋條件的影片。",
+      "empty": "目前尚無影片資料。"
+    }
+  },
+  "videoCard": {
+    "favorite": "收藏影片",
+    "unfavorite": "取消收藏影片",
+    "deleted": "已刪除"
+  },
+  "authGate": {
+    "checking": "正在確認登入狀態..."
+  },
+  "status": {
+    "pending": "待審",
+    "approved": "已核准",
+    "rejected": "已拒絕",
+    "failed": "失敗",
+    "unknown": "未知"
+  },
+  "favoriteButton": {
+    "brand": {
+      "added": "已收藏品牌",
+      "add": "加入收藏品牌",
+      "remove": "取消收藏品牌",
+      "favorite": "收藏品牌"
+    },
+    "video": {
+      "added": "已收藏影片",
+      "add": "加入收藏影片",
+      "remove": "取消收藏影片",
+      "favorite": "收藏影片"
+    }
+  },
+  "brand": {
+    "pageTitle": "{{name}} 影片",
+    "pageTitleFallback": "品牌影片",
+    "loading": "正在載入品牌資料...",
+    "error": "品牌資料載入失敗，請稍後再試。",
+    "tabs": {
+      "ariaLabel": "品牌影片分類",
+      "all": "所有影片",
+      "recent": "最新上檔影片"
+    },
+    "videosLoading": "正在載入品牌影片...",
+    "videosError": "影片載入失敗，請稍後再試。",
+    "videosEmpty": "此品牌目前尚無影片。"
+  },
+  "video": {
+    "pageTitleFallback": "Galgame 影片",
+    "loading": "正在載入影片...",
+    "notFound": "影片不存在或載入失敗。",
+    "like": "喜歡 {{count}}",
+    "dislike": "不喜歡 {{count}}",
+    "previous": "上一則影片",
+    "noPrevious": "沒有上一則影片",
+    "next": "下一則影片",
+    "noNext": "沒有下一則影片",
+    "description": "影片介紹",
+    "noDescription": "此影片沒有介紹。",
+    "related": "相關影片"
+  },
+  "favorites": {
+    "pageTitle": "我的最愛",
+    "loginPrompt": "登入後即可查看收藏的品牌與影片。",
+    "loggingIn": "登入中...",
+    "login": "使用 Google 登入",
+    "heading": "我的最愛",
+    "tabs": {
+      "videos": "收藏影片",
+      "brands": "收藏品牌"
+    },
+    "loading": "正在載入我的最愛...",
+    "error": "我的最愛載入失敗。",
+    "brandsEmpty": "目前沒有收藏品牌。",
+    "deleted": "已刪除",
+    "latestCount": "最新上檔 {{count}}",
+    "videosEmpty": "目前沒有收藏影片。"
+  },
+  "related": {
+    "heading": "相關影片",
+    "loading": "正在載入相關影片...",
+    "error": "相關影片載入失敗。",
+    "empty": "目前沒有相關影片。"
+  },
+  "submitBrand": {
+    "pageTitle": "追加 Galgame 頻道",
+    "heading": "追加 YouTube 頻道",
+    "hint": "一行放置一個網址，支援 YouTube @handle 或 /channel/UC... 格式。",
+    "fieldLabel": "YouTube 頻道",
+    "placeholder": "一行放置一個網址\nhttps://www.youtube.com/@name\nhttps://www.youtube.com/channel/UCxxxxxxxxxxxxxxxxxxxxxxxx",
+    "submitting": "送出中...",
+    "submit": "送出",
+    "submitCount": "送出 {{count}}",
+    "submitError": "送出失敗，請稍後再試。",
+    "parsing": "正在解析 YouTube 頻道，請稍候。",
+    "nothingSubmitted": "沒有送出任何頻道，請確認每行都有填入 YouTube 頻道網址。",
+    "submitted": "已送出，等待管理者核准。",
+    "alreadyExists": "已存在（{{status}}）"
+  },
+  "submitVideo": {
+    "pageTitle": "追加 Galgame 影片",
+    "heading": "追加 YouTube 影片",
+    "hint": "一行放置一個網址，支援 youtu.be 或 youtube.com/watch?v= 格式。",
+    "fieldLabel": "YouTube 影片",
+    "placeholder": "一行放置一個網址\nhttps://youtu.be/xxxxxxxxxxx\nhttps://www.youtube.com/watch?v=xxxxxxxxxxx",
+    "submitting": "送出中...",
+    "submit": "送出",
+    "submitCount": "送出 {{count}}",
+    "submitError": "送出失敗，請稍後再試。",
+    "parsing": "正在解析 YouTube 影片，請稍候。",
+    "nothingSubmitted": "沒有送出任何影片，請確認每行都有填入 YouTube 影片網址。",
+    "submitted": "已送出，等待管理者核准。",
+    "alreadyExists": "已存在（{{status}}）",
+    "duplicateExists": "影片已存在",
+    "duplicatePending": "影片已被提出，正在等待審核"
+  },
+  "admin": {
+    "heading": "Galgame 管理後台",
+    "noPermission": "需要管理員權限。",
+    "subtitle": "管理待審、索引狀態、刪除與影片審核。",
+    "tabs": {
+      "brands": "頻道管理",
+      "videos": "影片管理",
+      "pendingBrands": "待審頻道",
+      "pendingVideos": "待審影片",
+      "titleKeywords": "影片關鍵字"
+    },
+    "brands": {
+      "search": "搜尋頻道",
+      "tabs": {
+        "all": "全部頻道",
+        "deleted": "已刪除頻道",
+        "paused": "暫停索引頻道"
+      },
+      "loading": "正在載入頻道...",
+      "empty": "沒有符合條件的頻道。",
+      "paused": "暫停索引"
+    },
+    "deleted": "已刪除",
+    "actions": {
+      "approve": "核准",
+      "reject": "拒絕",
+      "restore": "刪除回滾",
+      "resumeIndexing": "重新啟動索引",
+      "delete": "刪除",
+      "deleteVideo": "刪除影片",
+      "pauseIndexing": "暫停索引",
+      "fullIndex": "完全索引",
+      "add": "新增",
+      "enable": "啟用",
+      "disable": "停用"
+    },
+    "videos": {
+      "search": "搜尋影片",
+      "tabs": {
+        "all": "全部影片",
+        "deleted": "已刪除影片"
+      },
+      "loading": "正在載入影片...",
+      "empty": "沒有符合條件的影片。"
+    },
+    "pendingBrands": {
+      "loading": "正在載入待審頻道...",
+      "empty": "目前沒有待審頻道。"
+    },
+    "pendingVideos": {
+      "loading": "正在載入待審影片...",
+      "empty": "目前沒有待審影片。"
+    },
+    "keywords": {
+      "new": "新增關鍵字",
+      "search": "搜尋關鍵字",
+      "tabs": {
+        "all": "全部",
+        "enabled": "啟用",
+        "disabled": "停用"
+      },
+      "loading": "正在載入關鍵字...",
+      "empty": "沒有符合條件的關鍵字。",
+      "enabled": "啟用",
+      "disabled": "停用"
+    }
+  }
+}
