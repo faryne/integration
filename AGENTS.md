@@ -51,7 +51,7 @@ Follow the existing module boundaries.
 
 ## Common Commands
 
-- `go run main.go`: run the backend locally
+- `go run .`: run the backend locally (main package spans multiple files; `go run main.go` will not compile)
 - `docker-compose up -d`: start local infrastructure
 - `make mig-up`: apply localhost migrations
 - `make mig-down`: roll back localhost migrations

@@ -55,7 +55,7 @@ STORYTELLER_AGENT_API_KEY_MASTER_KEYS=v1:old_base64_32_bytes_key,v2:new_base64_3
 3. 執行手動輪換 job，將既有 Agent API Key 重新加密到 active key：
 
 ```bash
-go run main.go --cmd storyteller-rotate-agent-api-keys
+go run . --cmd storyteller-rotate-agent-api-keys
 ```
 
 4. 確認輪換成功後，才能移除舊 key：
