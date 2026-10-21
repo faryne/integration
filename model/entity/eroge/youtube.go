@@ -53,6 +53,15 @@ type BrandSearchRequest struct {
 	entity.CommonPaginationQueryRequest
 	Keyword string `query:"keyword"`
 	Status  string `query:"status"`
+	// RecentDays > 0 時只列出 N 天內有上新片的品牌（首頁品牌橫列用），上限見 maxBrandRecentDays
+	RecentDays int64 `query:"recent_days"`
+}
+
+const maxBrandRecentDays = 30
+
+// RecentDaysValue 將 recent_days 夾在 0～maxBrandRecentDays，避免任意大的區間拖慢子查詢
+func (r BrandSearchRequest) RecentDaysValue() int64 {
+	return min(max(r.RecentDays, 0), maxBrandRecentDays)
 }
 
 type BrandLink struct {

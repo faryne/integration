@@ -16,18 +16,21 @@ import {
 import StarIcon from "@mui/icons-material/Star";
 import { useMemo } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import {
   useFavoriteGalgameBrands,
   useFavoriteGalgameVideos,
 } from "@/apis/galgame/catalog.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { GalgamePageHeader } from "@/components/galgame/GalgamePageHeader.tsx";
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { GalgameVideoCard } from "@/components/galgame/GalgameVideoCard.tsx";
 import { galgameBrandSlug, galgamePath } from "@/helpers/galgame.ts";
 import { useTitle } from "@/helpers/title.tsx";
 
 export default function GalgameFavorites() {
+  const { t } = useTranslation();
   const { session, loading, login, submitting } = useAuth();
   const [params, setParams] = useSearchParams();
   const tab = params.get("tab") === "brands" ? "brands" : "videos";
@@ -43,22 +46,25 @@ export default function GalgameFavorites() {
       ),
     [result.data],
   );
-  useTitle("我的最愛");
+  useTitle(t("galgame.favorites.pageTitle"));
 
   if (loading) {
-    return <GalgameState loading message="正在確認登入狀態..." />;
+    return <GalgameState loading message={t("galgame.authGate.checking")} />;
   }
 
   if (!session) {
     return (
       <Stack spacing={2} alignItems="flex-start">
-        <GalgameState message="登入後即可查看收藏的品牌與影片。" />
+        <GalgamePageHeader current={t("galgame.favorites.heading")} />
+        <GalgameState message={t("galgame.favorites.loginPrompt")} />
         <Button
           variant="contained"
           onClick={() => void login()}
           disabled={submitting}
         >
-          {submitting ? "登入中..." : "使用 Google 登入"}
+          {submitting
+            ? t("galgame.favorites.loggingIn")
+            : t("galgame.favorites.login")}
         </Button>
       </Stack>
     );
@@ -66,30 +72,31 @@ export default function GalgameFavorites() {
 
   return (
     <Box sx={{ pb: 6 }}>
+      <GalgamePageHeader
+        current={t("galgame.favorites.heading")}
+        title={t("galgame.favorites.heading")}
+      />
       <Stack spacing={3}>
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <StarIcon color="warning" />
-          <Typography variant="h3" component="h1">
-            我的最愛
-          </Typography>
-        </Stack>
         <Tabs
           value={tab}
           onChange={(_, value: "videos" | "brands") =>
             setParams(value === "brands" ? { tab: "brands" } : {})
           }
         >
-          <Tab value="videos" label="收藏影片" />
-          <Tab value="brands" label="收藏品牌" />
+          <Tab value="videos" label={t("galgame.favorites.tabs.videos")} />
+          <Tab value="brands" label={t("galgame.favorites.tabs.brands")} />
         </Tabs>
 
         {result.isPending ? (
-          <GalgameState loading message="正在載入我的最愛..." />
+          <GalgameState loading message={t("galgame.favorites.loading")} />
         ) : result.isError ? (
-          <GalgameState severity="error" message="我的最愛載入失敗。" />
+          <GalgameState
+            severity="error"
+            message={t("galgame.favorites.error")}
+          />
         ) : tab === "brands" ? (
           brands.data!.data.length === 0 ? (
-            <GalgameState message="目前沒有收藏品牌。" />
+            <GalgameState message={t("galgame.favorites.brandsEmpty")} />
           ) : (
             <Grid container spacing={3}>
               {brands.data!.data.map((brand) => (
@@ -108,7 +115,7 @@ export default function GalgameFavorites() {
                       }
                       to={
                         brand.latest_video_count > 0 && !brand.deleted_at
-                          ? `${galgamePath(galgameBrandSlug(brand.public_id, brand.name))}?tab=recent`
+                          ? `${galgamePath(galgameBrandSlug(brand.public_id, brand.name))}?time=7d`
                           : undefined
                       }
                       disabled={
@@ -137,8 +144,10 @@ export default function GalgameFavorites() {
                           <Chip
                             label={
                               brand.deleted_at
-                                ? "已刪除"
-                                : `最新上檔 ${brand.latest_video_count ?? 0}`
+                                ? t("galgame.favorites.deleted")
+                                : t("galgame.favorites.latestCount", {
+                                    count: brand.latest_video_count ?? 0,
+                                  })
                             }
                             color={
                               brand.deleted_at
@@ -158,7 +167,7 @@ export default function GalgameFavorites() {
             </Grid>
           )
         ) : videos.data!.data.length === 0 ? (
-          <GalgameState message="目前沒有收藏影片。" />
+          <GalgameState message={t("galgame.favorites.videosEmpty")} />
         ) : (
           <Grid container spacing={3}>
             {videos.data!.data.map((video) => (

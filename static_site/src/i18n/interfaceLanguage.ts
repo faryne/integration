@@ -1,10 +1,12 @@
-export const storytellerLanguages = ["zh-TW", "zh-CN", "en", "ja", "ko"] as const;
+export const interfaceLanguages = ["zh-TW", "zh-CN", "en", "ja", "ko"] as const;
 
-export type StorytellerLanguage = (typeof storytellerLanguages)[number];
+export type InterfaceLanguage = (typeof interfaceLanguages)[number];
 
-export const storytellerLanguageStorageKey = "steamloom.interfaceLanguage";
+// 全站（SteamLoom、galgame.tv…）共用的介面語言偏好。key 沿用 SteamLoom 時期命名，
+// 避免既有使用者的選擇被重設；各獨立網域的 localStorage 本來就互相隔離，不會互相干擾。
+export const interfaceLanguageStorageKey = "steamloom.interfaceLanguage";
 
-const languageAliases: Record<string, StorytellerLanguage> = {
+const languageAliases: Record<string, InterfaceLanguage> = {
   "zh-tw": "zh-TW",
   "zh-hant": "zh-TW",
   "zh-hant-tw": "zh-TW",
@@ -16,7 +18,7 @@ const languageAliases: Record<string, StorytellerLanguage> = {
   ko: "ko",
 };
 
-export function normalizeStorytellerLanguage(value?: string | null): StorytellerLanguage | undefined {
+export function normalizeInterfaceLanguage(value?: string | null): InterfaceLanguage | undefined {
   if (!value) return undefined;
   const normalized = value.toLowerCase();
   if (languageAliases[normalized]) return languageAliases[normalized];
@@ -27,18 +29,18 @@ export function normalizeStorytellerLanguage(value?: string | null): Storyteller
 }
 
 /** 優先使用使用者選擇；首次造訪才依瀏覽器偏好決定，最後回退正體中文。 */
-export function getInitialStorytellerLanguage(): StorytellerLanguage {
+export function getInitialInterfaceLanguage(): InterfaceLanguage {
   if (typeof window === "undefined") return "zh-TW";
-  const stored = normalizeStorytellerLanguage(window.localStorage.getItem(storytellerLanguageStorageKey));
+  const stored = normalizeInterfaceLanguage(window.localStorage.getItem(interfaceLanguageStorageKey));
   if (stored) return stored;
   for (const language of window.navigator.languages ?? [window.navigator.language]) {
-    const resolved = normalizeStorytellerLanguage(language);
+    const resolved = normalizeInterfaceLanguage(language);
     if (resolved) return resolved;
   }
   return "zh-TW";
 }
 
-export function persistStorytellerLanguage(language: StorytellerLanguage) {
-  window.localStorage.setItem(storytellerLanguageStorageKey, language);
+export function persistInterfaceLanguage(language: InterfaceLanguage) {
+  window.localStorage.setItem(interfaceLanguageStorageKey, language);
   document.documentElement.lang = language;
 }

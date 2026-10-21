@@ -182,6 +182,7 @@ const McpTools = lazy(() => import("@/pages/tools/mcp.tsx"));
 const Nekomaid = lazy(() => import("@/pages/nekomaid"));
 const GalgameHome = lazy(() => import("@/pages/galgame"));
 const GalgameBrand = lazy(() => import("@/pages/galgame/brand.tsx"));
+const GalgameBrands = lazy(() => import("@/pages/galgame/brands.tsx"));
 const GalgameVideo = lazy(() => import("@/pages/galgame/video.tsx"));
 const GalgameFavorites = lazy(() => import("@/pages/galgame/favorites.tsx"));
 const GalgameSubmitBrand = lazy(
@@ -652,6 +653,7 @@ function App() {
           {standaloneGalgame && (
             <Route path={""} element={<GalgameLayout />}>
               <Route path={"/"} element={<GalgameHome />} />
+              <Route path={"/brands"} element={<GalgameBrands />} />
               <Route path={"/favorites"} element={<GalgameFavorites />} />
               <Route path={"/submit"} element={<GalgameSubmitBrand />} />
               <Route path={"/submit-video"} element={<GalgameSubmitVideo />} />
@@ -675,6 +677,7 @@ function App() {
 
                 <Route path={"galgame"} element={<GalgameLayout />}>
                   <Route path={""} element={<GalgameHome />} />
+                  <Route path={"brands"} element={<GalgameBrands />} />
                   <Route path={"favorites"} element={<GalgameFavorites />} />
                   <Route path={"submit"} element={<GalgameSubmitBrand />} />
                   <Route

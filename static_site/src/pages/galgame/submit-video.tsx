@@ -11,13 +11,16 @@ import {
 import SendIcon from "@mui/icons-material/Send";
 import axios from "axios";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useSubmitGalgameVideos } from "@/apis/galgame/catalog.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { GalgamePageHeader } from "@/components/galgame/GalgamePageHeader.tsx";
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 
 export default function GalgameSubmitVideo() {
+  const { t } = useTranslation();
   const { loading } = useAuth();
   const [input, setInput] = useState("");
   const submit = useSubmitGalgameVideos();
@@ -29,7 +32,7 @@ export default function GalgameSubmitVideo() {
         .filter(Boolean),
     [input],
   );
-  useTitle("追加 Galgame 影片");
+  useTitle(t("galgame.submitVideo.pageTitle"));
   const submitErrorMessage =
     submit.error && axios.isAxiosError(submit.error)
       ? (submit.error.response?.data as { message?: string } | undefined)
@@ -37,33 +40,27 @@ export default function GalgameSubmitVideo() {
       : undefined;
 
   if (loading) {
-    return <GalgameState loading message="正在確認登入狀態..." />;
+    return <GalgameState loading message={t("galgame.authGate.checking")} />;
   }
 
   return (
     <Box sx={{ pb: 6 }}>
+      <GalgamePageHeader
+        current={t("galgame.submitVideo.heading")}
+        title={t("galgame.submitVideo.heading")}
+        subtitle={t("galgame.submitVideo.hint")}
+      />
       <Stack spacing={3}>
-        <Box>
-          <Typography variant="h3" component="h1">
-            追加 YouTube 影片
-          </Typography>
-          <Typography color="text.secondary">
-            一行放置一個網址，支援 youtu.be 或 youtube.com/watch?v= 格式。
-          </Typography>
-        </Box>
-
         <Card variant="outlined">
           <CardContent>
             <Stack spacing={2}>
               <TextField
-                label="YouTube 影片"
+                label={t("galgame.submitVideo.fieldLabel")}
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 multiline
                 minRows={6}
-                placeholder={
-                  "一行放置一個網址\nhttps://youtu.be/xxxxxxxxxxx\nhttps://www.youtube.com/watch?v=xxxxxxxxxxx"
-                }
+                placeholder={t("galgame.submitVideo.placeholder")}
               />
               <Stack direction="row" spacing={1} alignItems="center">
                 <Button
@@ -73,12 +70,16 @@ export default function GalgameSubmitVideo() {
                   onClick={() => void submit.mutateAsync(urls)}
                 >
                   {submit.isPending
-                    ? "送出中..."
-                    : `送出${urls.length > 0 ? ` ${urls.length}` : ""}`}
+                    ? t("galgame.submitVideo.submitting")
+                    : urls.length > 0
+                      ? t("galgame.submitVideo.submitCount", {
+                          count: urls.length,
+                        })
+                      : t("galgame.submitVideo.submit")}
                 </Button>
                 {submit.isError && (
                   <Typography color="error">
-                    {submitErrorMessage ?? "送出失敗，請稍後再試。"}
+                    {submitErrorMessage ?? t("galgame.submitVideo.submitError")}
                   </Typography>
                 )}
               </Stack>
@@ -87,21 +88,26 @@ export default function GalgameSubmitVideo() {
         </Card>
 
         {submit.isPending && (
-          <Alert severity="info">正在解析 YouTube 影片，請稍候。</Alert>
+          <Alert severity="info">{t("galgame.submitVideo.parsing")}</Alert>
         )}
 
         {submit.isSuccess && (submit.data?.length ?? 0) === 0 && (
           <Alert severity="warning">
-            沒有送出任何影片，請確認每行都有填入 YouTube 影片網址。
+            {t("galgame.submitVideo.nothingSubmitted")}
           </Alert>
         )}
 
         {submit.data && submit.data.length > 0 && (
           <Stack spacing={1}>
             {submit.data.map((result) => {
-              const duplicateNotice =
-                result.error === "影片已存在" ||
-                result.error?.includes("已被提出");
+              // 後端目前回傳中文錯誤字串，先在前端對應成翻譯；之後後端改回 error code 再換掉
+              const duplicateMessage =
+                result.error === "影片已存在"
+                  ? t("galgame.submitVideo.duplicateExists")
+                  : result.error?.includes("已被提出")
+                    ? t("galgame.submitVideo.duplicatePending")
+                    : undefined;
+              const duplicateNotice = Boolean(duplicateMessage);
               return (
                 <Alert
                   key={result.input}
@@ -116,11 +122,15 @@ export default function GalgameSubmitVideo() {
                   }
                 >
                   {result.error
-                    ? `${result.submission?.title ?? result.input}: ${result.error}`
+                    ? `${result.submission?.title ?? result.input}: ${duplicateMessage ?? result.error}`
                     : `${result.submission?.title ?? result.input}: ${
                         result.created
-                          ? "已送出，等待管理者核准。"
-                          : `已存在（${result.submission?.status ?? "unknown"}）`
+                          ? t("galgame.submitVideo.submitted")
+                          : t("galgame.submitVideo.alreadyExists", {
+                              status: t(
+                                `galgame.status.${result.submission?.status ?? "unknown"}`,
+                              ),
+                            })
                       }`}
                 </Alert>
               );

@@ -1,0 +1,28 @@
+{
+  "language": {
+    "buttonLabel": "介面語言",
+    "current": "介面語言，目前為{{language}}",
+    "title": "介面語言",
+    "options": {
+      "zh-TW": "正體中文",
+      "zh-CN": "简体中文",
+      "en": "English",
+      "ja": "日本語",
+      "ko": "한국어"
+    }
+  },
+  "expandableText": {
+    "collapse": "收合介紹",
+    "expand": "展開完整介紹"
+  },
+  "videoViewer": {
+    "loading": "影片載入中",
+    "play": "播放",
+    "pause": "暫停",
+    "stop": "停止",
+    "collapseInfo": "收合影片資訊",
+    "expandInfo": "點擊展開影片資訊與相關內容",
+    "hideInfo": "隱藏資訊",
+    "showInfo": "顯示資訊"
+  }
+}

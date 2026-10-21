@@ -1,16 +1,4 @@
 {
-  "language": {
-    "buttonLabel": "界面语言",
-    "current": "界面语言，当前为{{language}}",
-    "title": "界面语言",
-    "options": {
-      "zh-TW": "正體中文",
-      "zh-CN": "简体中文",
-      "en": "English",
-      "ja": "日本語",
-      "ko": "한국어"
-    }
-  },
   "common": {
     "user": "用户",
     "cancel": "取消",

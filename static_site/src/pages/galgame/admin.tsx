@@ -21,6 +21,7 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import RestoreIcon from "@mui/icons-material/Restore";
 import SyncIcon from "@mui/icons-material/Sync";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   useAdminGalgameBrands,
@@ -36,21 +37,19 @@ import {
   useUpdateGalgameVideoTitleKeyword,
 } from "@/apis/galgame/catalog.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { GalgamePageHeader } from "@/components/galgame/GalgamePageHeader.tsx";
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 
 type BrandTab = "all" | "deleted" | "paused";
 type AdminTab =
-  | "brands"
-  | "videos"
-  | "pending-brands"
-  | "pending-videos"
-  | "title-keywords";
+  "brands" | "videos" | "pending-brands" | "pending-videos" | "title-keywords";
 type VideoTab = "all" | "deleted";
 
 const adminPageSize = 20;
 
 export default function GalgameAdmin() {
+  const { t } = useTranslation();
   const { session, loading } = useAuth();
   const [adminTab, setAdminTab] = useState<AdminTab>("brands");
   const [brandTab, setBrandTab] = useState<BrandTab>("all");
@@ -139,45 +138,55 @@ export default function GalgameAdmin() {
         (titleKeywords.data?.per_page || adminPageSize),
     ),
   );
-  useTitle("Galgame 管理後台");
+  useTitle(t("galgame.admin.heading"));
 
   if (loading) {
-    return <GalgameState loading message="正在確認登入狀態..." />;
+    return <GalgameState loading message={t("galgame.authGate.checking")} />;
   }
   if (!session?.user.is_admin) {
-    return <GalgameState message="需要管理員權限。" />;
+    return (
+      <>
+        <GalgamePageHeader current={t("galgame.admin.heading")} />
+        <GalgameState message={t("galgame.admin.noPermission")} />
+      </>
+    );
   }
 
   return (
     <Box sx={{ pb: 6 }}>
+      <GalgamePageHeader
+        current={t("galgame.admin.heading")}
+        title={t("galgame.admin.heading")}
+        subtitle={t("galgame.admin.subtitle")}
+      />
       <Stack spacing={4}>
-        <Box>
-          <Typography variant="h3" component="h1">
-            Galgame 管理後台
-          </Typography>
-          <Typography color="text.secondary">
-            管理待審、索引狀態、刪除與影片審核。
-          </Typography>
-        </Box>
-
         <Tabs
           value={adminTab}
           onChange={(_, value: AdminTab) => setAdminTab(value)}
         >
-          <Tab value="brands" label="頻道管理" />
-          <Tab value="videos" label="影片管理" />
-          <Tab value="pending-brands" label="待審頻道" />
-          <Tab value="pending-videos" label="待審影片" />
-          <Tab value="title-keywords" label="影片關鍵字" />
+          <Tab value="brands" label={t("galgame.admin.tabs.brands")} />
+          <Tab value="videos" label={t("galgame.admin.tabs.videos")} />
+          <Tab
+            value="pending-brands"
+            label={t("galgame.admin.tabs.pendingBrands")}
+          />
+          <Tab
+            value="pending-videos"
+            label={t("galgame.admin.tabs.pendingVideos")}
+          />
+          <Tab
+            value="title-keywords"
+            label={t("galgame.admin.tabs.titleKeywords")}
+          />
         </Tabs>
 
         {adminTab === "brands" && (
           <Stack spacing={2}>
             <Typography variant="h5" component="h2">
-              頻道管理
+              {t("galgame.admin.tabs.brands")}
             </Typography>
             <TextField
-              label="搜尋頻道"
+              label={t("galgame.admin.brands.search")}
               value={brandKeyword}
               onChange={(event) => {
                 setBrandKeyword(event.target.value);
@@ -191,14 +200,23 @@ export default function GalgameAdmin() {
                 setBrandPage(1);
               }}
             >
-              <Tab value="all" label="全部頻道" />
-              <Tab value="deleted" label="已刪除頻道" />
-              <Tab value="paused" label="暫停索引頻道" />
+              <Tab value="all" label={t("galgame.admin.brands.tabs.all")} />
+              <Tab
+                value="deleted"
+                label={t("galgame.admin.brands.tabs.deleted")}
+              />
+              <Tab
+                value="paused"
+                label={t("galgame.admin.brands.tabs.paused")}
+              />
             </Tabs>
             {brands.isPending ? (
-              <GalgameState loading message="正在載入頻道..." />
+              <GalgameState
+                loading
+                message={t("galgame.admin.brands.loading")}
+              />
             ) : brandRows.length === 0 ? (
-              <GalgameState message="沒有符合條件的頻道。" />
+              <GalgameState message={t("galgame.admin.brands.empty")} />
             ) : (
               <Grid container spacing={2}>
                 {brandRows.map((brand) => (
@@ -221,13 +239,19 @@ export default function GalgameAdmin() {
                                 spacing={1}
                                 sx={{ mt: 0.75 }}
                               >
-                                <Chip label={brand.status} size="small" />
+                                <Chip
+                                  label={t(`galgame.status.${brand.status}`)}
+                                  size="small"
+                                />
                                 {brand.index_paused_at && (
-                                  <Chip label="暫停索引" size="small" />
+                                  <Chip
+                                    label={t("galgame.admin.brands.paused")}
+                                    size="small"
+                                  />
                                 )}
                                 {brand.deleted_at && (
                                   <Chip
-                                    label="已刪除"
+                                    label={t("galgame.admin.deleted")}
                                     size="small"
                                     color="error"
                                   />
@@ -249,7 +273,7 @@ export default function GalgameAdmin() {
                                     })
                                   }
                                 >
-                                  核准
+                                  {t("galgame.admin.actions.approve")}
                                 </Button>
                                 <Button
                                   color="error"
@@ -262,7 +286,7 @@ export default function GalgameAdmin() {
                                     })
                                   }
                                 >
-                                  拒絕
+                                  {t("galgame.admin.actions.reject")}
                                 </Button>
                               </>
                             )}
@@ -277,7 +301,7 @@ export default function GalgameAdmin() {
                                   })
                                 }
                               >
-                                刪除回滾
+                                {t("galgame.admin.actions.restore")}
                               </Button>
                             ) : brandTab === "paused" ? (
                               <Button
@@ -290,7 +314,7 @@ export default function GalgameAdmin() {
                                   })
                                 }
                               >
-                                重新啟動索引
+                                {t("galgame.admin.actions.resumeIndexing")}
                               </Button>
                             ) : (
                               <>
@@ -305,7 +329,7 @@ export default function GalgameAdmin() {
                                     })
                                   }
                                 >
-                                  刪除
+                                  {t("galgame.admin.actions.delete")}
                                 </Button>
                                 <Button
                                   startIcon={<PauseIcon />}
@@ -317,7 +341,7 @@ export default function GalgameAdmin() {
                                     })
                                   }
                                 >
-                                  暫停索引
+                                  {t("galgame.admin.actions.pauseIndexing")}
                                 </Button>
                                 <Button
                                   startIcon={<SyncIcon />}
@@ -329,7 +353,7 @@ export default function GalgameAdmin() {
                                     })
                                   }
                                 >
-                                  完全索引
+                                  {t("galgame.admin.actions.fullIndex")}
                                 </Button>
                               </>
                             )}
@@ -355,10 +379,10 @@ export default function GalgameAdmin() {
         {adminTab === "videos" && (
           <Stack spacing={2}>
             <Typography variant="h5" component="h2">
-              影片管理
+              {t("galgame.admin.tabs.videos")}
             </Typography>
             <TextField
-              label="搜尋影片"
+              label={t("galgame.admin.videos.search")}
               value={videoKeyword}
               onChange={(event) => {
                 setVideoKeyword(event.target.value);
@@ -372,13 +396,19 @@ export default function GalgameAdmin() {
                 setVideoPage(1);
               }}
             >
-              <Tab value="all" label="全部影片" />
-              <Tab value="deleted" label="已刪除影片" />
+              <Tab value="all" label={t("galgame.admin.videos.tabs.all")} />
+              <Tab
+                value="deleted"
+                label={t("galgame.admin.videos.tabs.deleted")}
+              />
             </Tabs>
             {videos.isPending ? (
-              <GalgameState loading message="正在載入影片..." />
+              <GalgameState
+                loading
+                message={t("galgame.admin.videos.loading")}
+              />
             ) : videoRows.length === 0 ? (
-              <GalgameState message="沒有符合條件的影片。" />
+              <GalgameState message={t("galgame.admin.videos.empty")} />
             ) : (
               <Grid container spacing={2}>
                 {videoRows.map((video) => (
@@ -416,7 +446,7 @@ export default function GalgameAdmin() {
                                 }
                                 sx={{ mt: 1 }}
                               >
-                                刪除回滾
+                                {t("galgame.admin.actions.restore")}
                               </Button>
                             ) : (
                               <Button
@@ -431,7 +461,7 @@ export default function GalgameAdmin() {
                                 }
                                 sx={{ mt: 1 }}
                               >
-                                刪除影片
+                                {t("galgame.admin.actions.deleteVideo")}
                               </Button>
                             )}
                           </Box>
@@ -456,12 +486,15 @@ export default function GalgameAdmin() {
         {adminTab === "pending-brands" && (
           <Stack spacing={2}>
             <Typography variant="h5" component="h2">
-              待審頻道
+              {t("galgame.admin.tabs.pendingBrands")}
             </Typography>
             {pendingBrands.isPending ? (
-              <GalgameState loading message="正在載入待審頻道..." />
+              <GalgameState
+                loading
+                message={t("galgame.admin.pendingBrands.loading")}
+              />
             ) : pendingBrandRows.length === 0 ? (
-              <GalgameState message="目前沒有待審頻道。" />
+              <GalgameState message={t("galgame.admin.pendingBrands.empty")} />
             ) : (
               <Grid container spacing={2}>
                 {pendingBrandRows.map((brand) => (
@@ -478,7 +511,10 @@ export default function GalgameAdmin() {
                             <Typography fontWeight={700} noWrap>
                               {brand.name}
                             </Typography>
-                            <Chip label={brand.status} size="small" />
+                            <Chip
+                              label={t(`galgame.status.${brand.status}`)}
+                              size="small"
+                            />
                           </Box>
                           <Button
                             color="success"
@@ -491,7 +527,7 @@ export default function GalgameAdmin() {
                               })
                             }
                           >
-                            核准
+                            {t("galgame.admin.actions.approve")}
                           </Button>
                           <Button
                             color="error"
@@ -504,7 +540,7 @@ export default function GalgameAdmin() {
                               })
                             }
                           >
-                            拒絕
+                            {t("galgame.admin.actions.reject")}
                           </Button>
                         </Stack>
                       </CardContent>
@@ -527,12 +563,15 @@ export default function GalgameAdmin() {
         {adminTab === "pending-videos" && (
           <Stack spacing={2}>
             <Typography variant="h5" component="h2">
-              待審影片
+              {t("galgame.admin.tabs.pendingVideos")}
             </Typography>
             {submissions.isPending ? (
-              <GalgameState loading message="正在載入待審影片..." />
+              <GalgameState
+                loading
+                message={t("galgame.admin.pendingVideos.loading")}
+              />
             ) : submissionRows.length === 0 ? (
-              <GalgameState message="目前沒有待審影片。" />
+              <GalgameState message={t("galgame.admin.pendingVideos.empty")} />
             ) : (
               <Grid container spacing={2}>
                 {submissionRows.map((submission) => (
@@ -570,7 +609,7 @@ export default function GalgameAdmin() {
                                   })
                                 }
                               >
-                                核准
+                                {t("galgame.admin.actions.approve")}
                               </Button>
                               <Button
                                 color="error"
@@ -583,7 +622,7 @@ export default function GalgameAdmin() {
                                   })
                                 }
                               >
-                                拒絕
+                                {t("galgame.admin.actions.reject")}
                               </Button>
                             </Stack>
                           </Box>
@@ -608,11 +647,11 @@ export default function GalgameAdmin() {
         {adminTab === "title-keywords" && (
           <Stack spacing={2}>
             <Typography variant="h5" component="h2">
-              影片關鍵字
+              {t("galgame.admin.tabs.titleKeywords")}
             </Typography>
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
               <TextField
-                label="新增關鍵字"
+                label={t("galgame.admin.keywords.new")}
                 value={newTitleKeyword}
                 onChange={(event) => setNewTitleKeyword(event.target.value)}
                 sx={{ flex: 1 }}
@@ -628,12 +667,12 @@ export default function GalgameAdmin() {
                     .then(() => setNewTitleKeyword(""))
                 }
               >
-                新增
+                {t("galgame.admin.actions.add")}
               </Button>
             </Stack>
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
               <TextField
-                label="搜尋關鍵字"
+                label={t("galgame.admin.keywords.search")}
                 value={titleKeyword}
                 onChange={(event) => {
                   setTitleKeyword(event.target.value);
@@ -648,15 +687,24 @@ export default function GalgameAdmin() {
                   setTitleKeywordPage(1);
                 }}
               >
-                <Tab value="all" label="全部" />
-                <Tab value="true" label="啟用" />
-                <Tab value="false" label="停用" />
+                <Tab value="all" label={t("galgame.admin.keywords.tabs.all")} />
+                <Tab
+                  value="true"
+                  label={t("galgame.admin.keywords.tabs.enabled")}
+                />
+                <Tab
+                  value="false"
+                  label={t("galgame.admin.keywords.tabs.disabled")}
+                />
               </Tabs>
             </Stack>
             {titleKeywords.isPending ? (
-              <GalgameState loading message="正在載入關鍵字..." />
+              <GalgameState
+                loading
+                message={t("galgame.admin.keywords.loading")}
+              />
             ) : titleKeywordRows.length === 0 ? (
-              <GalgameState message="沒有符合條件的關鍵字。" />
+              <GalgameState message={t("galgame.admin.keywords.empty")} />
             ) : (
               <Grid container spacing={2}>
                 {titleKeywordRows.map((keyword) => (
@@ -673,7 +721,11 @@ export default function GalgameAdmin() {
                               {keyword.keyword}
                             </Typography>
                             <Chip
-                              label={keyword.enabled ? "啟用" : "停用"}
+                              label={t(
+                                keyword.enabled
+                                  ? "galgame.admin.keywords.enabled"
+                                  : "galgame.admin.keywords.disabled",
+                              )}
                               color={keyword.enabled ? "success" : "default"}
                               size="small"
                               sx={{ mt: 0.75 }}
@@ -688,7 +740,11 @@ export default function GalgameAdmin() {
                               })
                             }
                           >
-                            {keyword.enabled ? "停用" : "啟用"}
+                            {t(
+                              keyword.enabled
+                                ? "galgame.admin.actions.disable"
+                                : "galgame.admin.actions.enable",
+                            )}
                           </Button>
                           <Button
                             color="error"
@@ -698,7 +754,7 @@ export default function GalgameAdmin() {
                               void deleteTitleKeyword.mutateAsync(keyword.id)
                             }
                           >
-                            刪除
+                            {t("galgame.admin.actions.delete")}
                           </Button>
                         </Stack>
                       </CardContent>

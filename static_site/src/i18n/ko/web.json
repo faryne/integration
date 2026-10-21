@@ -1,16 +1,4 @@
 {
-  "language": {
-    "buttonLabel": "인터페이스 언어",
-    "current": "인터페이스 언어: {{language}}",
-    "title": "인터페이스 언어",
-    "options": {
-      "zh-TW": "正體中文",
-      "zh-CN": "简体中文",
-      "en": "English",
-      "ja": "日本語",
-      "ko": "한국어"
-    }
-  },
   "common": {
     "user": "사용자",
     "cancel": "취소",

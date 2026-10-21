@@ -4,30 +4,30 @@ import { Box, IconButton, MenuItem, Popover, Stack, Tooltip, Typography } from "
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  normalizeStorytellerLanguage,
-  persistStorytellerLanguage,
-  storytellerLanguages,
-  type StorytellerLanguage,
-} from "@/i18n/storytellerLanguage.ts";
+  normalizeInterfaceLanguage,
+  persistInterfaceLanguage,
+  interfaceLanguages,
+  type InterfaceLanguage,
+} from "@/i18n/interfaceLanguage.ts";
 
 /** 與外觀切換並列的全站語言入口；選擇後立即套用並記住，不另設儲存流程。 */
-export function StorytellerLanguageMenu() {
+export function LanguageMenu() {
   const { t, i18n } = useTranslation();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   // language 會在 languageChanged 事件前更新；resolvedLanguage 在同一輪 render 仍可能是舊值。
-  const current = normalizeStorytellerLanguage(i18n.language) ?? "zh-TW";
+  const current = normalizeInterfaceLanguage(i18n.language) ?? "zh-TW";
 
-  async function selectLanguage(language: StorytellerLanguage) {
-    persistStorytellerLanguage(language);
+  async function selectLanguage(language: InterfaceLanguage) {
+    persistInterfaceLanguage(language);
     await i18n.changeLanguage(language);
     setAnchor(null);
   }
 
   return (
     <>
-      <Tooltip title={t("web.language.buttonLabel")}>
+      <Tooltip title={t("common.language.buttonLabel")}>
         <IconButton
-          aria-label={t("web.language.current", { language: t(`web.language.options.${current}`) })}
+          aria-label={t("common.language.current", { language: t(`common.language.options.${current}`) })}
           aria-expanded={Boolean(anchor)}
           color="inherit"
           size="small"
@@ -45,12 +45,12 @@ export function StorytellerLanguageMenu() {
       >
         <Box sx={{ minWidth: 220, py: 1 }}>
           <Typography fontWeight={700} sx={{ px: 2, py: 1 }}>
-            {t("web.language.title")}
+            {t("common.language.title")}
           </Typography>
-          {storytellerLanguages.map((language) => (
+          {interfaceLanguages.map((language) => (
             <MenuItem key={language} selected={current === language} onClick={() => void selectLanguage(language)}>
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ width: 1 }}>
-                <span>{t(`web.language.options.${language}`)}</span>
+                <span>{t(`common.language.options.${language}`)}</span>
                 {current === language && <CheckIcon color="primary" fontSize="small" />}
               </Stack>
             </MenuItem>

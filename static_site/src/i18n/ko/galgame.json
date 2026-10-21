@@ -1,0 +1,244 @@
+{
+  "layout": {
+    "nav": {
+      "brands": "브랜드",
+      "favorites": "즐겨찾기",
+      "submitChannel": "채널 추가",
+      "submitVideo": "영상 추가",
+      "admin": "관리",
+      "submit": "제출",
+      "videos": "영상"
+    },
+    "search": {
+      "placeholder": "영상 또는 브랜드 검색",
+      "submit": "검색"
+    },
+    "auth": {
+      "signedIn": "로그인됨",
+      "userAvatar": "사용자",
+      "logout": "로그아웃",
+      "login": "Google로 로그인",
+      "menu": "계정 메뉴"
+    }
+  },
+  "breadcrumb": {
+    "ariaLabel": "이동 경로",
+    "home": "홈"
+  },
+  "home": {
+    "pageTitle": "미연시 영상",
+    "videos": {
+      "loading": "영상을 불러오는 중...",
+      "error": "영상을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "notFound": "검색 조건에 맞는 영상이 없습니다.",
+      "empty": "아직 등록된 영상이 없습니다.",
+      "emptyInRange": "이 기간에 새 영상이 없습니다."
+    },
+    "searchPageTitle": "“{{keyword}}” 검색",
+    "searchCrumb": "“{{keyword}}” 검색",
+    "searchHeading": "“{{keyword}}” 검색 결과",
+    "matchedBrands": "브랜드 · {{count}}",
+    "matchedVideos": "영상 · {{count}}",
+    "recentBrands": "새 영상이 올라온 브랜드",
+    "allBrands": "전체 브랜드",
+    "recentBrandCaption": "새 영상 {{count}}개",
+    "latestVideos": "최신 영상"
+  },
+  "videoCard": {
+    "favorite": "즐겨찾기에 추가",
+    "unfavorite": "즐겨찾기에서 삭제",
+    "deleted": "삭제됨"
+  },
+  "authGate": {
+    "checking": "로그인 상태를 확인하는 중..."
+  },
+  "status": {
+    "pending": "검토 대기",
+    "approved": "승인됨",
+    "rejected": "거절됨",
+    "failed": "실패",
+    "unknown": "알 수 없음"
+  },
+  "favoriteButton": {
+    "brand": {
+      "added": "즐겨찾기한 브랜드",
+      "add": "브랜드를 즐겨찾기에 추가",
+      "remove": "브랜드를 즐겨찾기에서 삭제",
+      "favorite": "브랜드를 즐겨찾기에 추가"
+    },
+    "video": {
+      "added": "즐겨찾기한 영상",
+      "add": "영상을 즐겨찾기에 추가",
+      "remove": "영상을 즐겨찾기에서 삭제",
+      "favorite": "영상을 즐겨찾기에 추가"
+    }
+  },
+  "brand": {
+    "pageTitle": "{{name}} 영상",
+    "pageTitleFallback": "브랜드 영상",
+    "loading": "브랜드 정보를 불러오는 중...",
+    "error": "브랜드 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "videosLoading": "브랜드 영상을 불러오는 중...",
+    "videosError": "영상을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "videosEmpty": "이 브랜드에는 아직 영상이 없습니다.",
+    "stats": "수록 영상 {{count}}개 · 최신 {{date}}",
+    "videosHeading": "영상",
+    "videosEmptyInRange": "이 기간에 새 영상이 없습니다."
+  },
+  "video": {
+    "pageTitleFallback": "미연시 영상",
+    "loading": "영상을 불러오는 중...",
+    "notFound": "영상이 존재하지 않거나 불러오지 못했습니다.",
+    "like": "좋아요 {{count}}",
+    "dislike": "싫어요 {{count}}",
+    "previous": "이전 영상",
+    "noPrevious": "이전 영상이 없습니다",
+    "next": "다음 영상",
+    "noNext": "다음 영상이 없습니다",
+    "description": "영상 소개",
+    "noDescription": "이 영상에는 소개가 없습니다.",
+    "info": {
+      "brand": "브랜드",
+      "published": "공개일",
+      "tags": "태그"
+    },
+    "watchOnYouTube": "YouTube에서 보기"
+  },
+  "favorites": {
+    "pageTitle": "즐겨찾기",
+    "loginPrompt": "로그인하면 즐겨찾기한 브랜드와 영상을 볼 수 있습니다.",
+    "loggingIn": "로그인 중...",
+    "login": "Google로 로그인",
+    "heading": "즐겨찾기",
+    "tabs": {
+      "videos": "즐겨찾기한 영상",
+      "brands": "즐겨찾기한 브랜드"
+    },
+    "loading": "즐겨찾기를 불러오는 중...",
+    "error": "즐겨찾기를 불러오지 못했습니다.",
+    "brandsEmpty": "즐겨찾기한 브랜드가 없습니다.",
+    "deleted": "삭제됨",
+    "latestCount": "최신 공개 {{count}}",
+    "videosEmpty": "즐겨찾기한 영상이 없습니다."
+  },
+  "related": {
+    "heading": "관련 영상",
+    "loading": "관련 영상을 불러오는 중...",
+    "error": "관련 영상을 불러오지 못했습니다.",
+    "empty": "관련 영상이 없습니다.",
+    "sameWork": "같은 작품의 다른 영상"
+  },
+  "submitBrand": {
+    "pageTitle": "미연시 채널 추가",
+    "heading": "YouTube 채널 추가",
+    "hint": "한 줄에 URL을 하나씩 입력하세요. YouTube @handle 또는 /channel/UC... 형식을 지원합니다.",
+    "fieldLabel": "YouTube 채널",
+    "placeholder": "한 줄에 URL 하나씩 입력\nhttps://www.youtube.com/@name\nhttps://www.youtube.com/channel/UCxxxxxxxxxxxxxxxxxxxxxxxx",
+    "submitting": "제출 중...",
+    "submit": "제출",
+    "submitCount": "{{count}}개 제출",
+    "submitError": "제출하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "parsing": "YouTube 채널을 확인하는 중입니다. 잠시만 기다려 주세요.",
+    "nothingSubmitted": "제출된 항목이 없습니다. 각 줄에 YouTube 채널 URL을 입력했는지 확인해 주세요.",
+    "submitted": "제출했습니다. 관리자 승인을 기다리고 있습니다.",
+    "alreadyExists": "이미 등록됨 ({{status}})"
+  },
+  "submitVideo": {
+    "pageTitle": "미연시 영상 추가",
+    "heading": "YouTube 영상 추가",
+    "hint": "한 줄에 URL을 하나씩 입력하세요. youtu.be 또는 youtube.com/watch?v= 형식을 지원합니다.",
+    "fieldLabel": "YouTube 영상",
+    "placeholder": "한 줄에 URL 하나씩 입력\nhttps://youtu.be/xxxxxxxxxxx\nhttps://www.youtube.com/watch?v=xxxxxxxxxxx",
+    "submitting": "제출 중...",
+    "submit": "제출",
+    "submitCount": "{{count}}개 제출",
+    "submitError": "제출하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "parsing": "YouTube 영상을 확인하는 중입니다. 잠시만 기다려 주세요.",
+    "nothingSubmitted": "제출된 항목이 없습니다. 각 줄에 YouTube 영상 URL을 입력했는지 확인해 주세요.",
+    "submitted": "제출했습니다. 관리자 승인을 기다리고 있습니다.",
+    "alreadyExists": "이미 등록됨 ({{status}})",
+    "duplicateExists": "이미 등록된 영상입니다.",
+    "duplicatePending": "이미 제출되어 검토를 기다리는 영상입니다."
+  },
+  "admin": {
+    "heading": "미연시 관리자 페이지",
+    "noPermission": "관리자 권한이 필요합니다.",
+    "subtitle": "검토 대기, 색인 상태, 삭제, 영상 심사를 관리합니다.",
+    "tabs": {
+      "brands": "채널 관리",
+      "videos": "영상 관리",
+      "pendingBrands": "검토 대기 채널",
+      "pendingVideos": "검토 대기 영상",
+      "titleKeywords": "영상 키워드"
+    },
+    "brands": {
+      "search": "채널 검색",
+      "tabs": {
+        "all": "전체 채널",
+        "deleted": "삭제된 채널",
+        "paused": "색인 중지된 채널"
+      },
+      "loading": "채널을 불러오는 중...",
+      "empty": "조건에 맞는 채널이 없습니다.",
+      "paused": "색인 중지됨"
+    },
+    "deleted": "삭제됨",
+    "actions": {
+      "approve": "승인",
+      "reject": "거절",
+      "restore": "삭제 취소",
+      "resumeIndexing": "색인 재개",
+      "delete": "삭제",
+      "deleteVideo": "영상 삭제",
+      "pauseIndexing": "색인 중지",
+      "fullIndex": "전체 색인",
+      "add": "추가",
+      "enable": "사용",
+      "disable": "사용 중지"
+    },
+    "videos": {
+      "search": "영상 검색",
+      "tabs": {
+        "all": "전체 영상",
+        "deleted": "삭제된 영상"
+      },
+      "loading": "영상을 불러오는 중...",
+      "empty": "조건에 맞는 영상이 없습니다."
+    },
+    "pendingBrands": {
+      "loading": "검토 대기 채널을 불러오는 중...",
+      "empty": "검토 대기 중인 채널이 없습니다."
+    },
+    "pendingVideos": {
+      "loading": "검토 대기 영상을 불러오는 중...",
+      "empty": "검토 대기 중인 영상이 없습니다."
+    },
+    "keywords": {
+      "new": "새 키워드",
+      "search": "키워드 검색",
+      "tabs": {
+        "all": "전체",
+        "enabled": "사용 중",
+        "disabled": "사용 안 함"
+      },
+      "loading": "키워드를 불러오는 중...",
+      "empty": "조건에 맞는 키워드가 없습니다.",
+      "enabled": "사용 중",
+      "disabled": "사용 안 함"
+    }
+  },
+  "brands": {
+    "pageTitle": "브랜드 목록",
+    "heading": "브랜드",
+    "loading": "브랜드를 불러오는 중...",
+    "error": "브랜드를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "empty": "아직 등록된 브랜드가 없습니다.",
+    "favorited": "즐겨찾기한 브랜드"
+  },
+  "timeFilter": {
+    "ariaLabel": "공개 기간",
+    "all": "전체",
+    "7d": "최근 7일",
+    "30d": "최근 30일"
+  }
+}

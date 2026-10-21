@@ -43,9 +43,23 @@ func (r *YouTubeRepository) SearchBrands(input erogeModel.BrandSearchRequest) ([
 	if keyword := strings.TrimSpace(input.Keyword); keyword != "" {
 		query = query.Where("name LIKE ?", "%"+keyword+"%")
 	}
+	// 近期上新片的品牌：只留期間內有影片的品牌，帶出期間內新片數，並依最新上片時間排序
+	recentDays := input.RecentDaysValue()
+	const recentVideos = `FROM eroge_videos AS recent_videos
+		WHERE recent_videos.brand_id = eroge_brands.id
+			AND recent_videos.deleted_at IS NULL
+			AND recent_videos.published_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)`
+	if recentDays > 0 {
+		query = query.Where("EXISTS (SELECT 1 "+recentVideos+")", recentDays)
+	}
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
+	}
+	if recentDays > 0 {
+		query = query.Select("eroge_brands.*, (SELECT COUNT(*) "+recentVideos+") AS latest_video_count, "+
+			"(SELECT MAX(recent_videos.published_at) "+recentVideos+") AS latest_published_at", recentDays, recentDays).
+			Order("latest_published_at DESC")
 	}
 	brands := make([]erogeModel.Brand, 0)
 	err := query.Order("name ASC").
