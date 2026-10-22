@@ -150,3 +150,13 @@ func TestCrawlRangeRejectsInvalidRange(t *testing.T) {
 
 	require.Error(t, service.CrawlRange("2026-02", "2026-01"))
 }
+
+func TestNeighborPageCount(t *testing.T) {
+	text := func(value string) map[string]any {
+		return map[string]any{"result": crawler.SelectorResponse{Text: &value}}
+	}
+
+	require.Equal(t, 7, neighborPageCount(text("查詢結果：共 210 筆，115年7月，第 1 / 7 頁，顯示第 1 至 30 筆。")))
+	require.Equal(t, 1, neighborPageCount(text("查詢結果：共 0 筆")))
+	require.Equal(t, 1, neighborPageCount(map[string]any{"result": []any{}}))
+}

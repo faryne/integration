@@ -17,3 +17,16 @@
   - `/nekomaid/:site` 這類帶參數的路由本來就會命中，不受影響。
 - **仍未處理**：handler 直接回傳一般 `error`（不是 `output` 錯誤，也不是 `*fiber.Error`）時，照樣會以 200 回傳錯誤字串。這種情況要改成 500，得先盤點各 controller 有沒有依賴這個行為，另開處理。
 - **狀態**：已修（branch `fix/unmatched-route-404`）。
+
+## 台電敦親睦鄰爬蟲：經 Worker proxy 逾時、改版後抓不到資料（2026-10-22，已修）
+
+- **現象**：本機執行 `go run . -cmd taipower-neighbor-range -yearMonthFrom 2026-07 -yearMonthTo 2026-10`，第一個月約 30 秒後 `context deadline exceeded`，整個 range 中止。偶爾連得上時，每個月也都只存進 0 筆。
+- **Root cause（逾時）**：`faryne-fetch-proxy.faryne.workers.dev` 解析出兩個 anycast IP。從本機網路連 `172.67.203.167` 會落在 KHH colo，連 `104.21.52.206` 卻被繞到 SEA colo（可透過 proxy 抓 `https://www.cloudflare.com/cdn-cgi/trace` 看 `colo=`）。Worker 在境外 colo 對台電發的 fetch 會整個卡住，等到 Worker 自己的 30 秒 timeout 才回 502 `The operation was aborted due to timeout`，而 Go 端的 timeout 也是 30 秒，所以會先看到 client 端逾時。Go 的 HTTP/2 連線會被重用，一旦連到壞的 IP，同一個 process 裡的後續請求全部失敗。台電原站從本機直連只要 0.3～1.5 秒，跟程式本身無關。
+- **Root cause（0 筆）**：台電改版。表格從 11 欄變成 10 欄（項次、核准日期、縣市鄉鎮區、單位、活動名稱、起、迄、地點、金額、理由），而且改成每頁 30 筆、用 `pn` 分頁（`pn` 超過最末頁會停在最末頁，不會回空頁）。舊 selector 欄位錯一格，`cityarea` 抓到單位名稱，被 `isValidCityArea` 全部濾掉。
+- **解法**：
+  - `crawler.CrawlByURLInTaiwanWithTimeout`：`CF_WORKER_PROXY_URL` 留空就直連目標站。本機在台灣時把它清空即可，prod 照舊走 proxy。
+  - `taipower.fetchNeighborPage`：單次 timeout 改成 15 秒，最多 3 次，重試前 `http.DefaultClient.CloseIdleConnections()` 讓下一次重新 dial。走 proxy 時這只是機率性的緩解。
+  - selector 改成新版 10 欄；從 `#result`（「第 1 / 7 頁」）解析總頁數，逐頁抓取。
+  - `CrawlRange`／`Backfill` 共用 `crawlMonths`：單月失敗只記 log 並繼續，最後用 `errors.Join` 一起回報。
+- **仍未處理**：Worker 落在境外 colo 的問題本身沒解，prod 若從會被繞到境外 colo 的網路打 proxy，一樣會卡住。要根治只能在 Worker 端處理（例如偵測 `request.cf.colo` 不在台灣就快速失敗，或改用固定在台灣的出口）。
+- **狀態**：已修（branch `fix/taipower-neighbor-proxy-timeout`）。
