@@ -39,6 +39,11 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
         href: "/av/actress",
         description: "定時索引 AV 女優資訊",
       },
+      {
+        title: "SteamLoom",
+        href: "https://steamloom.works/",
+        external: true,
+      },
     ],
   },
   {
@@ -65,6 +70,10 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
         title: "台股 ETF 資訊",
         href: "/data/etf/twse",
         description: "追蹤台股 ETF 配息資訊",
+        requiresAuth: true,
+        accountLinks: [
+          { title: "我的最愛 ETF", href: "/data/etf/twse/favorites" },
+        ],
       },
       {
         title: "即時消防出勤記錄",

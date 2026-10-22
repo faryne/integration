@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>faryne.dev 內頁 Layout Mockup</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Mockup 控制列：切換畫面／裝置寬度／色彩模式／改動說明，不屬於產品 UI -->
+    <header class="prototype-bar">
+      <div>
+        <strong>faryne.dev 內頁 Layout Mockup</strong>
+        <span>取代 DefaultLayout 的藍白 AppBar</span>
+      </div>
+      <div class="prototype-controls">
+        <button class="prototype-chip active" data-screen="rates">資料頁（匯率）</button>
+        <button class="prototype-chip" data-screen="crawler">工具頁（爬蟲）</button>
+        <button class="prototype-chip" data-screen="etf">ETF 頁（會員）</button>
+        <span class="prototype-separator"></span>
+        <button class="prototype-chip active" data-view="desktop">Desktop</button>
+        <button class="prototype-chip" data-view="mobile">Mobile 390</button>
+        <span class="prototype-separator"></span>
+        <button class="prototype-chip active" data-theme-option="light">系統：淺色</button>
+        <button class="prototype-chip" data-theme-option="dark">系統：深色</button>
+        <span class="prototype-separator"></span>
+        <label class="prototype-toggle"><input type="checkbox" id="notesToggle" checked /> 改動說明</label>
+      </div>
+    </header>
+
+    <aside class="prototype-notes" id="notes">
+      <strong>改動重點</strong>
+      <ol>
+        <li><b>Header 改成跟首頁 LabLayout 同一條「墨色玻璃」列</b>：深墨底＋青綠 accent，淺／深色模式都不變；從首頁點進內頁不再像換了一個網站。</li>
+        <li><b>下拉選單改成 mega menu</b>：<code>navigation.ts</code> 本來就有 <code>description</code> 卻沒用到，這裡直接顯示；外站連結帶 ↗，目前所在頁會標示。</li>
+        <li><b>目前所在分類</b>在 header 上用青綠底線標示（例：在 /data/* 時「資料」亮起）。</li>
+        <li><b>Header 下方一條 breadcrumb</b>：由 <code>navigation.ts</code> 自動推導（首頁 / 分類 / 頁面），各頁不用自己再刻；頁面原本的大標題保留。</li>
+        <li><b>拿掉 <code>min-width: 1280px</code></b>，改 max-width 1280 置中、手機版漢堡選單開 drawer。</li>
+        <li><b>頁面底色修正</b>：現在內頁吃到 Vite 預設 <code>index.css</code> 的 #242424 深灰底配白卡片；改成跟 MUI palette 一致的淺色／深色兩套 token。</li>
+        <li><b>Footer 改成跟首頁同款深墨底</b>，沿用 <code>FooterNavigation</code> 四欄。</li>
+        <li><b>Header 右側色彩模式切換</b>：跟隨系統（預設）／淺色／深色三選一，存 <code>localStorage</code>。控制列的「系統：淺色／深色」是模擬作業系統偏好，只在選「跟隨系統」時有作用。</li>
+        <li><b>會員登入</b>：只在 <code>navigation.ts</code> 標了 <code>requiresAuth</code> 的項目（含子路徑）出現，取代原本寫死的 <code>/data/etf</code> 判斷（YieldMax 不再誤顯示），放在色彩模式左邊。未登入是「G 登入」按鈕（手機只留 G）；登入後換成頭像，點開有帳號資訊、我的最愛 ETF、登出。可在「ETF 頁（會員）」直接點登入／登出測試。</li>
+      </ol>
+    </aside>
+
+    <main class="stage">
+      <div class="device" id="device">
+        <div class="site" id="site"></div>
+      </div>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -306,7 +306,7 @@ function OutputCard({ title, value }: { title: string; value: string }) {
           p: 2,
           borderRadius: 3,
           minHeight: 180,
-          background: "#fbfdff",
+          background: "background.default",
         }}
       >
         <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
@@ -319,7 +319,7 @@ function OutputCard({ title, value }: { title: string; value: string }) {
             whiteSpace: "pre-wrap",
             wordBreak: "break-all",
             fontSize: 13,
-            color: "#24364b",
+            color: "text.primary",
           }}
         >
           {value || "尚無資料"}

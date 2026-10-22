@@ -1,7 +1,6 @@
 import {
   Alert,
   Box,
-  Breadcrumbs,
   Button,
   Chip,
   CircularProgress,
@@ -18,7 +17,7 @@ import {
   Typography,
 } from "@mui/material";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   type TwStatsByYear,
   useGetTwStatsByName,
@@ -153,12 +152,6 @@ export function TwStatsByName() {
 
   return (
     <Stack spacing={3}>
-      <Breadcrumbs aria-label={"breadcrumb"}>
-        <Link to={"/"}>首頁</Link>
-        <Link to={"/data/tw-stats"}>台灣指標</Link>
-        <Typography color={"text.primary"}>{name}</Typography>
-      </Breadcrumbs>
-
       <Stack spacing={1}>
         <Typography variant={"h3"} component={"h1"}>
           {name}

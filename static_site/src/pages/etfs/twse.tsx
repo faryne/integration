@@ -6,6 +6,7 @@ import React, {
   useCallback,
 } from "react";
 import {
+  alpha,
   Alert,
   Grid,
   Typography,
@@ -71,6 +72,7 @@ import {
   formatSignedPercent,
   getWinRateTone,
 } from "@/pages/etfs/twse_format_helpers.ts";
+import { heroBackground } from "@/components/common/siteLayout/siteTheme.ts";
 
 const filters = [
   { label: "全部", value: "ALL" },
@@ -351,7 +353,7 @@ const StatPill = ({
       flex: { xs: "1 1 calc(50% - 8px)", sm: "0 1 auto" },
       border: "1px solid",
       borderColor: "rgba(25, 118, 210, 0.18)",
-      bgcolor: "rgba(255, 255, 255, 0.78)",
+      bgcolor: "background.paper",
       borderRadius: 2,
       px: 2,
       py: 1.25,
@@ -584,8 +586,9 @@ const EtfDashboard: React.FC = () => {
           px: { xs: 2, md: 3 },
           py: { xs: 2.5, md: 3 },
           mb: 2.5,
-          background:
+          background: heroBackground(
             "linear-gradient(135deg, #f8fbff 0%, #eef8f4 58%, #fff8ed 100%)",
+          ),
         }}
       >
         <Stack
@@ -613,7 +616,7 @@ const EtfDashboard: React.FC = () => {
               variant="h4"
               sx={{
                 fontWeight: 900,
-                color: "#14315d",
+                color: "text.primary",
                 letterSpacing: 0,
                 lineHeight: 1.15,
               }}
@@ -709,7 +712,7 @@ const EtfDashboard: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               sx={{
-                bgcolor: "white",
+                bgcolor: "background.paper",
                 "& .MuiOutlinedInput-root": { borderRadius: 2 },
               }}
               InputProps={{
@@ -826,7 +829,10 @@ const EtfDashboard: React.FC = () => {
           spacing={1}
           sx={{ mb: 1 }}
         >
-          <Typography variant="h6" sx={{ fontWeight: 900, color: "#14315d" }}>
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 900, color: "text.primary" }}
+          >
             ETF 清單
           </Typography>
           <ToggleButtonGroup
@@ -862,7 +868,7 @@ const EtfDashboard: React.FC = () => {
             border: "1px solid",
             borderColor: "divider",
             borderRadius: 2,
-            bgcolor: "rgba(255, 255, 255, 0.94)",
+            bgcolor: (theme) => alpha(theme.palette.background.paper, 0.94),
             backdropFilter: "blur(10px)",
             px: 1.5,
             py: 1,
@@ -1050,7 +1056,10 @@ const DividendTable = ({
       >
         <Stack direction="row" spacing={1} alignItems="center">
           <CalendarMonthIcon sx={{ color: "#1565c0" }} />
-          <Typography variant="h6" sx={{ fontWeight: 900, color: "#14315d" }}>
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 900, color: "text.primary" }}
+          >
             {selected_date} 除息
           </Typography>
         </Stack>
@@ -1133,12 +1142,15 @@ const EtfTableList = ({
         <TableHead>
           <TableRow>
             {onToggleFavorite && (
-              <TableCell padding="checkbox" sx={{ bgcolor: "#f6f9fc" }} />
+              <TableCell
+                padding="checkbox"
+                sx={{ bgcolor: "background.default" }}
+              />
             )}
             <TableCell
               sx={{
                 fontWeight: 900,
-                bgcolor: "#f6f9fc",
+                bgcolor: "background.default",
                 color: "text.secondary",
               }}
             >
@@ -1153,7 +1165,7 @@ const EtfTableList = ({
             <TableCell
               sx={{
                 fontWeight: 900,
-                bgcolor: "#f6f9fc",
+                bgcolor: "background.default",
                 color: "text.secondary",
               }}
             >
@@ -1163,7 +1175,7 @@ const EtfTableList = ({
               <TableCell
                 sx={{
                   fontWeight: 900,
-                  bgcolor: "#f6f9fc",
+                  bgcolor: "background.default",
                   color: "text.secondary",
                 }}
               >
@@ -1181,7 +1193,7 @@ const EtfTableList = ({
             <TableCell
               sx={{
                 fontWeight: 900,
-                bgcolor: "#f6f9fc",
+                bgcolor: "background.default",
                 color: "text.secondary",
               }}
               align="right"
@@ -1199,7 +1211,7 @@ const EtfTableList = ({
                 <TableCell
                   sx={{
                     fontWeight: 900,
-                    bgcolor: "#f6f9fc",
+                    bgcolor: "background.default",
                     color: "text.secondary",
                   }}
                   align="right"
@@ -1217,7 +1229,7 @@ const EtfTableList = ({
                 <TableCell
                   sx={{
                     fontWeight: 900,
-                    bgcolor: "#f6f9fc",
+                    bgcolor: "background.default",
                     color: "text.secondary",
                   }}
                   align="right"
@@ -1235,7 +1247,7 @@ const EtfTableList = ({
                 <TableCell
                   sx={{
                     fontWeight: 900,
-                    bgcolor: "#f6f9fc",
+                    bgcolor: "background.default",
                     color: "text.secondary",
                   }}
                   align="right"
@@ -1255,7 +1267,7 @@ const EtfTableList = ({
                 <TableCell
                   sx={{
                     fontWeight: 900,
-                    bgcolor: "#f6f9fc",
+                    bgcolor: "background.default",
                     color: "text.secondary",
                   }}
                   align="right"
@@ -1271,7 +1283,7 @@ const EtfTableList = ({
                 <TableCell
                   sx={{
                     fontWeight: 900,
-                    bgcolor: "#f6f9fc",
+                    bgcolor: "background.default",
                     color: "text.secondary",
                   }}
                   align="right"
@@ -1287,7 +1299,7 @@ const EtfTableList = ({
                 <TableCell
                   sx={{
                     fontWeight: 900,
-                    bgcolor: "#f6f9fc",
+                    bgcolor: "background.default",
                     color: "text.secondary",
                   }}
                   align="right"
@@ -1305,7 +1317,7 @@ const EtfTableList = ({
                 <TableCell
                   sx={{
                     fontWeight: 900,
-                    bgcolor: "#f6f9fc",
+                    bgcolor: "background.default",
                     color: "text.secondary",
                   }}
                   align="right"
@@ -1325,7 +1337,7 @@ const EtfTableList = ({
             <TableCell
               sx={{
                 fontWeight: 900,
-                bgcolor: "#f6f9fc",
+                bgcolor: "background.default",
                 color: "text.secondary",
               }}
               align="right"
@@ -1341,7 +1353,7 @@ const EtfTableList = ({
             <TableCell
               sx={{
                 fontWeight: 900,
-                bgcolor: "#f6f9fc",
+                bgcolor: "background.default",
                 color: "text.secondary",
               }}
               align="right"
