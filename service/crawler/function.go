@@ -61,33 +61,36 @@ func CrawlByURLInTaiwanWithTimeout(
 	selectors []SelectorRequest,
 	timeout time.Duration,
 ) (map[string]any, error) {
+	// 未設定 proxy 時直接連目標站（例如本機本身就在台灣）；
+	// workers.dev 的 anycast 可能把請求繞到境外 colo，Worker 從境外打台灣站會卡到逾時
+	target := uri
 	proxyURL := strings.TrimSpace(config.EnvConfig().CFWorkerProxyURL)
 	secret := strings.TrimSpace(config.EnvConfig().CFWorkerProxySecret)
-	if proxyURL == "" {
-		return nil, fmt.Errorf("CF_WORKER_PROXY_URL is required")
+	if proxyURL != "" {
+		if secret == "" {
+			return nil, fmt.Errorf("CF_WORKER_PROXY_SECRET is required")
+		}
+		proxied, err := url.Parse(proxyURL)
+		if err != nil {
+			return nil, fmt.Errorf("parse CF_WORKER_PROXY_URL: %w", err)
+		}
+		query := proxied.Query()
+		query.Set("url", uri)
+		proxied.RawQuery = query.Encode()
+		target = proxied.String()
 	}
-	if secret == "" {
-		return nil, fmt.Errorf("CF_WORKER_PROXY_SECRET is required")
-	}
-
-	target, err := url.Parse(proxyURL)
-	if err != nil {
-		return nil, fmt.Errorf("parse CF_WORKER_PROXY_URL: %w", err)
-	}
-	query := target.Query()
-	query.Set("url", uri)
-	target.RawQuery = query.Encode()
 
 	// 設定超時的上下文
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	req, err := http.NewRequest(http.MethodGet, target.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
 		return nil, err
 	}
-	req = req.WithContext(ctx)
-	req.Header.Set("Authorization", "Bearer "+secret)
+	if proxyURL != "" {
+		req.Header.Set("Authorization", "Bearer "+secret)
+	}
 
 	body, statusCode, err := helper.DoRawWithStatus(req)
 	if err != nil {
@@ -95,7 +98,7 @@ func CrawlByURLInTaiwanWithTimeout(
 	}
 
 	if statusCode < http.StatusOK || statusCode >= http.StatusMultipleChoices {
-		return nil, fmt.Errorf("Taiwan proxy returned status %d", statusCode)
+		return nil, fmt.Errorf("Taiwan fetch returned status %d", statusCode)
 	}
 
 	return crawl(body, selectors)
