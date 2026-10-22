@@ -72,6 +72,7 @@ func NewServer(name, version string) *Server {
 	s.registerGalgameTools()
 	s.registerNekomaidTools()
 	s.registerTWStatsTools()
+	s.registerRatesTools()
 	return s
 }
 
