@@ -44,6 +44,7 @@ var cmdName = ""
 var appBackgroundWork = background.Default()
 
 var commandParams = commandParameter.Registry{
+	"bank":            commandParameter.New("rates service_name to fetch, e.g. esun; empty for all banks", nil),
 	"brandId":         commandParameter.New("eroge_brands numeric ID", nil),
 	"brandIds":        commandParameter.New("comma-separated eroge_brands numeric IDs, or all for every approved brand", nil),
 	"brandName":       commandParameter.New("eroge brand name", nil),
