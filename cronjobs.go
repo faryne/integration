@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	"faryne.dev/model/enum"
@@ -8,6 +9,7 @@ import (
 	erogeService "faryne.dev/service/eroge"
 	"faryne.dev/service/log"
 	"faryne.dev/service/nccc"
+	ratesService "faryne.dev/service/rates"
 	storytellerService "faryne.dev/service/storyteller"
 	storytellerNotifyService "faryne.dev/service/storytellernotify"
 	storytellerOAuthService "faryne.dev/service/storytelleroauth"
@@ -294,6 +296,23 @@ var cronJobs = map[string]cronGroup{
 				Schedule: "",
 				Enabled:  true,
 				Handler:  storytellerService.RunBackfillImageStoryAssets,
+			},
+		},
+	},
+	// 各銀行現鈔牌告匯率；手動執行可加 -bank <service_name> 只跑單家
+	"rates": {
+		Enabled: true,
+		Jobs: []cronJobConfig{
+			{
+				Name:     "rates-fetch",
+				Schedule: "15 9 * * 1-5",
+				Enabled:  true,
+				Handler: func() {
+					// 單家失敗已在 service 內記 log，這裡只留總結
+					if err := ratesService.Run(context.Background(), commandParams.Value("bank")); err != nil {
+						log.Logger().Warn("Rates fetch finished with errors: " + err.Error())
+					}
+				},
 			},
 		},
 	},

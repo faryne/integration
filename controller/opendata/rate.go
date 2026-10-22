@@ -7,6 +7,7 @@ import (
 	ratesEntity "faryne.dev/model/entity/opendata/rates"
 	ratesRepository "faryne.dev/repository/rates"
 	"faryne.dev/service/output"
+	ratesService "faryne.dev/service/rates"
 )
 
 // Rate searches exchange-rate records.
@@ -40,14 +41,8 @@ func Rate(ctx fiber.Ctx) error {
 // @Success 200 {object} output.CommonOutput
 // @Router /opendata/rates/banks [get]
 func Banks(_ fiber.Ctx) error {
-	return output.Success(map[string]string{
-		"Mega":       "兆豐銀行",
-		"BOT":        "台灣銀行",
-		"esun":       "玉山銀行",
-		"cathay":     "國泰世華銀行",
-		"land":       "土地銀行",
-		"Chinatrust": "中國信託銀行",
-	})
+	// 以爬蟲註冊表為準，新增銀行不用再改這裡（已停用的台銀仍列出，歷史資料可查）
+	return output.Success(ratesService.BankNames())
 }
 
 // Currencies lists supported currency codes.

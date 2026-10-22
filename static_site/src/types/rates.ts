@@ -1,4 +1,11 @@
-export type BankName = "Mega" | "BOT" | "esun" | "cathay" | "land";
+export type BankName =
+  | "Mega"
+  | "BOT"
+  | "esun"
+  | "cathay"
+  | "land"
+  | "sinopac"
+  | "first";
 
 export interface Rate {
   service_name: BankName;

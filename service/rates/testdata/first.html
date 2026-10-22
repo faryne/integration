@@ -1,0 +1,1245 @@
+﻿
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta http-equiv="refresh" content="60">
+<title>第一銀行</title>
+<LINK HREF='../jsfile/style.css' REL='stylesheet' TYPE='text/css'>
+</head>
+<script src="../include/common_js.jsp"></script>
+<script src="../jsfile/calendar.js"></script>
+<script src="../jsfile/popup.js"></script>
+<script language="JavaScript" type="text/JavaScript">
+var url = new URL(window.location.href);
+var isRedirect = '';
+isRedirect = url.searchParams.get("isRedirect");
+if(isRedirect != 'N'){
+	location.href = "https://mobile.firstbank.com.tw/c1/cheetah/zh/07/currency?step=1&channel=X";	
+}
+function init(){
+	
+	if(false){
+		document.getElementById("NoData").style.display="";
+	}else{
+		document.getElementById("table1").style.display="";
+	}
+}
+function doprint(){
+	strFeatures = "top=50,left=50,width=800,height=600,toolbar=0,menubar=0,location=0,directories=0,status=0,scrollbars=1";
+	window.open("0201-p.html" , "MyNew", strFeatures);
+}
+function DetailQuery(ccds,dflgs){
+	form1.ccd.value = ccds;
+	form1.dflg.value = dflgs;
+ 	form1.selectDaily.value = "L";
+	form1.action="020101.html";
+	form1.submit();	
+}
+function refreshPage(){
+	location.reload();
+}
+function DelayPageQuery(){
+    form1.action="0208.html";
+	form1.submit();	
+}
+</script>
+<body class="bgWhite" leftmargin="0" topmargin="0" marginwidth="0" marginheight="0"
+	onload="init();">
+
+<br>
+<div align="center" class="locator2">( <!--  資料生效日期 -->Effective Date of Data ： 2026/10/22 16:03:41 )</div>
+
+<form method="post" name="form1"><input name="ccd" type="hidden"
+	value=""> <input name="dflg" type="hidden" value=""> <input
+	name="monthCount" type="hidden" value="-3"><input name="selectDaily" type="hidden" value=""> <br>
+	
+	
+	<table align="center">
+		<tr>
+					
+			
+			
+			<!-- 延時牌告 -->
+			<td align="center" >						
+			       
+                      
+                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                          <a href="javascript: DelayPageQuery()"><img SRC="../zh_TW/images/FXRATE.jpg" border="0" alt="重新查詢" WIDTH="400" HEIGHT="50"></a>
+                      
+                    
+                						
+            </td>
+               
+			
+		</tr>
+	</table>
+<br><br>
+<table align="center" border="1" cellPadding="4" cellSpacing="0"
+	class="CnbTable_550" id="NoData" style="display: none">
+	<tr>
+		<td class="ListTitleTR">Currency Code</td>
+		<!-- 幣別代號 -->
+		<td align="center" class="ListTitleTR">Type</td>
+		<!-- 類別 -->
+		<td class="ListTitleTR">Buying Rate</td>
+		<!-- 買入匯率 -->
+		<td class="ListTitleTR">Selling Rate</td>
+		<!-- 賣出匯率 -->
+		<td align="center" class="ListTitleTR">Historical Interest Rate Enquiry</td>
+		<!-- 歷史匯率查詢 -->
+	</tr>
+	<tr>
+		<td colspan="5" align="center" class="ListTitleFont"><!-- 查無資料 -->Information not found</td>
+	</tr>
+</table>
+<table align="center" border="1" cellPadding="4" cellSpacing="0"
+	class="CnbTable_550" id="table1" style="display: none">
+	<tr>
+		<th class="ListTitleTR">Currency Code
+		</td>
+		<!-- 幣別代號 -->
+		<th align="center" class="ListTitleTR">Type
+		</td>
+		<!-- 類別 -->
+		<th class="ListTitleTR">Buying Rate
+		</td>
+		<!-- 買入匯率 -->
+		<th class="ListTitleTR">Selling Rate
+		</td>
+		<!-- 賣出匯率 -->
+		<th align="center" class="ListTitleTR" nowrap>Historical Interest Rate Enquiry
+		</td>
+		<!-- 歷史匯率查詢 -->
+	</tr>
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                    <img src="../en_US/images/America.gif" width="24"
+                        height="16" align="middle" alt="USD">&nbsp;USD
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Spot</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    32.47000
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    32.57000
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('01','1')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('01','1');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                    <img src="../en_US/images/America.gif" width="24"
+                        height="16" align="middle" alt="USD">&nbsp;USD
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Cash</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    32.26300
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    32.77800
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('01','2')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('01','2');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                    <img src="../en_US/images/England.gif" width="24"
+                        height="16" align="middle" alt="GBP">&nbsp;GBP
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Spot</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    43.39800
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    43.79800
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('02','1')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('02','1');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                    <img src="../en_US/images/England.gif" width="24"
+                        height="16" align="middle" alt="GBP">&nbsp;GBP
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Cash</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    42.79800
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    44.39800
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('02','2')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('02','2');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/HongKong.gif" width="24"
+                        height="16" align="middle" alt="HKD">&nbsp;HKD
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Spot</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    4.11700
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    4.17700
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('03','1')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('03','1');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/HongKong.gif" width="24"
+                        height="16" align="middle" alt="HKD">&nbsp;HKD
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Cash</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    3.99000
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    4.19500
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('03','2')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('03','2');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/Australia.gif" width="24"
+                        height="16" align="middle" alt="AUD">&nbsp;AUD
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Spot</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    22.70300
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    22.90300
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('05','1')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('05','1');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/Australia.gif" width="24"
+                        height="16" align="middle" alt="AUD">&nbsp;AUD
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Cash</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    22.48800
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    23.11800
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('05','2')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('05','2');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/Singapore.gif" width="24"
+                        height="16" align="middle" alt="SGD">&nbsp;SGD
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Spot</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    25.36800
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    25.56800
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('07','1')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('07','1');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/Swiss.gif" width="24"
+                        height="16" align="middle" alt="CHF">&nbsp;CHF
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Spot</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    39.47100
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    39.73100
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('08','1')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('08','1');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/Canada.gif" width="24"
+                        height="16" align="middle" alt="CAD">&nbsp;CAD
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Spot</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    23.09300
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    23.29300
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('10','1')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('10','1');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/Canada.gif" width="24"
+                        height="16" align="middle" alt="CAD">&nbsp;CAD
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Cash</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    22.82300
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    23.56300
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('10','2')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('10','2');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/Japan.gif" width="24"
+                        height="16" align="middle" alt="JPY">&nbsp;JPY
+                
+                
+                
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Spot</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    0.20480
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    0.20880
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('11','1')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('11','1');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/Japan.gif" width="24"
+                        height="16" align="middle" alt="JPY">&nbsp;JPY
+                
+                
+                
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Cash</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    0.20310
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    0.21050
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('11','2')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('11','2');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/SouthAfrican.gif" width="24"
+                        height="16" align="middle" alt="ZAR">&nbsp;ZAR
+                
+                
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Spot</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    1.92300
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    2.02300
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('15','1')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('15','1');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/Sweden.gif" width="24"
+                        height="16" align="middle" alt="SEK">&nbsp;SEK
+                
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Spot</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    3.23500
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    3.33500
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('16','1')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('16','1');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/Thailand.gif" width="24"
+                        height="16" align="middle" alt="THB">&nbsp;THB
+                
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Spot</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    0.94950
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    0.98950
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('18','1')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('18','1');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/NewZealand.gif" width="24"
+                        height="16" align="middle" alt="NZD">&nbsp;NZD
+                
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Spot</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    18.40200
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    18.60200
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('19','1')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('19','1');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/Euro.gif" width="24"
+                        height="16" align="middle" alt="EUR">&nbsp;EUR
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Spot</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    36.33000
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    36.73000
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('21','1')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('21','1');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/Euro.gif" width="24"
+                        height="16" align="middle" alt="EUR">&nbsp;EUR
+                
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Cash</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    36.02700
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    37.03300
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('21','2')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('21','2');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/China.gif" width="24"
+                        height="16" align="middle" alt="CNY">&nbsp;CNY
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Spot</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    4.84900
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    4.89900
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('25','1')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('25','1');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/China.gif" width="24"
+                        height="16" align="middle" alt="CNY">&nbsp;CNY
+                
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Cash</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    4.77600
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    4.92900
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('25','2')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('25','2');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+        <tr>
+            <td class="ListTitleFont">
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                    <img src="../en_US/images/Turkish.gif" width="24"
+                        height="16" align="middle" alt="TRY">&nbsp;TRY
+                
+            </td>
+            <td align="center" class="ListTitleFont"><!--即期或現鈔-->Spot</td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    0.42500
+                
+            </td>
+            <td align="right" class="ListTitleFont">
+                
+                
+                    0.88500
+                
+            </td>
+             <td align="center" class="ListTitleFont"><!-- 請按我 -->
+            <div style="width:130px;margin:0 auto;">
+            <input type="button" value="Press me" class="MainButton" onclick="DetailQuery('52','1')"/>
+            </div>
+            <!-- 請按我 <input name="button23" type="button" class="MainButton3" onClick="DetailQuery('52','1');" value="Press me" />-->
+            </td>
+        </tr>
+	
+	
+	
+	
+	
+	
+</table>
+<!-- 本表資料僅供參考, 正確數值請洽各營業單位櫃檯 -->
+<p align="center" class="AttantionText">The information in this table is for reference only; please visit the business unit’s counter for the correct amount.</p>
+<!-- 列印 -->
+<p align="center">
+<table align="center">
+	<tr>
+		<td class="LinkButton2"><a href="javascript: doprint()">Print</a></td>
+	</tr>
+</table>
+</p>
+</form>
+</body>
+</html>

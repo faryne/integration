@@ -6,6 +6,8 @@ export const BankMappings: Record<BankName, string> = {
   esun: "玉山銀行",
   cathay: "國泰世華銀行",
   land: "土地銀行",
+  sinopac: "永豐銀行",
+  first: "第一銀行",
 };
 
 export const BankVisualMappings: Record<
@@ -17,6 +19,8 @@ export const BankVisualMappings: Record<
   esun: { mark: "玉", color: "#0f766e" },
   cathay: { mark: "國", color: "#00843d" },
   land: { mark: "土", color: "#8a6f2a" },
+  sinopac: { mark: "永", color: "#c2410c" },
+  first: { mark: "一", color: "#1d4ed8" },
 };
 
 export const CurrencyFlagMappings: Record<string, string> = {
