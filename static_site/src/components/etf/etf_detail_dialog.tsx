@@ -83,7 +83,7 @@ const EtfHistoryShare = ({ data }: { data: TwseEtfShare[] }) => (
                 key={label}
                 align={label === "配息金額" ? "right" : "left"}
                 sx={{
-                  bgcolor: "#f6f9fc",
+                  bgcolor: "background.default",
                   color: "text.secondary",
                   fontWeight: 900,
                 }}

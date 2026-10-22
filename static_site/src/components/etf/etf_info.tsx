@@ -180,7 +180,7 @@ export function ETFInfo({ data }: EtfTableProps) {
         </Stack>
         <TableContainer component={Paper} variant="outlined">
           <Table sx={{ minWidth: 650 }}>
-            <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
+            <TableHead sx={{ backgroundColor: "background.default" }}>
               <TableRow>
                 <TableCell>宣告日 (Declared)</TableCell>
                 <TableCell>除息日 (Ex-Date)</TableCell>

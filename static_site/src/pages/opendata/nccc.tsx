@@ -39,6 +39,7 @@ import type {
   NCCCRecord,
   NCCCRecordSearch,
 } from "@/types/nccc.ts";
+import { heroBackground } from "@/components/common/siteLayout/siteTheme.ts";
 
 const taiwanRegionOrder = [
   "台北市",
@@ -379,8 +380,9 @@ export default function NCCCPage() {
           sx={{
             p: { xs: 2.5, md: 4 },
             borderRadius: 3,
-            background:
+            background: heroBackground(
               "linear-gradient(135deg, #f7fbff 0%, #fffaf2 52%, #f1f8f5 100%)",
+            ),
           }}
         >
           <Stack spacing={2}>

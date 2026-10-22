@@ -83,7 +83,7 @@ export const OptimizedEtfCard: React.FC<{
               </Box>
               <Typography
                 variant="h6"
-                sx={{ fontWeight: 800, mt: 0.5, color: "#2c3e50" }}
+                sx={{ fontWeight: 800, mt: 0.5, color: "text.primary" }}
               >
                 <Chip
                   label={

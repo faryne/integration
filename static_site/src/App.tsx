@@ -9,7 +9,6 @@ import {
 } from "react-router-dom";
 import { Box, CircularProgress, Stack, Typography } from "@mui/material";
 import { DefaultLayout } from "./layouts/DefaultLayout.tsx";
-import { ModernLayout } from "./layouts/ModernLayout.tsx";
 import { NekomaidLayout } from "./layouts/NekomaidLayout.tsx";
 import { GalgameLayout } from "./layouts/GalgameLayout.tsx";
 import { LabLayout } from "./layouts/LabLayout.tsx";
@@ -795,19 +794,6 @@ function App() {
                   <Route
                     path={"/auth/encrypted-demo"}
                     element={<EncryptedDemo />}
-                  />
-                  <Route path={"*"} element={<ErrorPage code={404} />} />
-                </Route>
-
-                <Route path={"/modern"} element={<ModernLayout />}>
-                  <Route
-                    path={""}
-                    element={
-                      <div>
-                        <h1>Modern Layout Demo</h1>
-                        <p>這是使用新版 Header 與 Footer 的 ModernLayout。</p>
-                      </div>
-                    }
                   />
                   <Route path={"*"} element={<ErrorPage code={404} />} />
                 </Route>

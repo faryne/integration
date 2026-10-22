@@ -1,7 +1,6 @@
 import {
   Alert,
   Box,
-  Breadcrumbs,
   Button,
   CircularProgress,
   InputAdornment,
@@ -65,11 +64,6 @@ export function TwStatsIndex() {
 
   return (
     <Stack spacing={3}>
-      <Breadcrumbs aria-label={"breadcrumb"}>
-        <Link to={"/"}>首頁</Link>
-        <Typography color={"text.primary"}>台灣指標</Typography>
-      </Breadcrumbs>
-
       <Stack spacing={1}>
         <Typography variant={"h3"} component={"h1"}>
           台灣指標

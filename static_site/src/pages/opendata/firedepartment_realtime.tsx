@@ -27,6 +27,7 @@ import { TWAreaMappings, type TWArea } from "@/types/twstats.ts";
 import type { Event } from "@/types/firedepartment.ts";
 import dayjs from "dayjs";
 import { useTitle } from "@/helpers/title.tsx";
+import { heroBackground } from "@/components/common/siteLayout/siteTheme.ts";
 
 type RegionFilter = "all" | TWArea;
 
@@ -189,8 +190,10 @@ export function FireDepartmentRealtime() {
             border: 1,
             borderColor: "divider",
             borderRadius: 4,
-            background:
-              "radial-gradient(circle at top left, rgba(255, 122, 89, 0.22), transparent 34%), linear-gradient(135deg, #fff8f2 0%, #f8fbff 58%, #eef6f4 100%)",
+            background: heroBackground(
+              "linear-gradient(135deg, #fff8f2 0%, #f8fbff 58%, #eef6f4 100%)",
+              "radial-gradient(circle at top left, rgba(255, 122, 89, 0.22), transparent 34%)",
+            ),
           }}
         >
           <Box sx={{ p: { xs: 2.5, md: 4 } }}>
@@ -207,7 +210,10 @@ export function FireDepartmentRealtime() {
                     label="Open Data / Fire Department"
                     color="error"
                     variant="outlined"
-                    sx={{ alignSelf: "flex-start", bgcolor: "white" }}
+                    sx={{
+                      alignSelf: "flex-start",
+                      bgcolor: "background.paper",
+                    }}
                   />
                   <Typography variant="h3" component="h1" fontWeight={900}>
                     即時消防出勤記錄

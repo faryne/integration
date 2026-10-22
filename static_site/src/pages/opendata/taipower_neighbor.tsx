@@ -35,6 +35,7 @@ import { TaipowerNeighborBreadcrumb } from "@/components/taipower/TaipowerNeighb
 import { integerToChinese } from "@/helpers/chineseNumber.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import type { TaipowerNeighborSearch } from "@/types/taipower.ts";
+import { heroBackground } from "@/components/common/siteLayout/siteTheme.ts";
 
 const basePath = "/data/taipower/neighbor";
 
@@ -166,8 +167,9 @@ export default function TaipowerNeighborPage() {
           sx={{
             p: { xs: 2.5, md: 4 },
             borderRadius: 4,
-            background:
+            background: heroBackground(
               "linear-gradient(135deg, #fff8e8 0%, #f5fbff 55%, #edf8f2 100%)",
+            ),
           }}
         >
           <Stack spacing={2}>

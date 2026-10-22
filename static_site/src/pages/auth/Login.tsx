@@ -17,6 +17,7 @@ import { useState } from "react";
 import { firebaseConfigReady } from "@/lib/firebase.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { heroBackground } from "@/components/common/siteLayout/siteTheme.ts";
 
 function authErrorMessage(error: unknown) {
   if (error instanceof Error) {
@@ -67,8 +68,10 @@ export default function Login() {
         placeItems: "center",
         px: { xs: 1, md: 4 },
         py: { xs: 4, md: 8 },
-        background:
-          "radial-gradient(circle at top left, rgba(25,118,210,0.18), transparent 34%), linear-gradient(135deg, #eef6ff 0%, #fff7ef 100%)",
+        background: heroBackground(
+          "linear-gradient(135deg, #eef6ff 0%, #fff7ef 100%)",
+          "radial-gradient(circle at top left, rgba(25,118,210,0.18), transparent 34%)",
+        ),
         borderRadius: 6,
       }}
     >
@@ -87,7 +90,7 @@ export default function Login() {
             px: { xs: 3, md: 5 },
             pt: { xs: 4, md: 5 },
             pb: 3,
-            color: "#102033",
+            color: "text.primary",
           }}
         >
           <Stack spacing={2}>

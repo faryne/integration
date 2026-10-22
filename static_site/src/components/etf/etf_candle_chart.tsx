@@ -683,7 +683,7 @@ export const EtfCandleChart = ({
                     key={label}
                     align={label === "日期" ? "left" : "right"}
                     sx={{
-                      bgcolor: "#f6f9fc",
+                      bgcolor: "background.default",
                       color: "text.secondary",
                       fontWeight: 900,
                       whiteSpace: "nowrap",

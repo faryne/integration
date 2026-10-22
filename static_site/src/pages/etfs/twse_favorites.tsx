@@ -238,14 +238,17 @@ export default function TwseEtfFavoritesPage() {
           <Table stickyHeader size="small" sx={{ minWidth: 900 }}>
             <TableHead>
               <TableRow>
-                <TableCell padding="checkbox" sx={{ bgcolor: "#f6f9fc" }} />
+                <TableCell
+                  padding="checkbox"
+                  sx={{ bgcolor: "background.default" }}
+                />
                 {columns.map((col) => (
                   <TableCell
                     key={col.label}
                     align={col.align}
                     sx={{
                       fontWeight: 900,
-                      bgcolor: "#f6f9fc",
+                      bgcolor: "background.default",
                       color: "text.secondary",
                     }}
                   >
@@ -394,17 +397,17 @@ export default function TwseEtfFavoritesPage() {
               <TableRow>
                 <TableCell
                   colSpan={4}
-                  sx={{ fontWeight: 900, bgcolor: "#f6f9fc" }}
+                  sx={{ fontWeight: 900, bgcolor: "background.default" }}
                 >
                   總計
                 </TableCell>
                 {/* 持股數是不同 ETF 各自的股數，加總沒有意義，這欄留空 */}
-                <TableCell sx={{ bgcolor: "#f6f9fc" }} />
+                <TableCell sx={{ bgcolor: "background.default" }} />
                 <TableCell
                   align="right"
                   sx={{
                     fontWeight: 900,
-                    bgcolor: "#f6f9fc",
+                    bgcolor: "background.default",
                     color: getTrendColor(totals.realizedTotal),
                   }}
                 >
@@ -423,7 +426,7 @@ export default function TwseEtfFavoritesPage() {
                   align="right"
                   sx={{
                     fontWeight: 900,
-                    bgcolor: "#f6f9fc",
+                    bgcolor: "background.default",
                     color: getTrendColor(totals.unrealizedTotal),
                   }}
                 >
@@ -442,7 +445,7 @@ export default function TwseEtfFavoritesPage() {
                   align="right"
                   sx={{
                     fontWeight: 900,
-                    bgcolor: "#f6f9fc",
+                    bgcolor: "background.default",
                     color: getTrendColor(totals.grandTotal),
                   }}
                 >
@@ -459,7 +462,7 @@ export default function TwseEtfFavoritesPage() {
                 </TableCell>
                 <TableCell
                   align="right"
-                  sx={{ fontWeight: 900, bgcolor: "#f6f9fc" }}
+                  sx={{ fontWeight: 900, bgcolor: "background.default" }}
                 >
                   {formatAmount(totals.totalCost)}
                 </TableCell>
