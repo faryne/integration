@@ -24,13 +24,14 @@ import (
 
 const (
 	hololiveTalentsURL  = "https://hololive.hololivepro.com/talents/"
-	hololiveS3Key       = "vtuber/hololovie.json"
+	hololiveS3Key       = "vtuber/hololive.json"
 	youtubeChannelBatch = 50
 	talentFetchInterval = 500 * time.Millisecond
 )
 
 var (
-	talentLinkPattern       = regexp.MustCompile(`href="https://hololive\.hololivepro\.com/talents/([a-z0-9-]+)/"`)
+	// 官網列表頁的藝人連結曾由絕對網址改成相對路徑，兩種寫法都要吃
+	talentLinkPattern       = regexp.MustCompile(`href="(?:https://hololive\.hololivepro\.com)?/talents/([a-z0-9-]+)/"`)
 	talentSNSBlockPattern   = regexp.MustCompile(`(?s)<ul class="t_sns[^"]*">(.*?)</ul>`)
 	youtubeChannelIDPattern = regexp.MustCompile(`youtube\.com/channel/(UC[a-zA-Z0-9_-]+)`)
 	youtubeHandlePattern    = regexp.MustCompile(`youtube\.com/(@[a-zA-Z0-9_.-]+)`)
