@@ -1,7 +1,7 @@
 // VTuber 直播行事曆：對應後端 model/entity/opendata/vtuber/query.go
 
 export type VtuberLiveStatus = "upcoming" | "live" | "ended" | "cancelled";
-// OTHER：卒業生、holoAN、事務所スタッフ
+// OTHER：holoAN、事務所スタッフ
 export type VtuberBranch = "JP" | "EN" | "ID" | "DEV_IS" | "OTHER";
 
 export interface VtuberUnit {
@@ -24,6 +24,8 @@ export interface VtuberChannelSummary {
   thumbnail_url: string;
   unit_slug: string;
   is_live: boolean;
+  // 在官網卒業生分組裡；仍歸在原本的期別，頭像用虛線圓環標示
+  is_graduated: boolean;
 }
 
 export interface VtuberChannelList {

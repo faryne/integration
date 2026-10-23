@@ -26,13 +26,13 @@ import type {
   VtuberUnit,
 } from "@/types/vtubers.ts";
 
-// 分頁順序與顯示名稱；OTHER 是卒業生、holoAN、事務所スタッフ
+// 分頁順序與顯示名稱；OTHER 是 holoAN、事務所スタッフ（卒業生留在原本的期別）
 const BRANCHES: [VtuberBranch, string][] = [
   ["JP", "JP"],
   ["EN", "EN"],
   ["ID", "ID"],
   ["DEV_IS", "DEV_IS"],
-  ["OTHER", "卒業生・スタッフ"],
+  ["OTHER", "holoAN・スタッフ"],
 ];
 // 常數表裡沒有的新分組歸到這裡（後端會 warn 提醒補表）
 const OTHER_UNIT: VtuberUnit = { slug: "", name: "其他", branch: "JP" };

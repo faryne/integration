@@ -51,6 +51,7 @@ CREATE TABLE `vtuber_channels` (
     `view_count` BIGINT UNSIGNED NOT NULL DEFAULT 0,
     `video_count` BIGINT UNSIGNED NOT NULL DEFAULT 0,
     `calendar_id` VARCHAR(255) NULL DEFAULT NULL COMMENT '個人 Google 行事曆 ID；舊行事曆用 -cmd vtuber-import-calendars 匯入，沒有的由同步 job 建立',
+    `is_graduated` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = 在官網卒業生分組裡（仍留在原本的期別，前端另外標示）',
     `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = 已不在官網名冊上',
     `deleted_at` TIMESTAMP NULL DEFAULT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

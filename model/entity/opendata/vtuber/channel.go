@@ -19,7 +19,8 @@ type Channel struct {
 	SubscriberCount    uint64     `gorm:"column:subscriber_count"`
 	ViewCount          uint64     `gorm:"column:view_count"`
 	VideoCount         uint64     `gorm:"column:video_count"`
-	CalendarID         *string    `gorm:"column:calendar_id"` // 個人 Google 行事曆；週更／每日 job 的 upsert 不會覆蓋這欄
+	CalendarID         *string    `gorm:"column:calendar_id"`  // 個人 Google 行事曆；週更／每日 job 的 upsert 不會覆蓋這欄
+	IsGraduated        bool       `gorm:"column:is_graduated"` // 在官網卒業生分組裡；期別仍是原本的
 	IsDeleted          bool       `gorm:"column:is_deleted"`
 	DeletedAt          *time.Time `gorm:"column:deleted_at"`
 	CreatedAt          time.Time  `gorm:"column:created_at"`

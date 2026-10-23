@@ -59,6 +59,7 @@ type ChannelSummary struct {
 	ThumbnailURL string `json:"thumbnail_url"`
 	UnitSlug     string `json:"unit_slug"`
 	IsLive       bool   `json:"is_live"`
+	IsGraduated  bool   `json:"is_graduated"`
 }
 
 // ChannelListResult 頻道列表＋分組常數表（總表行事曆 ID 前端寫死，不經 API）

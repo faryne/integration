@@ -58,7 +58,7 @@ func SyncTalentChannels(ctx context.Context) (int, error) {
 	if len(talents) == 0 {
 		return 0, fmt.Errorf("no youtube channel found from %s", hololiveTalentsURL)
 	}
-	units := scrapeTalentUnits(ctx, parseUnitSlugs(listPage))
+	units, graduated := scrapeTalentUnits(ctx, parseUnitSlugs(listPage))
 
 	api, err := newYouTubeService(ctx)
 	if err != nil {
@@ -83,7 +83,7 @@ func SyncTalentChannels(ctx context.Context) (int, error) {
 		}
 		seenID[ch.Id] = struct{}{}
 		row := channelEntity(ch)
-		row.TalentSlug, row.SortOrder, row.UnitSlug = t.Slug, uint(t.Order), optional(units[t.Slug])
+		row.TalentSlug, row.SortOrder, row.UnitSlug, row.IsGraduated = t.Slug, uint(t.Order), optional(units[t.Slug]), graduated[t.Slug]
 		rows = append(rows, row)
 		// CDN 檔案拿掉說明避免肥大；DB 已經在上一行留了完整說明
 		stripDescription(ch)
@@ -177,12 +177,12 @@ func scrapeTalentChannelRefs(ctx context.Context, slugs []string) []talentRef {
 	return talents
 }
 
-// scrapeTalentUnits 逐一抓分組頁，回傳藝人 slug → 期別 slug。
+// scrapeTalentUnits 逐一抓分組頁，回傳藝人 slug → 期別 slug，以及畢業的藝人。
 // 一位藝人在好幾組時依 unitRank 取最優先的那組；不在 Units 表裡的新分組照樣記錄，但會 warn 提醒補表。
-func scrapeTalentUnits(ctx context.Context, unitSlugs []string) map[string]string {
-	units := make(map[string]string)
+func scrapeTalentUnits(ctx context.Context, unitSlugs []string) (map[string]string, map[string]bool) {
+	units, graduated := make(map[string]string), make(map[string]bool)
 	for _, unit := range unitSlugs {
-		if FindUnit(unit) == nil {
+		if unit != graduatedUnit && FindUnit(unit) == nil {
 			log.Logger().Warn("Unknown hololive unit, please add it to vtuber.Units", zap.String("unit", unit))
 		}
 		body, err := fetchHTML(ctx, hololiveTalentsURL+"?gp="+unit)
@@ -190,10 +190,21 @@ func scrapeTalentUnits(ctx context.Context, unitSlugs []string) map[string]strin
 			log.Logger().Warn("Scrape hololive unit failed", zap.String("unit", unit), zap.Error(err))
 			continue
 		}
-		assignUnit(units, unit, parseTalentSlugs(body))
+		applyUnitPage(units, graduated, unit, parseTalentSlugs(body))
 		time.Sleep(talentFetchInterval)
 	}
-	return units
+	return units, graduated
+}
+
+// applyUnitPage 卒業生分組只標記畢業，其他分組照優先序歸期別
+func applyUnitPage(units map[string]string, graduated map[string]bool, unit string, members []string) {
+	if unit != graduatedUnit {
+		assignUnit(units, unit, members)
+		return
+	}
+	for _, slug := range members {
+		graduated[slug] = true
+	}
 }
 
 // assignUnit 把 talents 歸到 unit；已經有更前面的期別就不覆蓋

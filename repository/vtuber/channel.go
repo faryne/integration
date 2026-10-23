@@ -13,7 +13,7 @@ import (
 
 // ScrapedColumns 週更 job（官網名冊＋YouTube 頻道資訊）upsert 時更新的欄位；順便把畢業又回來的頻道復活
 var ScrapedColumns = []string{
-	"talent_slug", "sort_order", "unit_slug", "title", "custom_url", "description", "thumbnail_url", "banner_url",
+	"talent_slug", "sort_order", "unit_slug", "is_graduated", "title", "custom_url", "description", "thumbnail_url", "banner_url",
 	"trailer_video_id", "channel_published_at", "subscriber_count", "view_count", "video_count", "is_deleted", "deleted_at", "updated_at",
 }
 

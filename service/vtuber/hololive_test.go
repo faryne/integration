@@ -28,14 +28,17 @@ func TestAssignUnitPrefersEarlierUnit(t *testing.T) {
 	assignUnit(out, "1stgen", []string{"shirakami-fubuki"})
 	// 不在表裡的新分組排最後，不會蓋掉既有期別
 	assignUnit(out, "brand-new-unit", []string{"inugami-korone", "newcomer"})
-	// 卒業生最優先：官網上畢業的人還掛在原本的期別下，不管先抓到哪組都歸到卒業生
-	assignUnit(out, "gen-4", []string{"amane-kanata"})
-	assignUnit(out, "alum", []string{"amane-kanata", "kiryu-coco"})
-	assignUnit(out, "gen-4", []string{"kiryu-coco"})
-	require.Equal(t, map[string]string{
-		"shirakami-fubuki": "1stgen", "inugami-korone": "gamers", "newcomer": "brand-new-unit",
-		"amane-kanata": "alum", "kiryu-coco": "alum",
-	}, out)
+	require.Equal(t, map[string]string{"shirakami-fubuki": "1stgen", "inugami-korone": "gamers", "newcomer": "brand-new-unit"}, out)
+}
+
+func TestApplyUnitPageKeepsGraduatesInOriginalUnit(t *testing.T) {
+	units, graduated := map[string]string{}, map[string]bool{}
+	// 卒業生分組不論先抓或後抓，都只標記畢業，期別維持原本的
+	applyUnitPage(units, graduated, "gen-4", []string{"amane-kanata", "tokoyami-towa"})
+	applyUnitPage(units, graduated, "alum", []string{"amane-kanata", "kiryu-coco"})
+	applyUnitPage(units, graduated, "gen-4", []string{"kiryu-coco"})
+	require.Equal(t, map[string]string{"amane-kanata": "gen-4", "tokoyami-towa": "gen-4", "kiryu-coco": "gen-4"}, units)
+	require.Equal(t, map[string]bool{"amane-kanata": true, "kiryu-coco": true}, graduated)
 }
 
 func TestGraduationAllowed(t *testing.T) {

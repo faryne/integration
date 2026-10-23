@@ -6,6 +6,7 @@ import { useState } from "react";
 import { CalendarSubscribeMenu } from "@/components/vtuber/CalendarSubscribeMenu.tsx";
 import {
   formatCount,
+  GRADUATED_RING,
   formatSignedCount,
   taipeiTime,
 } from "@/components/vtuber/format.ts";
@@ -56,6 +57,11 @@ export function TalentProfile({
             height: 84,
             border: 4,
             borderColor: "background.paper",
+            ...(channel.is_graduated && {
+              ...GRADUATED_RING,
+              outlineWidth: 2,
+              outlineOffset: -2,
+            }),
           }}
         />
         <Typography

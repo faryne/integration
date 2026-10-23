@@ -2,6 +2,7 @@ import { Box, ButtonBase, Typography } from "@mui/material";
 import { Link } from "react-router-dom";
 
 import { ChannelAvatar } from "@/components/vtuber/ChannelAvatar.tsx";
+import { GRADUATED_RING } from "@/components/vtuber/format.ts";
 import type { VtuberChannelSummary } from "@/types/vtubers.ts";
 
 interface TalentAvatarProps {
@@ -13,7 +14,7 @@ interface TalentAvatarProps {
   onSelect?: () => void;
 }
 
-/** 藝人頭像按鈕：正在直播加紅框＋LIVE，目前這位用主色框；點了進藝人頁 */
+/** 藝人頭像按鈕：正在直播加紅框＋LIVE，目前這位用主色框，卒業生用虛線圓環；點了進藝人頁 */
 export function TalentAvatar({
   channel,
   size = 48,
@@ -26,7 +27,7 @@ export function TalentAvatar({
       component={Link}
       to={`/data/vtubers/${channel.handle}`}
       onClick={onSelect}
-      title={channel.title}
+      title={channel.is_graduated ? `${channel.title}（卒業）` : channel.title}
       sx={{
         position: "relative",
         flexDirection: "column",
@@ -45,8 +46,16 @@ export function TalentAvatar({
           transition: "transform .12s",
           outline: "2px solid transparent",
           outlineOffset: 2,
-          ...(channel.is_live && { outlineColor: "error.main" }),
-          ...(current && { outlineColor: "primary.main", outlineWidth: 3 }),
+          ...(channel.is_graduated && GRADUATED_RING),
+          ...(channel.is_live && {
+            outlineStyle: "solid",
+            outlineColor: "error.main",
+          }),
+          ...(current && {
+            outlineStyle: "solid",
+            outlineColor: "primary.main",
+            outlineWidth: 3,
+          }),
         }}
       />
       {channel.is_live && showName && (

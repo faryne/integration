@@ -142,7 +142,7 @@ func channelSummary(ch vtuberEntity.Channel, isLive bool) vtuberEntity.ChannelSu
 	if ch.UnitSlug != nil {
 		unit = *ch.UnitSlug
 	}
-	return vtuberEntity.ChannelSummary{ChannelID: ch.ChannelID, Handle: ch.Handle(), Title: ch.Title, ThumbnailURL: ch.ThumbnailURL, UnitSlug: unit, IsLive: isLive}
+	return vtuberEntity.ChannelSummary{ChannelID: ch.ChannelID, Handle: ch.Handle(), Title: ch.Title, ThumbnailURL: ch.ThumbnailURL, UnitSlug: unit, IsLive: isLive, IsGraduated: ch.IsGraduated}
 }
 
 // GetChannelDetail 藝人頁左側；找不到頻道回 nil

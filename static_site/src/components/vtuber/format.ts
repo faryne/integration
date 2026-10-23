@@ -86,6 +86,12 @@ export function formatSignedCount(value: number) {
   return `${value >= 0 ? "+" : ""}${formatCount(value)}`;
 }
 
+// 卒業生頭像的虛線圓環；直播中、目前這位的實線框會蓋過它
+export const GRADUATED_RING = {
+  outlineStyle: "dashed",
+  outlineColor: "text.secondary",
+} as const;
+
 export const LIVE_STATUS_LABELS: Record<VtuberLiveStatus, string> = {
   upcoming: "待機中",
   live: "直播中",
