@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VTuber 直播行事曆 Mockup</title>
+<style>
+/* 色票與外框沿用 common/faryne-layout-mockup（已上線的主站 layout） */
+:root, [data-theme="light"] {
+  --bg:#f3f5f5; --bg-grid:rgba(15,118,110,.06); --surface:#fff; --surface-2:#eef2f2; --border:#dde4e4;
+  --text:#13201f; --text-2:#5b6b6c; --accent:#0f766e; --accent-soft:#e0f3f1; --shadow:0 1px 2px rgba(10,30,30,.06);
+  --live:#d93a3a; --live-soft:rgba(217,58,58,.1); --up:#16a34a; --down:#c2410c;
+}
+[data-theme="dark"] {
+  --bg:#0b1014; --bg-grid:rgba(114,255,240,.04); --surface:#121a20; --surface-2:#18232a; --border:#23313a;
+  --text:#e3f1f2; --text-2:#93a7ab; --accent:#5eead4; --accent-soft:#123432; --shadow:none;
+  --live:#ff6b6b; --live-soft:rgba(255,107,107,.14); --up:#4ade80; --down:#fb923c;
+}
+* { box-sizing:border-box; }
+body { margin:0; font-family:Roboto,"Noto Sans TC",system-ui,sans-serif; background:#cfd5d8; color:#17191c; }
+button { font:inherit; cursor:pointer; color:inherit; }
+a { color:inherit; text-decoration:none; cursor:pointer; }
+.mono { font-family:"JetBrains Mono",ui-monospace,monospace; }
+
+/* ===== Mockup 控制列（非產品 UI） ===== */
+.prototype-bar { position:sticky; top:0; z-index:50; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; justify-content:space-between; padding:10px 16px; background:#1f2430; color:#fff; font-size:13px; }
+.prototype-bar span { color:#aab2c0; margin-left:8px; }
+.prototype-controls { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.prototype-chip { border:1px solid #485063; background:transparent; color:#dfe3ea; padding:4px 10px; border-radius:999px; font-size:12px; }
+.prototype-chip.active { background:#fff; color:#1f2430; border-color:#fff; }
+.prototype-separator { width:1px; height:18px; background:#485063; margin:0 4px; }
+.prototype-toggle { display:flex; gap:4px; align-items:center; color:#dfe3ea; }
+.prototype-notes { margin:12px auto 0; max-width:1280px; padding:12px 16px; border-radius:8px; background:#fffbe6; border:1px solid #f1d98a; font-size:13px; line-height:1.7; color:#4a3b00; }
+.prototype-notes[hidden] { display:none; }
+.prototype-notes ol { margin:4px 0 0; padding-left:20px; }
+.stage { padding:16px; display:flex; justify-content:center; }
+.device { width:100%; max-width:1440px; border-radius:10px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.18); }
+.device.mobile { max-width:390px; }
+.site { position:relative; min-height:900px; display:flex; flex-direction:column; background:var(--bg); color:var(--text); }
+
+/* ===== 外框（簡化版 header／breadcrumb，實作時直接用現有 layout） ===== */
+.hdr { background:rgba(7,12,16,.95); border-bottom:1px solid rgba(147,236,229,.18); color:#d9f8fa; }
+.hdr-inner { max-width:1280px; margin:0 auto; padding:0 24px; height:60px; display:flex; align-items:center; gap:28px; font-size:14px; }
+.hdr-inner b { font-size:16px; font-weight:800; }
+.hdr-nav { display:flex; gap:20px; }
+.hdr-nav .cur { color:#72fff0; border-bottom:2px solid #72fff0; padding-bottom:2px; }
+.device.mobile .hdr-nav { display:none; }
+.crumb-bar { border-bottom:1px solid var(--border); background:var(--surface); }
+.crumbs { max-width:1280px; margin:0 auto; padding:9px 24px; display:flex; flex-wrap:wrap; gap:8px; font-size:13px; color:var(--text-2); }
+.crumbs a:hover { color:var(--accent); text-decoration:underline; }
+.crumbs .now { color:var(--text); font-weight:600; }
+.main { flex:1 0 auto; background-image:radial-gradient(var(--bg-grid) 1px,transparent 1px); background-size:22px 22px; }
+.container { max-width:1280px; margin:0 auto; padding:20px 24px 32px; }
+.device.mobile .container, .device.mobile .crumbs, .device.mobile .hdr-inner { padding-left:16px; padding-right:16px; }
+
+/* ===== 共用元件 ===== */
+.page-head { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.page-title { margin:0; font-size:26px; font-weight:800; }
+.device.mobile .page-title { font-size:22px; }
+.btn { border:0; border-radius:8px; padding:8px 14px; background:var(--accent); color:#fff; font-weight:600; font-size:14px; display:inline-flex; gap:6px; align-items:center; justify-content:center; }
+[data-theme="dark"] .btn { color:#04201d; }
+.btn.ghost { background:transparent; color:var(--accent); border:1px solid var(--accent); }
+.btn.sm { padding:5px 10px; font-size:13px; }
+.menu-wrap { position:relative; }
+.menu { position:absolute; right:0; top:calc(100% + 6px); z-index:20; min-width:200px; padding:6px; background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:0 12px 32px rgba(0,0,0,.18); }
+.menu.left { left:0; right:auto; }
+.menu[hidden] { display:none; }
+.menu button { display:flex; width:100%; gap:10px; align-items:center; border:0; background:none; padding:8px 10px; border-radius:6px; font-size:14px; text-align:left; }
+.menu button:hover { background:var(--surface-2); }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:var(--shadow); }
+.section-title { display:flex; align-items:center; gap:8px; margin:0 0 10px; font-size:16px; font-weight:700; }
+.count { font-size:12px; font-weight:600; padding:1px 8px; border-radius:999px; background:var(--surface-2); color:var(--text-2); }
+.dot { width:8px; height:8px; border-radius:50%; background:var(--live); box-shadow:0 0 0 4px var(--live-soft); animation:pulse 1.6s infinite; }
+@keyframes pulse { 50% { box-shadow:0 0 0 7px transparent; } }
+.avatar { flex-shrink:0; width:36px; height:36px; border-radius:50%; display:grid; place-items:center; color:#fff; font-weight:700; font-size:14px; }
+.avatar.sm { width:28px; height:28px; font-size:12px; }
+.avatar.xl { width:84px; height:84px; font-size:30px; border:4px solid var(--surface); }
+.thumb { position:relative; aspect-ratio:16/9; display:grid; place-items:center; color:rgba(255,255,255,.85); font-size:12px; }
+.badge { position:absolute; left:8px; top:8px; background:var(--live); color:#fff; font-size:11px; font-weight:700; padding:2px 7px; border-radius:4px; letter-spacing:.04em; }
+.viewers { position:absolute; right:8px; bottom:8px; background:rgba(0,0,0,.7); color:#fff; font-size:12px; padding:2px 7px; border-radius:4px; }
+.tabs { display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:14px; overflow-x:auto; }
+.tab { border:0; background:none; padding:9px 14px; font-size:14px; color:var(--text-2); border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; }
+.tab.on { color:var(--accent); border-color:var(--accent); font-weight:600; }
+.check { display:flex; gap:6px; align-items:center; font-size:13.5px; color:var(--text-2); }
+.up { color:var(--up); } .down { color:var(--down); }
+
+/* ===== 藝人選擇列：高度固定，不隨藝人數量長高 ===== */
+.picker { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; padding:10px 14px; margin-bottom:20px; }
+.picker-tools { display:flex; gap:8px; align-items:center; }
+.field { display:flex; align-items:center; gap:6px; width:240px; border:1px solid var(--border); border-radius:8px; padding:7px 10px; background:var(--surface); color:var(--text-2); font-size:13.5px; }
+.field input { border:0; outline:0; background:none; color:var(--text); font:inherit; width:100%; }
+.device.mobile .picker-tools { width:100%; }
+.device.mobile .picker-tools .menu-wrap { flex:1; }
+.device.mobile .picker-tools .field { width:100%; }
+.suggest { min-width:280px; max-height:360px; overflow-y:auto; }
+.suggest small { margin-left:auto; color:var(--text-2); font-size:12px; }
+.suggest .live-tag-inline { background:var(--live); color:#fff; font-size:10px; font-weight:800; padding:0 5px; border-radius:3px; }
+.picker-live { display:flex; gap:10px; align-items:center; min-width:0; flex:1 1 260px; }
+.picker-live > b { display:flex; gap:6px; align-items:center; font-size:13px; white-space:nowrap; color:var(--live); }
+.picker-live-list { display:flex; gap:8px; overflow-x:auto; padding:4px 2px 2px; }
+.picker-live-list .talent .avatar { width:38px; height:38px; font-size:14px; }
+.picker-live-list .talent .nm { display:none; }
+.picker-live-list .talent .live-tag { display:none; }
+.device.mobile .picker-live { width:100%; flex-basis:100%; }
+
+/* ===== 全部藝人面板：分部分頁＋依期別分組 ===== */
+.panel { width:100%; max-width:960px; background:var(--surface); color:var(--text); border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,.35); display:flex; flex-direction:column; max-height:calc(100vh - 120px); }
+.panel-head { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:14px 18px 0; }
+.panel-head .n { font-size:18px; font-weight:800; }
+.panel-head .field { margin-left:auto; }
+.panel-head .close { border:0; background:none; font-size:20px; color:var(--text-2); }
+.panel .tabs { padding:0 18px; margin:10px 0 0; }
+.panel-body { padding:14px 18px 18px; overflow-y:auto; }
+.unit { margin-bottom:16px; }
+.unit-head { display:flex; gap:8px; align-items:baseline; font-size:13px; font-weight:700; margin-bottom:8px; color:var(--text-2); }
+.unit-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); gap:10px 6px; }
+@media (max-width: 640px) { .scrim.sheet { padding:0; } .scrim.sheet .panel { max-height:100vh; height:100vh; border-radius:0; } .panel-head .field { width:100%; margin-left:0; order:3; } }
+.talent { position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; border:0; background:none; padding:0; }
+.talent .avatar { width:48px; height:48px; font-size:17px; outline:2px solid transparent; outline-offset:2px; transition:transform .12s; }
+.talent:hover .avatar { transform:scale(1.08); }
+.talent.live .avatar { outline-color:var(--live); }
+.talent.here .avatar { outline-color:var(--accent); outline-width:3px; }
+.talent .live-tag { position:absolute; top:38px; background:var(--live); color:#fff; font-size:9px; font-weight:800; padding:0 4px; border-radius:3px; letter-spacing:.05em; }
+.talent .nm { font-size:11px; color:var(--text-2); max-width:58px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.talent.here .nm { color:var(--accent); font-weight:700; }
+
+/* ===== 總覽：直播中＋時間軸 ===== */
+.live-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; margin-bottom:24px; }
+.device.mobile .live-grid { grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:78%; overflow-x:auto; padding-bottom:4px; }
+.live-card { overflow:hidden; text-align:left; padding:0; }
+.live-card .thumb { border-radius:0; }
+.live-body { display:flex; gap:10px; padding:10px 12px 12px; }
+.live-body .t { font-size:14px; line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.live-body .m { font-size:12.5px; color:var(--text-2); margin-top:4px; }
+.day { margin-bottom:16px; overflow:hidden; }
+.day-head { display:flex; gap:8px; align-items:baseline; padding:8px 14px; background:var(--surface-2); border-bottom:1px solid var(--border); font-weight:700; font-size:14px; }
+.day-head small { color:var(--text-2); font-weight:500; }
+.row { display:grid; grid-template-columns:64px 36px 1fr auto; gap:12px; align-items:center; padding:10px 14px; border-bottom:1px solid var(--border); width:100%; border-left:0; border-right:0; border-top:0; background:none; text-align:left; }
+.row:last-child { border-bottom:0; }
+.row:hover { background:var(--surface-2); }
+.row .time { font-size:15px; font-weight:600; }
+.row .t { font-size:14px; line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.row .m { font-size:12.5px; color:var(--text-2); margin-top:2px; }
+.row.ended { opacity:.6; }
+.row.cancelled { opacity:.55; }
+.row.cancelled .t { text-decoration:line-through; }
+.row.no-avatar { grid-template-columns:110px 1fr auto; }
+.device.mobile .row { grid-template-columns:48px 1fr auto; gap:10px; }
+.device.mobile .row .avatar { display:none; }
+.device.mobile .row.no-avatar { grid-template-columns:76px 1fr auto; }
+.device.mobile .row .t { white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.status { font-size:12px; font-weight:600; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+.status.upcoming { background:var(--accent-soft); color:var(--accent); }
+.status.live { background:var(--live-soft); color:var(--live); }
+.status.ended, .status.cancelled { background:var(--surface-2); color:var(--text-2); }
+.list-tools { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+
+/* ===== 藝人頁 ===== */
+.talent-layout { display:grid; grid-template-columns:320px 1fr; gap:20px; align-items:start; }
+.device.mobile .talent-layout { grid-template-columns:1fr; }
+.profile { overflow:hidden; position:sticky; top:12px; }
+.device.mobile .profile { position:static; }
+.banner { height:84px; }
+.profile-body { padding:0 16px 16px; margin-top:-42px; }
+.profile .n { font-size:20px; font-weight:800; margin-top:8px; }
+.profile .h { font-size:13px; color:var(--text-2); }
+.desc { font-size:13px; line-height:1.65; color:var(--text-2); margin:10px 0 4px; white-space:pre-line; }
+.desc.clamp { display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; }
+.more { border:0; background:none; padding:0; color:var(--accent); font-size:13px; }
+.kv { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:14px 0 10px; }
+.kv div { padding:8px 10px; border-radius:8px; background:var(--surface-2); }
+.kv small { display:block; color:var(--text-2); font-size:11.5px; }
+.kv b { font-size:15px; }
+.growth { display:flex; gap:14px; font-size:12.5px; color:var(--text-2); margin-bottom:4px; }
+.growth b { font-weight:700; }
+.chart { width:100%; height:110px; display:block; }
+.chart text { fill:var(--text-2); font-size:10px; }
+.meta { font-size:12.5px; color:var(--text-2); margin:8px 0 12px; }
+.links { display:grid; gap:8px; }
+.links .row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.links .menu-wrap .btn { width:100%; }
+.now-live { display:grid; grid-template-columns:minmax(0,1.2fr) 1fr; overflow:hidden; margin-bottom:16px; text-align:left; padding:0; border-color:var(--live); }
+.device.mobile .now-live { grid-template-columns:1fr; }
+.now-live .info { padding:14px 16px; display:flex; flex-direction:column; gap:6px; justify-content:center; }
+.now-live .info .t { font-size:16px; font-weight:700; line-height:1.45; }
+.now-live .info .m { font-size:13px; color:var(--text-2); }
+/* 窄螢幕（平板直立）也改成上下堆疊，不然右欄太擠 */
+@media (max-width: 900px) {
+  .talent-layout { grid-template-columns:1fr; }
+  .profile { position:static; }
+  .now-live { grid-template-columns:1fr; }
+}
+.vid-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+.device.mobile .vid-grid { grid-template-columns:1fr 1fr; gap:10px; }
+.vid { border:0; background:none; padding:0; text-align:left; }
+.vid .thumb { border-radius:8px; }
+.vid .dur { position:absolute; right:6px; bottom:6px; background:rgba(0,0,0,.75); color:#fff; font-size:11px; padding:1px 5px; border-radius:3px; }
+.vid .t { font-size:13px; line-height:1.4; margin-top:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.vid .m { font-size:12px; color:var(--text-2); margin-top:2px; }
+.loading-more { text-align:center; padding:16px; color:var(--text-2); font-size:13px; }
+.gcal { border:1px solid var(--border); border-radius:10px; overflow:hidden; background:#fff; color:#3c4043; }
+.gcal-bar { display:flex; gap:10px; align-items:center; padding:10px 14px; border-bottom:1px solid #dadce0; font-size:14px; }
+.gcal-bar b { font-weight:500; font-size:16px; }
+.gcal-day { display:grid; grid-template-columns:90px 1fr; padding:10px 14px; border-bottom:1px solid #f1f3f4; font-size:13px; }
+.gcal-day .d { color:#70757a; }
+.gcal-day .e { display:grid; gap:6px; }
+.gcal-day .e span::before { content:"●"; color:#039be5; margin-right:8px; }
+.gcal-foot { padding:8px 14px; font-size:11px; color:#70757a; text-align:right; }
+.empty { padding:24px; text-align:center; color:var(--text-2); font-size:14px; }
+
+/* ===== 影片 modal ===== */
+.scrim { position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.6); display:flex; align-items:flex-start; justify-content:center; padding:60px 16px; overflow-y:auto; }
+.scrim[hidden] { display:none; }
+.dialog { width:100%; max-width:860px; background:var(--surface); color:var(--text); border-radius:12px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.35); }
+.player { aspect-ratio:16/9; background:#000; color:#888; display:grid; place-items:center; font-size:14px; }
+.dialog-body { display:flex; gap:12px; align-items:flex-start; padding:14px 16px 16px; }
+.dialog-body .t { font-size:16px; font-weight:700; line-height:1.45; }
+.dialog-body .m { font-size:13px; color:var(--text-2); margin-top:4px; }
+.dialog-body .acts { margin-left:auto; display:flex; gap:8px; flex-shrink:0; }
+@media (max-width: 640px) { .dialog-body { flex-wrap:wrap; } .dialog-body .acts { margin-left:0; width:100%; justify-content:flex-end; } }
+
+.snack { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:70; display:flex; gap:12px; align-items:center; padding:10px 16px; border-radius:8px; background:#2b1a1a; color:#ffdede; font-size:14px; box-shadow:0 8px 24px rgba(0,0,0,.3); border-left:4px solid #e5484d; }
+.snack[hidden], .toast[hidden] { display:none; }
+.toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:70; padding:10px 16px; border-radius:8px; background:#1f2430; color:#fff; font-size:14px; }
+</style>
+</head>
+<body>
+<header class="prototype-bar">
+  <div><strong>VTuber 直播行事曆 Mockup</strong><span>假資料・「現在」＝2026-10-23（五）21:30</span></div>
+  <div class="prototype-controls">
+    <button class="prototype-chip active" data-screen="overview">總覽</button>
+    <button class="prototype-chip" data-screen="talent">藝人頁</button>
+    <span class="prototype-separator"></span>
+    <button class="prototype-chip active" data-view="desktop">Desktop</button>
+    <button class="prototype-chip" data-view="mobile">Mobile 390</button>
+    <span class="prototype-separator"></span>
+    <button class="prototype-chip active" data-theme-option="light">淺色</button>
+    <button class="prototype-chip" data-theme-option="dark">深色</button>
+    <span class="prototype-separator"></span>
+    <button class="prototype-chip active" data-count="30">藝人 30</button>
+    <button class="prototype-chip" data-count="120">藝人 120</button>
+    <span class="prototype-separator"></span>
+    <button class="prototype-chip" id="simulateError">模擬 API 錯誤</button>
+    <label class="prototype-toggle"><input type="checkbox" id="notesToggle" checked /> 說明</label>
+  </div>
+</header>
+
+<aside class="prototype-notes" id="notes">
+  <strong>看點</strong>
+  <ol>
+    <li><b>藝人選擇列</b>取代整面大頭貼牆，<b>不管藝人有幾位都只佔一列</b>：左邊搜尋（打字跳出建議，名稱、handle、期別都能搜）＋「全部藝人」按鈕；右邊只放正在直播的頭像。控制列切「藝人 120」可以看人數變多時的樣子。</li>
+    <li><b>全部藝人面板</b>：依官網分組，分頁是 JP／EN／ID／DEV_IS，裡面再依期別（0期生、3期生、Myth、ReGLOSS⋯）分段；可以只看直播中。有輸入搜尋字時跨分部顯示。手機版是全螢幕。</li>
+    <li><b>總覽</b>（<code>/data/vtubers</code>）：舊版沒有，新增。直播中卡片＋依日期分組的即將直播時間軸，今天已結束的淡化並顯示實際時長，已取消的預設隱藏。右上訂閱 hololive 總表。</li>
+    <li><b>藝人頁</b>（<code>/data/vtubers/@handle</code>）：左側個人檔案（橫幅、說明、數據、90 天訂閱曲線、YouTube／官網連結、訂閱個人行事曆）；右側「正在直播」大卡片＋分頁「即將直播／所有影片／行事曆」。</li>
+    <li><b>點任何直播或影片都開 modal</b> 嵌入 YouTube（mockup 用黑框代替）。「所有影片」捲到底自動載入下一頁（mockup 用按鈕模擬）。</li>
+    <li>「行事曆」分頁是嵌入的 Google 行事曆 agenda 模式，mockup 用靜態圖示意。</li>
+    <li>propro 已拿掉，只剩 hololive，所以也沒有 group 切換。</li>
+  </ol>
+</aside>
+
+<main class="stage">
+  <div class="device" id="device">
+    <div class="site">
+      <div class="hdr"><div class="hdr-inner"><b>faryne.dev</b><nav class="hdr-nav"><span>工具</span><span class="cur">資料</span><span>關於</span></nav></div></div>
+      <div class="crumb-bar"><div class="crumbs" id="crumbs"></div></div>
+      <div class="main"><div class="container" id="app"></div></div>
+    </div>
+  </div>
+</main>
+<div class="scrim" id="scrim" hidden></div>
+<div class="snack" id="snack" hidden><span>無法取得直播資料（503 Service Unavailable）</span><button class="btn sm ghost" id="snackClose" style="color:#ffdede;border-color:#ffdede">關閉</button></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+// ===== 假資料 =====
+const NOW = new Date("2026-10-23T21:30:00+08:00");
+const hue = (s) => [...s].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
+const TALENTS = [
+  ["sora", "ときのそら", "@tokinosora", 1310000, "2017-09-07"], ["roboco", "ロボ子さん", "@robocosan", 1020000, "2018-03-04"],
+  ["miko", "さくらみこ", "@sakuramiko", 2380000, "2018-07-31"], ["suisei", "星街すいせい", "@hoshimachisuisei", 2770000, "2018-03-18"],
+  ["azki", "AZKi", "@azki", 820000, "2018-11-15"], ["fubuki", "白上フブキ", "@shirakamifubuki", 2420000, "2018-05-31"],
+  ["matsuri", "夏色まつり", "@natsuiromatsuri", 1600000, "2018-05-25"], ["subaru", "大空スバル", "@oozorasubaru", 1750000, "2018-09-14"],
+  ["okayu", "猫又おかゆ", "@nekomataokayu", 2540000, "2019-03-21"], ["korone", "戌神ころね", "@inugamikorone", 2510000, "2019-04-11"],
+  ["pekora", "兎田ぺこら", "@usadapekora", 2540000, "2019-07-15"], ["flare", "不知火フレア", "@shiranuiflare", 1050000, "2019-07-15"],
+  ["marine", "宝鐘マリン", "@houshoumarine", 3820000, "2019-07-15"], ["kanata", "天音かなた", "@amanekanata", 1520000, "2019-12-17"],
+  ["towa", "常闇トワ", "@tokoyamitowa", 1690000, "2019-12-17"], ["lamy", "雪花ラミィ", "@yukihanalamy", 1410000, "2020-07-21"],
+  ["botan", "獅白ぼたん", "@shishirobotan", 1990000, "2020-08-04"], ["laplus", "ラプラス・ダークネス", "@laplusdarknesss", 1350000, "2021-11-26"],
+  ["koyori", "博衣こより", "@hakuikoyori", 1180000, "2021-11-28"], ["chloe", "沙花叉クロヱ", "@sakamatachloe", 1400000, "2021-11-29"],
+  ["iroha", "風真いろは", "@kazamairoha", 1340000, "2021-11-30"], ["calli", "Mori Calliope", "@moricalliope", 2490000, "2020-09-12"],
+  ["kiara", "Takanashi Kiara", "@takanashikiara", 1520000, "2020-09-12"], ["ina", "Ninomae Ina'nis", "@ninomaeinanis", 1660000, "2020-09-13"],
+  ["irys", "IRyS", "@irys", 820000, "2021-07-11"], ["fauna", "Ceres Fauna", "@ceresfauna", 970000, "2021-08-21"],
+  ["moona", "Moona Hoshinova", "@moonahoshinova", 1280000, "2020-04-10"], ["kobo", "Kobo Kanaeru", "@kobokanaeru", 2390000, "2022-03-26"],
+  ["ao", "火威青", "@hiodoshiao", 610000, "2023-09-10"], ["kanade", "音乃瀬奏", "@otonosekanade", 730000, "2023-09-16"],
+];
+// 官網 /talents?gp=<slug> 的分組，依官網順序；分部對應寫死在程式裡
+const UNITS = [
+  ["gen-0", "0期生", "JP"], ["1stgen", "1期生", "JP"], ["gen-2", "2期生", "JP"], ["gamers", "ゲーマーズ", "JP"], ["gen-3", "3期生", "JP"],
+  ["gen-4", "4期生", "JP"], ["gen-5", "5期生", "JP"], ["holox", "秘密結社holoX", "JP"],
+  ["area15", "AREA15", "ID"], ["holoro", "holoro", "ID"], ["holoh3ro", "holoh3ro", "ID"],
+  ["myth", "Myth", "EN"], ["project-hope", "Project: HOPE", "EN"], ["council", "Council", "EN"], ["promise", "Promise", "EN"], ["advent", "Advent", "EN"], ["justice", "Justice", "EN"],
+  ["regloss", "ReGLOSS", "DEV_IS"], ["flow-glow", "FLOW GLOW", "DEV_IS"],
+];
+const UNIT = Object.fromEntries(UNITS.map(([slug, name, branch]) => [slug, { slug, name, branch }]));
+const BRANCHES = ["JP", "EN", "ID", "DEV_IS"];
+const TALENT_UNITS = {
+  sora: "gen-0", roboco: "gen-0", miko: "gen-0", suisei: "gen-0", azki: "gen-0", fubuki: "1stgen", matsuri: "1stgen", subaru: "gen-2",
+  okayu: "gamers", korone: "gamers", pekora: "gen-3", flare: "gen-3", marine: "gen-3", kanata: "gen-4", towa: "gen-4", lamy: "gen-5", botan: "gen-5",
+  laplus: "holox", koyori: "holox", chloe: "holox", iroha: "holox", calli: "myth", kiara: "myth", ina: "myth", irys: "project-hope", fauna: "council",
+  moona: "area15", kobo: "holoh3ro", ao: "regloss", kanade: "regloss",
+};
+let T = {};
+function buildTalents(total) {
+  // 「藝人數：120」時用佔位藝人補滿，壓力測試版面；佔位藝人平均分到各期別
+  const list = [...TALENTS];
+  for (let i = list.length; i < total; i++) list.push([`p${i}`, `藝人 ${i + 1}`, `@talent${i + 1}`, 300000 + ((i * 7919) % 900000), "2024-06-01"]);
+  T = {};
+  list.forEach(([id, name, handle, subs, since], i) => {
+    // 7 日增減與曲線用固定公式產生，讓每次重繪結果一致
+    const delta = Math.round(subs * (((i * 37) % 11) - 2) / 1000);
+    T[id] = { id, name, handle, subs, since, delta, hue: hue(name), views: subs * 140 + i * 9_731_000, videos: 900 + ((i * 131) % 1600), unit: TALENT_UNITS[id] ?? UNITS[i % UNITS.length][0] };
+  });
+}
+buildTalents(TALENTS.length);
+const TITLES = [
+  "【雑談】寝る前にゆるっとお話しよ～", "【マリオカート8DX】視聴者参加型！みんなで走るぞ！", "【歌枠】秋の夜長にしっとりソング",
+  "【APEX】ランク回していく！目指せマスター", "【Minecraft】新拠点づくり、今日こそ完成させる", "【朝活】おはよう！一緒に一日始めよ",
+  "【ホラー】絶対に叫ばない配信", "【3D LIVE】記念ライブ同時視聴", "【Karaoke】Singing your requests!", "【スト6】ランクマ修行",
+  "【ASMR】耳かきと囁き", "【ポケモン】図鑑完成までやめられない耐久",
+];
+const at = (dayOffset, hhmm) => { const [h, m] = hhmm.split(":").map(Number); const d = new Date(NOW); d.setDate(d.getDate() + dayOffset); d.setHours(h, m, 0, 0); return d; };
+const LIVES = [
+  // [藝人, 標題 index, 日期偏移, 預定時間, 狀態, 實際時長(分), 同接]
+  ["marine", 6, 0, "20:00", "live", 0, 48200], ["pekora", 1, 0, "21:00", "live", 0, 31800], ["koyori", 4, 0, "20:30", "live", 0, 9800],
+  ["kobo", 8, 0, "21:00", "live", 0, 15400],
+  ["sora", 5, 0, "07:00", "ended", 62], ["miko", 3, 0, "12:00", "ended", 184], ["calli", 8, 0, "10:00", "ended", 95], ["towa", 9, 0, "18:00", "cancelled"],
+  ["suisei", 2, 0, "22:00", "upcoming"], ["okayu", 0, 0, "23:00", "upcoming"], ["lamy", 10, 0, "23:30", "upcoming"],
+  ["fubuki", 4, 1, "00:00", "upcoming"], ["sora", 5, 1, "07:00", "upcoming"], ["korone", 11, 1, "11:00", "upcoming"],
+  ["iroha", 1, 1, "18:00", "upcoming"], ["subaru", 0, 1, "19:00", "upcoming"], ["kanata", 7, 1, "20:00", "upcoming"],
+  ["flare", 3, 1, "21:00", "cancelled"], ["marine", 0, 1, "22:00", "upcoming"], ["miko", 3, 2, "12:00", "upcoming"],
+  ["pekora", 4, 2, "20:00", "upcoming"], ["calli", 8, 2, "11:00", "upcoming"], ["suisei", 7, 3, "20:00", "upcoming"],
+  ["marine", 2, 3, "21:00", "upcoming"], ["botan", 3, 4, "22:00", "upcoming"],
+].map(([ch, ti, day, hhmm, status, dur, viewers], i) => {
+  const start = at(day, hhmm);
+  return { id: "v" + i, ch, title: TITLES[ti], start, status, end: dur ? new Date(start.getTime() + dur * 60000) : null, viewers };
+});
+const DESC = "ホロライブ3期生、宝鐘海賊団の船長・宝鐘マリンです！\nアニメや漫画、ゲームが大好きなオタク船長。\n歌って踊れる17歳（自称）を目指して、毎日いろんな配信をしています。\n\nメンバーシップ・グッズ・お仕事のご依頼は公式サイトをご確認ください。";
+
+// ===== 狀態 =====
+const state = { screen: "overview", talent: "marine", tab: "upcoming", showCancelled: false, pickQuery: "", panelBranch: "JP", panelQuery: "", panelLiveOnly: false, descOpen: false, videoPages: 1 };
+const $ = (s) => document.querySelector(s);
+const WEEK = "日一二三四五六";
+const pad = (n) => String(n).padStart(2, "0");
+const hm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const md = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
+const fmtNum = (n) => n >= 1e8 ? (n / 1e8).toFixed(2) + " 億" : n >= 1e6 ? (n / 1e6).toFixed(2) + "M" : n >= 1e4 ? (n / 1e3).toFixed(1) + "K" : n.toLocaleString();
+const signed = (n) => `<b class="${n >= 0 ? "up" : "down"}">${n >= 0 ? "+" : ""}${fmtNum(n)}</b>`;
+const initial = (c) => c.name.replace(/[A-Za-z' ]/g, "")[0] || c.name[0];
+const avatar = (c, cls = "") => `<span class="avatar ${cls}" style="background:hsl(${c.hue} 55% 52%)">${initial(c)}</span>`;
+const thumbBg = (c, shift = 60) => `background:linear-gradient(135deg,hsl(${c.hue} 60% 45%),hsl(${(c.hue + shift) % 360} 60% 30%))`;
+const duration = (ms) => { const m = Math.round(ms / 60000); return `${Math.floor(m / 60)}:${pad(m % 60)}`; };
+const STATUS = { upcoming: "待機中", live: "直播中", ended: "已結束", cancelled: "已取消" };
+const liveOf = (id) => LIVES.find((l) => l.ch === id && l.status === "live");
+const dayLabel = (d) => {
+  const diff = Math.round((new Date(d).setHours(0, 0, 0, 0) - new Date(NOW).setHours(0, 0, 0, 0)) / 864e5);
+  return { name: ["今天", "明天", "後天"][diff] ?? "", date: `${md(d)}（${WEEK[d.getDay()]}）` };
+};
+
+function subscribeMenu(key, label, text, cls = "") {
+  return `<div class="menu-wrap">
+    <button class="btn ${cls}" data-menu="${key}">📅 ${text} ▾</button>
+    <div class="menu" data-menu-body="${key}" hidden>
+      <button data-toast="已開啟 Google 日曆：${label}">＋ 加入 Google 日曆</button>
+      <button data-toast="已開啟網頁檢視：${label}">↗ 網頁檢視</button>
+      <button data-toast="已複製 ICS 網址">⧉ 複製 ICS 網址</button>
+    </div></div>`;
+}
+
+// 名稱、handle、期別名稱都可以搜
+const matches = (c, q) => (c.name + c.handle + UNIT[c.unit].name).toLowerCase().includes(q.toLowerCase());
+const talentBtn = (c) => `
+  <button class="talent ${liveOf(c.id) ? "live" : ""} ${state.screen === "talent" && state.talent === c.id ? "here" : ""}" data-talent="${c.id}" title="${c.name}">
+    ${avatar(c)}${liveOf(c.id) ? `<span class="live-tag">LIVE</span>` : ""}<span class="nm">${c.name}</span>
+  </button>`;
+
+// 選擇列：搜尋（下拉建議）＋「全部藝人」面板＋正在直播的頭像；不管藝人有幾位都只佔一列
+function renderPicker() {
+  const live = Object.values(T).filter((c) => liveOf(c.id));
+  const suggestions = state.pickQuery ? Object.values(T).filter((c) => matches(c, state.pickQuery)).slice(0, 8) : [];
+  return `<div class="card picker">
+    <div class="picker-tools">
+      <div class="menu-wrap">
+        <label class="field">🔍<input id="pickQ" placeholder="搜尋藝人" value="${state.pickQuery}" autocomplete="off" /></label>
+        <div class="menu left suggest" ${state.pickQuery ? "" : "hidden"}>${suggestions.map((c) => `
+          <button data-talent="${c.id}">${avatar(c, "sm")}${c.name}${liveOf(c.id) ? `<span class="live-tag-inline">LIVE</span>` : ""}<small>${UNIT[c.unit].name}</small></button>`).join("") || `<button disabled style="color:var(--text-2)">沒有符合的藝人</button>`}</div>
+      </div>
+      <button class="btn ghost" id="openPanel">☰ 全部藝人<span class="count">${Object.keys(T).length}</span></button>
+    </div>
+    ${live.length ? `<div class="picker-live"><b><span class="dot"></span>直播中</b><div class="picker-live-list">${live.map(talentBtn).join("")}</div></div>` : ""}
+  </div>`;
+}
+
+function renderPanel() {
+  const all = Object.values(T).filter((c) => (!state.panelLiveOnly || liveOf(c.id)) && matches(c, state.panelQuery));
+  // 有搜尋字時跨分部顯示，不然只顯示目前分頁的分部
+  const inBranch = state.panelQuery ? all : all.filter((c) => UNIT[c.unit].branch === state.panelBranch);
+  const sections = UNITS.map(([slug]) => [UNIT[slug], inBranch.filter((c) => c.unit === slug)]).filter(([, list]) => list.length);
+  return `<div class="panel">
+    <div class="panel-head"><span class="n">全部藝人</span>
+      <label class="check"><input type="checkbox" id="panelLiveOnly" ${state.panelLiveOnly ? "checked" : ""}/> 只看直播中</label>
+      <label class="field">🔍<input id="panelQ" placeholder="搜尋名稱或期別" value="${state.panelQuery}" autocomplete="off" /></label>
+      <button class="close" data-close>✕</button></div>
+    <div class="tabs">${BRANCHES.map((b) => `<button class="tab ${!state.panelQuery && state.panelBranch === b ? "on" : ""}" data-branch="${b}">${b}<small style="margin-left:4px;opacity:.7">${all.filter((c) => UNIT[c.unit].branch === b).length}</small></button>`).join("")}</div>
+    <div class="panel-body">${sections.map(([u, list]) => `
+      <div class="unit"><div class="unit-head">${state.panelQuery ? `${u.branch}・` : ""}${u.name}<span class="count">${list.length}</span></div>
+        <div class="unit-grid">${list.map(talentBtn).join("")}</div></div>`).join("") || `<div class="empty">沒有符合的藝人</div>`}</div>
+  </div>`;
+}
+function openPanel() { $("#scrim").className = "scrim sheet"; $("#scrim").innerHTML = renderPanel(); $("#scrim").hidden = false; }
+
+function liveCard(l) {
+  const c = T[l.ch];
+  return `<button class="card live-card" data-video="${l.id}">
+    <div class="thumb" style="${thumbBg(c)}">縮圖<span class="badge">LIVE</span><span class="viewers">👤 ${l.viewers.toLocaleString()}</span></div>
+    <div class="live-body">${avatar(c)}<div><div class="t">${l.title}</div><div class="m">${c.name}・已開播 ${duration(NOW - l.start)}</div></div></div>
+  </button>`;
+}
+
+function timeline(lives, withAvatar) {
+  const days = {};
+  lives.forEach((l) => (days[l.start.toDateString()] ??= []).push(l));
+  return Object.values(days).map((list) => { const d = dayLabel(list[0].start); return `
+    <div class="card day">
+      <div class="day-head">${d.name || d.date}${d.name ? `<small>${d.date}</small>` : ""}<small style="margin-left:auto">${list.length} 場</small></div>
+      ${list.map((l) => { const c = T[l.ch]; return `
+        <button class="row ${l.status} ${withAvatar ? "" : "no-avatar"}" data-video="${l.id}">
+          <span class="time mono">${withAvatar ? "" : `<small style="font-weight:500;color:var(--text-2)">${md(l.start)} </small>`}${hm(l.start)}</span>${withAvatar ? avatar(c) : ""}
+          <div style="min-width:0"><div class="t">${l.title}</div><div class="m">${withAvatar ? c.name : ""}${l.end ? `${withAvatar ? "・" : ""}直播 ${duration(l.end - l.start)}` : ""}</div></div>
+          <span class="status ${l.status}">${STATUS[l.status]}</span>
+        </button>`; }).join("")}
+    </div>`; }).join("") || `<div class="card empty">沒有排定的直播</div>`;
+}
+
+function renderOverview() {
+  const live = LIVES.filter((l) => l.status === "live");
+  const rest = LIVES.filter((l) => l.status !== "live" && (state.showCancelled || l.status !== "cancelled")).sort((a, b) => a.start - b.start);
+  return `
+    <div class="page-head"><h1 class="page-title">VTuber 直播行事曆</h1>${subscribeMenu("all", "hololive 總表", "訂閱總表")}</div>
+    ${renderPicker()}
+    ${live.length ? `<h2 class="section-title"><span class="dot"></span>直播中<span class="count">${live.length}</span></h2><div class="live-grid">${live.map(liveCard).join("")}</div>` : ""}
+    <div class="list-tools"><h2 class="section-title" style="margin:0">即將直播</h2>
+      <label class="check"><input type="checkbox" id="showCancelled" ${state.showCancelled ? "checked" : ""}/> 顯示已取消</label></div>
+    ${timeline(rest, true)}`;
+}
+
+// 90 天訂閱曲線：依 subs 與 delta 產生平滑假資料
+const series = (c, days) => Array.from({ length: days }, (_, i) => Math.round(c.subs - (c.delta / 7) * (days - 1 - i) + Math.sin(i / 3 + c.hue) * c.subs * 0.0008));
+function chart(c) {
+  const s = series(c, 90), min = Math.min(...s), max = Math.max(...s), W = 300, H = 110, P = 40;
+  const x = (i) => P + (i / 89) * (W - P - 4), y = (v) => H - 18 - ((v - min) / (max - min || 1)) * (H - 28);
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    ${[min, max].map((t) => `<line x1="${P}" x2="${W - 4}" y1="${y(t)}" y2="${y(t)}" stroke="var(--border)"/><text x="0" y="${y(t) + 3}">${fmtNum(t)}</text>`).join("")}
+    <polyline points="${s.map((v, i) => `${x(i)},${y(v)}`).join(" ")}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    <text x="${P}" y="${H - 3}">7/26</text><text x="${W - 30}" y="${H - 3}">10/23</text></svg>`;
+}
+
+function renderTalent() {
+  const c = T[state.talent], live = liveOf(c.id);
+  const mine = LIVES.filter((l) => l.ch === c.id && l.status !== "live" && (state.showCancelled || l.status !== "cancelled") && l.start > new Date(NOW - 864e5)).sort((a, b) => a.start - b.start);
+  const g90 = (() => { const s = series(c, 90); return s[89] - s[0]; })();
+  const tabBody = {
+    upcoming: `<div class="list-tools"><span></span><label class="check"><input type="checkbox" id="showCancelled" ${state.showCancelled ? "checked" : ""}/> 顯示已取消</label></div>${timeline(mine, false)}`,
+    videos: `<div class="vid-grid">${Array.from({ length: 12 * state.videoPages }, (_, i) => `
+      <button class="vid" data-video="arch${i}"><div class="thumb" style="${thumbBg(c, 30 + i * 17)}">縮圖<span class="dur">${i % 3 ? `${1 + (i % 4)}:${pad((i * 13) % 60)}:${pad((i * 7) % 60)}` : `${(i * 3) % 20 + 3}:${pad((i * 11) % 60)}`}</span></div>
+        <div class="t">${TITLES[(i + 3) % TITLES.length]}</div><div class="m">${i < 2 ? `${i + 1} 天前` : `${md(new Date(NOW - (i + 1) * 864e5))}`}</div></button>`).join("")}</div>
+      ${state.videoPages < 3 ? `<div class="loading-more"><button class="btn sm ghost" id="moreVideos">（模擬捲到底）載入下一頁</button></div>` : `<div class="loading-more">已經是全部了</div>`}`,
+    calendar: `<div class="gcal">
+      <div class="gcal-bar"><b>Live Schedule of ${c.name}</b><span style="margin-left:auto;color:#70757a">議程 ▾</span></div>
+      ${LIVES.filter((l) => l.ch === c.id && l.status !== "cancelled" && l.start > new Date(NOW - 864e5)).sort((a, b) => a.start - b.start).map((l) => `
+        <div class="gcal-day"><span class="d">${md(l.start)}（${WEEK[l.start.getDay()]}）</span><div class="e"><span>${hm(l.start)} [${c.name}] ${l.title}</span></div></div>`).join("")}
+      <div class="gcal-foot">Google 日曆嵌入（agenda 模式，時區 Asia/Taipei）</div></div>`,
+  };
+  return `
+    ${renderPicker()}
+    <div class="talent-layout">
+      <aside class="card profile">
+        <div class="banner" style="${thumbBg(c, 120)}"></div>
+        <div class="profile-body">
+          ${avatar(c, "xl")}
+          <div class="n">${c.name}</div><div class="h">${c.handle}</div>
+          <div class="desc ${state.descOpen ? "" : "clamp"}">${DESC}</div>
+          <button class="more" id="descToggle">${state.descOpen ? "收合" : "顯示完整說明"}</button>
+          <div class="kv"><div><small>訂閱</small><b>${fmtNum(c.subs)}</b></div><div><small>觀看</small><b>${fmtNum(c.views)}</b></div><div><small>影片</small><b>${c.videos.toLocaleString()}</b></div></div>
+          <div class="growth"><span>7 日 ${signed(c.delta)}</span><span>90 日 ${signed(g90)}</span></div>
+          ${chart(c)}
+          <div class="meta">頻道建立於 ${c.since.replaceAll("-", "/")}</div>
+          <div class="links">
+            ${subscribeMenu("ch", c.name + " 個人行事曆", "訂閱個人行事曆")}
+            <div class="row2"><button class="btn sm ghost" data-toast="開啟 YouTube 頻道">↗ YouTube</button><button class="btn sm ghost" data-toast="開啟官網藝人頁">↗ 官網</button></div>
+          </div>
+        </div>
+      </aside>
+      <section>
+        ${live ? `<h2 class="section-title"><span class="dot"></span>正在直播</h2>
+          <button class="card now-live" data-video="${live.id}">
+            <div class="thumb" style="${thumbBg(c)}">縮圖<span class="badge">LIVE</span><span class="viewers">👤 ${live.viewers.toLocaleString()}</span></div>
+            <div class="info"><div class="t">${live.title}</div><div class="m">${hm(live.start)} 開播・已開播 ${duration(NOW - live.start)}</div></div>
+          </button>` : ""}
+        <div class="tabs">${[["upcoming", "即將直播"], ["videos", "所有影片"], ["calendar", "行事曆"]].map(([k, v]) => `<button class="tab ${state.tab === k ? "on" : ""}" data-tab="${k}">${v}</button>`).join("")}</div>
+        ${tabBody[state.tab]}
+      </section>
+    </div>`;
+}
+
+function render() {
+  const c = T[state.talent];
+  $("#crumbs").innerHTML = state.screen === "overview"
+    ? `<a>首頁</a><span>/</span><a>資料</a><span>/</span><span class="now">VTuber 直播行事曆</span>`
+    : `<a>首頁</a><span>/</span><a>資料</a><span>/</span><a data-screen-link="overview">VTuber 直播行事曆</a><span>/</span><span class="now">${c.name}</span>`;
+  $("#app").innerHTML = state.screen === "overview" ? renderOverview() : renderTalent();
+  document.querySelectorAll("[data-screen]").forEach((b) => b.classList.toggle("active", b.dataset.screen === state.screen));
+}
+
+function openVideo(id) {
+  const l = LIVES.find((x) => x.id === id);
+  const c = T[l ? l.ch : state.talent];
+  const title = l ? l.title : TITLES[(Number(id.replace("arch", "")) + 3) % TITLES.length];
+  const meta = !l ? "直播存檔" : l.status === "live" ? `直播中・👤 ${l.viewers.toLocaleString()}` : `${md(l.start)} ${hm(l.start)}・${STATUS[l.status]}`;
+  $("#scrim").className = "scrim";
+  $("#scrim").innerHTML = `<div class="dialog">
+    <div class="player">YouTube 嵌入播放器（youtube.com/embed/&lt;video_id&gt;）</div>
+    <div class="dialog-body">${avatar(c)}<div style="min-width:0"><div class="t">${title}</div><div class="m">${c.name}・${meta}</div></div>
+      <div class="acts"><button class="btn sm ghost" data-toast="開啟 YouTube">↗ YouTube</button><button class="btn sm ghost" data-close>關閉</button></div></div></div>`;
+  $("#scrim").hidden = false;
+}
+
+// ===== 事件 =====
+const toast = (msg) => { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.timer); toast.timer = setTimeout(() => (t.hidden = true), 1800); };
+document.addEventListener("click", (e) => {
+  const menuBtn = e.target.closest("[data-menu]");
+  document.querySelectorAll("[data-menu-body]").forEach((m) => { if (!menuBtn || m.dataset.menuBody !== menuBtn.dataset.menu) m.hidden = true; });
+  if (menuBtn) { const m = document.querySelector(`[data-menu-body="${menuBtn.dataset.menu}"]`); m.hidden = !m.hidden; return; }
+  if (e.target.id === "scrim" || e.target.closest("[data-close]")) { $("#scrim").hidden = true; return; }
+  const t = e.target.closest("button, a");
+  if (!t) return;
+  const d = t.dataset;
+  if (d.talent) { state.screen = "talent"; state.talent = d.talent; state.tab = "upcoming"; state.descOpen = false; state.videoPages = 1; state.pickQuery = ""; $("#scrim").hidden = true; render(); window.scrollTo(0, 0); }
+  else if (t.id === "openPanel") openPanel();
+  else if (d.branch) { state.panelBranch = d.branch; state.panelQuery = ""; openPanel(); }
+  else if (d.count) { document.querySelectorAll("[data-count]").forEach((b) => b.classList.toggle("active", b === t)); buildTalents(Number(d.count)); render(); }
+  else if (d.screen || d.screenLink) { state.screen = d.screen || d.screenLink; render(); }
+  else if (d.tab) { state.tab = d.tab; render(); }
+  else if (d.video) openVideo(d.video);
+  else if (d.toast) toast(d.toast);
+  else if (t.id === "descToggle") { state.descOpen = !state.descOpen; render(); }
+  else if (t.id === "moreVideos") { state.videoPages++; render(); }
+  else if (d.view) { document.querySelectorAll("[data-view]").forEach((b) => b.classList.toggle("active", b === t)); $("#device").classList.toggle("mobile", d.view === "mobile"); }
+  else if (d.themeOption) { document.querySelectorAll("[data-theme-option]").forEach((b) => b.classList.toggle("active", b === t)); document.documentElement.dataset.theme = d.themeOption; }
+});
+// 重繪後把游標放回輸入框
+const refocus = (id) => { const q = document.getElementById(id); q.focus(); q.setSelectionRange(q.value.length, q.value.length); };
+document.addEventListener("input", (e) => {
+  if (e.target.id === "pickQ") { state.pickQuery = e.target.value; render(); refocus("pickQ"); }
+  else if (e.target.id === "panelQ") { state.panelQuery = e.target.value; openPanel(); refocus("panelQ"); }
+});
+document.addEventListener("change", (e) => {
+  if (e.target.id === "showCancelled") { state.showCancelled = e.target.checked; render(); }
+  else if (e.target.id === "panelLiveOnly") { state.panelLiveOnly = e.target.checked; openPanel(); }
+});
+$("#notesToggle").addEventListener("change", (e) => ($("#notes").hidden = !e.target.checked));
+$("#simulateError").addEventListener("click", () => ($("#snack").hidden = false));
+$("#snackClose").addEventListener("click", () => ($("#snack").hidden = true));
+render();
+</script>
+</body>
+</html>

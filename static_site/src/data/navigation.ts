@@ -76,6 +76,12 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
         ],
       },
       {
+        title: "VTuber 直播行事曆",
+        href: "/data/vtubers",
+        description:
+          "hololive 藝人的直播時間表與頻道數據，也可以訂閱成 Google 日曆",
+      },
+      {
         title: "即時消防出勤記錄",
         href: "/data/fire/realtime",
         description: "列出台灣各縣市消防即時出勤記錄",

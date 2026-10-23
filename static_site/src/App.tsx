@@ -95,6 +95,16 @@ const RatesIndex = lazy(() =>
   })),
 );
 const NCCC = lazy(() => import("@/pages/opendata/nccc.tsx"));
+const VtubersIndex = lazy(() =>
+  import("@/pages/opendata/vtubers.tsx").then((module) => ({
+    default: module.VtubersIndex,
+  })),
+);
+const VtuberTalent = lazy(() =>
+  import("@/pages/opendata/vtuber_talent.tsx").then((module) => ({
+    default: module.VtuberTalent,
+  })),
+);
 const StorytellerPublicHome = lazy(
   () => import("@/pages/storyteller/PublicHome.tsx"),
 );
@@ -721,6 +731,11 @@ function App() {
                   <Route path={"/data/tw-stats"} element={<TwStatsIndex />} />
 
                   <Route path={"/data/rates"} element={<RatesIndex />} />
+                  <Route path={"/data/vtubers"} element={<VtubersIndex />} />
+                  <Route
+                    path={"/data/vtubers/:handle"}
+                    element={<VtuberTalent />}
+                  />
                   <Route path={"/data/nccc"} element={<NCCC />} />
                   <Route path={"/data/nccc/:token"} element={<NCCC />} />
 

@@ -11,93 +11,208 @@ import (
 	"strings"
 	"time"
 
-	"faryne.dev/config"
-	"faryne.dev/service/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"go.uber.org/zap"
-	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
+
+	"faryne.dev/config"
+	vtuberEntity "faryne.dev/model/entity/opendata/vtuber"
+	vtuberRepository "faryne.dev/repository/vtuber"
+	"faryne.dev/service/log"
 )
 
 const (
 	hololiveTalentsURL  = "https://hololive.hololivepro.com/talents/"
 	hololiveS3Key       = "vtuber/hololive.json"
-	youtubeChannelBatch = 50
 	talentFetchInterval = 500 * time.Millisecond
+	// 這次爬到的頻道數不到在籍數的這個比例，就不做畢業判斷（官網改版爬空時保護名冊）
+	graduationGuardRatio = 0.8
 )
 
 var (
 	// 官網列表頁的藝人連結曾由絕對網址改成相對路徑，兩種寫法都要吃
 	talentLinkPattern       = regexp.MustCompile(`href="(?:https://hololive\.hololivepro\.com)?/talents/([a-z0-9-]+)/"`)
+	talentUnitLinkPattern   = regexp.MustCompile(`href="/talents\?gp=([a-zA-Z0-9_-]+)"`)
 	talentSNSBlockPattern   = regexp.MustCompile(`(?s)<ul class="t_sns[^"]*">(.*?)</ul>`)
 	youtubeChannelIDPattern = regexp.MustCompile(`youtube\.com/channel/(UC[a-zA-Z0-9_-]+)`)
 	youtubeHandlePattern    = regexp.MustCompile(`youtube\.com/(@[a-zA-Z0-9_.-]+)`)
 )
 
-// SyncTalentChannels 爬取 hololive 官網藝人列表，取得各自 YouTube 頻道資訊後寫入 CDN
-func SyncTalentChannels(ctx context.Context) (int, error) {
-	channelRefs, err := scrapeTalentChannelRefs(ctx)
-	if err != nil {
-		return 0, err
-	}
-	if len(channelRefs) == 0 {
-		return 0, fmt.Errorf("no youtube channel found from %s", hololiveTalentsURL)
-	}
-
-	channels, err := fetchYouTubeChannels(ctx, channelRefs)
-	if err != nil {
-		return 0, err
-	}
-
-	if err := writeFile(hololiveS3Key, channels); err != nil {
-		return 0, err
-	}
-	return len(channels), nil
+// talentRef 官網上的一位藝人：個人頁 slug、列表頁順序、YouTube 頻道參照（UC 頻道 ID 或 @handle）
+type talentRef struct {
+	Slug       string
+	Order      int
+	ChannelRef string
 }
 
-// scrapeTalentChannelRefs 從藝人列表頁取得所有子頁面，再逐一擷取個人 YouTube 頻道參照（UC 頻道 ID 或 @handle）
-func scrapeTalentChannelRefs(ctx context.Context) ([]string, error) {
-	body, err := fetchHTML(ctx, hololiveTalentsURL)
+// SyncTalentChannels 爬取 hololive 官網藝人列表與分組，取得各自 YouTube 頻道資訊後寫入 CDN 與 vtuber_channels
+func SyncTalentChannels(ctx context.Context) (int, error) {
+	listPage, err := fetchHTML(ctx, hololiveTalentsURL)
 	if err != nil {
-		return nil, fmt.Errorf("fetch talents page: %w", err)
+		return 0, fmt.Errorf("fetch talents page: %w", err)
+	}
+	talents := scrapeTalentChannelRefs(ctx, parseTalentSlugs(listPage))
+	if len(talents) == 0 {
+		return 0, fmt.Errorf("no youtube channel found from %s", hololiveTalentsURL)
+	}
+	units, excluded := scrapeTalentUnits(ctx, parseUnitSlugs(listPage))
+
+	api, err := newYouTubeService(ctx)
+	if err != nil {
+		return 0, err
+	}
+	byRef, err := fetchYouTubeChannels(ctx, api, talents)
+	if err != nil {
+		return 0, err
 	}
 
-	seenSlug := make(map[string]struct{})
+	// 同一個頻道只留第一次出現的那位（官網順序）
+	rows := make([]vtuberEntity.Channel, 0, len(talents))
+	channels := make([]*youtube.Channel, 0, len(talents))
+	seenID := make(map[string]struct{}, len(talents))
+	for _, t := range talents {
+		ch, ok := byRef[t.ChannelRef]
+		if !ok {
+			continue
+		}
+		if _, dup := seenID[ch.Id]; dup {
+			continue
+		}
+		seenID[ch.Id] = struct{}{}
+		// 畢業生與工作人員照舊寫進 CDN 檔案，但不進名冊（已在名冊的會被畢業判斷 soft delete）
+		if !excluded[t.Slug] {
+			row := channelEntity(ch)
+			row.TalentSlug, row.SortOrder, row.UnitSlug = t.Slug, uint(t.Order), optional(units[t.Slug])
+			rows = append(rows, row)
+		}
+		// CDN 檔案拿掉說明避免肥大；DB 已經在上一行留了完整說明
+		stripDescription(ch)
+		channels = append(channels, ch)
+	}
+
+	// 先寫 DB（網站與行事曆都靠它），CDN 檔案寫失敗不影響名冊
+	if err := saveChannels(rows); err != nil {
+		return 0, err
+	}
+	if err := writeFile(hololiveS3Key, channels); err != nil {
+		return len(rows), fmt.Errorf("write %s: %w", hololiveS3Key, err)
+	}
+	return len(rows), nil
+}
+
+// saveChannels 寫入名冊並做畢業判斷：這次沒爬到的在籍頻道 soft delete
+func saveChannels(rows []vtuberEntity.Channel) error {
+	active, err := vtuberRepository.ListActiveChannels()
+	if err != nil {
+		return err
+	}
+	if err := vtuberRepository.UpsertChannels(rows, vtuberRepository.ScrapedColumns); err != nil {
+		return err
+	}
+	if !graduationAllowed(len(rows), len(active)) {
+		log.Logger().Warn("Skip hololive graduation check: too few channels scraped", zap.Int("scraped", len(rows)), zap.Int("active", len(active)))
+		return nil
+	}
+	keep := make([]string, len(rows))
+	for i, r := range rows {
+		keep[i] = r.ChannelID
+	}
+	removed, err := vtuberRepository.SoftDeleteChannelsExcept(keep)
+	if removed > 0 {
+		log.Logger().Info("Hololive channels graduated", zap.Int64("count", removed))
+	}
+	return err
+}
+
+// graduationAllowed 爬到的數量至少是在籍數的 80% 才信任這次結果
+func graduationAllowed(scraped, active int) bool {
+	return scraped > 0 && float64(scraped) >= float64(active)*graduationGuardRatio
+}
+
+// parseTalentSlugs 列表頁上所有藝人個人頁的 slug，依頁面順序去重
+func parseTalentSlugs(body string) []string {
+	seen := make(map[string]struct{})
 	var slugs []string
 	for _, match := range talentLinkPattern.FindAllStringSubmatch(body, -1) {
 		slug := match[1]
-		if slug == "feed" {
+		if _, ok := seen[slug]; ok || slug == "feed" {
 			continue
 		}
-		if _, ok := seenSlug[slug]; ok {
-			continue
-		}
-		seenSlug[slug] = struct{}{}
+		seen[slug] = struct{}{}
 		slugs = append(slugs, slug)
 	}
+	return slugs
+}
 
-	seenChannel := make(map[string]struct{})
-	channelRefs := make([]string, 0, len(slugs))
-	for _, slug := range slugs {
+// parseUnitSlugs 列表頁上的分組連結（/talents?gp=<slug>），依頁面順序去重
+func parseUnitSlugs(body string) []string {
+	seen := make(map[string]struct{})
+	var slugs []string
+	for _, match := range talentUnitLinkPattern.FindAllStringSubmatch(body, -1) {
+		slug := match[1]
+		if _, ok := seen[slug]; ok {
+			continue
+		}
+		seen[slug] = struct{}{}
+		slugs = append(slugs, slug)
+	}
+	return slugs
+}
+
+// scrapeTalentChannelRefs 逐一進藝人個人頁擷取 YouTube 頻道參照；沒有個人頻道的跳過
+func scrapeTalentChannelRefs(ctx context.Context, slugs []string) []talentRef {
+	talents := make([]talentRef, 0, len(slugs))
+	for i, slug := range slugs {
 		channelRef, err := scrapeTalentChannelRef(ctx, slug)
-		if err != nil {
+		switch {
+		case err != nil:
 			log.Logger().Warn("Scrape hololive talent channel failed", zap.String("slug", slug), zap.Error(err))
-			continue
-		}
-		if channelRef == "" {
+		case channelRef == "":
 			log.Logger().Warn("Hololive talent has no personal youtube channel", zap.String("slug", slug))
-			continue
-		}
-		if _, ok := seenChannel[channelRef]; !ok {
-			seenChannel[channelRef] = struct{}{}
-			channelRefs = append(channelRefs, channelRef)
+		default:
+			talents = append(talents, talentRef{Slug: slug, Order: i, ChannelRef: channelRef})
 		}
 		time.Sleep(talentFetchInterval)
 	}
-	return channelRefs, nil
+	return talents
+}
+
+// scrapeTalentUnits 逐一抓分組頁，回傳藝人 slug → 期別 slug，以及不追蹤的藝人（excludedUnits 的成員）。
+// 一位藝人在好幾組時取 Units 順序最前面的那組；不在 Units 表裡的新分組照樣記錄，但會 warn 提醒補表。
+func scrapeTalentUnits(ctx context.Context, unitSlugs []string) (map[string]string, map[string]bool) {
+	units, excluded := make(map[string]string), make(map[string]bool)
+	for _, unit := range unitSlugs {
+		if !excludedUnits[unit] && FindUnit(unit) == nil {
+			log.Logger().Warn("Unknown hololive unit, please add it to vtuber.Units", zap.String("unit", unit))
+		}
+		body, err := fetchHTML(ctx, hololiveTalentsURL+"?gp="+unit)
+		if err != nil {
+			log.Logger().Warn("Scrape hololive unit failed", zap.String("unit", unit), zap.Error(err))
+			continue
+		}
+		members := parseTalentSlugs(body)
+		if excludedUnits[unit] {
+			for _, slug := range members {
+				excluded[slug] = true
+			}
+		} else {
+			assignUnit(units, unit, members)
+		}
+		time.Sleep(talentFetchInterval)
+	}
+	return units, excluded
+}
+
+// assignUnit 把 talents 歸到 unit；已經有更前面的期別就不覆蓋
+func assignUnit(out map[string]string, unit string, talents []string) {
+	for _, slug := range talents {
+		if current, ok := out[slug]; !ok || unitRank(unit) < unitRank(current) {
+			out[slug] = unit
+		}
+	}
 }
 
 // scrapeTalentChannelRef 從藝人個人頁的 SNS 區塊（t_sns）擷取 YouTube 頻道參照
@@ -142,27 +257,18 @@ func fetchHTML(ctx context.Context, url string) (string, error) {
 	return string(body), nil
 }
 
-// fetchYouTubeChannels 以 50 筆一批呼叫 YouTube Data API，並依 channelRefs 原始順序輸出
+// fetchYouTubeChannels 回傳頻道參照 → 頻道
 // @handle 格式的參照無法走批次 Id() 查詢，需逐一以 ForHandle 解析
-func fetchYouTubeChannels(ctx context.Context, channelRefs []string) ([]*youtube.Channel, error) {
-	key := strings.TrimSpace(config.EnvConfig().YouTubeAPIKey)
-	if key == "" {
-		return nil, fmt.Errorf("YOUTUBE_API_KEY is required")
-	}
-	api, err := youtube.NewService(ctx, option.WithAPIKey(key))
-	if err != nil {
-		return nil, err
-	}
-
-	parts := []string{"brandingSettings", "snippet", "statistics"}
-	byRef := make(map[string]*youtube.Channel, len(channelRefs))
-	channelIDs := make([]string, 0, len(channelRefs))
-	for _, ref := range channelRefs {
+func fetchYouTubeChannels(ctx context.Context, api *youtube.Service, talents []talentRef) (map[string]*youtube.Channel, error) {
+	byRef := make(map[string]*youtube.Channel, len(talents))
+	channelIDs := make([]string, 0, len(talents))
+	for _, t := range talents {
+		ref := t.ChannelRef
 		if !strings.HasPrefix(ref, "@") {
 			channelIDs = append(channelIDs, ref)
 			continue
 		}
-		resp, err := api.Channels.List(parts).ForHandle(strings.TrimPrefix(ref, "@")).Context(ctx).Do()
+		resp, err := api.Channels.List(channelParts).ForHandle(strings.TrimPrefix(ref, "@")).Context(ctx).Do()
 		if err != nil {
 			log.Logger().Warn("Resolve youtube handle failed", zap.String("handle", ref), zap.Error(err))
 			continue
@@ -174,38 +280,14 @@ func fetchYouTubeChannels(ctx context.Context, channelRefs []string) ([]*youtube
 		byRef[ref] = resp.Items[0]
 	}
 
-	for start := 0; start < len(channelIDs); start += youtubeChannelBatch {
-		end := min(start+youtubeChannelBatch, len(channelIDs))
-		resp, err := api.Channels.List(parts).Id(channelIDs[start:end]...).Context(ctx).Do()
-		if err != nil {
-			return nil, fmt.Errorf("fetch youtube channels: %w", err)
-		}
-		byID := make(map[string]*youtube.Channel, len(resp.Items))
-		for _, item := range resp.Items {
-			byID[item.Id] = item
-		}
-		for _, id := range channelIDs[start:end] {
-			if channel, ok := byID[id]; ok {
-				byRef[id] = channel
-			}
-		}
+	byID, err := listChannelsByIDs(ctx, api, channelIDs)
+	if err != nil {
+		return nil, err
 	}
-
-	channels := make([]*youtube.Channel, 0, len(channelRefs))
-	seenID := make(map[string]struct{}, len(channelRefs))
-	for _, ref := range channelRefs {
-		channel, ok := byRef[ref]
-		if !ok {
-			continue
-		}
-		if _, dup := seenID[channel.Id]; dup {
-			continue
-		}
-		seenID[channel.Id] = struct{}{}
-		stripDescription(channel)
-		channels = append(channels, channel)
+	for id, ch := range byID {
+		byRef[id] = ch
 	}
-	return channels, nil
+	return byRef, nil
 }
 
 // stripDescription 移除頻道描述欄位，避免輸出檔案過於肥大

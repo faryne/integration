@@ -46,11 +46,13 @@ type envConfig struct {
 	CFWorkerProxyURL    string `env:"CF_WORKER_PROXY_URL"`
 	CFWorkerProxySecret string `env:"CF_WORKER_PROXY_SECRET"`
 
-	GoogleCalendarCred string `env:"GOOGLE_CALENDAR_CRED"`
-	FirebaseProjectID  string `env:"FIREBASE_PROJECT_ID"`
+	FirebaseProjectID string `env:"FIREBASE_PROJECT_ID"`
 	// SteamLoom（storyteller）獨立的 Firebase 專案；留空時沿用 FIREBASE_PROJECT_ID（本機開發）
 	StorytellerFirebaseProjectID string `env:"STORYTELLER_FIREBASE_PROJECT_ID"`
 	YouTubeAPIKey                string `env:"YOUTUBE_API_KEY"`
+	// VTuber 直播行事曆：service account JSON 路徑（Firebase RTDB 與 Google Calendar 共用同一把）與 RTDB 網址；任一留空就不同步行事曆
+	VtuberGoogleCredentials   string `env:"VTUBER_GOOGLE_CREDENTIALS"`
+	VtuberFirebaseDatabaseURL string `env:"VTUBER_FIREBASE_DATABASE_URL"`
 
 	S3AccessKey string `env:"S3_ACCESS_KEY"`
 	S3SecretKey string `env:"S3_SECRET_KEY"`
