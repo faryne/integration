@@ -1,7 +1,8 @@
 // VTuber 直播行事曆：對應後端 model/entity/opendata/vtuber/query.go
 
 export type VtuberLiveStatus = "upcoming" | "live" | "ended" | "cancelled";
-export type VtuberBranch = "JP" | "EN" | "ID" | "DEV_IS";
+// OTHER：卒業生、holoAN、事務所スタッフ
+export type VtuberBranch = "JP" | "EN" | "ID" | "DEV_IS" | "OTHER";
 
 export interface VtuberUnit {
   slug: string;
@@ -28,7 +29,6 @@ export interface VtuberChannelSummary {
 export interface VtuberChannelList {
   units: VtuberUnit[];
   channels: VtuberChannelSummary[];
-  calendar: VtuberCalendarLinks | null;
 }
 
 export interface VtuberChannelDetail extends VtuberChannelSummary {

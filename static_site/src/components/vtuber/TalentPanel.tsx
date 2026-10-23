@@ -26,7 +26,14 @@ import type {
   VtuberUnit,
 } from "@/types/vtubers.ts";
 
-const BRANCHES: VtuberBranch[] = ["JP", "EN", "ID", "DEV_IS"];
+// 分頁順序與顯示名稱；OTHER 是卒業生、holoAN、事務所スタッフ
+const BRANCHES: [VtuberBranch, string][] = [
+  ["JP", "JP"],
+  ["EN", "EN"],
+  ["ID", "ID"],
+  ["DEV_IS", "DEV_IS"],
+  ["OTHER", "卒業生・スタッフ"],
+];
 // 常數表裡沒有的新分組歸到這裡（後端會 warn 提醒補表）
 const OTHER_UNIT: VtuberUnit = { slug: "", name: "其他", branch: "JP" };
 
@@ -136,11 +143,11 @@ export function TalentPanel({
         variant={"scrollable"}
         sx={{ px: 2.5, borderBottom: 1, borderColor: "divider" }}
       >
-        {BRANCHES.map((b) => (
+        {BRANCHES.map(([b, label]) => (
           <Tab
             key={b}
             value={b}
-            label={`${b} ${visible.filter((c) => unitOf(c.unit_slug).branch === b).length}`}
+            label={`${label} ${visible.filter((c) => unitOf(c.unit_slug).branch === b).length}`}
           />
         ))}
       </Tabs>

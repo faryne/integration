@@ -195,13 +195,11 @@ var cronJobs = map[string]cronGroup{
 				Handler:  vtuberService.RunDailyStats,
 			},
 			{
-				// 一次性：匯入 Apps Script 時代建好的行事曆（-calendarFile）
+				// 一次性：從舊 Firebase 匯入 Apps Script 時代建好的行事曆（需要 VTUBER_LEGACY_FIREBASE_SECRET）
 				Name:     "vtuber-import-calendars",
 				Schedule: "",
 				Enabled:  true,
-				Handler: func() {
-					vtuberService.RunImportCalendars(commandParams.Value("calendarFile"))
-				},
+				Handler:  vtuberService.RunImportCalendars,
 			},
 		},
 	},

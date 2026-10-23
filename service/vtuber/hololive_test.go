@@ -28,7 +28,14 @@ func TestAssignUnitPrefersEarlierUnit(t *testing.T) {
 	assignUnit(out, "1stgen", []string{"shirakami-fubuki"})
 	// 不在表裡的新分組排最後，不會蓋掉既有期別
 	assignUnit(out, "brand-new-unit", []string{"inugami-korone", "newcomer"})
-	require.Equal(t, map[string]string{"shirakami-fubuki": "1stgen", "inugami-korone": "gamers", "newcomer": "brand-new-unit"}, out)
+	// 卒業生最優先：官網上畢業的人還掛在原本的期別下，不管先抓到哪組都歸到卒業生
+	assignUnit(out, "gen-4", []string{"amane-kanata"})
+	assignUnit(out, "alum", []string{"amane-kanata", "kiryu-coco"})
+	assignUnit(out, "gen-4", []string{"kiryu-coco"})
+	require.Equal(t, map[string]string{
+		"shirakami-fubuki": "1stgen", "inugami-korone": "gamers", "newcomer": "brand-new-unit",
+		"amane-kanata": "alum", "kiryu-coco": "alum",
+	}, out)
 }
 
 func TestGraduationAllowed(t *testing.T) {

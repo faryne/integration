@@ -10,6 +10,10 @@ import { useEffect, useState } from "react";
 
 import { useVtuberChannels, useVtuberLives } from "@/apis/opendata/vtubers.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import {
+  ALL_CALENDAR_ID,
+  calendarLinks,
+} from "@/components/vtuber/calendar.ts";
 import { CalendarSubscribeMenu } from "@/components/vtuber/CalendarSubscribeMenu.tsx";
 import { fromToday, livePlayingVideo } from "@/components/vtuber/format.ts";
 import { LiveCard } from "@/components/vtuber/LiveCard.tsx";
@@ -55,13 +59,11 @@ export function VtubersIndex() {
         <Typography variant={"h4"} fontWeight={800}>
           VTuber 直播行事曆
         </Typography>
-        {channels.data?.calendar && (
-          <CalendarSubscribeMenu
-            calendar={channels.data.calendar}
-            label={"訂閱總表"}
-            onCopied={showCopied}
-          />
-        )}
+        <CalendarSubscribeMenu
+          calendar={calendarLinks(ALL_CALENDAR_ID)}
+          label={"訂閱總表"}
+          onCopied={showCopied}
+        />
       </Stack>
 
       {(channels.isLoading || lives.isLoading) && <LinearProgress />}

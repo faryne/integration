@@ -3,6 +3,7 @@ package vtuber
 import (
 	"time"
 
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	vtuberEntity "faryne.dev/model/entity/opendata/vtuber"
@@ -56,4 +57,20 @@ func SoftDeleteChannelsExcept(keepIDs []string) (int64, error) {
 		Where("is_deleted = 0 AND channel_id NOT IN ?", keepIDs).
 		Updates(map[string]any{"is_deleted": true, "deleted_at": time.Now()})
 	return result.RowsAffected, result.Error
+}
+
+// SetChannelCalendars 寫入個人行事曆 ID（channel ID → calendar ID），回傳實際對到的頻道數
+func SetChannelCalendars(calendars map[string]string) (int64, error) {
+	var total int64
+	err := client.GetDB(enum.DBWalolita).Transaction(func(tx *gorm.DB) error {
+		for channelID, calendarID := range calendars {
+			result := tx.Model(&vtuberEntity.Channel{}).Where("channel_id = ?", channelID).Update("calendar_id", calendarID)
+			if result.Error != nil {
+				return result.Error
+			}
+			total += result.RowsAffected
+		}
+		return nil
+	})
+	return total, err
 }

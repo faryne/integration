@@ -53,6 +53,8 @@ type envConfig struct {
 	// VTuber 直播行事曆：service account JSON 路徑（Firebase RTDB 與 Google Calendar 共用同一把）與 RTDB 網址；任一留空就不同步行事曆
 	VtuberGoogleCredentials   string `env:"VTUBER_GOOGLE_CREDENTIALS"`
 	VtuberFirebaseDatabaseURL string `env:"VTUBER_FIREBASE_DATABASE_URL"`
+	// Apps Script 時代 Firebase 的 legacy database secret，只有 -cmd vtuber-import-calendars 用；匯入完就可以移除
+	VtuberLegacyFirebaseSecret string `env:"VTUBER_LEGACY_FIREBASE_SECRET"`
 
 	S3AccessKey string `env:"S3_ACCESS_KEY"`
 	S3SecretKey string `env:"S3_SECRET_KEY"`

@@ -15,6 +15,9 @@ import (
 	"faryne.dev/service/log"
 )
 
+// AllCalendarID hololive 總表（Apps Script 時代建的，舊 Firebase hololive/calendar/all）；前端 components/vtuber/calendar.ts 也寫死同一個
+const AllCalendarID = "tisupenl6m3lnrjs26kipm1iu0@group.calendar.google.com"
+
 const (
 	syncPastWindow   = 24 * time.Hour
 	syncFutureWindow = 14 * 24 * time.Hour
@@ -22,7 +25,6 @@ const (
 	maxCalendarCreatesPerRun = 5
 	defaultEventDuration     = 2 * time.Hour
 	calendarTimeZone         = "Asia/Taipei"
-	allCalendarName          = "hololive streams schedule"
 	channelCalendarName      = "Live Schedule of %s"
 	firebaseEventsPath       = "vtuber/events"
 	// Firebase 事件記錄保留天數，超過就由每日 job 清掉
@@ -124,7 +126,7 @@ func SyncCalendars(ctx context.Context) error {
 		if !ok {
 			continue // 畢業的頻道不再同步
 		}
-		targets := map[string]string{roleAll: calendars[vtuberEntity.CalendarKeyAll]}
+		targets := map[string]string{roleAll: AllCalendarID}
 		if id := calendars[ch.ChannelID]; id != "" {
 			targets[roleChannel] = id
 		}
@@ -266,34 +268,31 @@ func timedEvent(videoID string, rec eventRecord) googleService.TimedEvent {
 	return googleService.TimedEvent{Key: videoID, Summary: rec.Title, Description: "https://youtu.be/" + videoID, Start: start, End: end}
 }
 
-// ensureCalendars 補建缺少的行事曆（總表優先，每輪最多 5 個），回傳 calendar_key → 行事曆 ID
+// ensureCalendars 補建還沒有個人行事曆的頻道（每輪最多 5 個），回傳 channel ID → 行事曆 ID
 func ensureCalendars(ctx context.Context, cal *googleService.CalendarClient, channels []vtuberEntity.Channel) (map[string]string, error) {
-	calendars, err := vtuberRepository.ListCalendars()
-	if err != nil {
-		return nil, err
-	}
-	type pending struct{ key, name string }
-	var missing []pending
-	if calendars[vtuberEntity.CalendarKeyAll] == "" {
-		missing = append(missing, pending{vtuberEntity.CalendarKeyAll, allCalendarName})
-	}
+	calendars := make(map[string]string, len(channels))
+	created := 0
 	for _, ch := range channels {
-		if calendars[ch.ChannelID] == "" {
-			missing = append(missing, pending{ch.ChannelID, fmt.Sprintf(channelCalendarName, ch.Title)})
+		if id := ch.Calendar(); id != "" {
+			calendars[ch.ChannelID] = id
+			continue
 		}
-	}
-	for _, p := range missing[:min(len(missing), maxCalendarCreatesPerRun)] {
-		id, err := cal.CreatePublicCalendar(ctx, p.name, calendarTimeZone)
+		if created >= maxCalendarCreatesPerRun {
+			continue
+		}
+		id, err := cal.CreatePublicCalendar(ctx, fmt.Sprintf(channelCalendarName, ch.Title), calendarTimeZone)
 		if err != nil {
 			// 建不出來不擋事件同步，下一輪再試
-			log.Logger().Warn("Create vtuber calendar failed", zap.String("key", p.key), zap.Error(err))
-			break
+			log.Logger().Warn("Create vtuber calendar failed", zap.String("channel_id", ch.ChannelID), zap.Error(err))
+			created = maxCalendarCreatesPerRun
+			continue
 		}
-		if err := vtuberRepository.UpsertCalendars([]vtuberEntity.Calendar{{CalendarKey: p.key, CalendarID: id}}); err != nil {
+		if _, err := vtuberRepository.SetChannelCalendars(map[string]string{ch.ChannelID: id}); err != nil {
 			return nil, err
 		}
-		calendars[p.key] = id
-		log.Logger().Info("Vtuber calendar created", zap.String("key", p.key), zap.String("calendar_id", id))
+		calendars[ch.ChannelID] = id
+		created++
+		log.Logger().Info("Vtuber calendar created", zap.String("channel_id", ch.ChannelID), zap.String("calendar_id", id))
 	}
 	return calendars, nil
 }
@@ -307,9 +306,13 @@ func RenameChannelCalendars(ctx context.Context, renamed map[string]string) erro
 	if err != nil || cal == nil {
 		return err
 	}
-	calendars, err := vtuberRepository.ListCalendars()
+	channels, err := vtuberRepository.ListActiveChannels()
 	if err != nil {
 		return err
+	}
+	calendars := make(map[string]string, len(channels))
+	for _, ch := range channels {
+		calendars[ch.ChannelID] = ch.Calendar()
 	}
 	for channelID, title := range renamed {
 		if id := calendars[channelID]; id != "" {

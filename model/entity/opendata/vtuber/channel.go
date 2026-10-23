@@ -19,6 +19,7 @@ type Channel struct {
 	SubscriberCount    uint64     `gorm:"column:subscriber_count"`
 	ViewCount          uint64     `gorm:"column:view_count"`
 	VideoCount         uint64     `gorm:"column:video_count"`
+	CalendarID         *string    `gorm:"column:calendar_id"` // 個人 Google 行事曆；週更／每日 job 的 upsert 不會覆蓋這欄
 	IsDeleted          bool       `gorm:"column:is_deleted"`
 	DeletedAt          *time.Time `gorm:"column:deleted_at"`
 	CreatedAt          time.Time  `gorm:"column:created_at"`
@@ -27,6 +28,14 @@ type Channel struct {
 
 func (Channel) TableName() string {
 	return "vtuber_channels"
+}
+
+// Calendar 回傳個人行事曆 ID，還沒有時回空字串
+func (c Channel) Calendar() string {
+	if c.CalendarID == nil {
+		return ""
+	}
+	return *c.CalendarID
 }
 
 // Handle 回傳 @handle，沒有時回空字串

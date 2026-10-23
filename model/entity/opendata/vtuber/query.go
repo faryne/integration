@@ -61,11 +61,10 @@ type ChannelSummary struct {
 	IsLive       bool   `json:"is_live"`
 }
 
-// ChannelListResult 頻道列表＋分組常數表＋總表行事曆
+// ChannelListResult 頻道列表＋分組常數表（總表行事曆 ID 前端寫死，不經 API）
 type ChannelListResult struct {
 	Units    []Unit           `json:"units"`
 	Channels []ChannelSummary `json:"channels"`
-	Calendar *CalendarLinks   `json:"calendar"` // 還沒建好時為 null
 }
 
 // ChannelDetail 藝人頁左側的完整頻道資訊

@@ -50,7 +50,8 @@ CREATE TABLE `vtuber_channels` (
     `subscriber_count` BIGINT UNSIGNED NOT NULL DEFAULT 0,
     `view_count` BIGINT UNSIGNED NOT NULL DEFAULT 0,
     `video_count` BIGINT UNSIGNED NOT NULL DEFAULT 0,
-    `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = 畢業／不再追蹤',
+    `calendar_id` VARCHAR(255) NULL DEFAULT NULL COMMENT '個人 Google 行事曆 ID；舊行事曆用 -cmd vtuber-import-calendars 匯入，沒有的由同步 job 建立',
+    `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = 已不在官網名冊上',
     `deleted_at` TIMESTAMP NULL DEFAULT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -91,21 +92,9 @@ CREATE TABLE `vtuber_stats` (
     UNIQUE KEY `uq_vtuber_stats_channel_date` (`channel_id`, `record_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 公開 Google 行事曆：calendar_key 是 all（hololive 總表）或 YouTube channel ID（個人行事曆）。
--- 舊行事曆（Apps Script 時代建的）用 -cmd vtuber-import-calendars 匯入，沒有的由同步 job 自動建立。
-CREATE TABLE `vtuber_calendars` (
-    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    `calendar_key` VARCHAR(32) NOT NULL COMMENT 'all 或 YouTube channel ID',
-    `calendar_id` VARCHAR(255) NOT NULL COMMENT 'Google Calendar ID',
-    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY `uq_vtuber_calendars_key` (`calendar_key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- +migrate Down
 -- 新表的資料都能從 YouTube 重新收集，rollback 直接 DROP；舊表改回原名。
--- vtuber_calendars 刪掉後，可以再用 -cmd vtuber-import-calendars 匯入一次
-DROP TABLE IF EXISTS `vtuber_calendars`;
+-- calendar_id 會跟著 vtuber_channels 一起刪掉，重新 up 後再跑一次 -cmd vtuber-import-calendars
 DROP TABLE IF EXISTS `vtuber_stats`;
 DROP TABLE IF EXISTS `vtuber_lives`;
 DROP TABLE IF EXISTS `vtuber_channels`;

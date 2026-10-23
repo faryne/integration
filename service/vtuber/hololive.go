@@ -58,7 +58,7 @@ func SyncTalentChannels(ctx context.Context) (int, error) {
 	if len(talents) == 0 {
 		return 0, fmt.Errorf("no youtube channel found from %s", hololiveTalentsURL)
 	}
-	units, excluded := scrapeTalentUnits(ctx, parseUnitSlugs(listPage))
+	units := scrapeTalentUnits(ctx, parseUnitSlugs(listPage))
 
 	api, err := newYouTubeService(ctx)
 	if err != nil {
@@ -82,12 +82,9 @@ func SyncTalentChannels(ctx context.Context) (int, error) {
 			continue
 		}
 		seenID[ch.Id] = struct{}{}
-		// 畢業生與工作人員照舊寫進 CDN 檔案，但不進名冊（已在名冊的會被畢業判斷 soft delete）
-		if !excluded[t.Slug] {
-			row := channelEntity(ch)
-			row.TalentSlug, row.SortOrder, row.UnitSlug = t.Slug, uint(t.Order), optional(units[t.Slug])
-			rows = append(rows, row)
-		}
+		row := channelEntity(ch)
+		row.TalentSlug, row.SortOrder, row.UnitSlug = t.Slug, uint(t.Order), optional(units[t.Slug])
+		rows = append(rows, row)
 		// CDN 檔案拿掉說明避免肥大；DB 已經在上一行留了完整說明
 		stripDescription(ch)
 		channels = append(channels, ch)
@@ -103,7 +100,7 @@ func SyncTalentChannels(ctx context.Context) (int, error) {
 	return len(rows), nil
 }
 
-// saveChannels 寫入名冊並做畢業判斷：這次沒爬到的在籍頻道 soft delete
+// saveChannels 寫入名冊，官網上已經不見的頻道 soft delete
 func saveChannels(rows []vtuberEntity.Channel) error {
 	active, err := vtuberRepository.ListActiveChannels()
 	if err != nil {
@@ -113,7 +110,7 @@ func saveChannels(rows []vtuberEntity.Channel) error {
 		return err
 	}
 	if !graduationAllowed(len(rows), len(active)) {
-		log.Logger().Warn("Skip hololive graduation check: too few channels scraped", zap.Int("scraped", len(rows)), zap.Int("active", len(active)))
+		log.Logger().Warn("Skip hololive roster cleanup: too few channels scraped", zap.Int("scraped", len(rows)), zap.Int("active", len(active)))
 		return nil
 	}
 	keep := make([]string, len(rows))
@@ -122,12 +119,12 @@ func saveChannels(rows []vtuberEntity.Channel) error {
 	}
 	removed, err := vtuberRepository.SoftDeleteChannelsExcept(keep)
 	if removed > 0 {
-		log.Logger().Info("Hololive channels graduated", zap.Int64("count", removed))
+		log.Logger().Info("Hololive channels removed from roster", zap.Int64("count", removed))
 	}
 	return err
 }
 
-// graduationAllowed 爬到的數量至少是在籍數的 80% 才信任這次結果
+// graduationAllowed 爬到的數量至少是在籍數的 80% 才信任這次結果，才做名冊清理
 func graduationAllowed(scraped, active int) bool {
 	return scraped > 0 && float64(scraped) >= float64(active)*graduationGuardRatio
 }
@@ -180,12 +177,12 @@ func scrapeTalentChannelRefs(ctx context.Context, slugs []string) []talentRef {
 	return talents
 }
 
-// scrapeTalentUnits 逐一抓分組頁，回傳藝人 slug → 期別 slug，以及不追蹤的藝人（excludedUnits 的成員）。
-// 一位藝人在好幾組時取 Units 順序最前面的那組；不在 Units 表裡的新分組照樣記錄，但會 warn 提醒補表。
-func scrapeTalentUnits(ctx context.Context, unitSlugs []string) (map[string]string, map[string]bool) {
-	units, excluded := make(map[string]string), make(map[string]bool)
+// scrapeTalentUnits 逐一抓分組頁，回傳藝人 slug → 期別 slug。
+// 一位藝人在好幾組時依 unitRank 取最優先的那組；不在 Units 表裡的新分組照樣記錄，但會 warn 提醒補表。
+func scrapeTalentUnits(ctx context.Context, unitSlugs []string) map[string]string {
+	units := make(map[string]string)
 	for _, unit := range unitSlugs {
-		if !excludedUnits[unit] && FindUnit(unit) == nil {
+		if FindUnit(unit) == nil {
 			log.Logger().Warn("Unknown hololive unit, please add it to vtuber.Units", zap.String("unit", unit))
 		}
 		body, err := fetchHTML(ctx, hololiveTalentsURL+"?gp="+unit)
@@ -193,17 +190,10 @@ func scrapeTalentUnits(ctx context.Context, unitSlugs []string) (map[string]stri
 			log.Logger().Warn("Scrape hololive unit failed", zap.String("unit", unit), zap.Error(err))
 			continue
 		}
-		members := parseTalentSlugs(body)
-		if excludedUnits[unit] {
-			for _, slug := range members {
-				excluded[slug] = true
-			}
-		} else {
-			assignUnit(units, unit, members)
-		}
+		assignUnit(units, unit, parseTalentSlugs(body))
 		time.Sleep(talentFetchInterval)
 	}
-	return units, excluded
+	return units
 }
 
 // assignUnit 把 talents 歸到 unit；已經有更前面的期別就不覆蓋

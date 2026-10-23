@@ -120,7 +120,7 @@ func utc(t *time.Time) *time.Time {
 	return &u
 }
 
-// ListChannels 藝人選擇列與全部藝人面板：在籍頻道（官網順序）、是否直播中、分組表、總表行事曆
+// ListChannels 藝人選擇列與全部藝人面板：在籍頻道（官網順序）、是否直播中、分組表
 func ListChannels() (*vtuberEntity.ChannelListResult, error) {
 	channels, err := vtuberRepository.ListActiveChannels()
 	if err != nil {
@@ -130,11 +130,7 @@ func ListChannels() (*vtuberEntity.ChannelListResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	calendars, err := vtuberRepository.ListCalendars()
-	if err != nil {
-		return nil, err
-	}
-	out := &vtuberEntity.ChannelListResult{Units: Units, Channels: make([]vtuberEntity.ChannelSummary, 0, len(channels)), Calendar: calendarLinks(calendars[vtuberEntity.CalendarKeyAll])}
+	out := &vtuberEntity.ChannelListResult{Units: Units, Channels: make([]vtuberEntity.ChannelSummary, 0, len(channels))}
 	for _, ch := range channels {
 		out.Channels = append(out.Channels, channelSummary(ch, slices.Contains(liveIDs, ch.ChannelID)))
 	}
@@ -163,17 +159,13 @@ func GetChannelDetail(handle string) (*vtuberEntity.ChannelDetail, error) {
 	if err != nil {
 		return nil, err
 	}
-	calendars, err := vtuberRepository.ListCalendars()
-	if err != nil {
-		return nil, err
-	}
 	detail := &vtuberEntity.ChannelDetail{
 		ChannelSummary: channelSummary(*ch, slices.Contains(liveIDs, ch.ChannelID)),
 		BannerURL:      ch.BannerURL, ChannelPublishedAt: utc(ch.ChannelPublishedAt),
 		YouTubeURL:      "https://www.youtube.com/channel/" + ch.ChannelID,
 		SubscriberCount: ch.SubscriberCount, ViewCount: ch.ViewCount, VideoCount: ch.VideoCount,
 		SubscriberDelta7d: subscriberDelta(stats, ch.SubscriberCount, 7), SubscriberDelta90d: subscriberDelta(stats, ch.SubscriberCount, 90),
-		Calendar: calendarLinks(calendars[ch.ChannelID]),
+		Calendar: calendarLinks(ch.Calendar()),
 	}
 	if ch.UnitSlug != nil {
 		detail.Unit = FindUnit(*ch.UnitSlug)

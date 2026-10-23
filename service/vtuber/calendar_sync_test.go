@@ -72,16 +72,15 @@ func TestKeepPrevious(t *testing.T) {
 	require.Equal(t, "e1", got.EventIDs[roleAll])
 }
 
-func TestCalendarRows(t *testing.T) {
-	rows, err := calendarRows(map[string]string{"all": "a@group.calendar.google.com", "UCCzUftO8KOVkV4wQG1vkUvg": " m@group.calendar.google.com "})
-	require.NoError(t, err)
-	require.ElementsMatch(t, []vtuberEntity.Calendar{
-		{CalendarKey: "all", CalendarID: "a@group.calendar.google.com"},
-		{CalendarKey: "UCCzUftO8KOVkV4wQG1vkUvg", CalendarID: "m@group.calendar.google.com"},
-	}, rows)
-
-	_, err = calendarRows(map[string]string{"propro": "x@group"})
-	require.ErrorContains(t, err, "invalid calendar key")
-	_, err = calendarRows(map[string]string{"all": ""})
-	require.ErrorContains(t, err, "empty")
+func TestLegacyChannelCalendars(t *testing.T) {
+	// 舊 Firebase hololive/calendar 節點的格式
+	calendars, all := legacyChannelCalendars(map[string]string{
+		"all":                      "tisupenl6m3lnrjs26kipm1iu0@group.calendar.google.com",
+		"UCCzUftO8KOVkV4wQG1vkUvg": " m@group.calendar.google.com ",
+		"UCdyqAaZDKHXg4Ahi7VENThQ": "",
+		"propro":                   "x@group.calendar.google.com",
+	})
+	require.Equal(t, AllCalendarID, all)
+	// 空值與不是頻道 ID 的 key 略過
+	require.Equal(t, map[string]string{"UCCzUftO8KOVkV4wQG1vkUvg": "m@group.calendar.google.com"}, calendars)
 }
