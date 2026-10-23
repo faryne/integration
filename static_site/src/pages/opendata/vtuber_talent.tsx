@@ -1,0 +1,208 @@
+import {
+  Box,
+  Checkbox,
+  FormControlLabel,
+  LinearProgress,
+  Stack,
+  Tab,
+  Tabs,
+  Typography,
+} from "@mui/material";
+import axios from "axios";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+
+import {
+  useVtuberChannel,
+  useVtuberChannels,
+  useVtuberChannelStats,
+  useVtuberLives,
+} from "@/apis/opendata/vtubers.ts";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import {
+  fromToday,
+  livePlayingVideo,
+  relativeDayName,
+  taipeiTime,
+} from "@/components/vtuber/format.ts";
+import { LiveCard } from "@/components/vtuber/LiveCard.tsx";
+import { LiveTimeline } from "@/components/vtuber/LiveTimeline.tsx";
+import { TalentPicker } from "@/components/vtuber/TalentPicker.tsx";
+import { TalentProfile } from "@/components/vtuber/TalentProfile.tsx";
+import { TalentVideos } from "@/components/vtuber/TalentVideos.tsx";
+import { useNow } from "@/components/vtuber/useNow.ts";
+import { useVtuberSnack } from "@/components/vtuber/useVtuberSnack.ts";
+import { VideoModal } from "@/components/vtuber/VideoModal.tsx";
+import { useTitle } from "@/helpers/title.tsx";
+import { ErrorPage } from "@/pages/ErrorPage.tsx";
+import type {
+  VtuberLive,
+  VtuberPlayingVideo,
+  VtuberVideo,
+} from "@/types/vtubers.ts";
+
+type TalentTab = "upcoming" | "videos" | "calendar";
+
+/** /data/vtubers/:handle 藝人頁：左側個人檔案，右側正在直播＋即將直播／所有影片／行事曆 */
+export function VtuberTalent() {
+  const { handle = "" } = useParams();
+  const channels = useVtuberChannels();
+  const detail = useVtuberChannel(handle);
+  const stats = useVtuberChannelStats(handle);
+  const channel = detail.data;
+  const lives = useVtuberLives(channel?.channel_id, Boolean(channel));
+  useTitle(
+    channel ? `${channel.title}｜VTuber 直播行事曆` : "VTuber 直播行事曆",
+  );
+
+  const { snack, showError, showCopied, close } = useVtuberSnack();
+  const [tab, setTab] = useState<TalentTab>("upcoming");
+  const [showCancelled, setShowCancelled] = useState(false);
+  const [playing, setPlaying] = useState<VtuberPlayingVideo | null>(null);
+  const now = useNow();
+
+  // 換藝人時回到第一個分頁
+  useEffect(() => setTab("upcoming"), [handle]);
+  const notFound =
+    axios.isAxiosError(detail.error) && detail.error.response?.status === 404;
+  useEffect(() => {
+    const error =
+      (notFound ? null : detail.error) ??
+      channels.error ??
+      stats.error ??
+      lives.error;
+    if (error) showError(error);
+  }, [
+    notFound,
+    detail.error,
+    channels.error,
+    stats.error,
+    lives.error,
+    showError,
+  ]);
+
+  if (notFound) return <ErrorPage code={404} />;
+
+  const all = channel ? (lives.data?.lives ?? []) : [];
+  const live = all.find((l) => l.status === "live");
+  const upcoming = fromToday(all, now).filter(
+    (l) => l.status !== "live" && (showCancelled || l.status !== "cancelled"),
+  );
+  const playLive = (l: VtuberLive) => setPlaying(livePlayingVideo(l));
+  const playVideo = (v: VtuberVideo) => {
+    const published = taipeiTime(v.published_at);
+    setPlaying({
+      videoId: v.video_id,
+      title: v.title,
+      channelTitle: channel?.title ?? "",
+      channelThumbnailUrl: channel?.thumbnail_url ?? "",
+      meta: relativeDayName(published.dateKey) || published.md,
+    });
+  };
+
+  return (
+    <Stack spacing={2.5}>
+      {channels.data && (
+        <TalentPicker list={channels.data} currentHandle={handle} />
+      )}
+      {(detail.isLoading || channels.isLoading) && <LinearProgress />}
+
+      {channel && (
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "320px 1fr" },
+            gap: 2.5,
+            alignItems: "start",
+          }}
+        >
+          <TalentProfile
+            channel={channel}
+            stats={stats.data ?? []}
+            onCopied={showCopied}
+          />
+
+          <Box sx={{ minWidth: 0 }}>
+            {live && (
+              <Box sx={{ mb: 2 }}>
+                <Typography
+                  variant={"h6"}
+                  fontWeight={700}
+                  color={"error"}
+                  sx={{ mb: 1.25 }}
+                >
+                  ● 正在直播
+                </Typography>
+                <LiveCard live={live} large onPlay={playLive} />
+              </Box>
+            )}
+            <Tabs
+              value={tab}
+              onChange={(_, value: TalentTab) => setTab(value)}
+              variant={"scrollable"}
+              sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}
+            >
+              <Tab value={"upcoming"} label={"即將直播"} />
+              <Tab value={"videos"} label={"所有影片"} />
+              {channel.calendar && <Tab value={"calendar"} label={"行事曆"} />}
+            </Tabs>
+
+            {tab === "upcoming" && (
+              <>
+                <Stack direction={"row"} justifyContent={"flex-end"}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size={"small"}
+                        checked={showCancelled}
+                        onChange={(e) => setShowCancelled(e.target.checked)}
+                      />
+                    }
+                    label={"顯示已取消"}
+                  />
+                </Stack>
+                {lives.data && (
+                  <LiveTimeline
+                    lives={upcoming}
+                    withChannel={false}
+                    onPlay={playLive}
+                  />
+                )}
+              </>
+            )}
+            {tab === "videos" && (
+              <TalentVideos
+                handle={handle}
+                onPlay={playVideo}
+                onError={showError}
+              />
+            )}
+            {tab === "calendar" && channel.calendar && (
+              <Box
+                component={"iframe"}
+                src={channel.calendar.embed_url}
+                title={`${channel.title} 行事曆`}
+                sx={{
+                  width: "100%",
+                  height: 600,
+                  border: 1,
+                  borderColor: "divider",
+                  borderRadius: 2,
+                  bgcolor: "common.white",
+                }}
+              />
+            )}
+          </Box>
+        </Box>
+      )}
+
+      <VideoModal video={playing} onClose={() => setPlaying(null)} />
+      <CustomSnackbar
+        open={snack.open}
+        message={snack.message}
+        severity={snack.severity}
+        onClose={close}
+      />
+    </Stack>
+  );
+}

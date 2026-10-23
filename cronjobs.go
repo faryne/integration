@@ -180,6 +180,27 @@ var cronJobs = map[string]cronGroup{
 				Enabled:  true,
 				Handler:  vtuberService.RunSyncTalentChannels,
 			},
+			{
+				// 偵測直播後接著同步 Google 行事曆
+				Name:     "vtuber-lives-detect",
+				Schedule: "*/5 * * * *",
+				Enabled:  true,
+				Handler:  vtuberService.RunDetectLives,
+			},
+			{
+				// 頻道資訊與每日統計，順便改名行事曆、清掉 Firebase 過期事件記錄
+				Name:     "vtuber-stats-daily",
+				Schedule: "10 3 * * *",
+				Enabled:  true,
+				Handler:  vtuberService.RunDailyStats,
+			},
+			{
+				// 一次性：從舊 Firebase 匯入 Apps Script 時代建好的行事曆（需要 VTUBER_LEGACY_FIREBASE_SECRET）
+				Name:     "vtuber-import-calendars",
+				Schedule: "",
+				Enabled:  true,
+				Handler:  vtuberService.RunImportCalendars,
+			},
 		},
 	},
 	"av": {

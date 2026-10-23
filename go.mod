@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.47.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.17
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.16
+	github.com/aws/aws-sdk-go-v2/service/athena v1.66.1
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.100.1
 	github.com/chromedp/cdproto v0.0.0-20260321001828-e3e3800016bc
 	github.com/chromedp/chromedp v0.15.1
@@ -18,6 +19,7 @@ require (
 	github.com/go-redis/redis/v7 v7.4.1
 	github.com/goccy/go-json v0.10.6
 	github.com/gofiber/fiber/v3 v3.1.0
+	github.com/gofiber/schema v1.7.0
 	github.com/gofiber/swagger/v2 v2.0.0-20260208141700-e4cb1aaf502c
 	github.com/gofiber/utils/v2 v2.0.2
 	github.com/golang-jwt/jwt/v4 v4.5.2
@@ -30,9 +32,14 @@ require (
 	github.com/swaggo/swag v1.16.6
 	go.uber.org/zap v1.27.1
 	golang.org/x/image v0.38.0
+	golang.org/x/net v0.52.0
+	golang.org/x/oauth2 v0.36.0
+	golang.org/x/sync v0.20.0
+	golang.org/x/text v0.35.0
 	google.golang.org/api v0.276.0
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/gorm v1.31.1
+	gorm.io/plugin/dbresolver v1.6.2
 )
 
 require (
@@ -50,7 +57,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.4 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.4 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.24 // indirect
-	github.com/aws/aws-sdk-go-v2/service/athena v1.66.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.9 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.15 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.23 // indirect
@@ -94,7 +100,6 @@ require (
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.4.0 // indirect
-	github.com/gofiber/schema v1.7.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.14 // indirect
@@ -127,15 +132,10 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.49.0 // indirect
 	golang.org/x/mod v0.33.0 // indirect
-	golang.org/x/net v0.52.0 // indirect
-	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 // indirect
 	google.golang.org/grpc v1.80.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/plugin/dbresolver v1.6.2 // indirect
 )

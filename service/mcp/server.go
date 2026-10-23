@@ -73,6 +73,7 @@ func NewServer(name, version string) *Server {
 	s.registerNekomaidTools()
 	s.registerTWStatsTools()
 	s.registerRatesTools()
+	s.registerVtuberTools()
 	return s
 }
 
