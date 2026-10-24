@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>直播中呈現方式 Mockup</title>
+<style>
+/* 色票沿用 vtuber-schedule-mockup */
+:root, [data-theme="light"] {
+  --bg:#f3f5f5; --surface:#fff; --surface-2:#eef2f2; --border:#dde4e4; --text:#13201f; --text-2:#5b6b6c;
+  --accent:#0f766e; --accent-soft:#e0f3f1; --live:#d93a3a;
+}
+[data-theme="dark"] {
+  --bg:#0b1014; --surface:#121a20; --surface-2:#18232a; --border:#23313a; --text:#e3f1f2; --text-2:#93a7ab;
+  --accent:#5eead4; --accent-soft:#123432; --live:#ff6b6b;
+}
+* { box-sizing:border-box; }
+body { margin:0; font-family:Roboto,"Noto Sans TC",system-ui,sans-serif; background:#cfd5d8; color:#17191c; }
+button { font:inherit; cursor:pointer; color:inherit; }
+.bar { position:sticky; top:0; z-index:50; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; justify-content:space-between; padding:10px 16px; background:#1f2430; color:#fff; font-size:13px; }
+.bar span { color:#aab2c0; margin-left:8px; }
+.ctl { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.chip { border:1px solid #485063; background:transparent; color:#dfe3ea; padding:4px 10px; border-radius:999px; font-size:12px; }
+.chip.active { background:#fff; color:#1f2430; border-color:#fff; }
+.sep { width:1px; height:18px; background:#485063; margin:0 4px; }
+.notes { margin:12px auto 0; max-width:1280px; padding:12px 16px; border-radius:8px; background:#fffbe6; border:1px solid #f1d98a; font-size:13px; line-height:1.7; color:#4a3b00; }
+.notes[hidden] { display:none; }
+.notes ol { margin:4px 0 0; padding-left:20px; }
+.stage { padding:16px; display:flex; justify-content:center; }
+.device { width:100%; max-width:1280px; border-radius:10px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.18); background:var(--bg); color:var(--text); }
+.device.mobile { max-width:390px; }
+.container { padding:20px 24px 32px; }
+.device.mobile .container { padding-left:16px; padding-right:16px; }
+.title { margin:0 0 16px; font-size:26px; font-weight:800; }
+.section-title { display:flex; align-items:center; gap:8px; margin:0 0 10px; font-size:18px; font-weight:700; color:var(--live); }
+.height-tag { margin-left:auto; font-size:12px; font-weight:600; color:var(--text-2); background:var(--surface-2); padding:2px 8px; border-radius:999px; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+
+/* ===== 現況：大卡片，一列 4 張 ===== */
+.big { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; }
+.big .thumb { position:relative; aspect-ratio:16/9; }
+.big .body { display:flex; gap:10px; padding:10px 12px 12px; }
+.big .av { width:40px; height:40px; border-radius:50%; flex-shrink:0; }
+.big .t { font-size:14px; line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.big .m { font-size:12.5px; color:var(--text-2); margin-top:4px; }
+
+/* ===== 提案：橫向小卡，桌機一列 3 張 ===== */
+.compact { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.compact .card { display:flex; gap:10px; padding:8px; align-items:center; text-align:left; border:1px solid var(--border); }
+.compact .card:hover { border-color:var(--live); }
+.compact .thumb { position:relative; width:160px; flex-shrink:0; aspect-ratio:16/9; border-radius:6px; overflow:hidden; }
+.compact .info { min-width:0; }
+.compact .t { font-size:13.5px; line-height:1.4; font-weight:500; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.compact .m { display:flex; align-items:center; gap:6px; margin-top:4px; font-size:12px; color:var(--text-2); min-width:0; }
+.compact .m .av { width:18px; height:18px; border-radius:50%; flex-shrink:0; }
+.compact .m .ch { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media (max-width: 1100px) { .compact { grid-template-columns:repeat(2,1fr); } }
+
+/* ===== 輪播：一排大卡，桌機一次 4 張，scroll-snap 對齊；左右箭頭；自動往下一格 ===== */
+.carousel-wrap { position:relative; }
+.carousel { display:grid; grid-auto-flow:column; grid-auto-columns:calc((100% - 36px) / 4); gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; scroll-behavior:smooth; scrollbar-width:none; }
+.carousel::-webkit-scrollbar { display:none; }
+.carousel > .card { scroll-snap-align:start; }
+.carousel .thumb { position:relative; aspect-ratio:16/9; }
+/* 標題用滿卡片寬度；頭像縮小放進頻道那一行，不再獨佔左邊一欄 */
+.carousel .body { padding:10px 12px 12px; }
+.carousel .t { font-size:14px; line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:2.9em; }
+.carousel .m { display:flex; align-items:center; gap:6px; margin-top:6px; font-size:12.5px; color:var(--text-2); min-width:0; }
+.carousel .m .av { width:20px; height:20px; border-radius:50%; flex-shrink:0; }
+.carousel .m .ch { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.carousel .m .el { flex-shrink:0; margin-left:auto; }
+.arrow { position:absolute; top:calc((100% - 70px) / 2 - 18px); width:36px; height:36px; border-radius:50%; border:1px solid var(--border); background:var(--surface); color:var(--text); box-shadow:0 2px 8px rgba(0,0,0,.18); font-size:16px; z-index:2; }
+.arrow.prev { left:-14px; } .arrow.next { right:-14px; }
+.arrow[disabled] { opacity:0; pointer-events:none; }
+.dots { display:flex; justify-content:center; gap:6px; margin-top:10px; }
+.dots span { width:6px; height:6px; border-radius:50%; background:var(--border); }
+.dots span.on { background:var(--live); width:18px; border-radius:3px; }
+.auto-tag { font-size:12px; color:var(--text-2); font-weight:400; }
+.device.mobile .carousel { grid-auto-columns:78%; }
+.device.mobile .arrow { display:none; }
+
+/* 手機兩種都維持橫向滑動的大卡 */
+.device.mobile .big, .device.mobile .compact { display:grid; grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:78%; overflow-x:auto; }
+.device.mobile .compact .card { display:block; padding:0; }
+.device.mobile .compact .thumb { width:100%; border-radius:0; }
+.device.mobile .compact .info { padding:10px 12px 12px; }
+
+.badge { position:absolute; left:6px; top:6px; background:var(--live); color:#fff; font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:4px; }
+.viewers { position:absolute; right:6px; bottom:6px; background:rgba(0,0,0,.72); color:#fff; font-size:11.5px; padding:1px 6px; border-radius:4px; }
+.below { margin-top:24px; }
+.below h3 { margin:0 0 10px; font-size:18px; }
+.row { padding:12px 14px; border-bottom:1px solid var(--border); font-size:14px; color:var(--text-2); }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div><strong>「直播中」呈現方式 Mockup</strong><span>內容區最寬 1280px，2K 螢幕也是這個寬度</span></div>
+  <div class="ctl">
+    <button class="chip" data-mode="now">現況</button>
+    <button class="chip" data-mode="compact">精簡小卡</button>
+    <button class="chip active" data-mode="carousel">輪播（亂數）</button>
+    <span class="sep"></span>
+    <button class="chip" data-count="6">6 場</button>
+    <button class="chip active" data-count="12">12 場</button>
+    <button class="chip" data-count="16">16 場</button>
+    <span class="sep"></span>
+    <button class="chip active" data-view="desktop">Desktop</button>
+    <button class="chip" data-view="mobile">Mobile 390</button>
+    <span class="sep"></span>
+    <button class="chip active" data-theme-option="light">淺色</button>
+    <button class="chip" data-theme-option="dark">深色</button>
+    <span class="sep"></span>
+    <label style="display:flex;gap:4px;align-items:center;color:#dfe3ea"><input type="checkbox" id="notesToggle" checked /> 說明</label>
+  </div>
+</header>
+
+<aside class="notes" id="notes">
+  <strong>看點</strong>
+  <ol>
+    <li><b>輪播卡片的頭像</b>縮小成 20px 放進頻道那一行，標題用滿整張卡片寬度；頻道名太長就省略，已開播時間靠右固定不換行（跟影片 modal、精簡小卡同一種排法）。</li>
+    <li><b>輪播（亂數）</b>：桌機一排 4 張大卡，固定高度；左右箭頭＋下方圓點；每 5 秒往下一格，捲到底回到第一張；滑鼠移上去／觸碰／點箭頭後暫停；系統開了「減少動態效果」就不自動播放。亂數只在載入頁面時排一次，之後資料更新時保留順序（新開播接在後面），卡片才不會一直跳。手機一樣橫向滑動。</li>
+    <li><b>精簡小卡</b>：左邊縮圖（160×90，保留 LIVE 與同接）、右邊兩行標題＋頻道・已開播多久；一列 3 張（視窗較窄時 2 張），每張約 100px 高。</li>
+    <li>精簡小卡依同接人數由多到少排序，最熱門的放最前面。</li>
+    <li>區塊右上角的灰色標籤是 mockup 量到的區塊高度，切「現況／精簡小卡／輪播」與「6／12／16 場」比較。</li>
+    <li><b>手機維持橫向滑動的大卡</b>（高度本來就固定，不受場次多寡影響）。</li>
+    <li>點卡片一樣開影片 modal。</li>
+  </ol>
+</aside>
+
+<main class="stage">
+  <div class="device" id="device">
+    <div class="container">
+      <h1 class="title">VTuber 直播行事曆</h1>
+      <div id="live"></div>
+      <div class="below"><h3>即將直播</h3><div class="card"><div class="row">今天 10/24（六）</div><div class="row">22:00　【歌枠】秋の夜長にしっとりソング</div><div class="row">23:00　【雑談】寝る前にゆるっとお話しよ～</div></div></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const CHANNELS = ["Noel Ch. 白銀ノエル", "Koseki Bijou Ch. hololive", "Choco Ch. 癒月ちょこ", "Pekora Ch. 兎田ぺこら", "Marine Ch. 宝鐘マリン", "Kobo Kanaeru Ch. hololive-ID", "Koyori ch. 博衣こより", "Suisei Channel", "Okayu Ch. 猫又おかゆ", "Lamy Ch. 雪花ラミィ", "Mori Calliope Ch.", "FUWAMOCO Ch.", "Miko Ch. さくらみこ", "Subaru Ch. 大空スバル", "Kanata Ch. 天音かなた", "Ririka Ch. 一条莉々華"];
+const TITLES = ["【ホロ鯖ARK】99％の拠点はどうなった…？！拠点完成＆初めてのジャングルの洞窟チャレンジ！", "【ACE COMBAT 8: WINGS OF THEVE】BIBOO FLIES AGAIN", "【#ホロ鯖ARK】ARK上陸13日目！海賊船色ガチャするぞ", "【マリオカート8DX】視聴者参加型！みんなで走るぺこ！", "【ホラー】絶対に叫ばない配信", "【Karaoke】Singing your requests!", "【Minecraft】新拠点づくり、今日こそ完成させる", "【歌枠】秋の夜長にしっとりソング"];
+const state = { mode: "carousel", count: 12 };
+// 亂數只在載入頁面時排一次；之後資料更新時保留順序（新開播的接在後面），卡片才不會一直跳
+const shuffleOrder = Array.from({ length: 16 }, (_, i) => i).sort(() => Math.random() - 0.5);
+let autoTimer, paused = false;
+const $ = (s) => document.querySelector(s);
+const hue = (i) => (i * 53) % 360;
+
+function render() {
+  // 依同接人數由多到少（提案才排序；現況維持開播時間順）
+  let lives = Array.from({ length: state.count }, (_, i) => ({ i, ch: CHANNELS[i % CHANNELS.length], t: TITLES[i % TITLES.length], viewers: Math.round(60000 / (1 + ((i * 7) % 11))), elapsed: `${1 + (i % 5)}:${String((i * 17) % 60).padStart(2, "0")}` }));
+  if (state.mode === "compact") lives = [...lives].sort((a, b) => b.viewers - a.viewers);
+  if (state.mode === "carousel") lives = shuffleOrder.filter((i) => i < state.count).map((i) => lives[i]);
+  const thumb = (l) => `<div class="thumb" style="background:linear-gradient(135deg,hsl(${hue(l.i)} 60% 50%),hsl(${(hue(l.i) + 70) % 360} 60% 30%))"><span class="badge">LIVE</span><span class="viewers">👤 ${l.viewers.toLocaleString()}</span></div>`;
+  const av = (l) => `<span class="av" style="background:hsl(${hue(l.i)} 55% 55%)"></span>`;
+  const bigCard = (l) => `<div class="card">${thumb(l)}<div class="body"><div class="t">${l.t}</div><div class="m">${av(l)}<span class="ch">${l.ch}</span><span class="el">已開播 ${l.elapsed}</span></div></div></div>`;
+  const cards = state.mode === "carousel"
+    ? `<div class="carousel-wrap"><button class="arrow prev" data-arrow="-1">‹</button><div class="carousel" id="carousel">${lives.map(bigCard).join("")}</div><button class="arrow next" data-arrow="1">›</button></div><div class="dots" id="dots"></div>`
+    : state.mode === "now"
+    ? `<div class="big">${lives.map((l) => `<div class="card">${thumb(l)}<div class="body">${av(l)}<div><div class="t">${l.t}</div><div class="m">${l.ch}・已開播 ${l.elapsed}</div></div></div></div>`).join("")}</div>`
+    : `<div class="compact">${lives.map((l) => `<button class="card">${thumb(l)}<div class="info"><div class="t">${l.t}</div><div class="m">${av(l)}<span class="ch">${l.ch}</span><span style="flex-shrink:0">・${l.elapsed}</span></div></div></button>`).join("")}</div>`;
+  $("#live").innerHTML = `<h2 class="section-title">● 直播中 ${state.count}<span class="height-tag" id="h"></span></h2>${cards}`;
+  requestAnimationFrame(() => { $("#h").textContent = `區塊高度 ${Math.round($("#live").getBoundingClientRect().height)}px`; });
+  setupCarousel();
+}
+
+// 輪播：一次捲一格；捲到最後回到第一張。滑鼠移上去、觸碰、點箭頭後暫停自動播放；系統偏好減少動態時不自動播放
+function setupCarousel() {
+  clearInterval(autoTimer);
+  const el = $("#carousel");
+  if (!el) return;
+  const step = () => el.firstElementChild.getBoundingClientRect().width + 12;
+  const pages = () => Math.max(1, Math.ceil((el.scrollWidth - el.clientWidth) / step()) + 1);
+  const update = () => {
+    const page = Math.round(el.scrollLeft / step());
+    $("#dots").innerHTML = Array.from({ length: pages() }, (_, i) => `<span class="${i === page ? "on" : ""}"></span>`).join("");
+    document.querySelector("[data-arrow='-1']").disabled = el.scrollLeft <= 2;
+    document.querySelector("[data-arrow='1']").disabled = el.scrollLeft >= el.scrollWidth - el.clientWidth - 2;
+  };
+  el.onscroll = update;
+  el.onmouseenter = el.ontouchstart = () => (paused = true);
+  el.onmouseleave = () => (paused = false);
+  update();
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  autoTimer = setInterval(() => {
+    if (paused) return;
+    const atEnd = el.scrollLeft >= el.scrollWidth - el.clientWidth - 2;
+    el.scrollTo({ left: atEnd ? 0 : el.scrollLeft + step() });
+  }, 5000);
+}
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  const d = b.dataset, group = (sel) => document.querySelectorAll(sel).forEach((x) => x.classList.toggle("active", x === b));
+  if (d.arrow) { const el = $("#carousel"); paused = true; el.scrollBy({ left: Number(d.arrow) * (el.firstElementChild.getBoundingClientRect().width + 12) }); return; }
+  if (d.mode) { state.mode = d.mode; group("[data-mode]"); }
+  else if (d.count) { state.count = Number(d.count); group("[data-count]"); }
+  else if (d.view) { group("[data-view]"); $("#device").classList.toggle("mobile", d.view === "mobile"); }
+  else if (d.themeOption) { group("[data-theme-option]"); document.documentElement.dataset.theme = d.themeOption; }
+  else return;
+  render();
+});
+$("#notesToggle").addEventListener("change", (e) => ($("#notes").hidden = !e.target.checked));
+render();
+</script>
+</body>
+</html>

@@ -16,7 +16,7 @@ import {
 } from "@/components/vtuber/calendar.ts";
 import { CalendarSubscribeMenu } from "@/components/vtuber/CalendarSubscribeMenu.tsx";
 import { fromToday, livePlayingVideo } from "@/components/vtuber/format.ts";
-import { LiveCard } from "@/components/vtuber/LiveCard.tsx";
+import { LiveCarousel } from "@/components/vtuber/LiveCarousel.tsx";
 import { LiveTimeline } from "@/components/vtuber/LiveTimeline.tsx";
 import { TalentPicker } from "@/components/vtuber/TalentPicker.tsx";
 import { useNow } from "@/components/vtuber/useNow.ts";
@@ -79,23 +79,8 @@ export function VtubersIndex() {
           >
             ● 直播中 {live.length}
           </Typography>
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: {
-                xs: "none",
-                sm: "repeat(auto-fill, minmax(240px, 1fr))",
-              },
-              gridAutoFlow: { xs: "column", sm: "row" },
-              gridAutoColumns: { xs: "78%", sm: "auto" },
-              overflowX: { xs: "auto", sm: "visible" },
-              gap: 1.5,
-            }}
-          >
-            {live.map((l) => (
-              <LiveCard key={l.video_id} live={l} onPlay={play} />
-            ))}
-          </Box>
+          {/* 一排輪播：場次再多高度也固定；上方藝人列已經列出所有直播中的藝人，這裡只負責推薦 */}
+          <LiveCarousel lives={live} onPlay={play} />
         </Box>
       )}
 
