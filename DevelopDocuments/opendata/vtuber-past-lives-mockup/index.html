@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>過去的直播 Mockup</title>
+<style>
+/* 色票沿用 vtuber-schedule-mockup */
+:root, [data-theme="light"] {
+  --bg:#f3f5f5; --surface:#fff; --surface-2:#eef2f2; --border:#dde4e4; --text:#13201f; --text-2:#5b6b6c; --text-3:#8a9798;
+  --accent:#0f766e; --accent-soft:#e0f3f1; --live:#d93a3a;
+}
+[data-theme="dark"] {
+  --bg:#0b1014; --surface:#121a20; --surface-2:#18232a; --border:#23313a; --text:#e3f1f2; --text-2:#93a7ab; --text-3:#6c8085;
+  --accent:#5eead4; --accent-soft:#123432; --live:#ff6b6b;
+}
+* { box-sizing:border-box; }
+body { margin:0; font-family:Roboto,"Noto Sans TC",system-ui,sans-serif; background:#cfd5d8; color:#17191c; }
+button { font:inherit; cursor:pointer; color:inherit; }
+.bar { position:sticky; top:0; z-index:50; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; justify-content:space-between; padding:10px 16px; background:#1f2430; color:#fff; font-size:13px; }
+.bar span { color:#aab2c0; margin-left:8px; }
+.ctl { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.chip { border:1px solid #485063; background:transparent; color:#dfe3ea; padding:4px 10px; border-radius:999px; font-size:12px; }
+.chip.active { background:#fff; color:#1f2430; border-color:#fff; }
+.sep { width:1px; height:18px; background:#485063; margin:0 4px; }
+.notes { margin:12px auto 0; max-width:1280px; padding:12px 16px; border-radius:8px; background:#fffbe6; border:1px solid #f1d98a; font-size:13px; line-height:1.7; color:#4a3b00; }
+.notes[hidden] { display:none; }
+.notes ol { margin:4px 0 0; padding-left:20px; }
+.stage { padding:16px; display:flex; justify-content:center; }
+.device { width:100%; max-width:1280px; border-radius:10px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.18); background:var(--bg); color:var(--text); }
+.device.mobile { max-width:390px; }
+.container { padding:20px 24px 40px; }
+.device.mobile .container { padding-left:16px; padding-right:16px; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+h1 { margin:0 0 16px; font-size:26px; font-weight:800; }
+h2 { margin:0 0 10px; font-size:18px; font-weight:700; }
+.placeholder { height:110px; display:grid; place-items:center; color:var(--text-2); font-size:13px; margin-bottom:24px; }
+
+/* ===== 即將直播（現有，簡化） ===== */
+.day-head { display:flex; gap:8px; align-items:baseline; padding:8px 14px; background:var(--surface-2); font-weight:700; font-size:14px; }
+.day-head small { color:var(--text-2); font-weight:500; }
+.row { display:grid; grid-template-columns:64px 1fr auto; gap:12px; align-items:center; padding:10px 14px; border-top:1px solid var(--border); font-size:14px; }
+.row .time { font-family:monospace; font-weight:600; font-size:15px; }
+.status { font-size:12px; font-weight:600; padding:2px 8px; border-radius:999px; background:var(--accent-soft); color:var(--accent); }
+
+/* ===== 新增：過去的直播（低調：標題較小、文字淡一階、預設收合） ===== */
+.past { margin-bottom:24px; }
+.past h2 { font-size:15px; color:var(--text-2); font-weight:600; display:flex; align-items:center; gap:8px; }
+.past-day { border:1px solid var(--border); border-radius:10px; background:var(--surface); margin-bottom:10px; overflow:hidden; }
+.past-head { width:100%; display:flex; align-items:center; gap:8px; padding:10px 14px; border:0; background:none; text-align:left; font-size:14px; color:var(--text-2); }
+.past-head b { color:var(--text); font-weight:600; }
+.past-head .count { margin-left:auto; font-size:12.5px; color:var(--text-3); }
+.past-head .chev { color:var(--text-3); transition:transform .15s; }
+.past-day.open .past-head .chev { transform:rotate(180deg); }
+.past-list { display:none; border-top:1px solid var(--border); }
+.past-day.open .past-list { display:block; }
+.past-row { width:100%; display:grid; grid-template-columns:48px 80px 1fr; gap:12px; align-items:center; padding:8px 14px; border:0; border-top:1px solid var(--border); background:none; text-align:left; }
+.past-row:first-child { border-top:0; }
+.past-row:hover { background:var(--surface-2); }
+.past-row .time { font-family:monospace; font-size:13px; color:var(--text-3); }
+.past-row .thumb { width:80px; aspect-ratio:16/9; border-radius:4px; opacity:.85; }
+.past-row .t { font-size:13.5px; color:var(--text-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.past-row .m { display:flex; align-items:center; gap:6px; margin-top:2px; font-size:12px; color:var(--text-3); min-width:0; }
+.past-row .m .av { width:16px; height:16px; border-radius:50%; flex-shrink:0; }
+.past-row .m .ch { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.device.mobile .past-row { grid-template-columns:72px 1fr; }
+.device.mobile .past-row .time { display:none; }
+.device.mobile .past-row .t { white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div><strong>「過去的直播」Mockup</strong><span>直播中與即將直播之間・假資料・今天＝10/24（六）</span></div>
+  <div class="ctl">
+    <button class="chip active" data-view="desktop">Desktop</button>
+    <button class="chip" data-view="mobile">Mobile 390</button>
+    <span class="sep"></span>
+    <button class="chip active" data-theme-option="light">淺色</button>
+    <button class="chip" data-theme-option="dark">深色</button>
+    <span class="sep"></span>
+    <label style="display:flex;gap:4px;align-items:center;color:#dfe3ea"><input type="checkbox" id="notesToggle" checked /> 說明</label>
+  </div>
+</header>
+
+<aside class="notes" id="notes">
+  <strong>看點</strong>
+  <ol>
+    <li><b>放在「直播中」與「即將直播」之間</b>：「即將直播」常有二、三十列，放在它後面幾乎沒人捲得到；收合時只有兩行，不搶版面。區塊標題比其他區塊小一號、顏色淡一階。</li>
+    <li><b>「昨天」「前天」兩組，預設收合</b>，只顯示日期與場次數；點開才列出來（一天大約三、四十場，全部攤開會很長）。</li>
+    <li>每列精簡：時間、小縮圖、標題一行、「小頭像・頻道名・實際直播時長」，文字都用淡色；不放狀態標籤（全部都已結束）。手機版拿掉時間欄，標題可以兩行。</li>
+    <li>每組裡依開播時間排（跟「即將直播」一樣由早到晚）；點任何一列開影片 modal 看存檔。</li>
+    <li>資料用現有的 <code>/lives?from=前天&amp;to=今天&amp;status=ended</code>，後端不用改。</li>
+  </ol>
+</aside>
+
+<main class="stage">
+  <div class="device" id="device">
+    <div class="container">
+      <h1>VTuber 直播行事曆</h1>
+      <div class="card placeholder">（藝人選擇列、直播中輪播：不變）</div>
+      <section class="past" id="past"></section>
+      <h2>即將直播</h2>
+      <div class="card">
+        <div class="day-head">今天 <small>10/24（六）</small></div>
+        <div class="row"><span class="time">22:00</span><span>【歌枠】秋の夜長にしっとりソング</span><span class="status">待機中</span></div>
+        <div class="row"><span class="time">23:00</span><span>【雑談】寝る前にゆるっとお話しよ～</span><span class="status">待機中</span></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const CHANNELS = ["Marine Ch. 宝鐘マリン", "Pekora Ch. 兎田ぺこら", "Koyori ch. 博衣こより", "Mori Calliope Ch.", "Suisei Channel", "Okayu Ch. 猫又おかゆ", "Kobo Kanaeru Ch.", "FUWAMOCO Ch.", "Miko Ch. さくらみこ", "Lamy Ch. 雪花ラミィ"];
+const TITLES = ["【#ホロ鯖ARK】ARK上陸13日目！海賊船色ガチャするぞ", "【マリオカート8DX】視聴者参加型！みんなで走るぺこ！", "【歌枠】秋の夜長にしっとりソング", "【雑談】寝る前にゆるっとお話しよ～", "【ACE COMBAT 8】BIBOO FLIES AGAIN", "【ホラー】絶対に叫ばない配信", "【Minecraft】新拠点づくり、今日こそ完成させる"];
+const DAYS = [{ name: "昨天", date: "10/23（五）", count: 38 }, { name: "前天", date: "10/22（四）", count: 41 }];
+const open = new Set();
+const $ = (s) => document.querySelector(s);
+
+function render() {
+  $("#past").innerHTML = `<h2>過去的直播</h2>${DAYS.map((d, di) => `
+    <div class="past-day ${open.has(di) ? "open" : ""}">
+      <button class="past-head" data-day="${di}"><b>${d.name}</b>${d.date}<span class="count">${d.count} 場</span><span class="chev">▾</span></button>
+      <div class="past-list">${Array.from({ length: d.count }, (_, i) => {
+        const h = 6 + Math.floor((i * 17) / d.count), m = (i * 23) % 60, hue = (i * 47 + di * 90) % 360;
+        return `<button class="past-row"><span class="time">${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}</span>
+          <span class="thumb" style="background:linear-gradient(135deg,hsl(${hue} 50% 50%),hsl(${(hue + 60) % 360} 50% 32%))"></span>
+          <span style="min-width:0"><span class="t" style="display:block">${TITLES[i % TITLES.length]}</span>
+          <span class="m"><span class="av" style="background:hsl(${hue} 50% 55%)"></span><span class="ch">${CHANNELS[i % CHANNELS.length]}</span><span style="flex-shrink:0">・直播 ${1 + (i % 4)}:${String((i * 13) % 60).padStart(2, "0")}</span></span></span></button>`;
+      }).join("")}</div>
+    </div>`).join("")}`;
+}
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  const d = b.dataset;
+  if (d.day) { const i = Number(d.day); open.has(i) ? open.delete(i) : open.add(i); }
+  else if (d.view) { document.querySelectorAll("[data-view]").forEach((x) => x.classList.toggle("active", x === b)); $("#device").classList.toggle("mobile", d.view === "mobile"); }
+  else if (d.themeOption) { document.querySelectorAll("[data-theme-option]").forEach((x) => x.classList.toggle("active", x === b)); document.documentElement.dataset.theme = d.themeOption; }
+  else return;
+  render();
+});
+$("#notesToggle").addEventListener("change", (e) => ($("#notes").hidden = !e.target.checked));
+render();
+</script>
+</body>
+</html>
