@@ -107,10 +107,9 @@ export function livePlayingVideo(live: VtuberLive): VtuberPlayingVideo {
     title: live.title,
     channelTitle: live.channel_title,
     channelThumbnailUrl: live.channel_thumbnail_url,
-    meta:
-      live.status === "live" && live.concurrent_viewers != null
-        ? `直播中・${live.concurrent_viewers.toLocaleString()} 人觀看`
-        : `${start.md} ${start.hm}・${LIVE_STATUS_LABELS[live.status]}`,
+    when: `${start.md} ${start.hm}`,
+    status: live.status,
+    viewers: live.concurrent_viewers,
   };
 }
 

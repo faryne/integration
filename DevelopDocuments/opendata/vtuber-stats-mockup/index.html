@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>藝人頁統計分頁 Mockup</title>
+<!-- 圖表用真的 Google Charts 畫，假資料由下方 script 產生 -->
+<script src="https://www.gstatic.com/charts/loader.js"></script>
+<style>
+/* 色票沿用 vtuber-schedule-mockup */
+:root, [data-theme="light"] {
+  --bg:#f3f5f5; --surface:#fff; --surface-2:#eef2f2; --border:#dde4e4; --text:#13201f; --text-2:#5b6b6c;
+  --accent:#0f766e; --accent-soft:#e0f3f1; --up:#16a34a; --down:#c2410c; --live:#d93a3a;
+}
+[data-theme="dark"] {
+  --bg:#0b1014; --surface:#121a20; --surface-2:#18232a; --border:#23313a; --text:#e3f1f2; --text-2:#93a7ab;
+  --accent:#5eead4; --accent-soft:#123432; --up:#4ade80; --down:#fb923c; --live:#ff6b6b;
+}
+* { box-sizing:border-box; }
+body { margin:0; font-family:Roboto,"Noto Sans TC",system-ui,sans-serif; background:#cfd5d8; color:#17191c; }
+button { font:inherit; cursor:pointer; color:inherit; }
+
+/* ===== Mockup 控制列（非產品 UI） ===== */
+.bar { position:sticky; top:0; z-index:50; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; justify-content:space-between; padding:10px 16px; background:#1f2430; color:#fff; font-size:13px; }
+.bar span { color:#aab2c0; margin-left:8px; }
+.ctl { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.chip { border:1px solid #485063; background:transparent; color:#dfe3ea; padding:4px 10px; border-radius:999px; font-size:12px; }
+.chip.active { background:#fff; color:#1f2430; border-color:#fff; }
+.sep { width:1px; height:18px; background:#485063; margin:0 4px; }
+.notes { margin:12px auto 0; max-width:1280px; padding:12px 16px; border-radius:8px; background:#fffbe6; border:1px solid #f1d98a; font-size:13px; line-height:1.7; color:#4a3b00; }
+.notes[hidden] { display:none; }
+.notes ol { margin:4px 0 0; padding-left:20px; }
+.stage { padding:16px; display:flex; justify-content:center; }
+.device { width:100%; max-width:1280px; border-radius:10px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.18); background:var(--bg); color:var(--text); }
+.device.mobile { max-width:390px; }
+
+/* ===== 頁面（簡化：只畫藝人頁的主體） ===== */
+.crumbs { padding:9px 24px; font-size:13px; color:var(--text-2); background:var(--surface); border-bottom:1px solid var(--border); }
+.crumbs b { color:var(--text); }
+.container { padding:20px 24px 32px; }
+.device.mobile .container, .device.mobile .crumbs { padding-left:16px; padding-right:16px; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+.layout { display:grid; grid-template-columns:300px 1fr; gap:20px; align-items:start; }
+.device.mobile .layout { grid-template-columns:1fr; }
+
+/* 左側個人檔案：拿掉 90 天小曲線，數字與增減保留 */
+.profile { overflow:hidden; }
+.banner { height:80px; background:linear-gradient(135deg,#be123c,#7c3aed); }
+.pbody { padding:0 16px 16px; margin-top:-40px; }
+.avatar { width:80px; height:80px; border-radius:50%; border:4px solid var(--surface); background:linear-gradient(135deg,#fb7185,#e11d48); }
+.pname { font-size:18px; font-weight:800; margin-top:6px; }
+.phandle { font-size:13px; color:var(--text-2); }
+.kv { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:12px 0 8px; }
+.kv div { padding:8px 10px; border-radius:8px; background:var(--surface-2); }
+.kv small { display:block; font-size:11.5px; color:var(--text-2); }
+.kv b { font-size:15px; }
+.growth { display:flex; gap:14px; font-size:12.5px; color:var(--text-2); }
+
+/* 分頁 */
+.tabs { display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:14px; overflow-x:auto; }
+.tab { border:0; background:none; padding:9px 14px; font-size:14px; color:var(--text-2); border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; }
+.tab.on { color:var(--accent); border-color:var(--accent); font-weight:600; }
+.tab.new::after { content:"NEW"; margin-left:6px; font-size:10px; font-weight:800; color:#fff; background:var(--down); border-radius:3px; padding:0 4px; }
+
+/* 統計分頁 */
+.range { display:flex; justify-content:flex-end; margin-bottom:12px; }
+.seg { display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--surface); }
+.seg button { border:0; background:none; padding:6px 12px; font-size:13px; color:var(--text-2); }
+.seg button + button { border-left:1px solid var(--border); }
+.seg button.on { background:var(--accent-soft); color:var(--accent); font-weight:600; }
+.metric { padding:14px 16px 8px; margin-bottom:14px; }
+.mhead { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:flex-end; justify-content:space-between; }
+.mtitle small { display:block; font-size:12.5px; color:var(--text-2); }
+.mtitle b { font-size:22px; }
+.mtitle .delta { font-size:13px; font-weight:600; margin-left:8px; }
+.up { color:var(--up); } .down { color:var(--down); }
+.chart { height:220px; margin-top:6px; }
+.device.mobile .chart { height:190px; }
+.empty { padding:28px 16px; text-align:center; color:var(--text-2); font-size:14px; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div><strong>藝人頁「統計」分頁 Mockup</strong><span>假資料・圖表由 Google Charts 繪製</span></div>
+  <div class="ctl">
+    <button class="chip active" data-view="desktop">Desktop</button>
+    <button class="chip" data-view="mobile">Mobile 390</button>
+    <span class="sep"></span>
+    <button class="chip active" data-theme-option="light">淺色</button>
+    <button class="chip" data-theme-option="dark">深色</button>
+    <span class="sep"></span>
+    <button class="chip active" data-data="full">資料：一年</button>
+    <button class="chip" data-data="few">資料：剛開始記錄（1 天）</button>
+    <span class="sep"></span>
+    <label style="display:flex;gap:4px;align-items:center;color:#dfe3ea"><input type="checkbox" id="notesToggle" checked /> 說明</label>
+  </div>
+</header>
+
+<aside class="notes" id="notes">
+  <strong>看點</strong>
+  <ol>
+    <li><b>藝人頁第四個分頁「統計」</b>：訂閱者、觀看、影片三張圖由上而下排；右上切換期間（30 天／90 天／180 天／1 年，API 上限 365 天）。</li>
+    <li><b>每張圖可以切「累計／每日增減」</b>，預設依數字特性不同：訂閱者看累計（YouTube 公開訂閱數只有三位有效數字，大頻道每日增減幾乎都是 0）；觀看看每日增減（累計值幾乎是斜直線）；影片看累計。</li>
+    <li><b>每張圖上方</b>放目前數字與「這段期間增加多少」。滑鼠移到圖上會顯示當天的完整數字。</li>
+    <li><b>左側個人檔案拿掉 90 天小曲線</b>，數字與 7 日／90 日增減保留，曲線統一放到統計分頁，同一頁不混用兩套圖表。</li>
+    <li><b>資料不足時</b>（prod 從 10/23 才開始記錄）：少於 2 天不畫圖，只顯示目前數字。切控制列「剛開始記錄」看看。</li>
+    <li>深色模式下圖表的文字、格線、底色跟著換色；手機版圖表高度縮小，期間切換靠右。</li>
+  </ol>
+</aside>
+
+<main class="stage">
+  <div class="device" id="device">
+    <div class="crumbs">首頁 / 資料 / <b>VTuber 直播行事曆</b></div>
+    <div class="container">
+      <div class="layout">
+        <aside class="card profile">
+          <div class="banner"></div>
+          <div class="pbody">
+            <div class="avatar"></div>
+            <div class="pname">Marine Ch. 宝鐘マリン hololive3期生</div>
+            <div class="phandle">@houshoumarine・3期生</div>
+            <div class="kv" id="kv"></div>
+            <div class="growth" id="growth"></div>
+          </div>
+        </aside>
+        <section>
+          <div class="tabs">
+            <button class="tab">即將直播</button><button class="tab">所有影片</button><button class="tab">行事曆</button><button class="tab on new">統計</button>
+          </div>
+          <div id="stats"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ===== 假資料：一年份每日統計 =====
+const DAYS = 365;
+const today = new Date("2026-10-24T00:00:00+08:00");
+// 訂閱數取三位有效數字（跟 YouTube 公開數字一樣），所以曲線是階梯狀
+const round3 = (n) => { const p = 10 ** (Math.floor(Math.log10(n)) - 2); return Math.round(n / p) * p; };
+const FULL = [];
+let subs = 3.98e6, views = 2.31e9, videos = 1650;
+for (let i = DAYS - 1; i >= 0; i--) {
+  const d = new Date(today); d.setDate(d.getDate() - i);
+  const day = DAYS - i;
+  // 偶爾有爆發（例如 3D LIVE、記念配信），觀看與訂閱一起跳
+  const spike = [60, 145, 230, 300, 352].includes(day) ? 6 : 1;
+  subs += (900 + Math.sin(day / 9) * 400) * spike;
+  views += (420000 + Math.sin(day / 5) * 160000 + (day % 7 === 6 ? 250000 : 0)) * spike;
+  if (day % 3 === 0 || spike > 1) videos += 1;
+  FULL.push({ date: d, subscriber_count: round3(subs), view_count: Math.round(views), video_count: videos });
+}
+
+const METRICS = [
+  { key: "subscriber_count", label: "訂閱者", mode: "total" },
+  { key: "view_count", label: "觀看", mode: "daily" },
+  { key: "video_count", label: "影片", mode: "total" },
+];
+const state = { range: 90, data: "full", modes: Object.fromEntries(METRICS.map((m) => [m.key, m.mode])) };
+const $ = (s) => document.querySelector(s);
+const fmt = (v) => { const a = Math.abs(v); return a >= 1e8 ? (v / 1e8).toFixed(2) + " 億" : a >= 1e6 ? (v / 1e6).toFixed(2) + "M" : a >= 1e4 ? (v / 1e3).toFixed(1) + "K" : v.toLocaleString(); };
+const signed = (v) => `<span class="delta ${v >= 0 ? "up" : "down"}">${v >= 0 ? "+" : ""}${fmt(v)}</span>`;
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const rows = () => (state.data === "few" ? FULL.slice(-1) : FULL.slice(-state.range));
+
+function renderProfile() {
+  const last = FULL[FULL.length - 1], d7 = FULL[FULL.length - 8], d90 = FULL[FULL.length - 91];
+  $("#kv").innerHTML = `<div><small>訂閱</small><b>${fmt(last.subscriber_count)}</b></div><div><small>觀看</small><b>${fmt(last.view_count)}</b></div><div><small>影片</small><b>${last.video_count.toLocaleString()}</b></div>`;
+  $("#growth").innerHTML = state.data === "few"
+    ? `<span>7 日 —</span><span>90 日 —</span>`
+    : `<span>7 日 ${signed(last.subscriber_count - d7.subscriber_count)}</span><span>90 日 ${signed(last.subscriber_count - d90.subscriber_count)}</span>`;
+}
+
+function renderStats() {
+  const list = rows();
+  const ranges = [[30, "30 天"], [90, "90 天"], [180, "180 天"], [365, "1 年"]];
+  $("#stats").innerHTML = `
+    <div class="range"><div class="seg">${ranges.map(([d, l]) => `<button data-range="${d}" class="${state.range === d ? "on" : ""}">${l}</button>`).join("")}</div></div>
+    ${METRICS.map((m) => {
+      const last = list[list.length - 1][m.key], first = list[0][m.key];
+      return `<div class="card metric">
+        <div class="mhead">
+          <div class="mtitle"><small>${m.label}</small><b>${m.key === "video_count" ? last.toLocaleString() : fmt(last)}</b>${list.length > 1 ? signed(last - first) : ""}</div>
+          ${list.length > 1 ? `<div class="seg">${[["total", "累計"], ["daily", "每日增減"]].map(([k, l]) => `<button data-mode="${m.key}:${k}" class="${state.modes[m.key] === k ? "on" : ""}">${l}</button>`).join("")}</div>` : ""}
+        </div>
+        ${list.length > 1 ? `<div class="chart" id="chart-${m.key}"></div>` : `<div class="empty">資料累積中（目前 ${list.length} 天）</div>`}
+      </div>`;
+    }).join("")}`;
+  if (list.length > 1 && window.google?.visualization) METRICS.forEach((m) => drawChart(m, list));
+}
+
+// Google Charts：累計用 LineChart，每日增減用 ColumnChart；顏色跟著深淺色模式
+function drawChart(metric, list) {
+  const mode = state.modes[metric.key];
+  const table = new google.visualization.DataTable();
+  table.addColumn("date", "日期");
+  table.addColumn("number", metric.label);
+  table.addColumn({ type: "string", role: "tooltip" });
+  list.forEach((r, i) => {
+    if (mode === "daily" && i === 0) return;
+    const value = mode === "daily" ? r[metric.key] - list[i - 1][metric.key] : r[metric.key];
+    const day = r.date.toLocaleDateString("zh-TW", { timeZone: "Asia/Taipei" });
+    table.addRow([r.date, value, `${day}\n${metric.label}${mode === "daily" ? " 增減" : ""}：${value.toLocaleString()}`]);
+  });
+  const text = css("--text-2"), grid = css("--border");
+  const options = {
+    backgroundColor: "transparent",
+    colors: [css("--accent")],
+    legend: "none",
+    chartArea: { left: 56, right: 12, top: 12, bottom: 32 },
+    hAxis: { format: "M/d", textStyle: { color: text, fontSize: 11 }, gridlines: { color: "transparent" }, baselineColor: grid },
+    vAxis: { format: "short", textStyle: { color: text, fontSize: 11 }, gridlines: { color: grid, count: 4 }, minorGridlines: { count: 0 }, baselineColor: grid },
+    lineWidth: 2,
+    bar: { groupWidth: "75%" },
+    tooltip: { textStyle: { fontSize: 12 } },
+  };
+  const el = document.getElementById(`chart-${metric.key}`);
+  const chart = mode === "daily" ? new google.visualization.ColumnChart(el) : new google.visualization.LineChart(el);
+  chart.draw(table, options);
+}
+
+function render() { renderProfile(); renderStats(); }
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  const d = b.dataset;
+  if (d.range) state.range = Number(d.range);
+  else if (d.mode) { const [k, m] = d.mode.split(":"); state.modes[k] = m; }
+  else if (d.data) { state.data = d.data; document.querySelectorAll("[data-data]").forEach((x) => x.classList.toggle("active", x === b)); }
+  else if (d.view) { document.querySelectorAll("[data-view]").forEach((x) => x.classList.toggle("active", x === b)); $("#device").classList.toggle("mobile", d.view === "mobile"); }
+  else if (d.themeOption) { document.querySelectorAll("[data-theme-option]").forEach((x) => x.classList.toggle("active", x === b)); document.documentElement.dataset.theme = d.themeOption; }
+  else return;
+  render();
+});
+$("#notesToggle").addEventListener("change", (e) => ($("#notes").hidden = !e.target.checked));
+// 圖表寬度跟著容器，視窗縮放時重畫
+let resizeTimer;
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 150); });
+
+google.charts.load("current", { packages: ["corechart"], language: "zh-TW" });
+google.charts.setOnLoadCallback(render);
+render();
+</script>
+</body>
+</html>

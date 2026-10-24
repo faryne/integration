@@ -1,14 +1,14 @@
-import { Box, ButtonBase, Chip, Paper, Stack, Typography } from "@mui/material";
+import { Box, ButtonBase, Paper, Stack, Typography } from "@mui/material";
 
 import {
   formatDuration,
-  LIVE_STATUS_LABELS,
   liveStartAt,
   relativeDayName,
   taipeiTime,
 } from "@/components/vtuber/format.ts";
 import { ChannelAvatar } from "@/components/vtuber/ChannelAvatar.tsx";
-import type { VtuberLive, VtuberLiveStatus } from "@/types/vtubers.ts";
+import { LiveStatusChip } from "@/components/vtuber/LiveStatusChip.tsx";
+import type { VtuberLive } from "@/types/vtubers.ts";
 
 interface LiveTimelineProps {
   lives: VtuberLive[];
@@ -16,14 +16,6 @@ interface LiveTimelineProps {
   withChannel?: boolean;
   onPlay: (live: VtuberLive) => void;
 }
-
-const STATUS_COLORS: Record<VtuberLiveStatus, "primary" | "error" | "default"> =
-  {
-    upcoming: "primary",
-    live: "error",
-    ended: "default",
-    cancelled: "default",
-  };
 
 /** 依台北日期分組的直播時間軸；已結束淡化並顯示實際時長，已取消加刪除線 */
 export function LiveTimeline({
@@ -159,16 +151,7 @@ function TimelineRow({
           </Typography>
         )}
       </Box>
-      <Chip
-        size={"small"}
-        variant={
-          live.status === "upcoming" || live.status === "live"
-            ? "filled"
-            : "outlined"
-        }
-        color={STATUS_COLORS[live.status]}
-        label={LIVE_STATUS_LABELS[live.status]}
-      />
+      <LiveStatusChip status={live.status} />
     </ButtonBase>
   );
 }

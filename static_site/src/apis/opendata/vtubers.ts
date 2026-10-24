@@ -1,4 +1,8 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+} from "@tanstack/react-query";
 import axios from "axios";
 
 import type { CommonResponse } from "@/apis/interfaces.ts";
@@ -37,15 +41,17 @@ export function useVtuberChannel(handle: string) {
   });
 }
 
-export function useVtuberChannelStats(handle: string) {
+// 統計分頁：days 上限 365（後端限制）；切期間時保留上一份資料，圖表不會閃一下空白
+export function useVtuberChannelStats(handle: string, days: number) {
   return useQuery({
-    queryKey: ["vtubers", "stats", handle],
+    queryKey: ["vtubers", "stats", handle, days],
     enabled: Boolean(handle),
+    placeholderData: keepPreviousData,
     queryFn: async () =>
       (
         await axios.get<CommonResponse<VtuberStat[]>>(
           `${base}/channels/${encodeURIComponent(handle)}/stats`,
-          { params: { days: 90 } },
+          { params: { days } },
         )
       ).data.data,
   });

@@ -15,7 +15,6 @@ import { useParams } from "react-router-dom";
 import {
   useVtuberChannel,
   useVtuberChannels,
-  useVtuberChannelStats,
   useVtuberLives,
 } from "@/apis/opendata/vtubers.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
@@ -29,6 +28,7 @@ import { LiveCard } from "@/components/vtuber/LiveCard.tsx";
 import { LiveTimeline } from "@/components/vtuber/LiveTimeline.tsx";
 import { TalentPicker } from "@/components/vtuber/TalentPicker.tsx";
 import { TalentProfile } from "@/components/vtuber/TalentProfile.tsx";
+import { TalentStats } from "@/components/vtuber/TalentStats.tsx";
 import { TalentVideos } from "@/components/vtuber/TalentVideos.tsx";
 import { useNow } from "@/components/vtuber/useNow.ts";
 import { useVtuberSnack } from "@/components/vtuber/useVtuberSnack.ts";
@@ -41,14 +41,13 @@ import type {
   VtuberVideo,
 } from "@/types/vtubers.ts";
 
-type TalentTab = "upcoming" | "videos" | "calendar";
+type TalentTab = "upcoming" | "videos" | "calendar" | "stats";
 
-/** /data/vtubers/:handle 藝人頁：左側個人檔案，右側正在直播＋即將直播／所有影片／行事曆 */
+/** /data/vtubers/:handle 藝人頁：左側個人檔案，右側正在直播＋即將直播／所有影片／行事曆／統計 */
 export function VtuberTalent() {
   const { handle = "" } = useParams();
   const channels = useVtuberChannels();
   const detail = useVtuberChannel(handle);
-  const stats = useVtuberChannelStats(handle);
   const channel = detail.data;
   const lives = useVtuberLives(channel?.channel_id, Boolean(channel));
   useTitle(
@@ -67,19 +66,9 @@ export function VtuberTalent() {
     axios.isAxiosError(detail.error) && detail.error.response?.status === 404;
   useEffect(() => {
     const error =
-      (notFound ? null : detail.error) ??
-      channels.error ??
-      stats.error ??
-      lives.error;
+      (notFound ? null : detail.error) ?? channels.error ?? lives.error;
     if (error) showError(error);
-  }, [
-    notFound,
-    detail.error,
-    channels.error,
-    stats.error,
-    lives.error,
-    showError,
-  ]);
+  }, [notFound, detail.error, channels.error, lives.error, showError]);
 
   if (notFound) return <ErrorPage code={404} />;
 
@@ -96,7 +85,7 @@ export function VtuberTalent() {
       title: v.title,
       channelTitle: channel?.title ?? "",
       channelThumbnailUrl: channel?.thumbnail_url ?? "",
-      meta: relativeDayName(published.dateKey) || published.md,
+      when: relativeDayName(published.dateKey) || published.md,
     });
   };
 
@@ -116,11 +105,7 @@ export function VtuberTalent() {
             alignItems: "start",
           }}
         >
-          <TalentProfile
-            channel={channel}
-            stats={stats.data ?? []}
-            onCopied={showCopied}
-          />
+          <TalentProfile channel={channel} onCopied={showCopied} />
 
           <Box sx={{ minWidth: 0 }}>
             {live && (
@@ -145,6 +130,7 @@ export function VtuberTalent() {
               <Tab value={"upcoming"} label={"即將直播"} />
               <Tab value={"videos"} label={"所有影片"} />
               {channel.calendar && <Tab value={"calendar"} label={"行事曆"} />}
+              <Tab value={"stats"} label={"統計"} />
             </Tabs>
 
             {tab === "upcoming" && (
@@ -176,6 +162,9 @@ export function VtuberTalent() {
                 onPlay={playVideo}
                 onError={showError}
               />
+            )}
+            {tab === "stats" && (
+              <TalentStats handle={handle} onError={showError} />
             )}
             {tab === "calendar" && channel.calendar && (
               <Box

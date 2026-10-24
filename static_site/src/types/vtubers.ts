@@ -96,5 +96,7 @@ export interface VtuberPlayingVideo {
   title: string;
   channelTitle: string;
   channelThumbnailUrl: string;
-  meta: string;
+  when: string; // 「10/24 10:00」或存檔的上傳日期
+  status?: VtuberLiveStatus; // 存檔沒有狀態
+  viewers?: number | null; // 直播中的同接人數
 }
