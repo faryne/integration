@@ -2,6 +2,7 @@ import { Box, Button, Paper, Stack, Typography } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useState } from "react";
 
+import { SITE_HEADER_HEIGHT } from "@/components/common/siteLayout/siteTheme.ts";
 import { CalendarSubscribeMenu } from "@/components/vtuber/CalendarSubscribeMenu.tsx";
 import {
   formatCount,
@@ -27,7 +28,12 @@ export function TalentProfile({ channel, onCopied }: TalentProfileProps) {
   return (
     <Paper
       variant={"outlined"}
-      sx={{ overflow: "hidden", position: { md: "sticky" }, top: { md: 16 } }}
+      // 桌機整張黏在 header 下方
+      sx={{
+        overflow: "hidden",
+        position: { md: "sticky" },
+        top: { md: SITE_HEADER_HEIGHT.md + 16 },
+      }}
     >
       {/* 橫幅跟頭像同一個圖床，要用 img 才能設 no-referrer；=w1060 是 YouTube 圖床的縮放參數 */}
       <Box

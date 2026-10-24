@@ -11,6 +11,7 @@ import type {
   VtuberChannelList,
   VtuberLiveList,
   VtuberStat,
+  VtuberVideoDetail,
   VtuberVideoPage,
   VtuberVideoType,
 } from "@/types/vtubers.ts";
@@ -87,6 +88,22 @@ export function useVtuberLives(channelId?: string, enabled = true) {
         await axios.get<CommonResponse<VtuberLiveList>>(`${base}/lives`, {
           params: channelId ? { channel_id: channelId } : {},
         })
+      ).data.data,
+  });
+}
+
+// 影片 modal 的說明：點開時才查，後端快取 6 小時；同一部影片前端也只查一次
+export function useVtuberVideoDetail(videoId: string | undefined) {
+  return useQuery({
+    queryKey: ["vtubers", "video", videoId],
+    enabled: Boolean(videoId),
+    staleTime: Infinity,
+    retry: false,
+    queryFn: async () =>
+      (
+        await axios.get<CommonResponse<VtuberVideoDetail>>(
+          `${base}/videos/${encodeURIComponent(videoId!)}`,
+        )
       ).data.data,
   });
 }

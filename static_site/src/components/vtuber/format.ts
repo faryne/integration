@@ -112,7 +112,3 @@ export function livePlayingVideo(live: VtuberLive): VtuberPlayingVideo {
     viewers: live.concurrent_viewers,
   };
 }
-
-export function youtubeWatchUrl(videoId: string) {
-  return `https://www.youtube.com/watch?v=${videoId}`;
-}
