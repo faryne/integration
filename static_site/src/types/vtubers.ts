@@ -110,5 +110,21 @@ export interface VtuberPlayingVideo {
 // 影片 modal 點開時才查的說明
 export interface VtuberVideoDetail {
   video_id: string;
+  title: string;
   description: string;
+  thumbnail_url: string;
+  published_at: string | null;
+  channel_id: string;
+  channel_title: string;
+  channel_handle: string;
+  channel_thumbnail_url: string;
+  live: VtuberVideoLive | null; // 不是直播（或還沒偵測到）時為 null
+}
+
+export interface VtuberVideoLive {
+  status: VtuberLiveStatus;
+  scheduled_start_at: string | null;
+  actual_start_at: string | null;
+  actual_end_at: string | null;
+  concurrent_viewers: number | null;
 }

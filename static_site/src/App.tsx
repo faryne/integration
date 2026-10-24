@@ -95,14 +95,9 @@ const RatesIndex = lazy(() =>
   })),
 );
 const NCCC = lazy(() => import("@/pages/opendata/nccc.tsx"));
-const VtubersIndex = lazy(() =>
-  import("@/pages/opendata/vtubers.tsx").then((module) => ({
-    default: module.VtubersIndex,
-  })),
-);
-const VtuberTalent = lazy(() =>
-  import("@/pages/opendata/vtuber_talent.tsx").then((module) => ({
-    default: module.VtuberTalent,
+const VtuberSection = lazy(() =>
+  import("@/pages/opendata/vtuber_section.tsx").then((module) => ({
+    default: module.VtuberSection,
   })),
 );
 const StorytellerPublicHome = lazy(
@@ -731,11 +726,8 @@ function App() {
                   <Route path={"/data/tw-stats"} element={<TwStatsIndex />} />
 
                   <Route path={"/data/rates"} element={<RatesIndex />} />
-                  <Route path={"/data/vtubers"} element={<VtubersIndex />} />
-                  <Route
-                    path={"/data/vtubers/:handle"}
-                    element={<VtuberTalent />}
-                  />
+                  {/* 總覽、藝人頁、影片網址都在 VtuberSection 裡分派，影片 modal 才能疊在原頁面上 */}
+                  <Route path={"/data/vtubers/*"} element={<VtuberSection />} />
                   <Route path={"/data/nccc"} element={<NCCC />} />
                   <Route path={"/data/nccc/:token"} element={<NCCC />} />
 

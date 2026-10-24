@@ -101,8 +101,8 @@ func VtuberChannelVideos(ctx fiber.Ctx) error {
 // customCodeVtuberVideoRateLimited 影片說明 API 超過每分鐘次數
 const customCodeVtuberVideoRateLimited output.CustomCode = "429002"
 
-// VtuberVideo returns a video's description, fetched when the video modal opens.
-// @Summary Get VTuber video description
+// VtuberVideo returns a video's title, description, channel and live status; videos outside tracked channels are 404.
+// @Summary Get VTuber video detail
 // @Tags OpenData VTuber
 // @Produce json
 // @Param video_id path string true "YouTube video ID"
@@ -124,7 +124,7 @@ func VtuberVideo(ctx fiber.Ctx) error {
 		return output.ExternalServiceError(err)
 	}
 	if detail == nil {
-		return output.NotFound(fmt.Errorf("video %s not found", videoID))
+		return output.NotFound(errors.New("找不到這部影片"))
 	}
 	return output.Success(detail)
 }

@@ -2,6 +2,7 @@ import type {
   VtuberLive,
   VtuberLiveStatus,
   VtuberPlayingVideo,
+  VtuberVideoDetail,
 } from "@/types/vtubers.ts";
 
 // 時間一律用台北時間顯示（規格），不跟著瀏覽器時區
@@ -126,5 +127,28 @@ export function livePlayingVideo(live: VtuberLive): VtuberPlayingVideo {
     viewers: live.concurrent_viewers,
     startedAt: live.actual_start_at,
     endedAt: live.actual_end_at,
+  };
+}
+
+// 直接打開影片網址時，從影片詳情 API 組 modal 資料：直播看 vtuber_lives 的時間，其他影片顯示上傳日期
+export function detailPlayingVideo(d: VtuberVideoDetail): VtuberPlayingVideo {
+  const live = d.live;
+  const start = live && (live.actual_start_at ?? live.scheduled_start_at);
+  const published = d.published_at ? taipeiTime(d.published_at) : null;
+  const when = start
+    ? `${taipeiTime(start).md} ${taipeiTime(start).hm}`
+    : published
+      ? relativeDayName(published.dateKey) || published.md
+      : "";
+  return {
+    videoId: d.video_id,
+    title: d.title,
+    channelTitle: d.channel_title,
+    channelThumbnailUrl: d.channel_thumbnail_url,
+    when,
+    status: live?.status,
+    viewers: live?.concurrent_viewers,
+    startedAt: live?.actual_start_at,
+    endedAt: live?.actual_end_at,
   };
 }

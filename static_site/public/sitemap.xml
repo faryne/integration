@@ -43,6 +43,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://faryne.dev/data/vtubers</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://faryne.dev/tools/crawler</loc>
     <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>

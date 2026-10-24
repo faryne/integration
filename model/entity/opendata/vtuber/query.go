@@ -94,10 +94,28 @@ type VideoItem struct {
 	PublishedAt  time.Time `json:"published_at"`
 }
 
-// VideoDetail 影片 modal 點開時才查的說明
+// VideoDetail 影片 modal 點開時才查：說明＋直接打開影片網址時組 modal 需要的資料（SEO 也用這份）
 type VideoDetail struct {
-	VideoID     string `json:"video_id"`
-	Description string `json:"description"`
+	VideoID      string     `json:"video_id"`
+	Title        string     `json:"title"`
+	Description  string     `json:"description"`
+	ThumbnailURL string     `json:"thumbnail_url"`
+	PublishedAt  *time.Time `json:"published_at"`
+	ChannelID    string     `json:"channel_id"`
+	// 以下不進快取：頻道資訊從 DB 補，live 每次讀 vtuber_lives，狀態才是即時的
+	ChannelTitle        string     `json:"channel_title"`
+	ChannelHandle       string     `json:"channel_handle"`
+	ChannelThumbnailURL string     `json:"channel_thumbnail_url"`
+	Live                *VideoLive `json:"live"` // 不是直播（或還沒偵測到）時為 null
+}
+
+// VideoLive 影片在 vtuber_lives 的直播狀態；時間一律 RFC 3339 UTC
+type VideoLive struct {
+	Status            string     `json:"status"`
+	ScheduledStartAt  *time.Time `json:"scheduled_start_at"`
+	ActualStartAt     *time.Time `json:"actual_start_at"`
+	ActualEndAt       *time.Time `json:"actual_end_at"`
+	ConcurrentViewers *uint      `json:"concurrent_viewers"`
 }
 
 // VideoPage 一頁影片；NextPageToken 空字串代表沒有下一頁
