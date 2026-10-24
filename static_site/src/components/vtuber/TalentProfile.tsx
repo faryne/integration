@@ -1,6 +1,5 @@
 import { Box, Button, Paper, Stack, Typography } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import { LineChart } from "@mui/x-charts/LineChart";
 import { useState } from "react";
 
 import { CalendarSubscribeMenu } from "@/components/vtuber/CalendarSubscribeMenu.tsx";
@@ -11,20 +10,15 @@ import {
   taipeiTime,
 } from "@/components/vtuber/format.ts";
 import { ChannelAvatar } from "@/components/vtuber/ChannelAvatar.tsx";
-import type { VtuberChannelDetail, VtuberStat } from "@/types/vtubers.ts";
+import type { VtuberChannelDetail } from "@/types/vtubers.ts";
 
 interface TalentProfileProps {
   channel: VtuberChannelDetail;
-  stats: VtuberStat[];
   onCopied: (ok: boolean) => void;
 }
 
-/** 藝人頁左側：橫幅、頭像、頻道說明、數據與 90 天訂閱曲線、外部連結、訂閱個人行事曆 */
-export function TalentProfile({
-  channel,
-  stats,
-  onCopied,
-}: TalentProfileProps) {
+/** 藝人頁左側：橫幅、頭像、頻道說明、數據與 7 日／90 日增減、外部連結、訂閱個人行事曆（曲線在「統計」分頁） */
+export function TalentProfile({ channel, onCopied }: TalentProfileProps) {
   const [descOpen, setDescOpen] = useState(false);
   const since = channel.channel_published_at
     ? taipeiTime(channel.channel_published_at)
@@ -134,28 +128,6 @@ export function TalentProfile({
           <Delta label={"7 日"} value={channel.subscriber_delta_7d} />
           <Delta label={"90 日"} value={channel.subscriber_delta_90d} />
         </Stack>
-        {stats.length > 1 && (
-          <LineChart
-            height={130}
-            margin={{ left: 0, right: 8, top: 12, bottom: 0 }}
-            xAxis={[
-              {
-                scaleType: "point",
-                data: stats.map((s) => s.record_date.slice(5)),
-              },
-            ]}
-            yAxis={[
-              { valueFormatter: (v: number) => formatCount(v), width: 48 },
-            ]}
-            series={[
-              {
-                data: stats.map((s) => s.subscriber_count),
-                showMark: false,
-                valueFormatter: (v) => (v == null ? "" : v.toLocaleString()),
-              },
-            ]}
-          />
-        )}
 
         {since && (
           <Typography variant={"body2"} color={"text.secondary"} sx={{ mt: 1 }}>

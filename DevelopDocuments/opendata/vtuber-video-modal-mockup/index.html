@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>影片 Modal 行動版 Mockup</title>
+<style>
+/* 色票沿用 vtuber-schedule-mockup */
+:root, [data-theme="light"] { --bg:#f3f5f5; --surface:#fff; --surface-2:#eef2f2; --border:#dde4e4; --text:#13201f; --text-2:#5b6b6c; --accent:#0f766e; --accent-soft:#e0f3f1; }
+[data-theme="dark"] { --bg:#0b1014; --surface:#121a20; --surface-2:#18232a; --border:#23313a; --text:#e3f1f2; --text-2:#93a7ab; --accent:#5eead4; --accent-soft:#123432; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:Roboto,"Noto Sans TC",system-ui,sans-serif; background:#cfd5d8; color:#17191c; }
+button { font:inherit; cursor:pointer; color:inherit; }
+.bar { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; justify-content:space-between; padding:10px 16px; background:#1f2430; color:#fff; font-size:13px; }
+.bar span { color:#aab2c0; margin-left:8px; }
+.chips { display:flex; gap:6px; flex-wrap:wrap; }
+.chip { border:1px solid #485063; background:transparent; color:#dfe3ea; padding:4px 10px; border-radius:999px; font-size:12px; }
+.chip.active { background:#fff; color:#1f2430; border-color:#fff; }
+.notes { margin:12px auto 0; max-width:1100px; padding:12px 16px; border-radius:8px; background:#fffbe6; border:1px solid #f1d98a; font-size:13px; line-height:1.7; color:#4a3b00; }
+.notes ol { margin:4px 0 0; padding-left:20px; }
+.stage { display:flex; flex-wrap:wrap; gap:28px; justify-content:center; padding:20px 16px 40px; }
+.col h3 { margin:0 0 8px; font-size:14px; color:#1f2430; text-align:center; }
+.col h3 small { display:block; font-weight:400; color:#5b6b6c; margin-top:2px; }
+/* 手機外框 390px；桌機外框 760px */
+.phone { width:390px; height:720px; border-radius:28px; overflow:hidden; background:rgba(0,0,0,.55); padding:0 12px; display:flex; align-items:center; box-shadow:0 10px 40px rgba(0,0,0,.25); }
+.desk { width:760px; height:620px; border-radius:10px; overflow:hidden; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; box-shadow:0 10px 40px rgba(0,0,0,.25); }
+.dialog { width:100%; background:var(--surface); color:var(--text); border-radius:6px; overflow:hidden; }
+.desk .dialog { width:680px; }
+.player { aspect-ratio:16/9; background:linear-gradient(135deg,#f472b6,#7c3aed); display:grid; place-items:center; color:rgba(255,255,255,.9); font-size:13px; }
+.avatar { flex-shrink:0; width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#fda4af,#f472b6); }
+.avatar.sm { width:22px; height:22px; }
+.btn { border:1px solid var(--accent); color:var(--accent); background:transparent; border-radius:6px; padding:6px 12px; font-size:13px; font-weight:600; letter-spacing:.02em; white-space:nowrap; }
+.btn.text { border-color:transparent; color:var(--text-2); }
+.btn.full { flex:1; padding:9px 12px; }
+
+/* 現況：一列塞頭像＋標題＋兩顆按鈕 */
+.now .info { display:flex; gap:12px; padding:16px; align-items:flex-start; }
+.now .info .txt { flex:1; min-width:0; }
+.now .t { font-weight:700; line-height:1.45; }
+.now .m { font-size:13px; color:var(--text-2); margin-top:4px; }
+.now .acts { display:flex; gap:8px; flex-shrink:0; }
+
+/* 提案：手機上下兩段，資訊一段、操作一段 */
+.new .info { padding:14px 16px 0; }
+.new .t { font-weight:700; font-size:15px; line-height:1.5; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.new .t.open { display:block; }
+.new .more { border:0; background:none; padding:0; margin-top:2px; color:var(--accent); font-size:12.5px; }
+.new .meta { display:flex; align-items:center; gap:8px; margin-top:8px; font-size:13px; color:var(--text-2); min-width:0; }
+.new .meta .ch { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.new .meta .when { flex-shrink:0; white-space:nowrap; }
+.new .meta .tag { flex-shrink:0; font-size:12px; font-weight:600; padding:1px 8px; border-radius:999px; background:var(--accent-soft); color:var(--accent); }
+.new .acts { display:flex; gap:8px; padding:12px 16px 14px; }
+/* 提案的桌機版：寬度夠，維持一列，但標題最多兩行 */
+.desk .new .wrap { display:flex; gap:14px; align-items:flex-start; padding:16px; }
+.desk .new .info { padding:0; flex:1; min-width:0; }
+.desk .new .t { -webkit-line-clamp:2; }
+.desk .new .acts { padding:0; flex-shrink:0; }
+.desk .new .btn.full { flex:none; padding:6px 12px; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div><strong>影片 Modal 行動版 Mockup</strong><span>總覽／藝人頁點直播或影片時開的 modal</span></div>
+  <div class="chips">
+    <button class="chip active" data-title="long">長標題</button>
+    <button class="chip" data-title="short">短標題</button>
+    <span style="width:1px;background:#485063;margin:0 4px"></span>
+    <button class="chip active" data-theme-option="light">淺色</button>
+    <button class="chip" data-theme-option="dark">深色</button>
+  </div>
+</header>
+
+<aside class="notes">
+  <strong>提案重點</strong>
+  <ol>
+    <li><b>手機版改成上下兩段</b>：上面是資訊（標題、頻道・時間・狀態），下面是一整列操作按鈕。標題可以用滿整個寬度，不用跟按鈕搶位置。</li>
+    <li><b>標題最多 3 行</b>，超過才出現「展開」；頻道名太長時單行省略，狀態用小標籤固定在最右邊。</li>
+    <li><b>頭像縮小放進頻道那一行</b>，不再獨佔左邊一欄。</li>
+    <li><b>按鈕變大、平均分</b>：「在 YouTube 開啟」和「關閉」各佔一半，手指比較好點。</li>
+    <li><b>桌機版維持一列</b>（寬度夠），只把標題限制在 2 行，超過一樣可以展開。</li>
+  </ol>
+</aside>
+
+<main class="stage">
+  <div class="col"><h3>現況<small>手機 390px</small></h3><div class="phone"><div class="dialog now" id="now"></div></div></div>
+  <div class="col"><h3>提案<small>手機 390px</small></h3><div class="phone"><div class="dialog new" id="newPhone"></div></div></div>
+  <div class="col"><h3>提案<small>桌機（寬度夠時維持一列）</small></h3><div class="desk"><div class="dialog new" id="newDesk"></div></div></div>
+</main>
+
+<script>
+const TITLES = {
+  long: "【 #ホロ鯖ARK 】2時間制限‼️やりたいこと決めた！できるかな！？？【博衣こより/ホロライブ】",
+  short: "【雑談】おはよう！",
+};
+const CHANNEL = "Koyori ch. 博衣こより - holoX -";
+let titleKey = "long";
+const $ = (s) => document.querySelector(s);
+
+function render() {
+  const t = TITLES[titleKey];
+  $("#now").innerHTML = `<div class="player">YouTube 播放器</div>
+    <div class="info"><span class="avatar"></span>
+      <div class="txt"><div class="t">${t}</div><div class="m">${CHANNEL}・10/24 10:00・待機中</div></div>
+      <div class="acts"><button class="btn">↗ YOUTUBE</button><button class="btn">關閉</button></div></div>`;
+  const info = (clampId) => `<div class="info">
+      <div class="t" id="${clampId}">${t}</div>
+      <button class="more" data-toggle="${clampId}" hidden>展開</button>
+      <div class="meta"><span class="avatar sm"></span><span class="ch">${CHANNEL}</span><span class="when">10/24 10:00</span><span class="tag">待機中</span></div>
+    </div>`;
+  const acts = `<div class="acts"><button class="btn full">↗ 在 YouTube 開啟</button><button class="btn full text">關閉</button></div>`;
+  $("#newPhone").innerHTML = `<div class="player">YouTube 播放器</div>${info("tp")}${acts}`;
+  $("#newDesk").innerHTML = `<div class="player">YouTube 播放器</div><div class="wrap">${info("td")}${acts}</div>`;
+  // 只有真的被截斷才顯示「展開」
+  document.querySelectorAll("[data-toggle]").forEach((b) => {
+    const el = document.getElementById(b.dataset.toggle);
+    b.hidden = el.scrollHeight <= el.clientHeight + 1;
+  });
+}
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.dataset.toggle) {
+    const el = document.getElementById(b.dataset.toggle);
+    el.classList.toggle("open");
+    b.textContent = el.classList.contains("open") ? "收合" : "展開";
+  } else if (b.dataset.title) {
+    titleKey = b.dataset.title;
+    document.querySelectorAll("[data-title]").forEach((x) => x.classList.toggle("active", x === b));
+    render();
+  } else if (b.dataset.themeOption) {
+    document.querySelectorAll("[data-theme-option]").forEach((x) => x.classList.toggle("active", x === b));
+    document.documentElement.dataset.theme = b.dataset.themeOption;
+  }
+});
+render();
+</script>
+</body>
+</html>
