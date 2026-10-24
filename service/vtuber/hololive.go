@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -83,7 +84,7 @@ func SyncTalentChannels(ctx context.Context) (int, error) {
 		}
 		seenID[ch.Id] = struct{}{}
 		row := channelEntity(ch)
-		row.TalentSlug, row.SortOrder, row.UnitSlug, row.IsGraduated = t.Slug, uint(t.Order), optional(units[t.Slug]), graduated[t.Slug]
+		row.OrgSlug, row.TalentSlug, row.SortOrder, row.UnitSlug, row.IsGraduated = vtuberEntity.OrgHololive, t.Slug, uint(t.Order), optional(units[t.Slug]), graduated[t.Slug]
 		rows = append(rows, row)
 		// CDN 檔案拿掉說明避免肥大；DB 已經在上一行留了完整說明
 		stripDescription(ch)
@@ -100,12 +101,14 @@ func SyncTalentChannels(ctx context.Context) (int, error) {
 	return len(rows), nil
 }
 
-// saveChannels 寫入名冊，官網上已經不見的頻道 soft delete
+// saveChannels 寫入名冊，官網上已經不見的 hololive 頻道 soft delete；其他事務所／個人勢的頻道不在這份名冊裡，不能動
 func saveChannels(rows []vtuberEntity.Channel) error {
-	active, err := vtuberRepository.ListActiveChannels()
+	channels, err := vtuberRepository.ListActiveChannels()
 	if err != nil {
 		return err
 	}
+	// 畢業判斷的分母也只算 hololive，不然其他頻道一多，80% 門檻永遠過不了
+	active := slices.DeleteFunc(channels, func(c vtuberEntity.Channel) bool { return c.OrgSlug != vtuberEntity.OrgHololive })
 	if err := vtuberRepository.UpsertChannels(rows, vtuberRepository.ScrapedColumns); err != nil {
 		return err
 	}
@@ -117,7 +120,7 @@ func saveChannels(rows []vtuberEntity.Channel) error {
 	for i, r := range rows {
 		keep[i] = r.ChannelID
 	}
-	removed, err := vtuberRepository.SoftDeleteChannelsExcept(keep)
+	removed, err := vtuberRepository.SoftDeleteChannelsExcept(vtuberEntity.OrgHololive, keep)
 	if removed > 0 {
 		log.Logger().Info("Hololive channels removed from roster", zap.Int64("count", removed))
 	}
