@@ -43,7 +43,7 @@ func VtuberChannel(ctx fiber.Ctx) error {
 		return output.DBError(err)
 	}
 	if detail == nil {
-		return output.NotFound(fmt.Errorf("channel %s not found", handle))
+		return output.NotFound(errors.New("找不到這位藝人"))
 	}
 	return output.Success(detail)
 }

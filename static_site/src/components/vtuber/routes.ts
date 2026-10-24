@@ -7,6 +7,9 @@ import type { VtuberPlayingVideo } from "@/types/vtubers.ts";
 export const TALENT_TABS = ["upcoming", "videos", "calendar", "stats"] as const;
 export type TalentTab = (typeof TALENT_TABS)[number];
 
+// YouTube 影片 ID 固定 11 碼；格式不對就不打 API，直接當成找不到
+export const isVideoId = (value: string) => /^[A-Za-z0-9_-]{11}$/.test(value);
+
 // 網址上的 handle 可能不帶 @，比對前補上
 export const normalizeHandle = (handle: string) =>
   handle.startsWith("@") ? handle : `@${handle}`;

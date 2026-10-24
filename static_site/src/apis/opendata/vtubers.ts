@@ -34,6 +34,10 @@ export function useVtuberChannel(handle: string) {
   return useQuery({
     queryKey: ["vtubers", "channel", handle],
     enabled: Boolean(handle),
+    // 找不到藝人（404）不重試，預設重試 3 次會讓進度條轉 7 秒才出結果
+    retry: (count, error) =>
+      !(axios.isAxiosError(error) && error.response?.status === 404) &&
+      count < 3,
     queryFn: async () =>
       (
         await axios.get<CommonResponse<VtuberChannelDetail>>(

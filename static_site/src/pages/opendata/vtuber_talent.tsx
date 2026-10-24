@@ -41,14 +41,17 @@ import {
   useOpenVideo,
 } from "@/components/vtuber/routes.ts";
 import { useTitle } from "@/helpers/title.tsx";
-import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import type { VtuberLive, VtuberVideo } from "@/types/vtubers.ts";
 
 /**
  * /data/vtubers/:handle/* 藝人頁：左側個人檔案，右側正在直播＋即將直播／所有影片／行事曆／統計。
  * 分頁由網址決定（/videos、/calendar、/stats），重新整理、分享、上一頁都回到同一個分頁；影片網址 /videos/:videoId 停在所有影片
  */
-export function VtuberTalent() {
+export function VtuberTalent({
+  onNotFound,
+}: {
+  onNotFound: (error: unknown) => void; // 找不到藝人：由上層跳 snack 並回總覽
+}) {
   const { handle = "", "*": rest = "" } = useParams();
   const navigate = useNavigate();
   const channels = useVtuberChannels();
@@ -74,7 +77,11 @@ export function VtuberTalent() {
     if (error) showError(error);
   }, [notFound, detail.error, channels.error, lives.error, showError]);
 
-  if (notFound) return <ErrorPage code={404} />;
+  useEffect(() => {
+    if (notFound) onNotFound(detail.error);
+  }, [notFound, detail.error, onNotFound]);
+
+  if (notFound) return null;
 
   // 不認得的分頁、或這位藝人沒有行事曆，都回到預設分頁
   const section = TALENT_TABS.find((t) => t === rest.split("/")[0]);

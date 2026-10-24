@@ -9,7 +9,7 @@ interface SnackState {
   severity: AlertColor;
 }
 
-/** VTuber 頁共用的 snack 狀態：API 錯誤、複製 ICS 網址的結果 */
+/** VTuber 頁共用的 snack 狀態：API 錯誤、找不到影片／藝人、複製 ICS 網址的結果 */
 export function useVtuberSnack() {
   const [snack, setSnack] = useState<SnackState>({
     open: false,
@@ -25,6 +25,10 @@ export function useVtuberSnack() {
       }),
     [],
   );
+  const showErrorMessage = useCallback(
+    (message: string) => setSnack({ open: true, severity: "error", message }),
+    [],
+  );
   const showCopied = useCallback(
     (ok: boolean) =>
       setSnack(
@@ -35,5 +39,5 @@ export function useVtuberSnack() {
     [],
   );
   const close = useCallback(() => setSnack((s) => ({ ...s, open: false })), []);
-  return { snack, showError, showCopied, close };
+  return { snack, showError, showErrorMessage, showCopied, close };
 }
