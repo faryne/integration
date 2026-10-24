@@ -10,6 +10,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useState } from "react";
 
 import { ChannelAvatar } from "@/components/vtuber/ChannelAvatar.tsx";
+import { TimeZoneNote } from "@/components/vtuber/TimeZoneNote.tsx";
 import {
   formatDuration,
   liveStartAt,
@@ -45,14 +46,17 @@ export function PastLives({ days, onPlay }: PastLivesProps) {
 
   return (
     <Box>
-      <Typography
-        fontSize={15}
-        fontWeight={600}
-        color={"text.secondary"}
+      <Stack
+        direction={"row"}
+        spacing={1}
+        alignItems={"baseline"}
         sx={{ mb: 1.25 }}
       >
-        過去的直播
-      </Typography>
+        <Typography fontSize={15} fontWeight={600} color={"text.secondary"}>
+          過去的直播
+        </Typography>
+        <TimeZoneNote />
+      </Stack>
       <Stack spacing={1.25}>
         {visible.map((day) => {
           const expanded = open.has(day.dateKey);
