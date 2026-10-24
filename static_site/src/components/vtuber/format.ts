@@ -31,7 +31,7 @@ const WEEKDAY_INDEX: Record<string, number> = {
 
 export interface TaipeiTime {
   dateKey: string; // 2026-10-23，分組用
-  md: string; // 10/23
+  md: string; // 10/23；不是今年時帶年份 2025/10/23，隔年回頭看才不會誤以為是今年
   hm: string; // 21:30
   weekday: string; // 五
 }
@@ -44,10 +44,18 @@ export function taipeiTime(value: string | Date): TaipeiTime {
   );
   return {
     dateKey: `${parts.year}-${parts.month.padStart(2, "0")}-${parts.day.padStart(2, "0")}`,
-    md: `${parts.month}/${parts.day}`,
+    md:
+      Number(parts.year) === taipeiYear()
+        ? `${parts.month}/${parts.day}`
+        : `${parts.year}/${parts.month}/${parts.day}`,
     hm: `${parts.hour}:${parts.minute}`,
     weekday: WEEKDAYS[WEEKDAY_INDEX[parts.weekday]],
   };
+}
+
+// 台北的今年；台北沒有日光節約時間，固定 UTC+8 直接算，不用每次跑 Intl
+function taipeiYear() {
+  return new Date(Date.now() + 8 * 3_600_000).getUTCFullYear();
 }
 
 // 台北日期字串加減天數：shiftDateKey("2026-10-24", -1) → "2026-10-23"
