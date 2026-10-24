@@ -13,7 +13,7 @@ import (
 
 // ScrapedColumns 週更 job（官網名冊＋YouTube 頻道資訊）upsert 時更新的欄位；順便把畢業又回來的頻道復活
 var ScrapedColumns = []string{
-	"talent_slug", "sort_order", "unit_slug", "is_graduated", "title", "custom_url", "description", "thumbnail_url", "banner_url",
+	"org_slug", "talent_slug", "sort_order", "unit_slug", "is_graduated", "title", "custom_url", "description", "thumbnail_url", "banner_url",
 	"trailer_video_id", "channel_published_at", "subscriber_count", "view_count", "video_count", "is_deleted", "deleted_at", "updated_at",
 }
 
@@ -62,9 +62,9 @@ func UpsertChannels(channels []vtuberEntity.Channel, columns []string) error {
 }
 
 // SoftDeleteChannelsExcept 把不在 keepIDs 裡的在籍頻道標成刪除（畢業），回傳影響筆數
-func SoftDeleteChannelsExcept(keepIDs []string) (int64, error) {
+func SoftDeleteChannelsExcept(orgSlug string, keepIDs []string) (int64, error) {
 	result := client.GetDB(enum.DBWalolita).Model(&vtuberEntity.Channel{}).
-		Where("is_deleted = 0 AND channel_id NOT IN ?", keepIDs).
+		Where("org_slug = ? AND is_deleted = 0 AND channel_id NOT IN ?", orgSlug, keepIDs).
 		Updates(map[string]any{"is_deleted": true, "deleted_at": time.Now()})
 	return result.RowsAffected, result.Error
 }
