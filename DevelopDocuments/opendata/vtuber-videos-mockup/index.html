@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>所有影片分類 Mockup</title>
+<style>
+/* 色票沿用 vtuber-schedule-mockup */
+:root, [data-theme="light"] {
+  --bg:#f3f5f5; --surface:#fff; --surface-2:#eef2f2; --border:#dde4e4; --text:#13201f; --text-2:#5b6b6c;
+  --accent:#0f766e; --accent-soft:#e0f3f1;
+}
+[data-theme="dark"] {
+  --bg:#0b1014; --surface:#121a20; --surface-2:#18232a; --border:#23313a; --text:#e3f1f2; --text-2:#93a7ab;
+  --accent:#5eead4; --accent-soft:#123432;
+}
+* { box-sizing:border-box; }
+body { margin:0; font-family:Roboto,"Noto Sans TC",system-ui,sans-serif; background:#cfd5d8; color:#17191c; }
+button { font:inherit; cursor:pointer; color:inherit; }
+
+/* ===== Mockup 控制列（非產品 UI） ===== */
+.bar { position:sticky; top:0; z-index:50; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; justify-content:space-between; padding:10px 16px; background:#1f2430; color:#fff; font-size:13px; }
+.bar span { color:#aab2c0; margin-left:8px; }
+.ctl { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.chip { border:1px solid #485063; background:transparent; color:#dfe3ea; padding:4px 10px; border-radius:999px; font-size:12px; }
+.chip.active { background:#fff; color:#1f2430; border-color:#fff; }
+.sep { width:1px; height:18px; background:#485063; margin:0 4px; }
+.notes { margin:12px auto 0; max-width:1280px; padding:12px 16px; border-radius:8px; background:#fffbe6; border:1px solid #f1d98a; font-size:13px; line-height:1.7; color:#4a3b00; }
+.notes[hidden] { display:none; }
+.notes ol { margin:4px 0 0; padding-left:20px; }
+.stage { padding:16px; display:flex; justify-content:center; }
+.device { width:100%; max-width:1280px; border-radius:10px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.18); background:var(--bg); color:var(--text); }
+.device.mobile { max-width:390px; }
+
+/* ===== 頁面（簡化：只畫藝人頁的主體） ===== */
+.crumbs { padding:9px 24px; font-size:13px; color:var(--text-2); background:var(--surface); border-bottom:1px solid var(--border); }
+.crumbs b { color:var(--text); }
+.container { padding:20px 24px 32px; }
+.device.mobile .container, .device.mobile .crumbs { padding-left:16px; padding-right:16px; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+.layout { display:grid; grid-template-columns:300px 1fr; gap:20px; align-items:start; }
+.device.mobile .layout { grid-template-columns:1fr; }
+.profile { overflow:hidden; }
+.banner { height:80px; background:linear-gradient(135deg,#be123c,#7c3aed); }
+.pbody { padding:0 16px 16px; margin-top:-40px; }
+.avatar { width:80px; height:80px; border-radius:50%; border:4px solid var(--surface); background:linear-gradient(135deg,#fb7185,#e11d48); }
+.pname { font-size:18px; font-weight:800; margin-top:6px; }
+.phandle { font-size:13px; color:var(--text-2); }
+.device.mobile .profile { display:none; }
+
+/* 分頁 */
+.tabs { display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:14px; overflow-x:auto; }
+.tab { border:0; background:none; padding:9px 14px; font-size:14px; color:var(--text-2); border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; }
+.tab.on { color:var(--accent); border-color:var(--accent); font-weight:600; }
+
+/* 新增：分類切換（全部／直播／影片／短片） */
+.cats { display:flex; gap:8px; margin-bottom:14px; overflow-x:auto; padding-bottom:2px; }
+.cat { flex-shrink:0; border:1px solid var(--border); background:var(--surface); color:var(--text-2); padding:6px 14px; border-radius:999px; font-size:13.5px; }
+.cat.on { background:var(--accent-soft); border-color:var(--accent); color:var(--accent); font-weight:600; }
+
+/* 16:9 影片格（全部／直播／影片） */
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+.device.mobile .grid { grid-template-columns:1fr 1fr; gap:10px; }
+.vid { border:0; background:none; padding:0; text-align:left; }
+.thumb { position:relative; aspect-ratio:16/9; border-radius:8px; display:grid; place-items:center; color:rgba(255,255,255,.85); font-size:12px; }
+.vid .t { font-size:13px; line-height:1.4; margin-top:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.vid .m { font-size:12px; color:var(--text-2); margin-top:2px; }
+/* 9:16 短片格：欄數多一點，標題只留一行 */
+.grid.shorts { grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); }
+.device.mobile .grid.shorts { grid-template-columns:repeat(3,1fr); gap:8px; }
+.grid.shorts .thumb { aspect-ratio:9/16; }
+.grid.shorts .t { -webkit-line-clamp:2; font-size:12.5px; }
+.empty { padding:32px 16px; text-align:center; color:var(--text-2); font-size:14px; }
+.more { text-align:center; padding:16px; color:var(--text-2); font-size:13px; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div><strong>「所有影片」分類 Mockup</strong><span>假資料</span></div>
+  <div class="ctl">
+    <button class="chip active" data-view="desktop">Desktop</button>
+    <button class="chip" data-view="mobile">Mobile 390</button>
+    <span class="sep"></span>
+    <button class="chip active" data-theme-option="light">淺色</button>
+    <button class="chip" data-theme-option="dark">深色</button>
+    <span class="sep"></span>
+    <label style="display:flex;gap:4px;align-items:center;color:#dfe3ea"><input type="checkbox" id="noShorts" /> 模擬沒有短片的頻道</label>
+    <span class="sep"></span>
+    <label style="display:flex;gap:4px;align-items:center;color:#dfe3ea"><input type="checkbox" id="notesToggle" checked /> 說明</label>
+  </div>
+</header>
+
+<aside class="notes" id="notes">
+  <strong>看點</strong>
+  <ol>
+    <li><b>「所有影片」上方加一排分類</b>：全部／直播／影片／短片，預設「全部」。切換就是換讀另一個 YouTube 上傳清單，一樣每頁 1 unit。</li>
+    <li><b>「短片」改成直式 9:16 縮圖</b>，欄數比較多（桌機約 6 欄、手機 3 欄）；其他分類維持 16:9。</li>
+    <li>點任何一部一樣開影片 modal 播放；捲到底自動載入下一頁（mockup 不模擬分頁）。</li>
+    <li><b>某一類沒有影片</b>時（勾控制列「模擬沒有短片的頻道」再點「短片」）顯示「沒有影片」。</li>
+    <li>會員限定不列：非會員點了也播不了。</li>
+    <li>手機版分類列可以橫向滑動；左側個人檔案在手機版會在分頁上方，mockup 省略。</li>
+  </ol>
+</aside>
+
+<main class="stage">
+  <div class="device" id="device">
+    <div class="crumbs">首頁 / 資料 / <b>VTuber 直播行事曆</b></div>
+    <div class="container">
+      <div class="layout">
+        <aside class="card profile">
+          <div class="banner"></div>
+          <div class="pbody">
+            <div class="avatar"></div>
+            <div class="pname">Marine Ch. 宝鐘マリン hololive3期生</div>
+            <div class="phandle">@houshoumarine・3期生</div>
+          </div>
+        </aside>
+        <section>
+          <div class="tabs">
+            <button class="tab">即將直播</button><button class="tab on">所有影片</button><button class="tab">行事曆</button><button class="tab">統計</button>
+          </div>
+          <div id="videos"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ===== 假資料：各分類的影片 =====
+const TITLES = {
+  live: ["【#ホロ甲2026】3年目夏合宿から負けたら終わりの最後", "【マリオカート8DX】視聴者参加型！みんなで走るぞ！", "【歌枠】秋の夜長にしっとりソング", "【雑談】寝る前にゆるっとお話しよ～", "【APEX】ランク回していく！目指せマスター", "【ホラー】絶対に叫ばない配信"],
+  video: ["【3D LIVE】ホロライブメドレー【白上フブキ×森カリオペ】", "【MV】Ahoy!! 我ら宝鐘海賊団☆", "【野外ライブ映像】LuckyFes'26 LIVE Digest", "【歌ってみた】マリンのお宝を見つけて", "【踊ってみた】ちゅちゅちゅ中和"],
+  short: ["とある理由で入店拒否されるマリン船長#shorts", "３期生にたらい回しにされるマリン船長#shorts", "【踊ってみた】可愛く💕ちゅちゅちゅ中和😘#dance", "船長の朝ごはん#shorts", "ホロメンに秘密がバレた#shorts", "50秒でわかる宝鐘海賊団#shorts"],
+};
+const CATS = [["all", "全部"], ["live", "直播"], ["video", "影片"], ["short", "短片"]];
+const state = { cat: "all", noShorts: false };
+const $ = (s) => document.querySelector(s);
+const day = (i) => (i < 2 ? `${i + 1} 天前` : `10/${22 - i}`);
+const thumb = (seed) => `background:linear-gradient(135deg,hsl(${(seed * 47) % 360} 60% 50%),hsl(${(seed * 47 + 70) % 360} 60% 30%))`;
+
+function items(cat) {
+  if (cat === "short" && state.noShorts) return [];
+  if (cat === "all") {
+    // 全部：三類混在一起，依上傳時間排
+    const mix = [];
+    for (let i = 0; i < 6; i++) ["short", "live", "video"].forEach((c, k) => {
+      if (c === "short" && state.noShorts) return;
+      const t = TITLES[c][(i + k) % TITLES[c].length];
+      mix.push({ cat: c, title: t, seed: i * 3 + k });
+    });
+    return mix.slice(0, 12);
+  }
+  return Array.from({ length: cat === "short" ? 12 : 12 }, (_, i) => ({ cat, title: TITLES[cat][i % TITLES[cat].length], seed: i * 5 + cat.length }));
+}
+
+function render() {
+  const list = items(state.cat);
+  const shorts = state.cat === "short";
+  $("#videos").innerHTML = `
+    <div class="cats">${CATS.map(([k, l]) => `<button class="cat ${state.cat === k ? "on" : ""}" data-cat="${k}">${l}</button>`).join("")}</div>
+    ${list.length ? `<div class="grid ${shorts ? "shorts" : ""}">${list.map((v, i) => `
+      <button class="vid"><div class="thumb" style="${thumb(v.seed)}">縮圖</div>
+        <div class="t">${v.title}</div><div class="m">${day(i)}</div></button>`).join("")}</div>
+      <div class="more">（捲到底自動載入下一頁）</div>` : `<div class="card empty">沒有影片</div>`}`;
+}
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  const d = b.dataset;
+  if (d.cat) state.cat = d.cat;
+  else if (d.view) { document.querySelectorAll("[data-view]").forEach((x) => x.classList.toggle("active", x === b)); $("#device").classList.toggle("mobile", d.view === "mobile"); }
+  else if (d.themeOption) { document.querySelectorAll("[data-theme-option]").forEach((x) => x.classList.toggle("active", x === b)); document.documentElement.dataset.theme = d.themeOption; }
+  else return;
+  render();
+});
+$("#noShorts").addEventListener("change", (e) => { state.noShorts = e.target.checked; render(); });
+$("#notesToggle").addEventListener("change", (e) => ($("#notes").hidden = !e.target.checked));
+render();
+</script>
+</body>
+</html>
