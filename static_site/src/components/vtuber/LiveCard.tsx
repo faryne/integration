@@ -82,40 +82,66 @@ export function LiveCard({ live, large = false, onPlay }: LiveCardProps) {
             </Stack>
           )}
         </Box>
-        <Stack
-          direction={"row"}
-          spacing={1.25}
+        <Box
           sx={{
             p: large ? 2 : 1.5,
-            alignItems: large ? "center" : "flex-start",
+            alignSelf: large ? "center" : "auto",
+            minWidth: 0,
           }}
         >
-          {!large && <ChannelAvatar src={live.channel_thumbnail_url} />}
-          <Box sx={{ minWidth: 0 }}>
-            <Typography
-              fontWeight={large ? 700 : 400}
-              fontSize={large ? 16 : 14}
-              sx={{
-                lineHeight: 1.45,
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-              }}
-            >
-              {live.title}
-            </Typography>
+          {/* 標題用滿卡片寬度；一般卡片固定兩行高，同一排的卡片才會對齊 */}
+          <Typography
+            fontWeight={large ? 700 : 400}
+            fontSize={large ? 16 : 14}
+            sx={{
+              lineHeight: 1.45,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              ...(!large && { minHeight: "2.9em" }),
+            }}
+          >
+            {live.title}
+          </Typography>
+          {large ? (
             <Typography
               variant={"body2"}
               color={"text.secondary"}
               sx={{ mt: 0.5 }}
             >
-              {large
-                ? `${taipeiTime(start).hm} 開播・已開播 ${elapsed}`
-                : `${live.channel_title}・已開播 ${elapsed}`}
+              {taipeiTime(start).hm} 開播・已開播 {elapsed}
             </Typography>
-          </Box>
-        </Stack>
+          ) : (
+            // 頭像縮小放進頻道那一行（不再獨佔左邊一欄）；頻道名太長就省略，已開播時間靠右不換行
+            <Stack
+              direction={"row"}
+              spacing={0.75}
+              alignItems={"center"}
+              sx={{ mt: 0.75, minWidth: 0 }}
+            >
+              <ChannelAvatar
+                src={live.channel_thumbnail_url}
+                sx={{ width: 20, height: 20 }}
+              />
+              <Typography
+                variant={"body2"}
+                color={"text.secondary"}
+                noWrap
+                sx={{ minWidth: 0 }}
+              >
+                {live.channel_title}
+              </Typography>
+              <Typography
+                variant={"body2"}
+                color={"text.secondary"}
+                sx={{ flexShrink: 0, ml: "auto !important" }}
+              >
+                已開播 {elapsed}
+              </Typography>
+            </Stack>
+          )}
+        </Box>
       </CardActionArea>
     </Paper>
   );
