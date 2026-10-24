@@ -8,16 +8,27 @@ import {
 } from "@mui/material";
 import { useEffect, useState } from "react";
 
-import { useVtuberChannels, useVtuberLives } from "@/apis/opendata/vtubers.ts";
+import {
+  useVtuberChannels,
+  useVtuberEndedLives,
+  useVtuberLives,
+} from "@/apis/opendata/vtubers.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import {
   ALL_CALENDAR_ID,
   calendarLinks,
 } from "@/components/vtuber/calendar.ts";
 import { CalendarSubscribeMenu } from "@/components/vtuber/CalendarSubscribeMenu.tsx";
-import { fromToday, livePlayingVideo } from "@/components/vtuber/format.ts";
+import {
+  fromToday,
+  liveStartAt,
+  livePlayingVideo,
+  shiftDateKey,
+  taipeiTime,
+} from "@/components/vtuber/format.ts";
 import { LiveCarousel } from "@/components/vtuber/LiveCarousel.tsx";
 import { LiveTimeline } from "@/components/vtuber/LiveTimeline.tsx";
+import { PastLives } from "@/components/vtuber/PastLives.tsx";
 import { TalentPicker } from "@/components/vtuber/TalentPicker.tsx";
 import { useNow } from "@/components/vtuber/useNow.ts";
 import { useVtuberSnack } from "@/components/vtuber/useVtuberSnack.ts";
@@ -25,7 +36,7 @@ import { VideoModal } from "@/components/vtuber/VideoModal.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 import type { VtuberLive, VtuberPlayingVideo } from "@/types/vtubers.ts";
 
-/** /data/vtubers 總覽：藝人選擇列、直播中卡片、依日期分組的即將直播 */
+/** /data/vtubers 總覽：藝人選擇列、直播中輪播、過去的直播（昨天、前天）、依日期分組的即將直播 */
 export function VtubersIndex() {
   useTitle("VTuber 直播行事曆");
   const channels = useVtuberChannels();
@@ -34,11 +45,16 @@ export function VtubersIndex() {
   const [showCancelled, setShowCancelled] = useState(false);
   const [playing, setPlaying] = useState<VtuberPlayingVideo | null>(null);
   const now = useNow();
+  // 過去的直播：查前天 00:00 ～今天 00:00（台北）已結束的
+  const today = taipeiTime(new Date(now)).dateKey;
+  const yesterday = shiftDateKey(today, -1);
+  const dayBefore = shiftDateKey(today, -2);
+  const ended = useVtuberEndedLives(dayBefore, today);
 
   useEffect(() => {
-    const error = channels.error ?? lives.error;
+    const error = channels.error ?? lives.error ?? ended.error;
     if (error) showError(error);
-  }, [channels.error, lives.error, showError]);
+  }, [channels.error, lives.error, ended.error, showError]);
 
   const all = lives.data?.lives ?? [];
   const live = all.filter((l) => l.status === "live");
@@ -46,6 +62,15 @@ export function VtubersIndex() {
     (l) => l.status !== "live" && (showCancelled || l.status !== "cancelled"),
   );
   const play = (l: VtuberLive) => setPlaying(livePlayingVideo(l));
+  // API 回傳跟區間重疊的直播，會混進更早開播、跨日才結束的；依開播日期分到昨天／前天，其餘丟掉
+  const endedOn = (dateKey: string) =>
+    (ended.data?.lives ?? []).filter(
+      (l) => taipeiTime(liveStartAt(l)).dateKey === dateKey,
+    );
+  const pastDays = [
+    { name: "昨天", dateKey: yesterday, lives: endedOn(yesterday) },
+    { name: "前天", dateKey: dayBefore, lives: endedOn(dayBefore) },
+  ];
 
   return (
     <Stack spacing={2.5}>
@@ -83,6 +108,8 @@ export function VtubersIndex() {
           <LiveCarousel lives={live} onPlay={play} />
         </Box>
       )}
+
+      <PastLives days={pastDays} onPlay={play} />
 
       <Box>
         <Stack

@@ -49,6 +49,13 @@ export function taipeiTime(value: string | Date): TaipeiTime {
   };
 }
 
+// 台北日期字串加減天數：shiftDateKey("2026-10-24", -1) → "2026-10-23"
+export function shiftDateKey(dateKey: string, days: number) {
+  return new Date(Date.parse(dateKey) + days * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
 // 今天／明天／後天，其餘回空字串
 export function relativeDayName(dateKey: string, now = new Date()) {
   const today = Date.parse(taipeiTime(now).dateKey);

@@ -107,3 +107,17 @@ export function useVtuberVideoDetail(videoId: string | undefined) {
       ).data.data,
   });
 }
+
+// 總覽「過去的直播」：from／to 是台北日期（YYYY-MM-DD），只要已結束的；存檔不太會變，不用每分鐘重抓
+export function useVtuberEndedLives(from: string, to: string) {
+  return useQuery({
+    queryKey: ["vtubers", "lives", "ended", from, to],
+    staleTime: 5 * 60_000,
+    queryFn: async () =>
+      (
+        await axios.get<CommonResponse<VtuberLiveList>>(`${base}/lives`, {
+          params: { status: "ended", from, to },
+        })
+      ).data.data,
+  });
+}
