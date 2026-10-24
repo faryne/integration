@@ -123,7 +123,7 @@ export function TalentVideos({ handle, onPlay, onError }: TalentVideosProps) {
                   {video.title}
                 </Typography>
                 <Typography variant={"caption"} color={"text.secondary"}>
-                  {relativeDayName(published.dateKey) || published.md}
+                  {relativeDayName(published.dateKey) || published.date}
                 </Typography>
               </ButtonBase>
             );

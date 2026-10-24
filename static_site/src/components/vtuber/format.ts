@@ -31,7 +31,7 @@ const WEEKDAY_INDEX: Record<string, number> = {
 
 export interface TaipeiTime {
   dateKey: string; // 2026-10-23，分組用
-  md: string; // 10/23；不是今年時帶年份 2025/10/23，隔年回頭看才不會誤以為是今年
+  date: string; // 2026/05/01，一律帶年份並補零，隔年回頭看才不會誤以為是今年
   hm: string; // 21:30
   weekday: string; // 五
 }
@@ -44,18 +44,10 @@ export function taipeiTime(value: string | Date): TaipeiTime {
   );
   return {
     dateKey: `${parts.year}-${parts.month.padStart(2, "0")}-${parts.day.padStart(2, "0")}`,
-    md:
-      Number(parts.year) === taipeiYear()
-        ? `${parts.month}/${parts.day}`
-        : `${parts.year}/${parts.month}/${parts.day}`,
+    date: `${parts.year}/${parts.month.padStart(2, "0")}/${parts.day.padStart(2, "0")}`,
     hm: `${parts.hour}:${parts.minute}`,
     weekday: WEEKDAYS[WEEKDAY_INDEX[parts.weekday]],
   };
-}
-
-// 台北的今年；台北沒有日光節約時間，固定 UTC+8 直接算，不用每次跑 Intl
-function taipeiYear() {
-  return new Date(Date.now() + 8 * 3_600_000).getUTCFullYear();
 }
 
 // 台北日期字串加減天數：shiftDateKey("2026-10-24", -1) → "2026-10-23"
@@ -131,7 +123,7 @@ export function livePlayingVideo(live: VtuberLive): VtuberPlayingVideo {
     channelTitle: live.channel_title,
     channelThumbnailUrl: live.channel_thumbnail_url,
     channelHandle: live.channel_handle,
-    when: `${start.md} ${start.hm}`,
+    when: `${start.date} ${start.hm}`,
     status: live.status,
     viewers: live.concurrent_viewers,
     startedAt: live.actual_start_at,
@@ -145,9 +137,9 @@ export function detailPlayingVideo(d: VtuberVideoDetail): VtuberPlayingVideo {
   const start = live && (live.actual_start_at ?? live.scheduled_start_at);
   const published = d.published_at ? taipeiTime(d.published_at) : null;
   const when = start
-    ? `${taipeiTime(start).md} ${taipeiTime(start).hm}`
+    ? `${taipeiTime(start).date} ${taipeiTime(start).hm}`
     : published
-      ? relativeDayName(published.dateKey) || published.md
+      ? relativeDayName(published.dateKey) || published.date
       : "";
   return {
     videoId: d.video_id,

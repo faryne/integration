@@ -113,7 +113,7 @@ export function VtuberTalent({
       channelTitle: channel?.title ?? "",
       channelThumbnailUrl: channel?.thumbnail_url ?? "",
       channelHandle: channel?.handle ?? handle,
-      when: relativeDayName(published.dateKey) || published.md,
+      when: relativeDayName(published.dateKey) || published.date,
       vertical,
     });
   };

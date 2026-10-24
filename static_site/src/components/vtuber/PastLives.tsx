@@ -88,7 +88,7 @@ export function PastLives({ days, onPlay }: PastLivesProps) {
                 >
                   {day.name}
                 </Typography>
-                {first.md}（{first.weekday}）
+                {first.date}（{first.weekday}）
                 <Typography
                   component={"span"}
                   fontSize={12.5}
