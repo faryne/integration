@@ -78,7 +78,7 @@ func applyStorytellerAuthorMeta(meta *modelSNS.Meta, matches []string) {
 	if strings.HasPrefix(tab, "favorite-") && !author.ShowFavorites {
 		tab = ""
 		meta.Canonical = absoluteURL(steamloomOrigin, "/user/"+author.PenName)
-		meta.OpenGraphURL, meta.RedirectURL = meta.Canonical, meta.Canonical
+		meta.RedirectURL = meta.Canonical
 	}
 	applyStorytellerCreatorCard(meta, author, tab)
 }
@@ -97,7 +97,7 @@ func applyStorytellerPostMeta(meta *modelSNS.Meta, postID string) {
 	meta.Type, meta.SchemaType, meta.AuthorName = "article", "SocialMediaPosting", post.Author.PenName
 	// canonical 指回目前筆名的網址，舊筆名連結不會被當成另一頁收錄（absoluteURL 會負責 escape）
 	canonical := absoluteURL(steamloomOrigin, "/user/"+post.Author.PenName+"/posts/"+postID)
-	meta.Canonical, meta.OpenGraphURL, meta.RedirectURL = canonical, canonical, canonical
+	meta.Canonical, meta.RedirectURL = canonical, canonical
 	// 附帶的作品讀者看得到、又不是限制級，就用那個作品的圖卡（跟分享作品本身同一張）
 	if post.WorkPath == "" {
 		return

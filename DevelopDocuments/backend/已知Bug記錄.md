@@ -39,5 +39,6 @@
   - `normalizeFrontendPath` 只做一次 `TrimPrefix("/sns")`，對沒有開頭斜線的 `sns/...` 不起作用，路徑變成 `/sns/data/...`，比對不到任何頁面，回通用卡，`og:url` 也變成 `/sns/sns/...`。
   - 另外，路徑沒有先解碼：有些平台會把 `@` 送成 `%40`，`/data/vtubers/%40name` 查不到藝人回 404，影片頁的 `og:url` 則被編碼成 `%2540`。
 - **解法**：`normalizeFrontendPath` 先 `url.PathUnescape`，`path.Clean` 之後把開頭的 `/sns` 段全部剝掉（只比對整段 `/sns`、`/sns/…`，`/snsfoo` 不受影響）。重抓 `/sns/sns/<path>` 會拿到跟原網址相同的 meta，`og:url` 指回 `/sns/<path>` 本身，平台的重新導向鏈就此停止。測試在 `service/sns/meta_test.go` 的 `TestNormalizeFrontendPath`、`TestBuildMetaRefetchViaOpenGraphURL`。
-- **仍未處理**：主站 `og:url` 要不要比照 SteamLoom 改成 canonical（讓讚數與分享數歸到真正的網址），尚未決定；這次只修讓 meta 正確。
-- **狀態**：已修（branch `fix/sns-path-normalize`）。部署後要在 FB 分享偵錯工具按「再次抓取」更新快取。
+- **後續（同日）**：`og:url` 全面改成等於 canonical（比照 SteamLoom），拿掉 `Meta.OpenGraphURL` 欄位、模板直接輸出 `.Canonical`，平台第一次抓就停，讚數與分享數也歸到真正的網址（舊的 `/sns/...` 累積數會歸零）。galgame.tv 沒走 SNS 渲染不受影響；neko.maid.tw 的 og:url 從 `faryne.dev/sns/nekomaid/...` 變成 `faryne.dev/nekomaid/...`。`/sns/*` 路由仍保留給 nginx 轉爬蟲用，剝掉重複 sns 的處理也保留，給平台快取裡的舊 og:url 重抓用。branch `fix/sns-og-url-canonical`。
+- **測試環境注意**：`service/sns/meta_test.go` 有多個測試把網域寫死成 `https://beta.faryne.dev`，本機 `.env` 的 `FRONTEND_PATH` 不同時會失敗；ETF 相關測試要連 DB，沒有 DB 會 panic、中斷後面的測試。這些在修這筆之前就存在，尚未處理。
+- **狀態**：已修（branch `fix/sns-path-normalize`、`fix/sns-og-url-canonical`）。部署後要在 FB 分享偵錯工具按「再次抓取」更新快取。

@@ -17,9 +17,6 @@ func TestBuildMetaStaticRoute(t *testing.T) {
 	if meta.Canonical != "https://beta.faryne.dev/data/rates?base=TWD" {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
 	}
-	if meta.OpenGraphURL != "https://beta.faryne.dev/sns/data/rates?base=TWD" {
-		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
-	}
 	if meta.RedirectURL != meta.Canonical {
 		t.Fatalf("redirect URL should match canonical")
 	}
@@ -32,13 +29,9 @@ func TestBuildMetaStripsTrackingQuery(t *testing.T) {
 	})
 
 	expectedCanonical := "https://beta.faryne.dev/data/etf/twse/0050?category=BOND&strategy=high-win-rate"
-	expectedOpenGraphURL := "https://beta.faryne.dev/sns/data/etf/twse/0050?category=BOND&strategy=high-win-rate"
 
 	if meta.Canonical != expectedCanonical {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
-	}
-	if meta.OpenGraphURL != expectedOpenGraphURL {
-		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
 	}
 	if meta.RedirectURL != expectedCanonical {
 		t.Fatalf("unexpected redirect URL: %s", meta.RedirectURL)
@@ -106,9 +99,6 @@ func TestBuildMetaNCCCRoute(t *testing.T) {
 	if meta.Canonical != origin+"/data/nccc" {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
 	}
-	if meta.OpenGraphURL != origin+"/sns/data/nccc" {
-		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
-	}
 }
 
 func TestBuildMetaDynamicNCCCRoute(t *testing.T) {
@@ -130,12 +120,8 @@ func TestBuildMetaDynamicNCCCRoute(t *testing.T) {
 	}
 	origin := frontendOrigin()
 	expectedCanonical := origin + "/data/nccc/" + indexes[0].Token + "?f=abc&yearMonths=113%E5%B9%B401%E6%9C%88"
-	expectedOpenGraphURL := origin + "/sns/data/nccc/" + indexes[0].Token + "?f=abc&yearMonths=113%E5%B9%B401%E6%9C%88"
 	if meta.Canonical != expectedCanonical {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
-	}
-	if meta.OpenGraphURL != expectedOpenGraphURL {
-		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
 	}
 }
 
@@ -162,9 +148,6 @@ func TestBuildMetaNekomaidPrefixRoute(t *testing.T) {
 	if meta.Canonical != "https://beta.faryne.dev/nekomaid/pixiv/123/456" {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
 	}
-	if meta.OpenGraphURL != "https://beta.faryne.dev/sns/nekomaid/pixiv/123/456" {
-		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
-	}
 }
 
 func TestBuildMetaLegacyNekomaidSiteRoute(t *testing.T) {
@@ -178,9 +161,6 @@ func TestBuildMetaLegacyNekomaidSiteRoute(t *testing.T) {
 	}
 	if meta.RedirectURL != meta.Canonical {
 		t.Fatalf("unexpected redirect URL: %s", meta.RedirectURL)
-	}
-	if meta.OpenGraphURL != "https://beta.faryne.dev/sns/nekomaid/pixiv" {
-		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
 	}
 }
 
@@ -197,9 +177,6 @@ func TestBuildMetaLegacyNekomaidArtworkRoute(t *testing.T) {
 
 	if meta.Canonical != "https://beta.faryne.dev/nekomaid/pixiv/123/456" {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
-	}
-	if meta.OpenGraphURL != "https://beta.faryne.dev/sns/nekomaid/pixiv/123/456" {
-		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
 	}
 }
 
@@ -313,7 +290,7 @@ func TestRenderHTMLRedirectScriptUsesAbsoluteURL(t *testing.T) {
 	}
 }
 
-// 平台照 og:url（/sns/...）重抓時 nginx 會再補一層 sns，@ 也可能被編碼成 %40，都要還原成同一個前端路徑
+// 舊的 og:url 指向 /sns/...，平台照它重抓（含已經快取的舊預覽）時 nginx 會再補一層 sns，@ 也可能被編碼成 %40，都要還原成同一個前端路徑
 func TestNormalizeFrontendPath(t *testing.T) {
 	cases := map[string]string{
 		"data/rates":                          "/data/rates",
@@ -338,7 +315,7 @@ func TestBuildMetaRefetchViaOpenGraphURL(t *testing.T) {
 	if !strings.Contains(meta.Title, "匯率") {
 		t.Fatalf("refetch through og:url should keep page meta, got %q", meta.Title)
 	}
-	if meta.OpenGraphURL != frontendOrigin()+"/sns/data/rates" {
-		t.Fatalf("og:url should stay single-prefixed, got %s", meta.OpenGraphURL)
+	if meta.Canonical != frontendOrigin()+"/data/rates" {
+		t.Fatalf("canonical (og:url) should point to the real page, got %s", meta.Canonical)
 	}
 }

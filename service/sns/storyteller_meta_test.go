@@ -157,9 +157,6 @@ func TestStorytellerMetaCanonicalUsesSteamLoomEvenOnFaryneDev(t *testing.T) {
 	if meta.Canonical != "https://steamloom.works/work/abc-x/story/s1" {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
 	}
-	if meta.OpenGraphURL != meta.Canonical {
-		t.Fatalf("og:url should equal canonical on SteamLoom, got %s", meta.OpenGraphURL)
-	}
 	if meta.SiteURL != steamloomOrigin || meta.SchemaType != "CreativeWork" || meta.AuthorName != "織夢者" {
 		t.Fatalf("unexpected JSON-LD fields: %+v", meta)
 	}
@@ -203,7 +200,7 @@ func TestStorytellerAuthorPostMeta(t *testing.T) {
 	// 網址上是舊筆名：canonical 換成目前的筆名
 	meta := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/user/old-name/posts/p1", Host: "steamloom.works"})
 	if meta.Title != "織夢者 的動態 | SteamLoom" || meta.Description != "新章上線［劇透］" || meta.Image != brand ||
-		meta.Canonical != "https://steamloom.works/user/%E7%B9%94%E5%A4%A2%E8%80%85/posts/p1" || meta.OpenGraphURL != meta.Canonical ||
+		meta.Canonical != "https://steamloom.works/user/%E7%B9%94%E5%A4%A2%E8%80%85/posts/p1" ||
 		meta.SchemaType != "SocialMediaPosting" || meta.AuthorName != "織夢者" {
 		t.Fatalf("unexpected post meta: %+v", meta)
 	}

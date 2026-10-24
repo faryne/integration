@@ -56,7 +56,6 @@ func applyVtuberVideoMeta(meta *modelSNS.Meta, matches []string) {
 	if !strings.EqualFold(normalizeVtuberHandle(matches[1]), video.ChannelHandle) {
 		target := "/data/vtubers/" + video.ChannelHandle + "/videos/" + video.VideoID
 		meta.Canonical = absoluteURL(frontendOrigin(), target)
-		meta.OpenGraphURL = absoluteURL(frontendOrigin(), "/sns"+target)
 		meta.RedirectURL = meta.Canonical
 	}
 	meta.Type = "video.other"
