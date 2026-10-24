@@ -74,10 +74,17 @@ export function liveStartAt(live: VtuberLive) {
   return live.actual_start_at ?? live.scheduled_start_at ?? live.updated_at;
 }
 
-// 毫秒 → 1:05
+// 毫秒 → 「9 分鐘」「1 小時 23 分」「1 天 2 小時」
+// 不用「1:05」：會被當成分秒，連播一天以上還會變成「26:05」這種像時鐘的數字
 export function formatDuration(ms: number) {
   const minutes = Math.max(0, Math.round(ms / 60_000));
-  return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`;
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  if (minutes < 1) return "不到 1 分鐘";
+  if (hours < 1) return `${minutes} 分鐘`;
+  // 超過一天只顯示到小時，分鐘在這個尺度已經不重要
+  if (days >= 1) return `${days} 天${hours % 24 ? ` ${hours % 24} 小時` : ""}`;
+  return `${hours} 小時${minutes % 60 ? ` ${minutes % 60} 分` : ""}`;
 }
 
 // 訂閱數、觀看數：2.54M、31.5K、6.52 億
