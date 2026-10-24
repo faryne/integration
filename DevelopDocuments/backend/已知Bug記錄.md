@@ -30,3 +30,14 @@
   - `CrawlRange`／`Backfill` 共用 `crawlMonths`：單月失敗只記 log 並繼續，最後用 `errors.Join` 一起回報。
 - **仍未處理**：Worker 落在境外 colo 的問題本身沒解，prod 若從會被繞到境外 colo 的網路打 proxy，一樣會卡住。要根治只能在 Worker 端處理（例如偵測 `request.cf.colo` 不在台灣就快速失敗，或改用固定在台灣的出口）。
 - **狀態**：已修（branch `fix/taipower-neighbor-proxy-timeout`）。
+
+## 分享預覽：平台照 og:url 重抓後拿到通用卡（2026-10-24，已修）
+
+- **現象**：用 Facebook 分享偵錯工具測 `https://faryne.dev/data/vtubers/@moricalliope/videos/V9Evq2RBJ2A`，第一次抓的網址回應正確，但 FB 照 `og:url` 重抓，重新導向路徑變成「輸入網址 → `/sns/data/...` → `/sns/sns/data/...`」，最後的預覽是站台通用卡（標題 `ha2.tw / faryne.dev`）。不是 vtuber 專屬：ETF（`/sns/data/etf/twse/0050`）、匯率等主站頁面也一樣。SteamLoom 的 `og:url` 本來就指向 canonical，不受影響。
+- **Root cause**：
+  - 主站的 `og:url` 指向 `/sns/<path>`。爬蟲照它重抓時，nginx 依 UA 又把請求轉給後端，多補一層 `/sns`，handler 的 `Params("*")` 拿到 `sns/data/...`（沒有開頭斜線）。
+  - `normalizeFrontendPath` 只做一次 `TrimPrefix("/sns")`，對沒有開頭斜線的 `sns/...` 不起作用，路徑變成 `/sns/data/...`，比對不到任何頁面，回通用卡，`og:url` 也變成 `/sns/sns/...`。
+  - 另外，路徑沒有先解碼：有些平台會把 `@` 送成 `%40`，`/data/vtubers/%40name` 查不到藝人回 404，影片頁的 `og:url` 則被編碼成 `%2540`。
+- **解法**：`normalizeFrontendPath` 先 `url.PathUnescape`，`path.Clean` 之後把開頭的 `/sns` 段全部剝掉（只比對整段 `/sns`、`/sns/…`，`/snsfoo` 不受影響）。重抓 `/sns/sns/<path>` 會拿到跟原網址相同的 meta，`og:url` 指回 `/sns/<path>` 本身，平台的重新導向鏈就此停止。測試在 `service/sns/meta_test.go` 的 `TestNormalizeFrontendPath`、`TestBuildMetaRefetchViaOpenGraphURL`。
+- **仍未處理**：主站 `og:url` 要不要比照 SteamLoom 改成 canonical（讓讚數與分享數歸到真正的網址），尚未決定；這次只修讓 meta 正確。
+- **狀態**：已修（branch `fix/sns-path-normalize`）。部署後要在 FB 分享偵錯工具按「再次抓取」更新快取。

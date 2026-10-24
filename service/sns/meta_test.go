@@ -312,3 +312,33 @@ func TestRenderHTMLRedirectScriptUsesAbsoluteURL(t *testing.T) {
 		t.Fatalf("redirect script must not encode quotes into the URL")
 	}
 }
+
+// 平台照 og:url（/sns/...）重抓時 nginx 會再補一層 sns，@ 也可能被編碼成 %40，都要還原成同一個前端路徑
+func TestNormalizeFrontendPath(t *testing.T) {
+	cases := map[string]string{
+		"data/rates":                          "/data/rates",
+		"sns/data/rates":                      "/data/rates",
+		"/sns/sns/data/rates":                 "/data/rates",
+		"sns":                                 "/",
+		"data/vtubers/%40moricalliope":        "/data/vtubers/@moricalliope",
+		"sns/data/vtubers/%40moricalliope":    "/data/vtubers/@moricalliope",
+		"snsfoo/bar":                          "/snsfoo/bar",
+		"%2F%2Fevil.example.com":              "/",
+		"data/vtubers/@a/videos/../../../etc": "/data/etc",
+	}
+	for input, want := range cases {
+		if got := normalizeFrontendPath(input); got != want {
+			t.Errorf("normalizeFrontendPath(%q) = %q, want %q", input, got, want)
+		}
+	}
+}
+
+func TestBuildMetaRefetchViaOpenGraphURL(t *testing.T) {
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "sns/data/rates"})
+	if !strings.Contains(meta.Title, "匯率") {
+		t.Fatalf("refetch through og:url should keep page meta, got %q", meta.Title)
+	}
+	if meta.OpenGraphURL != frontendOrigin()+"/sns/data/rates" {
+		t.Fatalf("og:url should stay single-prefixed, got %s", meta.OpenGraphURL)
+	}
+}

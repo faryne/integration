@@ -470,10 +470,16 @@ func isSteamLoomHost(host string) bool {
 	return host == "steamloom.works" || host == "www.steamloom.works"
 }
 
+// normalizeFrontendPath 把爬蟲請求的路徑還原成前端路徑：
+//   - 先解碼：有些平台會把 @ 送成 %40（/data/vtubers/%40name），不解碼就比對不到
+//   - 開頭的 sns 段全部剝掉：og:url 指向 /sns/...，平台照它重抓時 nginx 又會再補一層 /sns，
+//     Params("*") 拿到的是 sns/data/...（沒有開頭斜線），只剝一次會變成比對不到任何頁面的通用卡
 func normalizeFrontendPath(value string) string {
 	value = strings.TrimSpace(value)
+	if unescaped, err := url.PathUnescape(value); err == nil {
+		value = unescaped
+	}
 	value = strings.ReplaceAll(value, "\\", "/")
-	value = strings.TrimPrefix(value, "/sns")
 	if value == "" || strings.Contains(value, "://") || strings.HasPrefix(value, "//") {
 		return "/"
 	}
@@ -481,7 +487,10 @@ func normalizeFrontendPath(value string) string {
 		value = "/" + value
 	}
 	cleaned := path.Clean(value)
-	if cleaned == "." || cleaned == "/." {
+	for cleaned == "/sns" || strings.HasPrefix(cleaned, "/sns/") {
+		cleaned = strings.TrimPrefix(cleaned, "/sns")
+	}
+	if cleaned == "" || cleaned == "." || cleaned == "/." {
 		return "/"
 	}
 	return cleaned
