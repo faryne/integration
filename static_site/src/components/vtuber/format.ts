@@ -124,5 +124,7 @@ export function livePlayingVideo(live: VtuberLive): VtuberPlayingVideo {
     when: `${start.md} ${start.hm}`,
     status: live.status,
     viewers: live.concurrent_viewers,
+    startedAt: live.actual_start_at,
+    endedAt: live.actual_end_at,
   };
 }

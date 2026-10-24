@@ -6,6 +6,8 @@ import { useVtuberVideoDetail } from "@/apis/opendata/vtubers.ts";
 import { YouTubeDialog } from "@/components/common/YouTubeDialog.tsx";
 import { ChannelAvatar } from "@/components/vtuber/ChannelAvatar.tsx";
 import { LiveStatusChip } from "@/components/vtuber/LiveStatusChip.tsx";
+import { formatDuration } from "@/components/vtuber/format.ts";
+import { useNow } from "@/components/vtuber/useNow.ts";
 import type { VtuberPlayingVideo } from "@/types/vtubers.ts";
 
 interface VideoModalProps {
@@ -22,8 +24,10 @@ export function VideoModal({ video, onClose }: VideoModalProps) {
   }, [video]);
   const current = video ?? last;
   const detail = useVtuberVideoDetail(video?.videoId);
+  const now = useNow();
 
   if (!current) return null;
+  const duration = playingDuration(current, now);
   return (
     <YouTubeDialog
       open={Boolean(video)}
@@ -34,47 +38,64 @@ export function VideoModal({ video, onClose }: VideoModalProps) {
       descriptionLoading={detail.isLoading}
       onClose={onClose}
       meta={
-        // 頻道名太長就省略，時間、同接、狀態固定不換行
-        <Stack
-          direction={"row"}
-          spacing={1}
-          alignItems={"center"}
-          sx={{ minWidth: 0 }}
-        >
-          <ChannelAvatar
-            src={current.channelThumbnailUrl}
-            sx={{ width: 22, height: 22 }}
-          />
-          <Typography
-            variant={"body2"}
-            color={"text.secondary"}
-            noWrap
+        // 頻道一行（名稱太長就省略）；時間・時長・同接・狀態另起一行，手機上才不會把頻道名擠掉
+        <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+          <Stack
+            direction={"row"}
+            spacing={1}
+            alignItems={"center"}
             sx={{ minWidth: 0 }}
           >
-            {current.channelTitle}
-          </Typography>
-          <Typography
-            variant={"body2"}
-            color={"text.secondary"}
-            sx={{ flexShrink: 0 }}
-          >
-            {current.when}
-          </Typography>
-          {current.status === "live" && current.viewers != null && (
-            <Stack
-              direction={"row"}
-              alignItems={"center"}
-              sx={{ flexShrink: 0, color: "text.secondary" }}
+            <ChannelAvatar
+              src={current.channelThumbnailUrl}
+              sx={{ width: 22, height: 22 }}
+            />
+            <Typography
+              variant={"body2"}
+              color={"text.secondary"}
+              noWrap
+              sx={{ minWidth: 0 }}
             >
-              <PersonIcon sx={{ fontSize: 16 }} />
-              <Typography variant={"body2"}>
-                {current.viewers.toLocaleString()}
-              </Typography>
-            </Stack>
-          )}
-          {current.status && <LiveStatusChip status={current.status} />}
+              {current.channelTitle}
+            </Typography>
+          </Stack>
+          <Stack
+            direction={"row"}
+            spacing={1}
+            alignItems={"center"}
+            flexWrap={"wrap"}
+            useFlexGap
+          >
+            <Typography variant={"body2"} color={"text.secondary"}>
+              {current.when}
+              {duration && `・${duration}`}
+            </Typography>
+            {current.status === "live" && current.viewers != null && (
+              <Stack
+                direction={"row"}
+                alignItems={"center"}
+                sx={{ color: "text.secondary" }}
+              >
+                <PersonIcon sx={{ fontSize: 16 }} />
+                <Typography variant={"body2"}>
+                  {current.viewers.toLocaleString()}
+                </Typography>
+              </Stack>
+            )}
+            {current.status && <LiveStatusChip status={current.status} />}
+          </Stack>
         </Stack>
       }
     />
   );
+}
+
+// 直播中：已開播多久；已結束：直播了多久；存檔與待機中沒有實際開播時間就不顯示
+function playingDuration(v: VtuberPlayingVideo, now: number) {
+  if (!v.startedAt) return null;
+  const start = Date.parse(v.startedAt);
+  if (v.status === "live") return `已開播 ${formatDuration(now - start)}`;
+  if (v.status === "ended" && v.endedAt)
+    return `直播 ${formatDuration(Date.parse(v.endedAt) - start)}`;
+  return null;
 }

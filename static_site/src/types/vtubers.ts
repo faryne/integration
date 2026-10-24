@@ -102,6 +102,8 @@ export interface VtuberPlayingVideo {
   when: string; // 「10/24 10:00」或存檔的上傳日期
   status?: VtuberLiveStatus; // 存檔沒有狀態
   viewers?: number | null; // 直播中的同接人數
+  startedAt?: string | null; // 實際開播時間：直播中算「已開播」、已結束算「直播」時長
+  endedAt?: string | null;
   vertical?: boolean; // 短片：直式播放器
 }
 
