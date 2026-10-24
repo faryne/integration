@@ -98,6 +98,37 @@ func VtuberChannelVideos(ctx fiber.Ctx) error {
 	return output.Success(page)
 }
 
+// customCodeVtuberVideoRateLimited 影片說明 API 超過每分鐘次數
+const customCodeVtuberVideoRateLimited output.CustomCode = "429002"
+
+// VtuberVideo returns a video's description, fetched when the video modal opens.
+// @Summary Get VTuber video description
+// @Tags OpenData VTuber
+// @Produce json
+// @Param video_id path string true "YouTube video ID"
+// @Success 200 {object} output.CommonOutput
+// @Failure 400 {object} output.CommonOutput
+// @Failure 404 {object} output.CommonOutput
+// @Failure 429 {object} output.CommonOutput
+// @Router /opendata/vtubers/videos/{video_id} [get]
+func VtuberVideo(ctx fiber.Ctx) error {
+	if !vtuberService.AllowVideoDetailRequest(ctx.IP()) {
+		return output.New(fiber.StatusTooManyRequests, customCodeVtuberVideoRateLimited, nil, "查詢太頻繁了，請稍後再試")
+	}
+	videoID := ctx.Params("video_id")
+	detail, err := vtuberService.GetVideoDetail(ctx.Context(), videoID)
+	if errors.Is(err, vtuberService.ErrInvalidRequest) {
+		return output.BadRequest(err)
+	}
+	if err != nil {
+		return output.ExternalServiceError(err)
+	}
+	if detail == nil {
+		return output.NotFound(fmt.Errorf("video %s not found", videoID))
+	}
+	return output.Success(detail)
+}
+
 // VtuberLives lists live streams within a time range.
 // @Summary List VTuber live streams
 // @Tags OpenData VTuber

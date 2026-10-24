@@ -9,7 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import {
@@ -18,6 +18,7 @@ import {
   useVtuberLives,
 } from "@/apis/opendata/vtubers.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { SITE_HEADER_HEIGHT } from "@/components/common/siteLayout/siteTheme.ts";
 import {
   fromToday,
   livePlayingVideo,
@@ -59,6 +60,8 @@ export function VtuberTalent() {
   const [showCancelled, setShowCancelled] = useState(false);
   const [playing, setPlaying] = useState<VtuberPlayingVideo | null>(null);
   const now = useNow();
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // 換藝人時回到第一個分頁
   useEffect(() => setTab("upcoming"), [handle]);
@@ -78,7 +81,17 @@ export function VtuberTalent() {
     (l) => l.status !== "live" && (showCancelled || l.status !== "cancelled"),
   );
   const playLive = (l: VtuberLive) => setPlaying(livePlayingVideo(l));
-  const playVideo = (v: VtuberVideo) => {
+  // 分頁列已經黏在 header 下方（代表已經往下捲）時，切換分頁順便捲回內容頂端，不用再爬回去
+  const changeTab = (value: TalentTab) => {
+    setTab(value);
+    const tabs = tabsRef.current;
+    const header = document.querySelector("header")?.offsetHeight ?? 0;
+    if (tabs && tabs.getBoundingClientRect().top <= header + 1) {
+      const contentTop = contentRef.current?.getBoundingClientRect().top ?? 0;
+      window.scrollTo({ top: window.scrollY + contentTop - header });
+    }
+  };
+  const playVideo = (v: VtuberVideo, vertical: boolean) => {
     const published = taipeiTime(v.published_at);
     setPlaying({
       videoId: v.video_id,
@@ -86,6 +99,7 @@ export function VtuberTalent() {
       channelTitle: channel?.title ?? "",
       channelThumbnailUrl: channel?.thumbnail_url ?? "",
       when: relativeDayName(published.dateKey) || published.md,
+      vertical,
     });
   };
 
@@ -107,7 +121,7 @@ export function VtuberTalent() {
         >
           <TalentProfile channel={channel} onCopied={showCopied} />
 
-          <Box sx={{ minWidth: 0 }}>
+          <Box ref={contentRef} sx={{ minWidth: 0 }}>
             {live && (
               <Box sx={{ mb: 2 }}>
                 <Typography
@@ -121,11 +135,21 @@ export function VtuberTalent() {
                 <LiveCard live={live} large onPlay={playLive} />
               </Box>
             )}
+            {/* 分頁列捲到 header 下方就黏住，捲很多頁後不用爬回去切換 */}
             <Tabs
+              ref={tabsRef}
               value={tab}
-              onChange={(_, value: TalentTab) => setTab(value)}
+              onChange={(_, value: TalentTab) => changeTab(value)}
               variant={"scrollable"}
-              sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}
+              sx={{
+                mb: 2,
+                borderBottom: 1,
+                borderColor: "divider",
+                position: "sticky",
+                top: SITE_HEADER_HEIGHT,
+                zIndex: (theme) => theme.zIndex.appBar - 1,
+                bgcolor: "background.default",
+              }}
             >
               <Tab value={"upcoming"} label={"即將直播"} />
               <Tab value={"videos"} label={"所有影片"} />

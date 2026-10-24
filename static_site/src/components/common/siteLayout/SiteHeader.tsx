@@ -23,7 +23,7 @@ import { SiteAccountMenu } from "./SiteAccountMenu.tsx";
 import { SiteMegaMenu } from "./SiteMegaMenu.tsx";
 import { SiteNavDrawer } from "./SiteNavDrawer.tsx";
 import { ExternalMark, SiteNavLink } from "./SiteNavLink.tsx";
-import { siteInk } from "./siteTheme.ts";
+import { SITE_HEADER_HEIGHT, siteInk } from "./siteTheme.ts";
 
 interface SiteHeaderProps {
   /** 是否顯示色彩模式切換；首頁 LabLayout 固定深色所以不顯示（也不在 ThemeProvider 內） */
@@ -88,7 +88,7 @@ export function SiteHeader({ showColorMode = true }: SiteHeaderProps) {
           maxWidth={false}
           sx={{
             maxWidth: 1280,
-            height: { xs: 56, md: 60 },
+            height: SITE_HEADER_HEIGHT,
             display: "flex",
             alignItems: "center",
             gap: { xs: 1.25, md: 3.5 },

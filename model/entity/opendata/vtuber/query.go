@@ -94,6 +94,12 @@ type VideoItem struct {
 	PublishedAt  time.Time `json:"published_at"`
 }
 
+// VideoDetail 影片 modal 點開時才查的說明
+type VideoDetail struct {
+	VideoID     string `json:"video_id"`
+	Description string `json:"description"`
+}
+
 // VideoPage 一頁影片；NextPageToken 空字串代表沒有下一頁
 type VideoPage struct {
 	Videos        []VideoItem `json:"videos"`

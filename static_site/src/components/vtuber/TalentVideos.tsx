@@ -22,7 +22,8 @@ const VIDEO_TYPES: [VtuberVideoType, string][] = [
 
 interface TalentVideosProps {
   handle: string;
-  onPlay: (video: VtuberVideo) => void;
+  // vertical：從「短片」分類點開，modal 用直式播放器
+  onPlay: (video: VtuberVideo, vertical: boolean) => void;
   onError: (error: unknown) => void;
 }
 
@@ -94,7 +95,7 @@ export function TalentVideos({ handle, onPlay, onError }: TalentVideosProps) {
             return (
               <ButtonBase
                 key={video.video_id}
-                onClick={() => onPlay(video)}
+                onClick={() => onPlay(video, shorts)}
                 sx={{ display: "block", textAlign: "left", borderRadius: 1 }}
               >
                 {/* YouTube 給的短片縮圖也是 16:9（直式內容在中間），放進 9:16 框置中裁切剛好露出內容 */}

@@ -102,4 +102,11 @@ export interface VtuberPlayingVideo {
   when: string; // 「10/24 10:00」或存檔的上傳日期
   status?: VtuberLiveStatus; // 存檔沒有狀態
   viewers?: number | null; // 直播中的同接人數
+  vertical?: boolean; // 短片：直式播放器
+}
+
+// 影片 modal 點開時才查的說明
+export interface VtuberVideoDetail {
+  video_id: string;
+  description: string;
 }

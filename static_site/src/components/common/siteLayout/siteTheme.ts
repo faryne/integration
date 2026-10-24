@@ -17,6 +17,9 @@ export const siteInk = {
   hover: "rgba(114, 255, 240, 0.08)",
 } as const;
 
+/** 內頁 header 的高度（header 是 sticky）；頁面裡要黏在 header 下方的元素用它算 top */
+export const SITE_HEADER_HEIGHT = { xs: 56, md: 60 } as const;
+
 /** faryne.dev 內頁主題：淺色／深色兩套，由 ThemeProvider + useColorScheme 切換 */
 export const siteTheme = createTheme({
   colorSchemes: {

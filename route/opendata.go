@@ -40,6 +40,7 @@ func OpenData(app *fiber.App) {
 	gVtuber.Get("/channels/:handle/stats", opendata.VtuberChannelStats)
 	gVtuber.Get("/channels/:handle/videos", opendata.VtuberChannelVideos)
 	gVtuber.Get("/lives", opendata.VtuberLives)
+	gVtuber.Get("/videos/:video_id", opendata.VtuberVideo)
 
 	gNCCC := g.Group("/nccc")
 	gNCCC.Get("/indexes", opendata.NCCCIndexes)

@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>藝人頁導覽與短片 Dialog Mockup</title>
+<style>
+/* 色票沿用 vtuber-schedule-mockup */
+:root, [data-theme="light"] {
+  --bg:#f3f5f5; --surface:#fff; --surface-2:#eef2f2; --border:#dde4e4; --text:#13201f; --text-2:#5b6b6c;
+  --accent:#0f766e; --accent-soft:#e0f3f1; --live:#d93a3a;
+}
+[data-theme="dark"] {
+  --bg:#0b1014; --surface:#121a20; --surface-2:#18232a; --border:#23313a; --text:#e3f1f2; --text-2:#93a7ab;
+  --accent:#5eead4; --accent-soft:#123432; --live:#ff6b6b;
+}
+* { box-sizing:border-box; }
+body { margin:0; font-family:Roboto,"Noto Sans TC",system-ui,sans-serif; background:#cfd5d8; color:#17191c; }
+button { font:inherit; cursor:pointer; color:inherit; }
+
+/* ===== Mockup 控制列（非產品 UI，固定在最上面） ===== */
+.bar { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; justify-content:space-between; padding:8px 16px; background:#1f2430; color:#fff; font-size:13px; height:44px; }
+.bar span { color:#aab2c0; margin-left:8px; }
+.ctl { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.chip { border:1px solid #485063; background:transparent; color:#dfe3ea; padding:4px 10px; border-radius:999px; font-size:12px; }
+.chip.active { background:#fff; color:#1f2430; border-color:#fff; }
+.sep { width:1px; height:18px; background:#485063; margin:0 4px; }
+.notes { margin:56px auto 0; max-width:1280px; padding:12px 16px; border-radius:8px; background:#fffbe6; border:1px solid #f1d98a; font-size:13px; line-height:1.7; color:#4a3b00; }
+.notes[hidden] { display:none; }
+.notes ol { margin:4px 0 0; padding-left:20px; }
+.stage { padding:16px; display:flex; justify-content:center; }
+/* overflow:clip 而不是 hidden，sticky 才會跟著整頁捲動 */
+.device { width:100%; max-width:1280px; border-radius:10px; overflow:clip; box-shadow:0 10px 40px rgba(0,0,0,.18); background:var(--bg); color:var(--text); }
+.device.mobile { max-width:390px; }
+
+/* ===== 網站 header（實際是 sticky，高度桌機 60、手機 56；mockup 疊在控制列下面） ===== */
+.hdr { position:sticky; top:44px; z-index:20; height:60px; display:flex; align-items:center; padding:0 24px; background:rgba(7,12,16,.95); color:#d9f8fa; font-weight:800; }
+.device.mobile .hdr { height:56px; padding:0 16px; }
+.crumbs { padding:9px 24px; font-size:13px; color:var(--text-2); background:var(--surface); border-bottom:1px solid var(--border); }
+.crumbs b { color:var(--text); }
+.container { padding:20px 24px 40px; }
+.device.mobile .container, .device.mobile .crumbs { padding-left:16px; padding-right:16px; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+.layout { display:grid; grid-template-columns:300px 1fr; gap:20px; align-items:start; }
+.device.mobile .layout { grid-template-columns:1fr; }
+
+/* ===== 左欄：整欄黏在 header 下方；捲過分頁列後，個人檔案收合、下面出現直式分頁 ===== */
+.side { position:sticky; top:calc(44px + 60px + 16px); display:grid; gap:12px; }
+.device.mobile .side { position:static; }
+.profile { overflow:hidden; transition:all .2s; }
+.banner { height:80px; background:linear-gradient(135deg,#be123c,#7c3aed); transition:height .2s; }
+.pbody { padding:0 16px 16px; margin-top:-40px; transition:margin .2s; }
+.avatar { width:80px; height:80px; border-radius:50%; border:4px solid var(--surface); background:linear-gradient(135deg,#fb7185,#e11d48); transition:all .2s; }
+.pname { font-size:18px; font-weight:800; margin-top:6px; }
+.phandle { font-size:13px; color:var(--text-2); }
+.desc { font-size:13px; line-height:1.65; color:var(--text-2); margin:10px 0 0; }
+.kv { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:12px 0 8px; }
+.kv div { padding:8px 10px; border-radius:8px; background:var(--surface-2); }
+.kv small { display:block; font-size:11.5px; color:var(--text-2); }
+.kv b { font-size:15px; }
+.btn { border:0; border-radius:8px; padding:8px 14px; background:var(--accent); color:#fff; font-weight:600; font-size:14px; width:100%; margin-top:8px; }
+[data-theme="dark"] .btn { color:#04201d; }
+.btn.ghost { background:transparent; color:var(--accent); border:1px solid var(--accent); }
+.links { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+/* 收合版：只留頭像、名稱、訂閱按鈕，讓出高度給下面的分頁 */
+.side.compact .banner { height:0; }
+.side.compact .pbody { margin-top:0; padding-top:14px; display:grid; grid-template-columns:48px 1fr; gap:4px 12px; align-items:center; }
+.side.compact .avatar { width:48px; height:48px; border-width:0; grid-row:span 2; }
+.side.compact .pname { font-size:15px; margin:0; line-height:1.3; }
+.side.compact .desc, .side.compact .kv, .side.compact .growth, .side.compact .links { display:none; }
+.side.compact .btn { grid-column:1 / -1; margin-top:8px; }
+/* 直式分頁：只在收合時出現 */
+.sidenav { padding:6px; display:none; }
+.side.compact .sidenav { display:block; }
+.sidenav button { display:flex; width:100%; align-items:center; gap:10px; border:0; background:none; padding:10px 12px; border-radius:8px; font-size:14px; color:var(--text-2); text-align:left; }
+.sidenav button.on { background:var(--accent-soft); color:var(--accent); font-weight:600; }
+.sidenav .top { margin-top:4px; border-top:1px solid var(--border); border-radius:0 0 8px 8px; font-size:13px; }
+
+/* ===== 右欄分頁列：桌機照常捲走；手機版黏在 header 下方 ===== */
+.tabs { display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:14px; overflow-x:auto; background:var(--bg); }
+.device.mobile .tabs { position:sticky; top:calc(44px + 56px); z-index:10; margin:0 -16px 14px; padding:0 16px; }
+.device.nav-sticky:not(.mobile) .tabs { position:sticky; top:calc(44px + 60px); z-index:10; }
+.tab { border:0; background:none; padding:10px 14px; font-size:14px; color:var(--text-2); border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; }
+.tab.on { color:var(--accent); border-color:var(--accent); font-weight:600; }
+.cats { display:flex; gap:8px; margin-bottom:14px; }
+.cat { border:1px solid var(--border); background:var(--surface); color:var(--text-2); padding:6px 14px; border-radius:999px; font-size:13.5px; }
+.cat.on { background:var(--accent-soft); border-color:var(--accent); color:var(--accent); font-weight:600; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+.device.mobile .grid { grid-template-columns:1fr 1fr; gap:10px; }
+.grid.shorts { grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); }
+.device.mobile .grid.shorts { grid-template-columns:repeat(3,1fr); gap:8px; }
+.vid { border:0; background:none; padding:0; text-align:left; }
+.thumb { aspect-ratio:16/9; border-radius:8px; display:grid; place-items:center; color:rgba(255,255,255,.85); font-size:12px; }
+.grid.shorts .thumb { aspect-ratio:9/16; }
+.vid .t { font-size:13px; line-height:1.4; margin-top:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+
+/* ===== 影片 dialog（common/YouTubeDialog）：橫式／直式共用同一個元件 ===== */
+.scrim { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; padding:16px; }
+.scrim[hidden] { display:none; }
+.dialog { width:100%; max-width:860px; background:var(--surface); color:var(--text); border-radius:8px; overflow:hidden; max-height:calc(100vh - 32px); display:flex; flex-direction:column; }
+.player { aspect-ratio:16/9; background:linear-gradient(135deg,#f472b6,#7c3aed); display:grid; place-items:center; color:rgba(255,255,255,.9); font-size:13px; flex-shrink:0; }
+/* 資訊區：標題、頻道、說明；內容太長時只捲這一塊，按鈕固定在最下面 */
+.info { padding:14px 16px 4px; overflow-y:auto; min-height:0; }
+.dt { font-weight:700; font-size:15px; line-height:1.5; }
+.dmeta { display:flex; align-items:center; gap:8px; margin-top:8px; font-size:13px; color:var(--text-2); }
+.dmeta .av { width:22px; height:22px; border-radius:50%; background:linear-gradient(135deg,#fda4af,#f472b6); flex-shrink:0; }
+.dmeta .ch { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.desc-box { margin-top:12px; padding:10px 12px; border-radius:8px; background:var(--surface-2); font-size:13px; line-height:1.7; white-space:pre-line; word-break:break-word; }
+.desc-box.clamp { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.desc-box a { color:var(--accent); }
+.desc-box.loading { color:var(--text-2); }
+.more { border:0; background:none; padding:4px 0; color:var(--accent); font-size:12.5px; }
+.dacts { display:flex; gap:8px; padding:10px 16px 14px; flex-shrink:0; }
+.dacts button { flex:1; border:1px solid var(--accent); color:var(--accent); background:transparent; border-radius:6px; padding:8px; font-weight:600; font-size:13px; white-space:nowrap; }
+.dacts button.text { border-color:transparent; color:var(--text-2); }
+/* 直式（短片）桌機：左邊 9:16 播放器、右邊資訊欄，跟 YouTube 網頁版看 Shorts 一樣 */
+.dialog.vertical { max-width:none; width:auto; flex-direction:row; height:min(760px, calc(100vh - 32px)); }
+.dialog.vertical .player { aspect-ratio:9/16; height:100%; }
+.dialog.vertical .side-panel { width:360px; display:flex; flex-direction:column; min-height:0; }
+.dialog.vertical .side-panel .info { flex:1; }
+/* 直式手機：寬度不夠並排，改回上下排，整個 dialog 可以捲 */
+.dialog.vertical.m { flex-direction:column; width:100%; max-width:400px; height:auto; overflow-y:auto; }
+.dialog.vertical.m .player { width:100%; height:auto; }
+.dialog.vertical.m .side-panel { width:100%; display:block; }
+.dialog.vertical.m .info { overflow:visible; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div><strong>藝人頁導覽＋短片 Dialog Mockup</strong><span>往下捲看分頁移到左欄</span></div>
+  <div class="ctl">
+    <button class="chip active" data-view="desktop">Desktop</button>
+    <button class="chip" data-view="mobile">Mobile 390</button>
+    <span class="sep"></span>
+    <button class="chip active" data-theme-option="light">淺色</button>
+    <button class="chip" data-theme-option="dark">深色</button>
+    <span class="sep"></span>
+    <button class="chip active" data-nav="sticky">導覽：黏在上方（建議）</button>
+    <button class="chip" data-nav="side">導覽：移到左欄</button>
+    <span class="sep"></span>
+    <button class="chip" data-open="video">開一般影片</button>
+    <button class="chip" data-open="short">開短片</button>
+    <span class="sep"></span>
+    <label style="display:flex;gap:4px;align-items:center;color:#dfe3ea"><input type="checkbox" id="notesToggle" checked /> 說明</label>
+  </div>
+</header>
+
+<aside class="notes" id="notes">
+  <strong>看點</strong>
+  <ol>
+    <li><b>黏在上方（建議）</b>：桌機跟手機一樣，分頁列捲到 header 下方就黏住，從分頁列切換時捲回內容頂端。</li>
+    <li><b>移到左欄</b>：往下捲到分頁列離開畫面後，左欄的個人檔案收合成「頭像＋名稱＋訂閱按鈕」，下面出現直式分頁（即將直播／所有影片／行事曆／統計）＋「回到頂端」。左欄整欄黏在 header 下方，所以捲到多下面都點得到。往回捲到分頁列出現時，左欄恢復完整的個人檔案。</li>
+    <li>個人檔案要收合，是因為完整版大約 560px 高，筆電螢幕扣掉 header 後塞不下「完整檔案＋分頁」。</li>
+    <li>點左欄的分頁：切換內容並捲回內容頂端（不是整頁頂端）。</li>
+    <li><b>手機：</b>只有一欄，兩種模式都是分頁列黏在 header 下方（切到 Mobile 往下捲看看）。</li>
+    <li><b>導覽方式</b>：控制列可以切換「黏在上方」（建議：桌機手機同一種做法、版面不會跳）與「移到左欄」比較。</li>
+    <li><b>影片 dialog（<code>components/common/YouTubeDialog</code>）加上說明</b>：打開時才去抓（每部 1 unit，Redis 快取），預設收合 3 行，網址可以點。資訊區太長時只捲這一塊，按鈕固定在最下面。</li>
+    <li><b>短片：</b>同一個元件傳入直式參數。桌機左邊 9:16 播放器、右邊資訊欄（說明預設展開，太長只捲右欄）；手機寬度不夠並排，改回上下排、說明收合、整個 dialog 可以捲。用控制列「開一般影片／開短片」比較，手機版要先切到 Mobile 再開。</li>
+  </ol>
+</aside>
+
+<main class="stage">
+  <div class="device nav-sticky" id="device">
+    <div class="hdr">Faryne 的實驗室</div>
+    <div class="crumbs">首頁 / 資料 / <b>VTuber 直播行事曆</b></div>
+    <div class="container">
+      <div class="layout">
+        <aside class="side" id="side">
+          <div class="card profile">
+            <div class="banner"></div>
+            <div class="pbody">
+              <div class="avatar"></div>
+              <div><div class="pname">Marine Ch. 宝鐘マリン</div><div class="phandle">@houshoumarine・3期生</div></div>
+              <div class="desc">ホロライブ3期生、宝鐘海賊団の船長・宝鐘マリンです！アニメや漫画、ゲームが大好きなオタク船長…</div>
+              <div class="kv"><div><small>訂閱</small><b>4.44M</b></div><div><small>觀看</small><b>25.09 億</b></div><div><small>影片</small><b>1,755</b></div></div>
+              <div class="growth" style="font-size:12.5px;color:var(--text-2)">7 日 +10.0K　90 日 +100K</div>
+              <button class="btn">📅 訂閱個人行事曆</button>
+              <div class="links" style="margin-top:8px"><button class="btn ghost" style="margin:0">↗ YouTube</button><button class="btn ghost" style="margin:0">↗ 官網</button></div>
+            </div>
+          </div>
+          <nav class="card sidenav" id="sidenav"></nav>
+        </aside>
+        <section id="content">
+          <div class="tabs" id="tabs"></div>
+          <div id="panel"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="scrim" id="scrim" hidden></div>
+
+<script>
+const TABS = [["upcoming", "即將直播"], ["videos", "所有影片"], ["calendar", "行事曆"], ["stats", "統計"]];
+const state = { tab: "videos", cat: "all", nav: "sticky" };
+const $ = (s) => document.querySelector(s);
+const thumb = (seed) => `background:linear-gradient(135deg,hsl(${(seed * 47) % 360} 60% 50%),hsl(${(seed * 47 + 70) % 360} 60% 30%))`;
+
+function render() {
+  $("#tabs").innerHTML = TABS.map(([k, l]) => `<button class="tab ${state.tab === k ? "on" : ""}" data-tab="${k}">${l}</button>`).join("");
+  $("#sidenav").innerHTML = TABS.map(([k, l]) => `<button class="${state.tab === k ? "on" : ""}" data-tab="${k}">${l}</button>`).join("")
+    + `<button class="top" data-top>↑ 回到頂端</button>`;
+  // 內容放很多格，讓頁面夠長可以捲
+  const shorts = state.cat === "short";
+  $("#panel").innerHTML = state.tab === "videos"
+    ? `<div class="cats">${[["all", "全部"], ["live", "直播"], ["video", "影片"], ["short", "短片"]].map(([k, l]) => `<button class="cat ${state.cat === k ? "on" : ""}" data-cat="${k}">${l}</button>`).join("")}</div>
+       <div class="grid ${shorts ? "shorts" : ""}">${Array.from({ length: 48 }, (_, i) => `<button class="vid" data-open="${shorts ? "short" : "video"}"><div class="thumb" style="${thumb(i)}">縮圖</div><div class="t">${shorts ? "船長の朝ごはん#shorts" : "【#ホロ鯖ARK】2時間制限‼️やりたいこと決めた！"} ${i + 1}</div></button>`).join("")}</div>`
+    : `<div class="card" style="padding:40px;text-align:center;color:var(--text-2);height:1600px">（${TABS.find((t) => t[0] === state.tab)[1]}的內容，拉長讓頁面可以捲）</div>`;
+}
+
+// 分頁列離開畫面（被 header 蓋住）時，左欄切成收合版＋直式分頁；手機版不切換，分頁列本身是 sticky
+const observer = new IntersectionObserver(([entry]) => {
+  const mobile = $("#device").classList.contains("mobile");
+  $("#side").classList.toggle("compact", !mobile && state.nav === "side" && !entry.isIntersecting);
+}, { rootMargin: "-104px 0px 0px 0px" });
+observer.observe($("#tabs"));
+
+const DESC = "今日は2時間だけホロ鯖ARK！やりたいことを決めてきたので、時間内に全部できるかチャレンジします🏴‍☠️\n\n▼ メンバーシップはこちら\nhttps://www.youtube.com/channel/UCCzUftO8KOVkV4wQG1vkUvg/join\n\n▼ タイムスタンプ\n00:00 開始\n12:34 拠点づくり\n58:20 ボス戦\n\n▼ 公式グッズ\nhttps://shop.hololivepro.com/\n\n#宝鐘マリン #ホロライブ #ホロ鯖ARK";
+// 網址轉成可以點的連結（其他文字照原樣，保留換行）
+const linkify = (text) => text.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c])
+  .replace(/https?:\/\/[^\s]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
+
+function openDialog(kind) {
+  const vertical = kind === "short";
+  const mobile = $("#device").classList.contains("mobile");
+  const info = `<div class="info">
+      <div class="dt">${vertical ? "とある理由で入店拒否されるマリン船長#shorts" : "【 #ホロ鯖ARK 】2時間制限‼️やりたいこと決めた！できるかな！？？【博衣こより/ホロライブ】"}</div>
+      <div class="dmeta"><span class="av"></span><span class="ch">Marine Ch. 宝鐘マリン hololive3期生</span><span style="flex-shrink:0">10/22</span></div>
+      <div class="desc-box loading" id="desc">說明載入中…</div>
+      <button class="more" id="descToggle" hidden>顯示完整說明</button>
+    </div>
+    <div class="dacts"><button>↗ 在 YouTube 開啟</button><button class="text" data-close>關閉</button></div>`;
+  $("#scrim").innerHTML = `<div class="dialog ${vertical ? "vertical" : ""} ${mobile ? "m" : ""}">
+    <div class="player">YouTube 播放器（${vertical ? "9:16" : "16:9"}）</div>
+    ${vertical ? `<div class="side-panel">${info}</div>` : info}</div>`;
+  $("#scrim").hidden = false;
+  // 說明是打開 dialog 才去抓（模擬 API 延遲）；直式桌機右欄空間夠，預設展開
+  setTimeout(() => {
+    const box = $("#desc");
+    if (!box) return;
+    box.classList.remove("loading");
+    box.innerHTML = linkify(vertical ? "船長、入店拒否される…？！🏴‍☠️\n\n#shorts #宝鐘マリン #ホロライブ" : DESC);
+    const expanded = vertical && !mobile;
+    box.classList.toggle("clamp", !expanded);
+    $("#descToggle").hidden = expanded || box.scrollHeight <= box.clientHeight + 1;
+  }, 350);
+}
+
+document.addEventListener("click", (e) => {
+  if (e.target.id === "scrim" || e.target.closest("[data-close]")) { $("#scrim").hidden = true; return; }
+  if (e.target.id === "descToggle") {
+    const box = $("#desc");
+    box.classList.toggle("clamp");
+    e.target.textContent = box.classList.contains("clamp") ? "顯示完整說明" : "收合";
+    return;
+  }
+  const b = e.target.closest("button");
+  if (!b) return;
+  const d = b.dataset;
+  if (d.tab) {
+    state.tab = d.tab; render();
+    // 從左欄切換時捲回內容頂端（扣掉 header 高度）
+    if (b.closest("#sidenav") || (b.closest("#tabs") && $("#tabs").getBoundingClientRect().top < 120)) window.scrollTo({ top: $("#content").getBoundingClientRect().top + scrollY - 120, behavior: "smooth" });
+  } else if (d.top) window.scrollTo({ top: 0, behavior: "smooth" });
+  else if (d.cat) { state.cat = d.cat; render(); }
+  else if (d.nav) {
+    state.nav = d.nav;
+    document.querySelectorAll("[data-nav]").forEach((x) => x.classList.toggle("active", x === b));
+    $("#device").classList.toggle("nav-sticky", d.nav === "sticky");
+    $("#side").classList.remove("compact");
+  }
+  else if (d.open) openDialog(d.open);
+  else if (d.view) { document.querySelectorAll("[data-view]").forEach((x) => x.classList.toggle("active", x === b)); $("#device").classList.toggle("mobile", d.view === "mobile"); $("#side").classList.remove("compact"); }
+  else if (d.themeOption) { document.querySelectorAll("[data-theme-option]").forEach((x) => x.classList.toggle("active", x === b)); document.documentElement.dataset.theme = d.themeOption; }
+});
+$("#notesToggle").addEventListener("change", (e) => ($("#notes").hidden = !e.target.checked));
+render();
+</script>
+</body>
+</html>
