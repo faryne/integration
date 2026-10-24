@@ -76,14 +76,19 @@ func VtuberChannelStats(ctx fiber.Ctx) error {
 // @Tags OpenData VTuber
 // @Produce json
 // @Param handle path string true "YouTube @handle"
+// @Param type query string false "all (default) / live / video / short"
 // @Param page_token query string false "Token of the next page"
 // @Success 200 {object} output.CommonOutput
+// @Failure 400 {object} output.CommonOutput
 // @Failure 404 {object} output.CommonOutput
 // @Failure 502 {object} output.CommonOutput
 // @Router /opendata/vtubers/channels/{handle}/videos [get]
 func VtuberChannelVideos(ctx fiber.Ctx) error {
 	handle := ctx.Params("handle")
-	page, err := vtuberService.ListChannelVideos(ctx.Context(), handle, ctx.Query("page_token"))
+	page, err := vtuberService.ListChannelVideos(ctx.Context(), handle, ctx.Query("type"), ctx.Query("page_token"))
+	if errors.Is(err, vtuberService.ErrInvalidRequest) {
+		return output.BadRequest(err)
+	}
 	if err != nil {
 		return output.ExternalServiceError(err)
 	}

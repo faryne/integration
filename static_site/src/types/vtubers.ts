@@ -78,6 +78,9 @@ export interface VtuberLiveList {
   lives: VtuberLive[];
 }
 
+// 「所有影片」的分類：全部／直播存檔／一般影片／Shorts
+export type VtuberVideoType = "all" | "live" | "video" | "short";
+
 export interface VtuberVideo {
   video_id: string;
   title: string;

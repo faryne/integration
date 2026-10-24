@@ -12,6 +12,7 @@ import type {
   VtuberLiveList,
   VtuberStat,
   VtuberVideoPage,
+  VtuberVideoType,
 } from "@/types/vtubers.ts";
 
 const base = `${import.meta.env.VITE_API_BASE}/opendata/vtubers`;
@@ -57,17 +58,17 @@ export function useVtuberChannelStats(handle: string, days: number) {
   });
 }
 
-// 「所有影片」：page_token 分頁，捲到底載入下一頁
-export function useVtuberChannelVideos(handle: string, enabled: boolean) {
+// 「所有影片」：依分類讀上傳清單，page_token 分頁，捲到底載入下一頁
+export function useVtuberChannelVideos(handle: string, type: VtuberVideoType) {
   return useInfiniteQuery({
-    queryKey: ["vtubers", "videos", handle],
-    enabled: Boolean(handle) && enabled,
+    queryKey: ["vtubers", "videos", handle, type],
+    enabled: Boolean(handle),
     initialPageParam: "",
     queryFn: async ({ pageParam }) =>
       (
         await axios.get<CommonResponse<VtuberVideoPage>>(
           `${base}/channels/${encodeURIComponent(handle)}/videos`,
-          { params: pageParam ? { page_token: pageParam } : {} },
+          { params: { type, ...(pageParam ? { page_token: pageParam } : {}) } },
         )
       ).data.data,
     getNextPageParam: (last) => last.next_page_token || undefined,
