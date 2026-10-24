@@ -41,7 +41,7 @@ export function LiveTimeline({
       {[...days.entries()].map(([dateKey, items]) => {
         const first = taipeiTime(liveStartAt(items[0]));
         const name = relativeDayName(dateKey);
-        const date = `${first.md}（${first.weekday}）`;
+        const date = `${first.date}（${first.weekday}）`;
         return (
           <Paper key={dateKey} variant={"outlined"} sx={{ overflow: "hidden" }}>
             <Stack
