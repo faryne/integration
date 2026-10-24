@@ -16,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 
 import { TalentAvatar } from "@/components/vtuber/TalentAvatar.tsx";
 import { TalentPanel } from "@/components/vtuber/TalentPanel.tsx";
+import { talentPath } from "@/components/vtuber/routes.ts";
 import { matchesTalent } from "@/components/vtuber/talentSearch.ts";
 import { ChannelAvatar } from "@/components/vtuber/ChannelAvatar.tsx";
 import type {
@@ -67,7 +68,7 @@ export function TalentPicker({ list, currentHandle }: TalentPickerProps) {
               : []
           }
           onChange={(_, channel) =>
-            channel && navigate(`/data/vtubers/${channel.handle}`)
+            channel && navigate(talentPath(channel.handle))
           }
           value={null}
           blurOnSelect

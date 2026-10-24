@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { ChannelAvatar } from "@/components/vtuber/ChannelAvatar.tsx";
 import { GRADUATED_RING } from "@/components/vtuber/format.ts";
+import { talentPath } from "@/components/vtuber/routes.ts";
 import type { VtuberChannelSummary } from "@/types/vtubers.ts";
 
 interface TalentAvatarProps {
@@ -25,7 +26,7 @@ export function TalentAvatar({
   return (
     <ButtonBase
       component={Link}
-      to={`/data/vtubers/${channel.handle}`}
+      to={talentPath(channel.handle)}
       onClick={onSelect}
       title={channel.is_graduated ? `${channel.title}（卒業）` : channel.title}
       sx={{

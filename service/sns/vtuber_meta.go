@@ -22,9 +22,12 @@ const (
 )
 
 var (
-	// 影片頁要排在藝人頁前面；兩者段數不同本來就不會撞，排序只是讓意圖清楚
-	vtuberVideoPattern  = regexp.MustCompile(`^/data/vtubers/videos/([A-Za-z0-9_-]{11})$`)
-	vtuberTalentPattern = regexp.MustCompile(`^/data/vtubers/([^/]+)$`)
+	// 影片掛在上傳頻道的「所有影片」底下：/data/vtubers/@name/videos/:videoId
+	vtuberVideoPattern = regexp.MustCompile(`^/data/vtubers/([^/]+)/videos/([A-Za-z0-9_-]{11})$`)
+	// 藝人頁與分頁：/data/vtubers/@name、/videos、/calendar、/stats
+	vtuberTalentPattern = regexp.MustCompile(`^/data/vtubers/([^/]+)(?:/(videos|calendar|stats))?$`)
+	// 各分頁的標題後綴，沒有分頁段就是預設的「即將直播」
+	vtuberTalentTabTitles = map[string]string{"": "的直播行事曆", "videos": "的所有影片", "calendar": "的行事曆", "stats": "的頻道統計"}
 	// 直播時間一律用台北時間顯示，跟前端 format.ts 一致
 	vtuberTimeZone = time.FixedZone("Asia/Taipei", 8*3600)
 	// 抽成變數方便測試替換
@@ -37,7 +40,7 @@ var (
 func applyVtuberVideoMeta(meta *modelSNS.Meta, matches []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), vtuberVideoFetchTimeout)
 	defer cancel()
-	video, err := fetchVtuberVideo(ctx, matches[1])
+	video, err := fetchVtuberVideo(ctx, matches[2])
 	if err != nil {
 		return
 	}
@@ -49,6 +52,13 @@ func applyVtuberVideoMeta(meta *modelSNS.Meta, matches []string) {
 	}
 	meta.Title = fullTitle(video.Title)
 	meta.Description = vtuberVideoDescription(video)
+	// 網址的 handle 跟影片頻道對不上（打錯、藝人改了 handle）：canonical 指向正確網址，舊連結不會變 404
+	if !strings.EqualFold(normalizeVtuberHandle(matches[1]), video.ChannelHandle) {
+		target := "/data/vtubers/" + video.ChannelHandle + "/videos/" + video.VideoID
+		meta.Canonical = absoluteURL(frontendOrigin(), target)
+		meta.OpenGraphURL = absoluteURL(frontendOrigin(), "/sns"+target)
+		meta.RedirectURL = meta.Canonical
+	}
 	meta.Type = "video.other"
 	if video.ThumbnailURL != "" {
 		meta.Image = video.ThumbnailURL
@@ -85,7 +95,7 @@ func vtuberVideoWhen(v *vtuberEntity.VideoDetail) string {
 	return "YouTube 影片"
 }
 
-// applyVtuberTalentMeta 藝人頁：名稱、期別、訂閱數、頻道頭像；找不到藝人回 404，DB 錯誤維持通用卡
+// applyVtuberTalentMeta 藝人頁（含分頁）：名稱＋分頁、期別、訂閱數、頻道頭像；找不到藝人回 404，DB 錯誤維持通用卡
 func applyVtuberTalentMeta(meta *modelSNS.Meta, matches []string) {
 	ch, err := fetchVtuberChannel(matches[1])
 	if err != nil {
@@ -97,7 +107,7 @@ func applyVtuberTalentMeta(meta *modelSNS.Meta, matches []string) {
 		meta.Robots = "noindex, nofollow"
 		return
 	}
-	meta.Title = fullTitle(ch.Title + " 的直播行事曆")
+	meta.Title = fullTitle(ch.Title + " " + vtuberTalentTabTitles[matches[2]])
 	parts := make([]string, 0, 2)
 	if ch.Unit != nil {
 		parts = append(parts, ch.Unit.Name)
@@ -114,6 +124,14 @@ func applyVtuberTalentMeta(meta *modelSNS.Meta, matches []string) {
 	if ch.ThumbnailURL != "" {
 		meta.Image = ch.ThumbnailURL
 	}
+}
+
+// normalizeVtuberHandle 網址上的 handle 可能不帶 @
+func normalizeVtuberHandle(handle string) string {
+	if strings.HasPrefix(handle, "@") {
+		return handle
+	}
+	return "@" + handle
 }
 
 func taipeiDateTime(t time.Time) string {

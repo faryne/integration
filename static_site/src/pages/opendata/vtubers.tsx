@@ -33,7 +33,7 @@ import { TalentPicker } from "@/components/vtuber/TalentPicker.tsx";
 import { TimeZoneNote } from "@/components/vtuber/TimeZoneNote.tsx";
 import { useNow } from "@/components/vtuber/useNow.ts";
 import { useVtuberSnack } from "@/components/vtuber/useVtuberSnack.ts";
-import { useOpenVideo } from "@/components/vtuber/videoRoute.ts";
+import { useOpenVideo } from "@/components/vtuber/routes.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import type { VtuberLive } from "@/types/vtubers.ts";
 
