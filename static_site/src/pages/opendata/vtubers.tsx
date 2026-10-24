@@ -30,6 +30,7 @@ import { LiveCarousel } from "@/components/vtuber/LiveCarousel.tsx";
 import { LiveTimeline } from "@/components/vtuber/LiveTimeline.tsx";
 import { PastLives } from "@/components/vtuber/PastLives.tsx";
 import { TalentPicker } from "@/components/vtuber/TalentPicker.tsx";
+import { TimeZoneNote } from "@/components/vtuber/TimeZoneNote.tsx";
 import { useNow } from "@/components/vtuber/useNow.ts";
 import { useVtuberSnack } from "@/components/vtuber/useVtuberSnack.ts";
 import { VideoModal } from "@/components/vtuber/VideoModal.tsx";
@@ -118,9 +119,12 @@ export function VtubersIndex() {
           justifyContent={"space-between"}
           sx={{ mb: 1.25 }}
         >
-          <Typography variant={"h6"} fontWeight={700}>
-            即將直播
-          </Typography>
+          <Stack direction={"row"} spacing={1} alignItems={"baseline"}>
+            <Typography variant={"h6"} fontWeight={700}>
+              即將直播
+            </Typography>
+            <TimeZoneNote />
+          </Stack>
           <FormControlLabel
             control={
               <Checkbox

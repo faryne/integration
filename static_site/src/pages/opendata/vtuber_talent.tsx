@@ -30,6 +30,7 @@ import { LiveTimeline } from "@/components/vtuber/LiveTimeline.tsx";
 import { TalentPicker } from "@/components/vtuber/TalentPicker.tsx";
 import { TalentProfile } from "@/components/vtuber/TalentProfile.tsx";
 import { TalentStats } from "@/components/vtuber/TalentStats.tsx";
+import { TimeZoneNote } from "@/components/vtuber/TimeZoneNote.tsx";
 import { TalentVideos } from "@/components/vtuber/TalentVideos.tsx";
 import { useNow } from "@/components/vtuber/useNow.ts";
 import { useVtuberSnack } from "@/components/vtuber/useVtuberSnack.ts";
@@ -159,7 +160,12 @@ export function VtuberTalent() {
 
             {tab === "upcoming" && (
               <>
-                <Stack direction={"row"} justifyContent={"flex-end"}>
+                <Stack
+                  direction={"row"}
+                  justifyContent={"space-between"}
+                  alignItems={"center"}
+                >
+                  <TimeZoneNote />
                   <FormControlLabel
                     control={
                       <Checkbox
