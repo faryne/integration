@@ -10,13 +10,13 @@ type RenderRequest struct {
 
 type Meta struct {
 	// Status 是回給爬蟲的 HTTP 狀態碼；0 視為 200。私人／不存在的內容回 404，平台就不產生預覽卡。
-	Status       int
-	Title        string
-	SiteName     string
-	Description  string
-	Canonical    string
-	OpenGraphURL string
-	Image        string
+	Status      int
+	Title       string
+	SiteName    string
+	Description string
+	// Canonical 同時是 og:url：og:url 若指向別的網址（例如 /sns/...），平台會照它重抓，多一輪轉址還容易拿到通用卡
+	Canonical string
+	Image     string
 	// ImageWidth／ImageHeight 只有已知尺寸的圖（例如 1200×630 的 SteamLoom 圖卡）才填，0 就不輸出
 	ImageWidth  int
 	ImageHeight int

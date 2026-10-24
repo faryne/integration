@@ -170,27 +170,20 @@ func BuildMeta(req modelSNS.RenderRequest) modelSNS.Meta {
 
 	cleanQuery := stripTrackingQuery(req.Query)
 	canonical := withQuery(absoluteURL(frontendOrigin, publicPath), cleanQuery)
-	openGraphURL := withQuery(absoluteURL(frontendOrigin, "/sns"+publicPath), cleanQuery)
-	if steamloom {
-		// steamloom.works 沒有 /sns 路徑（爬蟲直接打原網址就會被 nginx 轉來這裡），
-		// og:url 指到 /sns/... 反而會讓平台照 og:url 重抓時拿到 SPA 或通用卡
-		openGraphURL = canonical
-	}
 
 	meta := modelSNS.Meta{
-		Title:        currentSiteName,
-		SiteName:     currentSiteName,
-		Description:  currentDescription,
-		Canonical:    canonical,
-		OpenGraphURL: openGraphURL,
-		Image:        absoluteURL(frontendOrigin, imagePath),
-		ImageWidth:   imageWidth,
-		ImageHeight:  imageHeight,
-		Robots:       "index, follow",
-		Type:         "website",
-		RedirectURL:  canonical,
-		SiteURL:      frontendOrigin,
-		SchemaType:   "WebPage",
+		Title:       currentSiteName,
+		SiteName:    currentSiteName,
+		Description: currentDescription,
+		Canonical:   canonical,
+		Image:       absoluteURL(frontendOrigin, imagePath),
+		ImageWidth:  imageWidth,
+		ImageHeight: imageHeight,
+		Robots:      "index, follow",
+		Type:        "website",
+		RedirectURL: canonical,
+		SiteURL:     frontendOrigin,
+		SchemaType:  "WebPage",
 	}
 
 	if matched, matches, ok := matchPathMeta(frontendPath); ok {
@@ -223,7 +216,6 @@ func applyLegacyNekomaidMeta(meta *modelSNS.Meta, matches []string) {
 	targetPath := strings.Join(segments, "/")
 	frontendOrigin := frontendOrigin()
 	meta.Canonical = absoluteURL(frontendOrigin, targetPath)
-	meta.OpenGraphURL = absoluteURL(frontendOrigin, "/sns"+targetPath)
 	meta.RedirectURL = meta.Canonical
 
 	if len(matches) > 3 && matches[2] != "" && matches[3] != "" {
@@ -610,7 +602,7 @@ var htmlTemplate = template.Must(template.New("sns").Parse(`<!doctype html>
   <meta property="og:locale" content="zh_TW">
   <meta property="og:title" content="{{ .Title }}">
   <meta property="og:description" content="{{ .Description }}">
-  <meta property="og:url" content="{{ .OpenGraphURL }}">
+  <meta property="og:url" content="{{ .Canonical }}">
   <meta property="og:image" content="{{ .Image }}">
   {{- if .ImageWidth }}
   <meta property="og:image:width" content="{{ .ImageWidth }}">
