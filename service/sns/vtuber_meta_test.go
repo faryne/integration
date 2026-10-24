@@ -23,10 +23,10 @@ func TestVtuberVideoMetaEndedLive(t *testing.T) {
 	end := start.Add(3*time.Hour + 59*time.Minute)
 	stubVtuberVideo(t, &vtuberEntity.VideoDetail{
 		VideoID: "abcdefghijk", Title: "【歌枠】秋の夜長", Description: "今日も\n\nありがとう", ThumbnailURL: "https://i.ytimg.com/vi/abcdefghijk/maxresdefault.jpg",
-		ChannelTitle: "Marine Ch.", Live: &vtuberEntity.VideoLive{Status: vtuberEntity.LiveStatusEnded, ActualStartAt: &start, ActualEndAt: &end},
+		ChannelTitle: "Marine Ch.", ChannelHandle: "@houshoumarine", Live: &vtuberEntity.VideoLive{Status: vtuberEntity.LiveStatusEnded, ActualStartAt: &start, ActualEndAt: &end},
 	}, nil)
 
-	meta := BuildMeta(modelSNS.RenderRequest{Path: "data/vtubers/videos/abcdefghijk"})
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "data/vtubers/@houshoumarine/videos/abcdefghijk"})
 	if !strings.HasPrefix(meta.Title, "【歌枠】秋の夜長 | ") {
 		t.Fatalf("unexpected title: %q", meta.Title)
 	}
@@ -38,15 +38,28 @@ func TestVtuberVideoMetaEndedLive(t *testing.T) {
 	}
 }
 
+func TestVtuberVideoMetaFixesWrongHandle(t *testing.T) {
+	stubVtuberVideo(t, &vtuberEntity.VideoDetail{VideoID: "abcdefghijk", Title: "x", ChannelHandle: "@houshoumarine"}, nil)
+
+	// 不帶 @ 視為同一個 handle，canonical 不變
+	if meta := BuildMeta(modelSNS.RenderRequest{Path: "data/vtubers/houshoumarine/videos/abcdefghijk"}); !strings.HasSuffix(meta.Canonical, "/data/vtubers/houshoumarine/videos/abcdefghijk") {
+		t.Fatalf("handle without @ should keep canonical, got %s", meta.Canonical)
+	}
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "data/vtubers/@someone/videos/abcdefghijk"})
+	if !strings.HasSuffix(meta.Canonical, "/data/vtubers/@houshoumarine/videos/abcdefghijk") || meta.RedirectURL != meta.Canonical {
+		t.Fatalf("wrong handle should point canonical to the uploader, got %s / %s", meta.Canonical, meta.RedirectURL)
+	}
+}
+
 func TestVtuberVideoMetaNotFoundAndError(t *testing.T) {
 	stubVtuberVideo(t, nil, nil)
-	if meta := BuildMeta(modelSNS.RenderRequest{Path: "data/vtubers/videos/abcdefghijk"}); meta.Status != 404 {
+	if meta := BuildMeta(modelSNS.RenderRequest{Path: "data/vtubers/@houshoumarine/videos/abcdefghijk"}); meta.Status != 404 {
 		t.Fatalf("missing video should be 404, got %d", meta.Status)
 	}
 
 	// 額度用完等暫時性錯誤：維持總覽通用卡，不回 404
 	stubVtuberVideo(t, nil, errors.New("quota exceeded"))
-	meta := BuildMeta(modelSNS.RenderRequest{Path: "data/vtubers/videos/abcdefghijk"})
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "data/vtubers/@houshoumarine/videos/abcdefghijk"})
 	if meta.Status != 0 || meta.Description != vtuberDescription {
 		t.Fatalf("error should fall back to generic card, got %d %q", meta.Status, meta.Description)
 	}

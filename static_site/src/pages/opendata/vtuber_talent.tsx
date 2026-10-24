@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import {
   useVtuberChannel,
@@ -34,16 +34,23 @@ import { TimeZoneNote } from "@/components/vtuber/TimeZoneNote.tsx";
 import { TalentVideos } from "@/components/vtuber/TalentVideos.tsx";
 import { useNow } from "@/components/vtuber/useNow.ts";
 import { useVtuberSnack } from "@/components/vtuber/useVtuberSnack.ts";
-import { useOpenVideo } from "@/components/vtuber/videoRoute.ts";
+import {
+  TALENT_TABS,
+  type TalentTab,
+  talentPath,
+  useOpenVideo,
+} from "@/components/vtuber/routes.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import type { VtuberLive, VtuberVideo } from "@/types/vtubers.ts";
 
-type TalentTab = "upcoming" | "videos" | "calendar" | "stats";
-
-/** /data/vtubers/:handle 藝人頁：左側個人檔案，右側正在直播＋即將直播／所有影片／行事曆／統計 */
+/**
+ * /data/vtubers/:handle/* 藝人頁：左側個人檔案，右側正在直播＋即將直播／所有影片／行事曆／統計。
+ * 分頁由網址決定（/videos、/calendar、/stats），重新整理、分享、上一頁都回到同一個分頁；影片網址 /videos/:videoId 停在所有影片
+ */
 export function VtuberTalent() {
-  const { handle = "" } = useParams();
+  const { handle = "", "*": rest = "" } = useParams();
+  const navigate = useNavigate();
   const channels = useVtuberChannels();
   const detail = useVtuberChannel(handle);
   const channel = detail.data;
@@ -53,15 +60,12 @@ export function VtuberTalent() {
   );
 
   const { snack, showError, showCopied, close } = useVtuberSnack();
-  const [tab, setTab] = useState<TalentTab>("upcoming");
   const [showCancelled, setShowCancelled] = useState(false);
   const openVideo = useOpenVideo();
   const now = useNow();
   const tabsRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // 換藝人時回到第一個分頁
-  useEffect(() => setTab("upcoming"), [handle]);
   const notFound =
     axios.isAxiosError(detail.error) && detail.error.response?.status === 404;
   useEffect(() => {
@@ -72,6 +76,12 @@ export function VtuberTalent() {
 
   if (notFound) return <ErrorPage code={404} />;
 
+  // 不認得的分頁、或這位藝人沒有行事曆，都回到預設分頁
+  const section = TALENT_TABS.find((t) => t === rest.split("/")[0]);
+  const tab: TalentTab =
+    !section || (section === "calendar" && channel && !channel.calendar)
+      ? "upcoming"
+      : section;
   const all = channel ? (lives.data?.lives ?? []) : [];
   const live = all.find((l) => l.status === "live");
   const upcoming = fromToday(all, now).filter(
@@ -80,7 +90,7 @@ export function VtuberTalent() {
   const playLive = (l: VtuberLive) => openVideo(livePlayingVideo(l));
   // 分頁列已經黏在 header 下方（代表已經往下捲）時，切換分頁順便捲回內容頂端，不用再爬回去
   const changeTab = (value: TalentTab) => {
-    setTab(value);
+    navigate(talentPath(handle, value));
     const tabs = tabsRef.current;
     const header = document.querySelector("header")?.offsetHeight ?? 0;
     if (tabs && tabs.getBoundingClientRect().top <= header + 1) {
@@ -95,6 +105,7 @@ export function VtuberTalent() {
       title: v.title,
       channelTitle: channel?.title ?? "",
       channelThumbnailUrl: channel?.thumbnail_url ?? "",
+      channelHandle: channel?.handle ?? handle,
       when: relativeDayName(published.dateKey) || published.md,
       vertical,
     });
