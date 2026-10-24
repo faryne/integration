@@ -40,6 +40,16 @@ func GetActiveChannelByHandle(handle string) (*vtuberEntity.Channel, error) {
 	return &out[0], nil
 }
 
+// GetActiveChannelByID 依頻道 ID 找未刪除的頻道；找不到回 nil
+func GetActiveChannelByID(channelID string) (*vtuberEntity.Channel, error) {
+	var out []vtuberEntity.Channel
+	err := client.GetDB(enum.DBWalolita).Where("channel_id = ? AND is_deleted = 0", channelID).Limit(1).Find(&out).Error
+	if err != nil || len(out) == 0 {
+		return nil, err
+	}
+	return &out[0], nil
+}
+
 // UpsertChannels 以 channel_id 為準批次寫入，衝突時只更新 columns 指定的欄位
 func UpsertChannels(channels []vtuberEntity.Channel, columns []string) error {
 	if len(channels) == 0 {

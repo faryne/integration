@@ -67,6 +67,16 @@ func FindLives(filter LiveFilter) ([]vtuberEntity.Live, error) {
 	return out, err
 }
 
+// GetLive 依影片 ID 找直播；不是追蹤中的直播回 nil
+func GetLive(videoID string) (*vtuberEntity.Live, error) {
+	var out []vtuberEntity.Live
+	err := client.GetDB(enum.DBWalolita).Where("video_id = ?", videoID).Limit(1).Find(&out).Error
+	if err != nil || len(out) == 0 {
+		return nil, err
+	}
+	return &out[0], nil
+}
+
 // ListLiveChannelIDs 目前正在直播的頻道
 func ListLiveChannelIDs() ([]string, error) {
 	var out []string

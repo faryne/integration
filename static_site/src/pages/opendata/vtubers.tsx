@@ -33,9 +33,9 @@ import { TalentPicker } from "@/components/vtuber/TalentPicker.tsx";
 import { TimeZoneNote } from "@/components/vtuber/TimeZoneNote.tsx";
 import { useNow } from "@/components/vtuber/useNow.ts";
 import { useVtuberSnack } from "@/components/vtuber/useVtuberSnack.ts";
-import { VideoModal } from "@/components/vtuber/VideoModal.tsx";
+import { useOpenVideo } from "@/components/vtuber/videoRoute.ts";
 import { useTitle } from "@/helpers/title.tsx";
-import type { VtuberLive, VtuberPlayingVideo } from "@/types/vtubers.ts";
+import type { VtuberLive } from "@/types/vtubers.ts";
 
 /** /data/vtubers 總覽：藝人選擇列、直播中輪播、過去的直播（昨天、前天）、依日期分組的即將直播 */
 export function VtubersIndex() {
@@ -44,7 +44,7 @@ export function VtubersIndex() {
   const lives = useVtuberLives();
   const { snack, showError, showCopied, close } = useVtuberSnack();
   const [showCancelled, setShowCancelled] = useState(false);
-  const [playing, setPlaying] = useState<VtuberPlayingVideo | null>(null);
+  const openVideo = useOpenVideo();
   const now = useNow();
   // 過去的直播：查前天 00:00 ～今天 00:00（台北）已結束的
   const today = taipeiTime(new Date(now)).dateKey;
@@ -62,7 +62,7 @@ export function VtubersIndex() {
   const rest = fromToday(all, now).filter(
     (l) => l.status !== "live" && (showCancelled || l.status !== "cancelled"),
   );
-  const play = (l: VtuberLive) => setPlaying(livePlayingVideo(l));
+  const play = (l: VtuberLive) => openVideo(livePlayingVideo(l));
   // API 回傳跟區間重疊的直播，會混進更早開播、跨日才結束的；依開播日期分到昨天／前天，其餘丟掉
   const endedOn = (dateKey: string) =>
     (ended.data?.lives ?? []).filter(
@@ -139,7 +139,6 @@ export function VtubersIndex() {
         {lives.data && <LiveTimeline lives={rest} onPlay={play} />}
       </Box>
 
-      <VideoModal video={playing} onClose={() => setPlaying(null)} />
       <CustomSnackbar
         open={snack.open}
         message={snack.message}

@@ -34,14 +34,10 @@ import { TimeZoneNote } from "@/components/vtuber/TimeZoneNote.tsx";
 import { TalentVideos } from "@/components/vtuber/TalentVideos.tsx";
 import { useNow } from "@/components/vtuber/useNow.ts";
 import { useVtuberSnack } from "@/components/vtuber/useVtuberSnack.ts";
-import { VideoModal } from "@/components/vtuber/VideoModal.tsx";
+import { useOpenVideo } from "@/components/vtuber/videoRoute.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
-import type {
-  VtuberLive,
-  VtuberPlayingVideo,
-  VtuberVideo,
-} from "@/types/vtubers.ts";
+import type { VtuberLive, VtuberVideo } from "@/types/vtubers.ts";
 
 type TalentTab = "upcoming" | "videos" | "calendar" | "stats";
 
@@ -59,7 +55,7 @@ export function VtuberTalent() {
   const { snack, showError, showCopied, close } = useVtuberSnack();
   const [tab, setTab] = useState<TalentTab>("upcoming");
   const [showCancelled, setShowCancelled] = useState(false);
-  const [playing, setPlaying] = useState<VtuberPlayingVideo | null>(null);
+  const openVideo = useOpenVideo();
   const now = useNow();
   const tabsRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -81,7 +77,7 @@ export function VtuberTalent() {
   const upcoming = fromToday(all, now).filter(
     (l) => l.status !== "live" && (showCancelled || l.status !== "cancelled"),
   );
-  const playLive = (l: VtuberLive) => setPlaying(livePlayingVideo(l));
+  const playLive = (l: VtuberLive) => openVideo(livePlayingVideo(l));
   // 分頁列已經黏在 header 下方（代表已經往下捲）時，切換分頁順便捲回內容頂端，不用再爬回去
   const changeTab = (value: TalentTab) => {
     setTab(value);
@@ -94,7 +90,7 @@ export function VtuberTalent() {
   };
   const playVideo = (v: VtuberVideo, vertical: boolean) => {
     const published = taipeiTime(v.published_at);
-    setPlaying({
+    openVideo({
       videoId: v.video_id,
       title: v.title,
       channelTitle: channel?.title ?? "",
@@ -215,7 +211,6 @@ export function VtuberTalent() {
         </Box>
       )}
 
-      <VideoModal video={playing} onClose={() => setPlaying(null)} />
       <CustomSnackbar
         open={snack.open}
         message={snack.message}
