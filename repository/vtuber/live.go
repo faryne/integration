@@ -49,11 +49,14 @@ func MarkLivesCancelled(videoIDs []string, checkedAt time.Time) error {
 		Updates(map[string]any{"status": vtuberEntity.LiveStatusCancelled, "concurrent_viewers": nil, "checked_at": checkedAt}).Error
 }
 
-// FindLives 依開始時間（已開播用實際時間，否則用預定時間）落在區間內查直播，由早到晚
+// FindLives 查跟區間有重疊的直播，依開始時間（已開播用實際時間，否則用預定時間）由早到晚。
+// 重疊＝開始不晚於區間結束，且「還在直播」或「結束（沒結束就看開始）不早於區間開始」；
+// 只看開始時間的話，連播超過一天的直播會掉出區間，行事曆結束時間不會更新，總覽也看不到它在直播
 func FindLives(filter LiveFilter) ([]vtuberEntity.Live, error) {
 	var out []vtuberEntity.Live
 	query := client.GetDB(enum.DBWalolita).
-		Where("COALESCE(actual_start_at, scheduled_start_at) BETWEEN ? AND ?", filter.From, filter.To)
+		Where("COALESCE(actual_start_at, scheduled_start_at) <= ?", filter.To).
+		Where("(status = ? OR COALESCE(actual_end_at, actual_start_at, scheduled_start_at) >= ?)", vtuberEntity.LiveStatusLive, filter.From)
 	if len(filter.ChannelIDs) > 0 {
 		query = query.Where("channel_id IN ?", filter.ChannelIDs)
 	}
