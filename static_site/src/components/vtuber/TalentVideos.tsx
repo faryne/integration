@@ -1,16 +1,21 @@
 import {
   Box,
-  ButtonBase,
   Chip,
   CircularProgress,
   Paper,
   Stack,
   Typography,
 } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useVtuberChannelVideos } from "@/apis/opendata/vtubers.ts";
-import { relativeDayName, taipeiTime } from "@/components/vtuber/format.ts";
+import {
+  VideoSearchForm,
+  VideoSearchResults,
+  type VideoSearchQuery,
+} from "@/components/vtuber/TalentVideoSearch.tsx";
+import { VideoCard } from "@/components/vtuber/VideoCard.tsx";
+import { videoGridSx } from "@/components/vtuber/videoGrid.ts";
 import type { VtuberVideo, VtuberVideoType } from "@/types/vtubers.ts";
 
 const VIDEO_TYPES: [VtuberVideoType, string][] = [
@@ -22,13 +27,55 @@ const VIDEO_TYPES: [VtuberVideoType, string][] = [
 
 interface TalentVideosProps {
   handle: string;
+  searchAvailable: boolean; // 頻道資料的 video_search_available：YouTube 搜尋額度用完時停用搜尋列
   // vertical：從「短片」分類點開，modal 用直式播放器
   onPlay: (video: VtuberVideo, vertical: boolean) => void;
   onError: (error: unknown) => void;
 }
 
-/** 「所有影片」：依分類（全部／直播／影片／短片）列上傳清單，捲到底自動載入下一頁；短片用直式縮圖 */
-export function TalentVideos({ handle, onPlay, onError }: TalentVideosProps) {
+/**
+ * 「所有影片」：上方是影片搜尋列；沒在搜尋時依分類（全部／直播／影片／短片）列上傳清單，捲到底自動載入下一頁，短片用直式縮圖。
+ * 搜尋時改顯示搜尋結果（藏起分類），「清除搜尋」回到列表
+ */
+export function TalentVideos({
+  handle,
+  searchAvailable,
+  onPlay,
+  onError,
+}: TalentVideosProps) {
+  const [searching, setSearching] = useState<VideoSearchQuery | null>(null);
+  // 搜尋時才發現額度用完（頁面開著時用完）：之後就停用搜尋列，不用等重新整理
+  const [quotaGone, setQuotaGone] = useState(false);
+  const markQuotaGone = useCallback(() => setQuotaGone(true), []);
+  const available = searchAvailable && !quotaGone;
+  // 換藝人時清掉搜尋
+  useEffect(() => setSearching(null), [handle]);
+
+  return (
+    <>
+      <VideoSearchForm available={available} onSearch={setSearching} />
+      {searching ? (
+        <VideoSearchResults
+          handle={handle}
+          query={searching}
+          onPlay={(video) => onPlay(video, false)}
+          onClear={() => setSearching(null)}
+          onQuotaExhausted={markQuotaGone}
+          onError={onError}
+        />
+      ) : (
+        <UploadList handle={handle} onPlay={onPlay} onError={onError} />
+      )}
+    </>
+  );
+}
+
+// 上傳清單：依分類讀，捲到底自動載入下一頁
+function UploadList({
+  handle,
+  onPlay,
+  onError,
+}: Omit<TalentVideosProps, "searchAvailable">) {
   const [type, setType] = useState<VtuberVideoType>("all");
   const query = useVtuberChannelVideos(handle, type);
   const sentinel = useRef<HTMLDivElement>(null);
@@ -77,57 +124,15 @@ export function TalentVideos({ handle, onPlay, onError }: TalentVideosProps) {
           <Typography color={"text.secondary"}>沒有影片</Typography>
         </Paper>
       ) : (
-        <Box
-          sx={{
-            display: "grid",
-            // 短片是直式縮圖，一列多放幾張
-            gridTemplateColumns: shorts
-              ? {
-                  xs: "repeat(3, 1fr)",
-                  sm: "repeat(auto-fill, minmax(140px, 1fr))",
-                }
-              : { xs: "1fr 1fr", sm: "repeat(auto-fill, minmax(200px, 1fr))" },
-            gap: { xs: shorts ? 1 : 1.25, sm: 1.5 },
-          }}
-        >
-          {videos.map((video) => {
-            const published = taipeiTime(video.published_at);
-            return (
-              <ButtonBase
-                key={video.video_id}
-                onClick={() => onPlay(video, shorts)}
-                sx={{ display: "block", textAlign: "left", borderRadius: 1 }}
-              >
-                {/* YouTube 給的短片縮圖也是 16:9（直式內容在中間），放進 9:16 框置中裁切剛好露出內容 */}
-                <Box
-                  sx={{
-                    aspectRatio: shorts ? "9 / 16" : "16 / 9",
-                    borderRadius: 1,
-                    bgcolor: "action.hover",
-                    backgroundImage: `url(${video.thumbnail_url})`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }}
-                />
-                <Typography
-                  fontSize={shorts ? 12.5 : 13}
-                  sx={{
-                    mt: 0.75,
-                    lineHeight: 1.4,
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                  }}
-                >
-                  {video.title}
-                </Typography>
-                <Typography variant={"caption"} color={"text.secondary"}>
-                  {relativeDayName(published.dateKey) || published.date}
-                </Typography>
-              </ButtonBase>
-            );
-          })}
+        <Box sx={videoGridSx(shorts)}>
+          {videos.map((video) => (
+            <VideoCard
+              key={video.video_id}
+              video={video}
+              shorts={shorts}
+              onClick={() => onPlay(video, shorts)}
+            />
+          ))}
         </Box>
       )}
       <Box ref={sentinel} sx={{ py: 2, textAlign: "center" }}>

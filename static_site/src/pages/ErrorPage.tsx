@@ -25,6 +25,7 @@ function pickRandomFaryneMascotImage() {
 export interface ErrorPageProps {
   backUrl?: string;
   code: number;
+  title?: string; // 蓋過依 code 決定的預設標題（例如同樣 503，影片搜尋額度用完要講清楚）
   message?: string;
   internalCode?: string;
   // 嵌在別的容器裡（例如工作台右欄，本身已經有自己的內距與有限寬度）時用——
@@ -48,6 +49,11 @@ const defaultErrorContent: Record<number, { title: string; message: string }> =
       title: "沒有瀏覽權限",
       message:
         "這個房間目前不能讓主人進去喵。若覺得不應該被擋下，請再確認權限設定。",
+    },
+    429: {
+      title: "查詢太頻繁了",
+      message:
+        "喵嗚，主人問得太快，女僕忙不過來了。請休息一下，過一陣子再來問喵。",
     },
     404: {
       title: "找不到這個頁面",
@@ -112,6 +118,7 @@ const steamloomFallbackErrorContent = {
 export function ErrorPage({
   backUrl,
   code,
+  title,
   message,
   internalCode,
   compact = false,
@@ -192,7 +199,7 @@ export function ErrorPage({
             variant="h5"
             sx={{ mt: 1, fontWeight: 700 }}
           >
-            {errorContent.title}
+            {title ?? errorContent.title}
           </Typography>
           <Typography
             component="p"

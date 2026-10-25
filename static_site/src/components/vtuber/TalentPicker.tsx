@@ -1,40 +1,25 @@
-import {
-  Autocomplete,
-  Box,
-  Button,
-  Chip,
-  InputAdornment,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Button, Paper, Stack, Typography } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import SearchIcon from "@mui/icons-material/Search";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { TalentAvatar } from "@/components/vtuber/TalentAvatar.tsx";
 import { TalentPanel } from "@/components/vtuber/TalentPanel.tsx";
-import { talentPath } from "@/components/vtuber/routes.ts";
-import { matchesTalent } from "@/components/vtuber/talentSearch.ts";
-import { ChannelAvatar } from "@/components/vtuber/ChannelAvatar.tsx";
-import type {
-  VtuberChannelList,
-  VtuberChannelSummary,
-} from "@/types/vtubers.ts";
+import { TalentSearchBox } from "@/components/vtuber/TalentSearchBox.tsx";
+import type { VtuberChannelList } from "@/types/vtubers.ts";
 
 interface TalentPickerProps {
   list: VtuberChannelList;
   currentHandle?: string;
+  onError?: (error: unknown) => void; // 搜尋 API 出錯時跳 snack
 }
 
 /** 藝人選擇列：搜尋＋全部藝人面板＋正在直播的頭像；藝人再多也只佔一列 */
-export function TalentPicker({ list, currentHandle }: TalentPickerProps) {
-  const navigate = useNavigate();
+export function TalentPicker({
+  list,
+  currentHandle,
+  onError,
+}: TalentPickerProps) {
   const [panelOpen, setPanelOpen] = useState(false);
-  const unitName = (slug: string) =>
-    list.units.find((u) => u.slug === slug)?.name ?? "";
   const live = list.channels.filter((c) => c.is_live);
 
   return (
@@ -54,62 +39,7 @@ export function TalentPicker({ list, currentHandle }: TalentPickerProps) {
         spacing={1}
         sx={{ width: { xs: "100%", sm: "auto" } }}
       >
-        <Autocomplete<VtuberChannelSummary>
-          size={"small"}
-          options={list.channels}
-          getOptionLabel={(c) => c.title}
-          filterOptions={(options, { inputValue }) =>
-            inputValue
-              ? options
-                  .filter((c) =>
-                    matchesTalent(c, inputValue, unitName(c.unit_slug)),
-                  )
-                  .slice(0, 8)
-              : []
-          }
-          onChange={(_, channel) =>
-            channel && navigate(talentPath(channel.handle))
-          }
-          value={null}
-          blurOnSelect
-          clearOnBlur
-          noOptionsText={"沒有符合的藝人"}
-          popupIcon={null}
-          sx={{ flex: 1, minWidth: { sm: 240 } }}
-          renderOption={({ key, ...props }, c) => (
-            <Box component={"li"} key={key} {...props} sx={{ gap: 1.25 }}>
-              <ChannelAvatar
-                src={c.thumbnail_url}
-                sx={{ width: 28, height: 28 }}
-              />
-              <Typography variant={"body2"} noWrap sx={{ flex: 1 }}>
-                {c.title}
-              </Typography>
-              {c.is_live && (
-                <Chip label={"LIVE"} color={"error"} size={"small"} />
-              )}
-              <Typography variant={"caption"} color={"text.secondary"}>
-                {unitName(c.unit_slug)}
-              </Typography>
-            </Box>
-          )}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              placeholder={"搜尋藝人"}
-              slotProps={{
-                input: {
-                  ...params.InputProps,
-                  startAdornment: (
-                    <InputAdornment position={"start"}>
-                      <SearchIcon fontSize={"small"} />
-                    </InputAdornment>
-                  ),
-                },
-              }}
-            />
-          )}
-        />
+        <TalentSearchBox units={list.units} onError={onError} />
         <Button
           variant={"outlined"}
           startIcon={<MenuIcon />}

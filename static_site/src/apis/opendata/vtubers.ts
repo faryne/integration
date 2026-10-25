@@ -9,10 +9,12 @@ import type { CommonResponse } from "@/apis/interfaces.ts";
 import type {
   VtuberChannelDetail,
   VtuberChannelList,
+  VtuberChannelSearchItem,
   VtuberLiveList,
   VtuberStat,
   VtuberVideoDetail,
   VtuberVideoPage,
+  VtuberVideoSearchOrder,
   VtuberVideoType,
 } from "@/types/vtubers.ts";
 
@@ -74,6 +76,52 @@ export function useVtuberChannelVideos(handle: string, type: VtuberVideoType) {
         await axios.get<CommonResponse<VtuberVideoPage>>(
           `${base}/channels/${encodeURIComponent(handle)}/videos`,
           { params: { type, ...(pageParam ? { page_token: pageParam } : {}) } },
+        )
+      ).data.data,
+    getNextPageParam: (last) => last.next_page_token || undefined,
+  });
+}
+
+// 藝人搜尋框：查 DB（名稱、@handle、期別、頻道說明）；打字中保留上一份結果，下拉才不會一直閃
+export function useVtuberChannelSearch(q: string) {
+  return useQuery({
+    queryKey: ["vtubers", "channel-search", q],
+    enabled: Boolean(q),
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
+    queryFn: async () =>
+      (
+        await axios.get<CommonResponse<VtuberChannelSearchItem[]>>(
+          `${base}/channels/search`,
+          { params: { q } },
+        )
+      ).data.data,
+  });
+}
+
+// 藝人頁的影片搜尋：按下搜尋才查（q 為空不查）；後端有快取與 IP 上限，429／503 不重試
+export function useVtuberVideoSearch(
+  handle: string,
+  q: string,
+  order: VtuberVideoSearchOrder,
+) {
+  return useInfiniteQuery({
+    queryKey: ["vtubers", "video-search", handle, q, order],
+    enabled: Boolean(handle && q),
+    retry: false,
+    staleTime: Infinity,
+    initialPageParam: "",
+    queryFn: async ({ pageParam }) =>
+      (
+        await axios.get<CommonResponse<VtuberVideoPage>>(
+          `${base}/channels/${encodeURIComponent(handle)}/videos/search`,
+          {
+            params: {
+              q,
+              order,
+              ...(pageParam ? { page_token: pageParam } : {}),
+            },
+          },
         )
       ).data.data,
     getNextPageParam: (last) => last.next_page_token || undefined,

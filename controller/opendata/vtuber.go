@@ -129,6 +129,61 @@ func VtuberVideo(ctx fiber.Ctx) error {
 	return output.Success(detail)
 }
 
+// VtuberChannelSearch searches talents by name, @handle, unit name or channel description.
+// @Summary Search VTuber channels
+// @Tags OpenData VTuber
+// @Produce json
+// @Param q query string true "Keyword, at most 100 characters"
+// @Success 200 {object} output.CommonOutput
+// @Failure 400 {object} output.CommonOutput
+// @Router /opendata/vtubers/channels/search [get]
+func VtuberChannelSearch(ctx fiber.Ctx) error {
+	items, err := vtuberService.SearchChannels(ctx.Query("q"))
+	if err != nil {
+		return requestError(err)
+	}
+	return output.Success(items)
+}
+
+const (
+	// customCodeVtuberVideoSearchLimited 這個 IP 一小時內的影片搜尋次數用完
+	customCodeVtuberVideoSearchLimited output.CustomCode = "429003"
+	// customCodeVtuberVideoSearchQuota YouTube 搜尋額度今天用完；503001 是全站維護（前端會切到維護頁），不能共用
+	customCodeVtuberVideoSearchQuota output.CustomCode = "503002"
+)
+
+// VtuberChannelVideoSearch searches a talent's videos through YouTube (cached, not stored).
+// @Summary Search VTuber channel videos
+// @Tags OpenData VTuber
+// @Produce json
+// @Param handle path string true "YouTube @handle"
+// @Param q query string true "Keyword, at most 100 characters"
+// @Param order query string false "relevance (default) / date"
+// @Param page_token query string false "Token of the next page"
+// @Success 200 {object} output.CommonOutput
+// @Failure 400 {object} output.CommonOutput
+// @Failure 404 {object} output.CommonOutput
+// @Failure 429 {object} output.CommonOutput
+// @Failure 503 {object} output.CommonOutput
+// @Router /opendata/vtubers/channels/{handle}/videos/search [get]
+func VtuberChannelVideoSearch(ctx fiber.Ctx) error {
+	handle := ctx.Params("handle")
+	page, err := vtuberService.SearchChannelVideos(ctx.Context(), handle, ctx.Query("q"), ctx.Query("order"), ctx.Query("page_token"), ctx.IP())
+	switch {
+	case errors.Is(err, vtuberService.ErrInvalidRequest):
+		return output.BadRequest(err)
+	case errors.Is(err, vtuberService.ErrVideoSearchLimited):
+		return output.New(fiber.StatusTooManyRequests, customCodeVtuberVideoSearchLimited, nil, "影片搜尋一小時內最多查 3 組關鍵字、每組最多翻 20 頁，請稍後再試")
+	case errors.Is(err, vtuberService.ErrVideoSearchQuotaExhausted):
+		return output.New(fiber.StatusServiceUnavailable, customCodeVtuberVideoSearchQuota, nil, "今天的影片搜尋額度已經用完，明天再來搜尋")
+	case err != nil:
+		return output.ExternalServiceError(err)
+	case page == nil:
+		return output.NotFound(errors.New("找不到這位藝人"))
+	}
+	return output.Success(page)
+}
+
 // VtuberLives lists live streams within a time range.
 // @Summary List VTuber live streams
 // @Tags OpenData VTuber

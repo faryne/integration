@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VTuber 搜尋 Mockup</title>
+<style>
+/* 色票沿用 vtuber-schedule-mockup */
+:root, [data-theme="light"] {
+  --bg:#f3f5f5; --surface:#fff; --surface-2:#eef2f2; --border:#dde4e4; --text:#13201f; --text-2:#5b6b6c; --text-3:#8a9798;
+  --accent:#0f766e; --accent-soft:#e0f3f1; --live:#d93a3a; --mark:#fde68a;
+}
+[data-theme="dark"] {
+  --bg:#0b1014; --surface:#121a20; --surface-2:#18232a; --border:#23313a; --text:#e3f1f2; --text-2:#93a7ab; --text-3:#6c8085;
+  --accent:#5eead4; --accent-soft:#123432; --live:#ff6b6b; --mark:#715d12;
+}
+* { box-sizing:border-box; }
+body { margin:0; font-family:Roboto,"Noto Sans TC",system-ui,sans-serif; background:#cfd5d8; color:#17191c; }
+button, input, select { font:inherit; color:inherit; }
+button { cursor:pointer; }
+.bar { position:sticky; top:0; z-index:50; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; justify-content:space-between; padding:10px 16px; background:#1f2430; color:#fff; font-size:13px; }
+.bar span { color:#aab2c0; margin-left:8px; }
+.ctl { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.chip { border:1px solid #485063; background:transparent; color:#dfe3ea; padding:4px 10px; border-radius:999px; font-size:12px; }
+.chip.active { background:#fff; color:#1f2430; border-color:#fff; }
+.sep { width:1px; height:18px; background:#485063; margin:0 4px; }
+.notes { margin:12px auto 0; max-width:1280px; padding:12px 16px; border-radius:8px; background:#fffbe6; border:1px solid #f1d98a; font-size:13px; line-height:1.7; color:#4a3b00; }
+.notes[hidden] { display:none; }
+.notes ol { margin:4px 0 0; padding-left:20px; }
+.notes code { background:#f6ecc4; padding:0 4px; border-radius:3px; }
+.notes .q { color:#9a3412; font-weight:700; }
+.stage { padding:16px; display:flex; justify-content:center; }
+.device { width:100%; max-width:1280px; border-radius:10px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.18); background:var(--bg); color:var(--text); }
+.device.mobile { max-width:390px; }
+.container { padding:20px 24px 40px; }
+.device.mobile .container { padding:16px; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+.btn { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border); background:var(--surface); border-radius:8px; padding:7px 14px; font-size:14px; font-weight:600; color:var(--accent); white-space:nowrap; }
+.btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+[data-theme="dark"] .btn.primary { color:#04201d; }
+.btn svg { width:18px; height:18px; }
+mark { background:var(--mark); color:inherit; border-radius:2px; padding:0 1px; }
+.section-label { font-size:12px; font-weight:700; color:var(--text-3); letter-spacing:.5px; margin:24px 0 8px; }
+
+/* 藝人選擇列：輸入框保留，改查 DB */
+.picker { padding:12px 14px; display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; }
+.search-wrap { position:relative; flex:1; min-width:240px; max-width:360px; }
+.device.mobile .search-wrap { max-width:none; }
+.input { display:flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:8px; padding:0 12px; background:var(--surface); }
+.input:focus-within { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.input svg { width:18px; height:18px; color:var(--text-3); flex:none; }
+.input input { flex:1; border:0; outline:0; background:transparent; padding:8px 0; font-size:14px; min-width:0; }
+.dropdown { position:absolute; left:0; right:0; top:calc(100% + 4px); background:var(--surface); border:1px solid var(--border); border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,.15); z-index:5; max-height:360px; overflow:auto; }
+.opt { display:flex; gap:10px; padding:8px 12px; cursor:pointer; align-items:flex-start; }
+.opt:hover { background:var(--surface-2); }
+.opt .a { width:28px; height:28px; border-radius:50%; flex:none; margin-top:1px; }
+.opt .n { font-size:14px; display:flex; gap:6px; align-items:center; }
+.opt .n .u { margin-left:auto; font-size:12px; color:var(--text-3); white-space:nowrap; }
+.opt .d { font-size:12px; color:var(--text-2); margin-top:2px; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.opt .live { font-size:10px; font-weight:800; color:#fff; background:var(--live); border-radius:999px; padding:0 6px; }
+.empty-opt { padding:10px 12px; font-size:13px; color:var(--text-3); }
+.live-row { display:flex; align-items:center; gap:8px; color:var(--live); font-size:13px; font-weight:700; }
+.lav { width:34px; height:34px; border-radius:50%; border:2px solid var(--live); }
+
+/* 藝人頁 */
+.talent { display:grid; grid-template-columns:300px minmax(0,1fr); gap:20px; align-items:start; margin-top:16px; }
+.device.mobile .talent { grid-template-columns:minmax(0,1fr); }
+@media (max-width: 900px) { .talent { grid-template-columns:minmax(0,1fr); } }
+.profile { padding:0 0 16px; overflow:hidden; }
+.profile .banner { height:70px; background:linear-gradient(120deg,#be123c,#f59e0b); }
+.profile .ava { width:72px; height:72px; border-radius:50%; margin:-36px 0 0 16px; border:3px solid var(--surface); background:linear-gradient(135deg,#f43f5e,#fb923c); }
+.profile .nm { padding:6px 16px 0; font-weight:800; font-size:17px; }
+.profile .hd { padding:0 16px; font-size:13px; color:var(--text-2); }
+.tabs { display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:14px; overflow-x:auto; }
+.tab { border:0; background:none; padding:10px 14px; font-size:14px; font-weight:600; color:var(--text-2); border-bottom:2px solid transparent; white-space:nowrap; }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.vsearch { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+.vsearch .input { flex:1; min-width:200px; }
+select { border:1px solid var(--border); border-radius:8px; padding:0 10px; background:var(--surface); font-size:14px; height:38px; }
+.types { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+.tchip { border:1px solid var(--border); background:var(--surface); border-radius:999px; padding:4px 12px; font-size:13px; }
+.tchip.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+[data-theme="dark"] .tchip.active { color:#04201d; }
+.vsearch.off .input { background:var(--surface-2); }
+.vsearch.off .input input::placeholder { color:var(--text-3); }
+.vsearch.off select, .vsearch.off .btn { opacity:.5; cursor:not-allowed; }
+.result-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:13px; color:var(--text-2); }
+.result-head .clear { margin-left:auto; border:0; background:none; color:var(--accent); font-weight:600; font-size:13px; }
+.grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.device.mobile .grid { grid-template-columns:repeat(2,1fr); }
+.vcard { cursor:pointer; }
+.vcard .th { aspect-ratio:16/9; border-radius:8px; position:relative; }
+.vcard .badge { position:absolute; left:6px; top:6px; font-size:10px; font-weight:800; color:#fff; border-radius:3px; padding:1px 5px; }
+.vcard .badge.live { background:var(--live); }
+.vcard .badge.up { background:#2563eb; }
+.vcard .t { font-size:13.5px; font-weight:600; margin-top:6px; line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.vcard .dt { font-size:12px; color:var(--text-3); margin-top:2px; }
+.more { display:block; margin:16px auto 0; }
+.spinner { width:22px; height:22px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; margin:28px auto; }
+@keyframes spin { to { transform:rotate(360deg); } }
+/* 模擬 <ErrorPage compact code={429} />：貓娘插圖＋標題＋說明 */
+.errorpage { display:flex; flex-direction:column; align-items:center; text-align:center; padding:28px 16px; }
+.errorpage .mascot { width:150px; height:150px; border-radius:16px; background:linear-gradient(160deg,#c7d2fe,#fbcfe8); display:grid; place-items:center; font-size:12px; color:#6b7280; margin-bottom:14px; }
+.errorpage .code { font-size:13px; font-weight:800; color:var(--accent); letter-spacing:1px; }
+.errorpage h3 { margin:4px 0 8px; font-size:19px; }
+.errorpage p { margin:0; max-width:440px; font-size:14px; line-height:1.7; color:var(--text-2); }
+.sim { margin-top:10px; font-size:12px; color:var(--text-3); }
+.sim b { color:var(--text-2); }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div><strong>VTuber 搜尋 Mockup</strong><span>藝人搜尋框（改查 DB）＋藝人頁影片搜尋（YouTube API）・假資料</span></div>
+  <div class="ctl">
+    <button class="chip active" data-view="desktop">Desktop</button>
+    <button class="chip" data-view="mobile">Mobile 390</button>
+    <span class="sep"></span>
+    <button class="chip active" data-theme-option="light">淺色</button>
+    <button class="chip" data-theme-option="dark">深色</button>
+    <span class="sep"></span>
+    <button class="chip" data-reset>重置</button>
+    <button class="chip" data-exhaust>模擬：額度已用完（進頁面時）</button>
+    <button class="chip" data-exhaust-submit>模擬：送出時才用完</button>
+    <span class="sep"></span>
+    <label style="display:flex;gap:4px;align-items:center;color:#dfe3ea"><input type="checkbox" id="notesToggle" checked /> 說明</label>
+  </div>
+</header>
+
+<aside class="notes" id="notes">
+  <strong>看點</strong>
+  <ol>
+    <li><b>藝人選擇列的「搜尋藝人」輸入框保留</b>，外觀不變，比對改成打後端查 DB（停 300ms 才送）：名稱、@handle、期別、頻道說明。命中在說明時，選項多一行說明片段並標出命中處（試試輸入 <code>しょこら</code>、<code>生放送タグ</code>）。頻道說明週更 job 已經同步進 <code>vtuber_channels.description</code>。</li>
+    <li><b>影片搜尋放在藝人頁的「所有影片」分頁</b>，只搜這位藝人的頻道（YouTube <code>search.list</code> 指定 channelId，不存 DB）。按 Enter 或「搜尋」才查，可選「相關性／最新」；搜尋時藏起「全部／直播／影片／短片」，「清除搜尋」回到原本的列表。結果卡片跟原本的影片卡片同一種樣式，點了開影片 modal。</li>
+    <li><b>快取</b>：藝人＋關鍵字＋排序＋第幾頁 Redis 快取 6 小時；讀到快取的頁不算次數，所以往回翻、重查同一組都不扣。</li>
+    <li><b>單一 IP 每小時上限</b>：最多 3 組不同關鍵字，每組最多 20 頁，只有真的呼叫 YouTube 才算。<b>「一組」＝同一位藝人＋同一個關鍵字</b>（排序不同算同一組、頁數合計）；只看關鍵字的話，同一個字在 79 位藝人頁各查 20 頁就繞過了。超過時結果區顯示 <code>&lt;ErrorPage compact code={429} /&gt;</code>（ErrorPage 要補 429 的預設文案）。上方「重置查詢次數」可以重來。</li>
+    <li><b>YouTube 額度真的用完</b>（<code>search.list</code> 回 403 <code>quotaExceeded</code>）：後端寫 Redis key <code>vtuber:video-search:quota-exhausted</code>，效期一天。藝人頁本來就會抓的頻道資料 API 多回 <code>video_search_available</code>，旗標在時搜尋框、排序、按鈕都停用，placeholder 改成「今日影片搜尋額度已用完」（上方「模擬：額度已用完」）。</li>
+    <li><b>旗標在、卻還是送出了</b>（頁面開著時才用完、或直接打 API）：後端看到旗標直接回 <code>503</code>（不再呼叫 YouTube），結果區顯示 <code>&lt;ErrorPage compact code={503} /&gt;</code> 並停用搜尋框（上方「模擬：送出時才用完」）。跟 IP 超過上限的 429 分開，文案不同。<br>
+      附註：YouTube 配額在美西時間午夜（台北下午 3／4 點）重置，固定一天的效期可能比實際重置晚幾小時才恢復；之後想更準可以改成「到下一個美西午夜」。</li>
+    <li>已定（2026-10-25）：<b>先不加全站每日上限</b>、<b>不同步官網藝人介紹</b>（藝人搜尋只用 DB 既有的頻道資料）。</li>
+  </ol>
+</aside>
+
+<main class="stage">
+  <div class="device" id="device">
+    <div class="container">
+      <div class="section-label">藝人選擇列（總覽、藝人頁共用）</div>
+      <div class="card picker">
+        <div class="search-wrap">
+          <label class="input"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg><input id="tq" placeholder="搜尋藝人" autocomplete="off" /></label>
+          <div class="dropdown" id="tdrop" hidden></div>
+        </div>
+        <button class="btn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>全部藝人 79</button>
+        <div class="live-row">● 直播中 <span class="lav" style="background:#c084fc"></span><span class="lav" style="background:#f472b6"></span></div>
+      </div>
+
+      <div class="section-label">藝人頁 /data/vtubers/@houshoumarine/videos</div>
+      <div class="talent">
+        <div class="card profile">
+          <div class="banner"></div>
+          <div class="ava"></div>
+          <div class="nm">Marine Ch. 宝鐘マリン</div>
+          <div class="hd">@houshoumarine・3期生</div>
+        </div>
+        <div>
+          <div class="tabs">
+            <button class="tab">即將直播</button>
+            <button class="tab active">所有影片</button>
+            <button class="tab">行事曆</button>
+            <button class="tab">統計</button>
+          </div>
+          <form class="vsearch" id="vform">
+            <label class="input"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg><input id="vq" placeholder="搜尋這位藝人的影片" /></label>
+            <select id="vorder"><option>相關性</option><option>最新</option></select>
+            <button class="btn primary" type="submit">搜尋</button>
+          </form>
+          <div id="vbody"></div>
+          <div class="sim" id="sim"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const TALENTS = [
+  { name: "SoraCh. ときのそらチャンネル", handle: "@tokinosora", unit: "0期生", hue: 210, desc: "☆ホロライブ所属バーチャルアイドル、ときのそらです！横浜アリーナでの単独ライブを目標に活動しています！" },
+  { name: "Miko Ch. さくらみこ", handle: "@sakuramiko", unit: "0期生", hue: 340, live: true, desc: "にゃっはろ～！エリート巫女アイドルさくらみこです！🌸 電脳桜神社の巫女。唯一無二のトップエリート巫女アイドルを目指し日々奮闘中！" },
+  { name: "フブキCh。白上フブキ", handle: "@shirakamifubuki", unit: "1期生", hue: 190, desc: "ホロライブ所属の１期生、ゲーマーズの白上フブキです。お問い合わせ カバー株式会社" },
+  { name: "Choco Ch. 癒月ちょこ", handle: "@yuzukichoco", unit: "2期生", hue: 20, desc: "魔界学校のバーチャル保健医癒月ちょこと申します！チョコのような甘くとろけるような癒しのひとときをあなたに ファンアート【 #しょこらーと】" },
+  { name: "Subaru Ch. 大空スバル", handle: "@oozorasubaru", unit: "2期生", hue: 50, desc: "総合格闘技部とe-sports部のマネージャーっす！みんなのファイトのお手伝いするッス!!🌟【生放送タグ】#生スバル【アート】#プロテインザスバル" },
+  { name: "Marine Ch. 宝鐘マリン", handle: "@houshoumarine", unit: "3期生", hue: 355, desc: "ホロライブ3期生の宝鐘マリンです！宝鐘海賊団の船長やってます🏴‍☠️ 生放送タグ #マリン航海記 ファンアート #マリンのお宝" },
+  { name: "Mori Calliope Ch. hololive-EN", handle: "@moricalliope", unit: "Myth", hue: 330, live: true, desc: "The Grim Reaper's first apprentice, Mori Calliope. Rapper, singer, and occasional gamer. #calliolive" },
+];
+const VIDEOS = [
+  { t: "【歌枠】秋の夜長にしっとりソング🍁 KARAOKE", d: "2026/10/24", k: "" },
+  { t: "【#ホロ鯖ARK】ARK上陸14日目！海賊船色ガチャするぞ", d: "2026/10/23", k: "" },
+  { t: "【雑談】船長の航海日誌、今週もおつかれさま会", d: "2026/10/25", k: "live" },
+  { t: "【3D LIVE】7th Anniversary 船長の宝箱", d: "2026/11/02", k: "up" },
+  { t: "歌ってみた メドレー 2026", d: "2026/09/30", k: "" },
+  { t: "【ホラー】絶対に叫ばない配信", d: "2026/09/12", k: "" },
+];
+
+// 模擬後端的 IP 查詢次數：組 = 藝人＋關鍵字；每組最多 20 頁，最多 3 組；快取命中不算
+const LIMIT_GROUPS = 3, LIMIT_PAGES = 20;
+const quota = { groups: new Map(), cached: new Set() };
+const state = { mode: "list", q: "", order: "相關性", page: 1 };
+// 額度旗標：available＝頻道資料 API 回的 video_search_available；exhaustOnSubmit＝模擬頁面開著時才用完
+const flags = { available: true, exhaustOnSubmit: false };
+const $ = (s) => document.querySelector(s);
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const mark = (text, q) => {
+  const i = q ? text.toLowerCase().indexOf(q.toLowerCase()) : -1;
+  if (i < 0) return esc(text);
+  return esc(text.slice(0, i)) + "<mark>" + esc(text.slice(i, i + q.length)) + "</mark>" + esc(text.slice(i + q.length));
+};
+
+/* ---------- 藝人搜尋框 ---------- */
+let timer;
+$("#tq").addEventListener("input", (e) => {
+  clearTimeout(timer);
+  timer = setTimeout(() => renderTalent(e.target.value.trim()), 300);
+});
+$("#tq").addEventListener("blur", () => setTimeout(() => ($("#tdrop").hidden = true), 150));
+function renderTalent(q) {
+  const drop = $("#tdrop");
+  if (!q) { drop.hidden = true; return; }
+  const hits = TALENTS.filter((t) => `${t.name} ${t.handle} ${t.unit} ${t.desc}`.toLowerCase().includes(q.toLowerCase())).slice(0, 8);
+  drop.hidden = false;
+  drop.innerHTML = hits.length ? hits.map((t) => {
+    const inName = `${t.name} ${t.handle} ${t.unit}`.toLowerCase().includes(q.toLowerCase());
+    const i = t.desc.toLowerCase().indexOf(q.toLowerCase());
+    const start = i > 20 ? i - 12 : 0;
+    return `<div class="opt">
+      <span class="a" style="background:linear-gradient(135deg,hsl(${t.hue} 60% 65%),hsl(${(t.hue + 40) % 360} 55% 45%))"></span>
+      <div style="flex:1;min-width:0">
+        <div class="n">${mark(t.name, q)} ${t.live ? '<span class="live">LIVE</span>' : ""}<span class="u">${mark(t.unit, q)}</span></div>
+        ${inName ? "" : `<div class="d">${start ? "…" : ""}${mark(t.desc.slice(start), q)}</div>`}
+      </div></div>`;
+  }).join("") : '<div class="empty-opt">沒有符合的藝人</div>';
+}
+
+/* ---------- 藝人頁影片搜尋 ---------- */
+function groupKey() { return `@houshoumarine|${state.q.toLowerCase()}`; }
+// 取一頁：快取命中直接回；沒快取才檢查上限、計次
+function fetchPage(page) {
+  const cacheKey = `${groupKey()}|${state.order}|${page}`;
+  if (quota.cached.has(cacheKey)) return "ok";
+  const g = groupKey();
+  const used = quota.groups.get(g);
+  if (used === undefined && quota.groups.size >= LIMIT_GROUPS) return "limit";
+  if ((used ?? 0) >= LIMIT_PAGES) return "limit";
+  quota.groups.set(g, (used ?? 0) + 1);
+  quota.cached.add(cacheKey);
+  return "ok";
+}
+function renderVideos(loading) {
+  const body = $("#vbody");
+  if (state.mode === "list") {
+    body.innerHTML = `<div class="types">${["全部", "直播", "影片", "短片"].map((n, i) => `<button class="tchip ${i ? "" : "active"}">${n}</button>`).join("")}</div>
+      <div class="grid">${VIDEOS.map((v, i) => card(v, i, "")).join("")}</div>`;
+  } else if (state.mode === "quota") {
+    body.innerHTML = `<div class="result-head">「${esc(state.q)}」<button class="clear" data-clear>清除搜尋</button></div>
+      <div class="card errorpage">
+        <div class="mascot">ErrorPage 插圖</div>
+        <div class="code">503</div>
+        <h3>今天的影片搜尋額度用完了</h3>
+        <p>喵嗚，影片搜尋今天的 YouTube 額度已經用完，明天就能再搜尋了。之前查過的結果和所有影片列表還是看得到喵。</p>
+      </div>`;
+  } else if (state.mode === "limit") {
+    body.innerHTML = `<div class="result-head">「${esc(state.q)}」<button class="clear" data-clear>清除搜尋</button></div>
+      <div class="card errorpage">
+        <div class="mascot">ErrorPage 插圖</div>
+        <div class="code">429</div>
+        <h3>查詢次數已達上限</h3>
+        <p>喵嗚，影片搜尋一小時內最多查 3 組關鍵字、每組最多翻 20 頁。已經查過的頁面還是看得到，新的搜尋請稍後再來喵。</p>
+      </div>`;
+  } else {
+    body.innerHTML = `<div class="result-head">「${esc(state.q)}」・${state.order}<button class="clear" data-clear>清除搜尋</button></div>
+      ${loading ? '<div class="spinner"></div>' : `<div class="grid">${Array.from({ length: state.page }, () => VIDEOS).flat().map((v, i) => card(v, i, state.q)).join("")}</div>
+      <button class="btn more" data-more>載入更多</button>`}`;
+  }
+  $("#sim").innerHTML = `模擬這個 IP 本小時的用量：<b>${quota.groups.size}／${LIMIT_GROUPS} 組</b>${[...quota.groups].map(([k, n]) => `・「${esc(k.split("|")[1])}」${n}／${LIMIT_PAGES} 頁`).join("")}`;
+}
+function card(v, i, q) {
+  const hue = (i * 47 + 355) % 360;
+  const title = q ? `${q} ${v.t}` : v.t;
+  return `<div class="vcard"><div class="th" style="background:linear-gradient(135deg,hsl(${hue} 55% 55%),hsl(${(hue + 70) % 360} 50% 30%))">${v.k === "live" ? '<span class="badge live">LIVE</span>' : v.k === "up" ? '<span class="badge up">即將直播</span>' : ""}</div><div class="t">${mark(title, q)}</div><div class="dt">${v.d}</div></div>`;
+}
+function search(page) {
+  // 後端先看額度旗標：旗標在就直接 503，不呼叫 YouTube
+  if (flags.exhaustOnSubmit) { flags.available = false; state.mode = "quota"; applyAvailability(); renderVideos(); return; }
+  const result = fetchPage(page);
+  if (result === "limit") { state.mode = "limit"; renderVideos(); return; }
+  state.mode = "results"; state.page = page;
+  renderVideos(true);
+  setTimeout(() => renderVideos(false), 500);
+}
+// 依旗標停用搜尋框、排序與按鈕
+function applyAvailability() {
+  const off = !flags.available;
+  ["#vq", "#vorder", "#vform button"].forEach((sel) => ($(sel).disabled = off));
+  $("#vq").placeholder = off ? "今日影片搜尋額度已用完" : "搜尋這位藝人的影片";
+  $("#vform").classList.toggle("off", off);
+}
+$("#vform").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (!flags.available) return;
+  state.q = $("#vq").value.trim();
+  state.order = $("#vorder").value;
+  if (!state.q) return;
+  search(1);
+});
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  const d = b.dataset;
+  if (d.clear !== undefined) { state.mode = "list"; $("#vq").value = ""; renderVideos(); }
+  else if (d.more !== undefined) search(state.page + 1);
+  else if (d.reset !== undefined) { quota.groups.clear(); quota.cached.clear(); flags.available = true; flags.exhaustOnSubmit = false; document.querySelectorAll("[data-exhaust],[data-exhaust-submit]").forEach((x) => x.classList.remove("active")); state.mode = "list"; applyAvailability(); renderVideos(); }
+  else if (d.exhaust !== undefined) { flags.available = !flags.available; b.classList.toggle("active", !flags.available); if (!flags.available) state.mode = "list"; applyAvailability(); renderVideos(); }
+  else if (d.exhaustSubmit !== undefined) { flags.exhaustOnSubmit = !flags.exhaustOnSubmit; b.classList.toggle("active", flags.exhaustOnSubmit); }
+  else if (d.view) { document.querySelectorAll("[data-view]").forEach((x) => x.classList.toggle("active", x === b)); $("#device").classList.toggle("mobile", d.view === "mobile"); }
+  else if (d.themeOption) { document.querySelectorAll("[data-theme-option]").forEach((x) => x.classList.toggle("active", x === b)); document.documentElement.dataset.theme = d.themeOption; }
+});
+$("#notesToggle").addEventListener("change", (e) => ($("#notes").hidden = !e.target.checked));
+renderVideos();
+</script>
+</body>
+</html>
