@@ -1,5 +1,6 @@
 import { Box, Button, Stack, Typography } from "@mui/material";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
+import RestoreIcon from "@mui/icons-material/Restore";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useNow } from "@/components/vtuber/useNow.ts";
@@ -18,13 +19,16 @@ interface VideoWallProps {
 
 /**
  * 電視牆：只吃影片清單，不管資料從哪來。格數依牆的大小（5×5～9×9），多出來的影片不顯示、空格留黑。
- * 全部預設靜音、各自切換聲音；點一格用 Fullscreen API 原地放大（不搬動 iframe，不會斷流）。
+ * 全部預設靜音；每格可各自切換聲音、暫停、移除（標題列可還原）；點一格用 Fullscreen API 原地放大（不搬動 iframe，不會斷流）。
  */
 export function VideoWall({ title, countLabel, videos }: VideoWallProps) {
   const wallRef = useRef<HTMLDivElement>(null);
   const { style, grid } = useWallLayout(wallRef);
   const [unmuted, setUnmuted] = useState<Set<string>>(new Set());
   const [unavailable, setUnavailable] = useState<Set<string>>(new Set());
+  // 使用者暫停／移除的格子：只存在這次瀏覽，重新整理就重置
+  const [userPaused, setUserPaused] = useState<Set<string>>(new Set());
+  const [removed, setRemoved] = useState<Set<string>>(new Set());
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const now = useNow();
 
@@ -40,12 +44,15 @@ export function VideoWall({ title, countLabel, videos }: VideoWallProps) {
   }, []);
 
   const toggleSound = useCallback(
-    (videoId: string) =>
-      setUnmuted((prev) => {
-        const next = new Set(prev);
-        if (!next.delete(videoId)) next.add(videoId);
-        return next;
-      }),
+    (videoId: string) => setUnmuted((prev) => toggled(prev, videoId)),
+    [],
+  );
+  const togglePause = useCallback(
+    (videoId: string) => setUserPaused((prev) => toggled(prev, videoId)),
+    [],
+  );
+  const remove = useCallback(
+    (videoId: string) => setRemoved((prev) => new Set(prev).add(videoId)),
     [],
   );
   const markUnavailable = useCallback(
@@ -60,7 +67,11 @@ export function VideoWall({ title, countLabel, videos }: VideoWallProps) {
     void document.exitFullscreen?.();
   }, []);
 
-  const playable = videos.filter((v) => !unavailable.has(v.videoId));
+  const playable = videos.filter(
+    (v) => !unavailable.has(v.videoId) && !removed.has(v.videoId),
+  );
+  // 已經結束的直播不算在「已移除」的數量裡
+  const removedCount = videos.filter((v) => removed.has(v.videoId)).length;
   const shown = playable.slice(0, grid * grid);
 
   return (
@@ -88,6 +99,16 @@ export function VideoWall({ title, countLabel, videos }: VideoWallProps) {
             {playable.length > shown.length &&
               `・顯示 ${shown.length}／${playable.length}`}
           </Typography>
+          {removedCount > 0 && (
+            <Button
+              size={"small"}
+              startIcon={<RestoreIcon />}
+              onClick={() => setRemoved(new Set())}
+              sx={{ whiteSpace: "nowrap" }}
+            >
+              還原已移除（{removedCount}）
+            </Button>
+          )}
           <Button
             variant={"outlined"}
             size={"small"}
@@ -115,14 +136,18 @@ export function VideoWall({ title, countLabel, videos }: VideoWallProps) {
             key={video.videoId}
             video={video}
             muted={!unmuted.has(video.videoId)}
+            userPaused={userPaused.has(video.videoId)}
             paused={
-              !KEEP_OTHERS_PLAYING_ON_FOCUS &&
-              focusedId !== null &&
-              focusedId !== video.videoId
+              userPaused.has(video.videoId) ||
+              (!KEEP_OTHERS_PLAYING_ON_FOCUS &&
+                focusedId !== null &&
+                focusedId !== video.videoId)
             }
             focused={focusedId === video.videoId}
             now={now}
             onToggleSound={toggleSound}
+            onTogglePause={togglePause}
+            onRemove={remove}
             onFocus={focus}
             onExitFocus={exitFocus}
             onUnavailable={markUnavailable}
@@ -135,4 +160,11 @@ export function VideoWall({ title, countLabel, videos }: VideoWallProps) {
       </Box>
     </>
   );
+}
+
+// 集合裡有就拿掉、沒有就加入（聲音、暫停的切換共用）
+function toggled(set: Set<string>, id: string) {
+  const next = new Set(set);
+  if (!next.delete(id)) next.add(id);
+  return next;
 }
