@@ -1,10 +1,16 @@
-import { Box, Button, Stack, Typography } from "@mui/material";
+import { Box, Button, IconButton, Stack, Typography } from "@mui/material";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import RestoreIcon from "@mui/icons-material/Restore";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useNow } from "@/components/vtuber/useNow.ts";
-import { useWallLayout } from "@/components/vtuber/wall/wallGrid.ts";
+import {
+  useWallLayout,
+  WALL_GRID,
+  WALL_PAGE_SIZE,
+} from "@/components/vtuber/wall/wallGrid.ts";
 import { WallTile } from "@/components/vtuber/wall/WallTile.tsx";
 import type { VtuberWallVideo } from "@/types/vtubers.ts";
 
@@ -18,12 +24,14 @@ interface VideoWallProps {
 }
 
 /**
- * 電視牆：只吃影片清單，不管資料從哪來。格數依牆的大小（5×5～9×9），多出來的影片不顯示、空格留黑。
+ * 電視牆：只吃影片清單，不管資料從哪來。固定 3×3，超過 9 部用鍵盤左右鍵（或標題列箭頭）換頁，
+ * 換頁時上一頁的播放器整個卸載，同時最多 9 個；聲音／暫停／移除跟著影片走，換頁回來還在。
  * 全部預設靜音；每格可各自切換聲音、暫停、移除（標題列可還原）；點一格用 Fullscreen API 原地放大（不搬動 iframe，不會斷流）。
  */
 export function VideoWall({ title, countLabel, videos }: VideoWallProps) {
   const wallRef = useRef<HTMLDivElement>(null);
-  const { style, grid } = useWallLayout(wallRef);
+  const style = useWallLayout(wallRef);
+  const [page, setPage] = useState(0);
   const [unmuted, setUnmuted] = useState<Set<string>>(new Set());
   const [unavailable, setUnavailable] = useState<Set<string>>(new Set());
   // 使用者暫停／移除的格子：只存在這次瀏覽，重新整理就重置
@@ -72,7 +80,31 @@ export function VideoWall({ title, countLabel, videos }: VideoWallProps) {
   );
   // 已經結束的直播不算在「已移除」的數量裡
   const removedCount = videos.filter((v) => removed.has(v.videoId)).length;
-  const shown = playable.slice(0, grid * grid);
+  // 直播結束、移除後頁數變少時，停在最後一頁
+  const pageCount = Math.max(1, Math.ceil(playable.length / WALL_PAGE_SIZE));
+  const current = Math.min(page, pageCount - 1);
+  const shown = playable.slice(
+    current * WALL_PAGE_SIZE,
+    (current + 1) * WALL_PAGE_SIZE,
+  );
+  const goPage = useCallback(
+    (delta: number) =>
+      setPage((p) => Math.max(0, Math.min(pageCount - 1, p + delta))),
+    [pageCount],
+  );
+
+  // 鍵盤左右鍵換頁（整面全螢幕時也能用）；單格全螢幕時不換頁，不然正在看的那格會被卸載；輸入框裡不攔截
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (focusedId || (e.key !== "ArrowLeft" && e.key !== "ArrowRight"))
+        return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("input, textarea, [contenteditable=true]")) return;
+      goPage(e.key === "ArrowLeft" ? -1 : 1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [focusedId, goPage]);
 
   return (
     <>
@@ -96,9 +128,33 @@ export function VideoWall({ title, countLabel, videos }: VideoWallProps) {
               ●
             </Box>{" "}
             {countLabel} {playable.length}
-            {playable.length > shown.length &&
-              `・顯示 ${shown.length}／${playable.length}`}
           </Typography>
+          {pageCount > 1 && (
+            <Stack direction={"row"} alignItems={"center"}>
+              <IconButton
+                size={"small"}
+                aria-label={"上一頁"}
+                disabled={current === 0}
+                onClick={() => goPage(-1)}
+              >
+                <ChevronLeftIcon />
+              </IconButton>
+              <Typography
+                variant={"body2"}
+                sx={{ minWidth: 44, textAlign: "center" }}
+              >
+                {current + 1} / {pageCount}
+              </Typography>
+              <IconButton
+                size={"small"}
+                aria-label={"下一頁"}
+                disabled={current === pageCount - 1}
+                onClick={() => goPage(1)}
+              >
+                <ChevronRightIcon />
+              </IconButton>
+            </Stack>
+          )}
           {removedCount > 0 && (
             <Button
               size={"small"}
@@ -125,8 +181,8 @@ export function VideoWall({ title, countLabel, videos }: VideoWallProps) {
         style={style}
         sx={{
           display: "grid",
-          gridTemplateColumns: `repeat(${grid}, 1fr)`,
-          gridTemplateRows: `repeat(${grid}, 1fr)`,
+          gridTemplateColumns: `repeat(${WALL_GRID}, 1fr)`,
+          gridTemplateRows: `repeat(${WALL_GRID}, 1fr)`,
           gap: "2px",
           bgcolor: "#000",
         }}
@@ -154,7 +210,7 @@ export function VideoWall({ title, countLabel, videos }: VideoWallProps) {
           />
         ))}
         {/* 空格放在影片後面、用索引當 key：新影片插在前面時不會搬動既有的播放器 */}
-        {Array.from({ length: grid * grid - shown.length }, (_, i) => (
+        {Array.from({ length: WALL_PAGE_SIZE - shown.length }, (_, i) => (
           <Box key={`empty-${i}`} sx={{ bgcolor: "#0b0b0b" }} />
         ))}
       </Box>
