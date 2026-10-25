@@ -33,6 +33,11 @@ export interface VtuberChannelList {
   channels: VtuberChannelSummary[];
 }
 
+// 藝人搜尋結果；命中在頻道說明時才有 description_snippet
+export interface VtuberChannelSearchItem extends VtuberChannelSummary {
+  description_snippet?: string;
+}
+
 export interface VtuberChannelDetail extends VtuberChannelSummary {
   unit: VtuberUnit | null;
   description: string;
@@ -47,6 +52,7 @@ export interface VtuberChannelDetail extends VtuberChannelSummary {
   subscriber_delta_7d: number | null;
   subscriber_delta_90d: number | null;
   calendar: VtuberCalendarLinks | null;
+  video_search_available: boolean; // YouTube 搜尋額度用完時為 false，影片搜尋框停用
 }
 
 export interface VtuberStat {
@@ -81,11 +87,15 @@ export interface VtuberLiveList {
 // 「所有影片」的分類：全部／直播存檔／一般影片／Shorts
 export type VtuberVideoType = "all" | "live" | "video" | "short";
 
+// 影片搜尋排序：相關性／最新
+export type VtuberVideoSearchOrder = "relevance" | "date";
+
 export interface VtuberVideo {
   video_id: string;
   title: string;
   thumbnail_url: string;
   published_at: string;
+  live_broadcast_content?: "live" | "upcoming"; // 只有影片搜尋結果才有
 }
 
 export interface VtuberVideoPage {

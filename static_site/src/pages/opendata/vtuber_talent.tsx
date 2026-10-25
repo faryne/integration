@@ -121,7 +121,11 @@ export function VtuberTalent({
   return (
     <Stack spacing={2.5}>
       {channels.data && (
-        <TalentPicker list={channels.data} currentHandle={handle} />
+        <TalentPicker
+          list={channels.data}
+          currentHandle={handle}
+          onError={showError}
+        />
       )}
       {(detail.isLoading || channels.isLoading) && <LinearProgress />}
 
@@ -203,6 +207,7 @@ export function VtuberTalent({
             {tab === "videos" && (
               <TalentVideos
                 handle={handle}
+                searchAvailable={channel.video_search_available}
                 onPlay={playVideo}
                 onError={showError}
               />

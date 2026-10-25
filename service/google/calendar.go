@@ -107,6 +107,15 @@ func IsNotFound(err error) bool {
 	return errors.As(err, &apiErr) && (apiErr.Code == http.StatusNotFound || apiErr.Code == http.StatusGone)
 }
 
+// IsQuotaExceeded Google API（例如 YouTube Data API）當天配額用完：403 帶 quotaExceeded／dailyLimitExceeded
+func IsQuotaExceeded(err error) bool {
+	var apiErr *googleapi.Error
+	return errors.As(err, &apiErr) && apiErr.Code == http.StatusForbidden &&
+		slices.ContainsFunc(apiErr.Errors, func(e googleapi.ErrorItem) bool {
+			return e.Reason == "quotaExceeded" || e.Reason == "dailyLimitExceeded"
+		})
+}
+
 // rateLimitReasons Calendar API 限流時 403 會帶的 reason
 var rateLimitReasons = []string{"rateLimitExceeded", "userRateLimitExceeded", "quotaExceeded", "usageLimits"}
 

@@ -1,6 +1,7 @@
 package vtuber
 
 import (
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -49,6 +50,22 @@ func GetActiveChannelByID(channelID string) (*vtuberEntity.Channel, error) {
 	}
 	return &out[0], nil
 }
+
+// SearchActiveChannels 名稱、@handle、頻道說明含關鍵字，或期別在 unitSlugs 裡的未刪除頻道（含卒業生），依官網順序
+func SearchActiveChannels(keyword string, unitSlugs []string, limit int) ([]vtuberEntity.Channel, error) {
+	db := client.GetDB(enum.DBWalolita)
+	like := "%" + likeEscaper.Replace(keyword) + "%"
+	matched := db.Where("title LIKE ?", like).Or("custom_url LIKE ?", like).Or("description LIKE ?", like)
+	if len(unitSlugs) > 0 {
+		matched = matched.Or("unit_slug IN ?", unitSlugs)
+	}
+	var out []vtuberEntity.Channel
+	err := db.Where("is_deleted = 0").Where(matched).Order("sort_order, id").Limit(limit).Find(&out).Error
+	return out, err
+}
+
+// likeEscaper 關鍵字裡的 % _ \ 當成一般字元，不是 LIKE 的萬用字元
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
 // UpsertChannels 以 channel_id 為準批次寫入，衝突時只更新 columns 指定的欄位
 func UpsertChannels(channels []vtuberEntity.Channel, columns []string) error {

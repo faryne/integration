@@ -97,7 +97,9 @@ export function VtubersIndex() {
       </Stack>
 
       {(channels.isLoading || lives.isLoading) && <LinearProgress />}
-      {channels.data && <TalentPicker list={channels.data} />}
+      {channels.data && (
+        <TalentPicker list={channels.data} onError={showError} />
+      )}
 
       {live.length > 0 && (
         <Box>

@@ -36,9 +36,12 @@ func OpenData(app *fiber.App) {
 
 	gVtuber := g.Group("/vtubers")
 	gVtuber.Get("/channels", opendata.VtuberChannels)
+	// search 要排在 :handle 前面，不然會被當成 handle
+	gVtuber.Get("/channels/search", opendata.VtuberChannelSearch)
 	gVtuber.Get("/channels/:handle", opendata.VtuberChannel)
 	gVtuber.Get("/channels/:handle/stats", opendata.VtuberChannelStats)
 	gVtuber.Get("/channels/:handle/videos", opendata.VtuberChannelVideos)
+	gVtuber.Get("/channels/:handle/videos/search", opendata.VtuberChannelVideoSearch)
 	gVtuber.Get("/lives", opendata.VtuberLives)
 	gVtuber.Get("/videos/:video_id", opendata.VtuberVideo)
 

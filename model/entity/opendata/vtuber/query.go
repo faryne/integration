@@ -62,6 +62,12 @@ type ChannelSummary struct {
 	IsGraduated  bool   `json:"is_graduated"`
 }
 
+// ChannelSearchItem 藝人搜尋結果；命中在頻道說明（不在名稱、handle、期別）時附上命中處附近的片段
+type ChannelSearchItem struct {
+	ChannelSummary
+	DescriptionSnippet string `json:"description_snippet,omitempty"`
+}
+
 // ChannelListResult 頻道列表＋分組常數表（總表行事曆 ID 前端寫死，不經 API）
 type ChannelListResult struct {
 	Units    []Unit           `json:"units"`
@@ -84,6 +90,8 @@ type ChannelDetail struct {
 	SubscriberDelta7d  *int64         `json:"subscriber_delta_7d"` // 統計資料不足時為 null
 	SubscriberDelta90d *int64         `json:"subscriber_delta_90d"`
 	Calendar           *CalendarLinks `json:"calendar"`
+	// VideoSearchAvailable 影片搜尋今天還能不能用（YouTube 搜尋額度用完時為 false），藝人頁據此停用搜尋框
+	VideoSearchAvailable bool `json:"video_search_available"`
 }
 
 // VideoItem 「所有影片」：頻道上傳清單（含直播存檔）的一部
@@ -92,6 +100,8 @@ type VideoItem struct {
 	Title        string    `json:"title"`
 	ThumbnailURL string    `json:"thumbnail_url"`
 	PublishedAt  time.Time `json:"published_at"`
+	// LiveBroadcastContent 只有影片搜尋結果才有：live（直播中）／upcoming（即將直播）
+	LiveBroadcastContent string `json:"live_broadcast_content,omitempty"`
 }
 
 // VideoDetail 影片 modal 點開時才查：說明＋直接打開影片網址時組 modal 需要的資料（SEO 也用這份）
