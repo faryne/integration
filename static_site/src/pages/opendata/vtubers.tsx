@@ -1,12 +1,15 @@
 import {
   Box,
+  Button,
   Checkbox,
   FormControlLabel,
   LinearProgress,
   Stack,
   Typography,
 } from "@mui/material";
+import GridViewIcon from "@mui/icons-material/GridView";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import {
   useVtuberChannels,
@@ -34,6 +37,7 @@ import { TimeZoneNote } from "@/components/vtuber/TimeZoneNote.tsx";
 import { useNow } from "@/components/vtuber/useNow.ts";
 import { useVtuberSnack } from "@/components/vtuber/useVtuberSnack.ts";
 import { useOpenVideo } from "@/components/vtuber/routes.ts";
+import { isMobileUserAgent } from "@/helpers/device.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import type { VtuberLive } from "@/types/vtubers.ts";
 
@@ -97,14 +101,27 @@ export function VtubersIndex() {
 
       {live.length > 0 && (
         <Box>
-          <Typography
-            variant={"h6"}
-            fontWeight={700}
+          <Stack
+            direction={"row"}
+            alignItems={"center"}
+            justifyContent={"space-between"}
             sx={{ mb: 1.25 }}
-            color={"error"}
           >
-            ● 直播中 {live.length}
-          </Typography>
+            <Typography variant={"h6"} fontWeight={700} color={"error"}>
+              ● 直播中 {live.length}
+            </Typography>
+            {/* 電視牆入口；手機不支援電視牆，不顯示 */}
+            {!isMobileUserAgent() && (
+              <Button
+                size={"small"}
+                component={Link}
+                to={"/data/vtubers/wall"}
+                startIcon={<GridViewIcon />}
+              >
+                電視牆
+              </Button>
+            )}
+          </Stack>
           {/* 一排輪播：場次再多高度也固定；上方藝人列已經列出所有直播中的藝人，這裡只負責推薦 */}
           <LiveCarousel lives={live} onPlay={play} />
         </Box>
