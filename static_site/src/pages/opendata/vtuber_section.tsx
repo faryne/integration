@@ -19,6 +19,7 @@ import {
 } from "@/components/vtuber/routes.ts";
 import { useVtuberSnack } from "@/components/vtuber/useVtuberSnack.ts";
 import { VtuberTalent } from "@/pages/opendata/vtuber_talent.tsx";
+import { VtuberWall } from "@/pages/opendata/vtuber_wall.tsx";
 import { VtubersIndex } from "@/pages/opendata/vtubers.tsx";
 
 /**
@@ -95,6 +96,8 @@ export function VtuberSection() {
     <>
       <Routes location={background ?? location}>
         <Route index element={<VtubersIndex />} />
+        {/* 靜態路徑排在 :handle 前面比對；電視牆暫不放入口，直接打網址進來 */}
+        <Route path={"wall"} element={<VtuberWall />} />
         {/* 分頁與影片都在藝人頁裡依 * 判斷，同一個 route 才不會切分頁就重新掛載 */}
         <Route
           path={":handle/*"}

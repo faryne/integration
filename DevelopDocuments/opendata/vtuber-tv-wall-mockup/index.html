@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>直播電視牆 Mockup</title>
+<style>
+/* 色票沿用 vtuber-schedule-mockup；電視牆本身固定深色，不跟著主題變 */
+:root, [data-theme="light"] {
+  --bg:#f3f5f5; --surface:#fff; --border:#dde4e4; --text:#13201f; --text-2:#5b6b6c; --text-3:#8a9798;
+  --accent:#0f766e; --live:#d93a3a; --header:#1f2a2a;
+}
+[data-theme="dark"] {
+  --bg:#0b1014; --surface:#121a20; --border:#23313a; --text:#e3f1f2; --text-2:#93a7ab; --text-3:#6c8085;
+  --accent:#5eead4; --live:#ff6b6b; --header:#0e1519;
+}
+* { box-sizing:border-box; }
+body { margin:0; font-family:Roboto,"Noto Sans TC",system-ui,sans-serif; background:#cfd5d8; color:#17191c; }
+button { font:inherit; cursor:pointer; color:inherit; }
+.bar { position:sticky; top:0; z-index:50; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; justify-content:space-between; padding:10px 16px; background:#1f2430; color:#fff; font-size:13px; }
+.bar span { color:#aab2c0; margin-left:8px; }
+.ctl { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.chip { border:1px solid #485063; background:transparent; color:#dfe3ea; padding:4px 10px; border-radius:999px; font-size:12px; }
+.chip.active { background:#fff; color:#1f2430; border-color:#fff; }
+.sep { width:1px; height:18px; background:#485063; margin:0 4px; }
+.notes { margin:12px auto 0; max-width:1400px; padding:12px 16px; border-radius:8px; background:#fffbe6; border:1px solid #f1d98a; font-size:13px; line-height:1.7; color:#4a3b00; }
+.notes[hidden] { display:none; }
+.notes ol { margin:4px 0 0; padding-left:20px; }
+.notes code { background:#f6ecc4; padding:0 4px; border-radius:3px; }
+.stage { padding:16px; display:flex; justify-content:center; }
+.scaler { position:relative; }
+/* 裝置框用真實像素排版，再整個縮小放進畫面，格數計算才跟實機一樣 */
+.device { position:absolute; top:0; left:0; transform-origin:top left; border-radius:10px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.25); background:var(--bg); color:var(--text); display:flex; flex-direction:column; }
+
+/* 網站 header 與頁首（breadcrumb＋標題列） */
+.site-header { height:60px; flex:none; display:flex; align-items:center; padding:0 24px; background:var(--header); color:#fff; font-weight:700; font-size:18px; gap:10px; }
+.site-header .logo { width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg,#5eead4,#0f766e); }
+.page-head { height:64px; flex:none; display:flex; align-items:center; gap:16px; padding:0 24px; border-bottom:1px solid var(--border); }
+.crumb { font-size:13px; color:var(--text-2); white-space:nowrap; }
+.crumb b { color:var(--text); font-weight:600; }
+.page-head h1 { margin:0; font-size:20px; font-weight:800; white-space:nowrap; }
+.page-head .meta { margin-left:auto; display:flex; align-items:center; gap:14px; font-size:13px; color:var(--text-2); white-space:nowrap; }
+.page-head .meta .dot { color:var(--live); font-weight:700; }
+.btn { border:1px solid var(--border); background:var(--surface); border-radius:8px; padding:6px 12px; font-size:13px; font-weight:600; }
+
+/* 電視牆 */
+.wall { flex:1; min-height:0; display:grid; gap:2px; background:#000; position:relative; }
+.tile { position:relative; overflow:hidden; background:#0b0b0b; cursor:pointer; }
+.tile.empty { cursor:default; }
+.tile .video { position:absolute; inset:0; background-size:cover; background-position:center; }
+.tile .video::after { content:""; position:absolute; inset:0; background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 2px,transparent 2px 4px); }
+.tile .live { position:absolute; top:6px; left:6px; font-size:10px; font-weight:800; color:#fff; background:var(--live); border-radius:3px; padding:1px 5px; letter-spacing:.5px; }
+.tile .info { position:absolute; left:0; right:0; bottom:0; display:flex; align-items:center; gap:6px; padding:18px 8px 6px; background:linear-gradient(transparent,rgba(0,0,0,.8)); color:#fff; font-size:12px; opacity:0; transition:opacity .15s; }
+.tile .info .av { width:18px; height:18px; border-radius:50%; flex:none; border:1px solid rgba(255,255,255,.6); }
+.tile .info .ch { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+.tile .info .t { flex:none; margin-left:auto; color:#d8dde0; }
+.tile:hover .info { opacity:1; }
+/* 聲音按鈕：平常只在 hover 出現；開了聲音就一直顯示，外框也亮起來，一眼看得出哪幾路有聲音 */
+.tile .snd { position:absolute; top:6px; right:6px; width:30px; height:30px; border:0; border-radius:50%; background:rgba(0,0,0,.6); color:#fff; display:grid; place-items:center; opacity:0; transition:opacity .15s; }
+.tile:hover .snd, .tile.unmuted .snd { opacity:1; }
+.tile.unmuted { outline:3px solid var(--accent); outline-offset:-3px; z-index:1; }
+.tile.unmuted .snd { background:var(--accent); color:#04201d; }
+.snd svg { width:16px; height:16px; }
+
+/* 點一路：佔滿整個螢幕（實作用 Fullscreen API，這裡用蓋滿裝置框模擬） */
+.focus { position:absolute; inset:0; z-index:20; background:#000; display:none; }
+.focus.show { display:block; }
+.focus .video { position:absolute; inset:0; background-size:cover; background-position:center; }
+.focus .top { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:10px; padding:16px 20px 40px; background:linear-gradient(rgba(0,0,0,.75),transparent); color:#fff; opacity:0; transition:opacity .15s; }
+.focus:hover .top { opacity:1; }
+.focus .top .av { width:32px; height:32px; border-radius:50%; flex:none; }
+.focus .top .tt { font-size:18px; font-weight:700; }
+.focus .top .sub { font-size:13px; color:#c9d0d3; }
+.focus .top .grow { flex:1; min-width:0; }
+.focus .snd, .focus .close { width:44px; height:44px; border:0; border-radius:50%; background:rgba(0,0,0,.6); color:#fff; display:grid; place-items:center; }
+.focus .snd.on { background:var(--accent); color:#04201d; }
+.focus .snd svg, .focus .close svg { width:22px; height:22px; }
+
+/* 整面全螢幕：拿掉網站 header 與頁首，格數依整個螢幕重算 */
+.device.wall-full .site-header, .device.wall-full .page-head { display:none; }
+
+/* 手機：不顯示電視牆，只留 breadcrumb 與不支援的提示 */
+.device.mobile .site-header { padding:0 16px; font-size:16px; }
+.mobile-page { flex:1; padding:12px 16px; }
+.mobile-page .crumb { display:block; margin-bottom:20px; }
+.unsupported { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:28px 20px; text-align:center; }
+.unsupported .icon { width:56px; height:56px; margin:0 auto 14px; border-radius:50%; background:var(--bg); display:grid; place-items:center; color:var(--text-2); }
+.unsupported .icon svg { width:28px; height:28px; }
+.unsupported h2 { margin:0 0 8px; font-size:18px; }
+.unsupported p { margin:0 0 20px; font-size:14px; line-height:1.7; color:var(--text-2); }
+.unsupported .go { display:inline-block; border-radius:8px; padding:8px 18px; background:var(--accent); color:#fff; font-size:14px; font-weight:600; text-decoration:none; }
+[data-theme="dark"] .unsupported .go { color:#04201d; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div><strong>直播電視牆 Mockup</strong><span>/data/vtubers/wall・暫不放入口・假資料</span></div>
+  <div class="ctl">
+    <button class="chip active" data-device="1080">1920×1080</button>
+    <button class="chip" data-device="1440">2560×1440</button>
+    <button class="chip" data-device="2160">3840×2160</button>
+    <button class="chip" data-device="mobile">手機</button>
+    <span class="sep"></span>
+    <button class="chip active" data-count="12">直播 12 場</button>
+    <button class="chip" data-count="30">30 場</button>
+    <button class="chip" data-count="90">90 場</button>
+    <span class="sep"></span>
+    <button class="chip active" data-theme-option="light">淺色</button>
+    <button class="chip" data-theme-option="dark">深色</button>
+    <span class="sep"></span>
+    <label style="display:flex;gap:4px;align-items:center;color:#dfe3ea"><input type="checkbox" id="notesToggle" checked /> 說明</label>
+  </div>
+</header>
+
+<aside class="notes" id="notes">
+  <strong>看點</strong>
+  <ol>
+    <li><b>格數依可用空間決定，最少 5×5、最多 9×9</b>：YouTube 要求播放器至少 200×200 px，16:9 的格子以「寬 356、高 200」為單位算出能放幾格，再夾在 5～9 之間。實測（頁首扣掉後）：1080p 是 5×5、1440p 是 6×6、4K 是 9×9。目前格數顯示在右上角。</li>
+    <li><b>1080p 的 5×5 在網站框架內每格高度不到 200 px</b>（約 190）；按右上「全螢幕」拿掉網站 header 與頁首後約 214 px，符合規定。</li>
+    <li><b>依開台時間排列</b>（最早開播的在左上），每分鐘重抓。新開播的接在後面、已結束的移除，其他格不重排。直播比格數多時只顯示前面的，右上角標出「顯示 25／30」。格子比直播多時，空格留黑。</li>
+    <li><b>全部預設靜音</b>，每一路右上角的喇叭各自切換，可以同時開好幾路。有聲音的格子外框會亮起來、喇叭一直顯示。</li>
+    <li><b>點一路就全螢幕</b>（實作用 Fullscreen API 原地放大，不搬動 iframe，不會斷流），右上角可切聲音、關閉回到電視牆；Esc 也能退出。其他格照常靜音播放，由常數 <code>KEEP_OTHERS_PLAYING_ON_FOCUS = true</code> 決定，之後效能不夠再改成 false 暫停。</li>
+    <li><b>手機（UA 判斷）不顯示電視牆</b>，改顯示「不支援手機」的提示與回直播行事曆的按鈕；不會載入任何播放器。</li>
+    <li>不能嵌入的直播（會員限定、關閉嵌入）播放器會回錯誤，實作時從牆上移除、後面的往前補。</li>
+    <li><b>影片從哪來</b>：網址不帶任何 ID，頁面自己抓 <code>/lives?status=live</code>、每分鐘重抓。電視牆本身做成只吃「影片清單」的元件，資料來源另外接，之後要做「使用者自選多部存檔一起播」時，加一個來源（例如 <code>/data/vtubers/wall?v=ID1,ID2,…</code>）就能共用同一面牆。</li>
+  </ol>
+</aside>
+
+<main class="stage">
+  <div class="scaler" id="scaler">
+    <div class="device" id="device"></div>
+  </div>
+</main>
+
+<script>
+// 實作時的常數：全螢幕看某一路時，其他格要不要繼續播
+const KEEP_OTHERS_PLAYING_ON_FOCUS = true;
+// 格數：YouTube 播放器最小 200×200，16:9 的格子寬至少 356
+const MIN_N = 5, MAX_N = 9, MIN_TILE_H = 200, MIN_TILE_W = Math.ceil(MIN_TILE_H * 16 / 9);
+const CHROME_H = 60 + 64; // 網站 header＋頁首
+
+const DEVICES = { "1080": [1920, 1080], "1440": [2560, 1440], "2160": [3840, 2160], mobile: [390, 844] };
+const CHANNELS = ["Marine Ch. 宝鐘マリン", "Pekora Ch. 兎田ぺこら", "Koyori ch. 博衣こより", "Mori Calliope Ch.", "Suisei Channel", "Okayu Ch. 猫又おかゆ", "Kobo Kanaeru Ch.", "FUWAMOCO Ch.", "Miko Ch. さくらみこ", "Lamy Ch. 雪花ラミィ", "Shiori Novella Ch.", "AZKi Channel", "Luna Ch. 姫森ルーナ", "Vivi Ch. 綺々羅々ヴィヴィ"];
+const TITLES = ["【#ホロ鯖ARK】海賊船色ガチャするぞ", "【マリオカート8DX】視聴者参加型！", "【歌枠】秋の夜長にしっとりソング", "【雑談】寝る前にゆるっとお話しよ～", "【SIGNALIS】remember (part 3)", "【ホラー】絶対に叫ばない配信", "【Minecraft】新拠点づくり"];
+
+const state = { device: "1080", count: 12, wallFull: false, unmuted: new Set(), focus: null };
+const $ = (s) => document.querySelector(s);
+const ICON_MUTED = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.6 3 2.7-2.7-1.4-1.4L15.2 10.6 12.5 7.9l-1.4 1.4L13.8 12l-2.7 2.7 1.4 1.4 2.7-2.7 2.7 2.7 1.4-1.4L16.6 12z"/></svg>';
+const ICON_ON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>';
+const ICON_SCREEN = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7v2H8v2h8v-2h-2v-2h7a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0 14H3V4h18v12z"/></svg>';
+const ICON_CLOSE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>';
+
+// 假資料：依開台時間由早到晚
+function lives(count) {
+  return Array.from({ length: count }, (_, i) => {
+    const hue = (i * 47) % 360, mins = 400 - i * Math.floor(380 / Math.max(count, 1));
+    return { id: i, ch: CHANNELS[i % CHANNELS.length], title: TITLES[i % TITLES.length], hue, mins: Math.max(mins, 3) };
+  });
+}
+const since = (m) => (m >= 60 ? `已開播 ${Math.floor(m / 60)} 小時${m % 60 ? ` ${m % 60} 分` : ""}` : `已開播 ${m} 分鐘`);
+const thumb = (h) => `linear-gradient(135deg,hsl(${h} 55% 45%),hsl(${(h + 70) % 360} 50% 22%))`;
+
+function gridSize(w, h) {
+  return Math.min(MAX_N, Math.max(MIN_N, Math.floor(Math.min(w / MIN_TILE_W, h / MIN_TILE_H))));
+}
+
+function render() {
+  const [w, h] = DEVICES[state.device];
+  const dev = $("#device");
+  dev.className = "device" + (state.device === "mobile" ? " mobile" : "") + (state.wallFull ? " wall-full" : "");
+  dev.style.width = w + "px";
+  dev.style.height = h + "px";
+  // 縮放放進畫面
+  const maxW = Math.min(window.innerWidth - 32, 1400);
+  const scale = Math.min(1, maxW / w, state.device === "mobile" ? 1 : 1);
+  dev.style.transform = `scale(${scale})`;
+  $("#scaler").style.width = w * scale + "px";
+  $("#scaler").style.height = h * scale + "px";
+
+  const wallH = state.wallFull ? h : h - CHROME_H;
+  const n = gridSize(w, wallH);
+  const all = lives(state.count);
+  const shown = all.slice(0, n * n);
+  const tileH = Math.floor((wallH - (n - 1) * 2) / n);
+
+  dev.innerHTML = `
+    <div class="site-header"><span class="logo"></span>Faryne 的實驗室</div>
+    ${state.device === "mobile" ? `
+    <div class="mobile-page">
+      <span class="crumb">首頁 / 資料 / VTuber 直播行事曆 / <b>電視牆</b></span>
+      <div class="unsupported">
+        <div class="icon">${ICON_SCREEN}</div>
+        <h2>電視牆不支援手機</h2>
+        <p>電視牆會同時播放多部直播，需要電腦的大螢幕，請改用電腦開啟。</p>
+        <a class="go" href="#">回直播行事曆</a>
+      </div>
+    </div>` : `
+    <div class="page-head">
+      <span class="crumb">首頁 / 資料 / VTuber 直播行事曆 / <b>電視牆</b></span>
+      <h1>直播電視牆</h1>
+      <div class="meta">
+        <span><span class="dot">●</span> 直播中 ${all.length}${all.length > shown.length ? `・顯示 ${shown.length}／${all.length}` : ""}</span>
+        <span>${n}×${n}（每格高 ${tileH}px）</span>
+        <button class="btn" data-wallfull>全螢幕</button>
+      </div>
+    </div>
+    <div class="wall" style="grid-template-columns:repeat(${n},1fr);grid-template-rows:repeat(${n},1fr)">
+      ${Array.from({ length: n * n }, (_, i) => {
+        const l = shown[i];
+        if (!l) return '<div class="tile empty"></div>';
+        const on = state.unmuted.has(l.id);
+        return `<div class="tile ${on ? "unmuted" : ""}" data-focus="${l.id}">
+          <div class="video" style="background-image:${thumb(l.hue)}"></div>
+          <span class="live">LIVE</span>
+          <button class="snd" data-snd="${l.id}" aria-label="${on ? "關閉聲音" : "開啟聲音"}">${on ? ICON_ON : ICON_MUTED}</button>
+          <div class="info"><span class="av" style="background:hsl(${l.hue} 55% 60%)"></span><span class="ch">${l.ch}</span><span class="t">${since(l.mins)}</span></div>
+        </div>`;
+      }).join("")}
+    </div>`}
+    ${focusHTML(all)}`;
+}
+
+function focusHTML(all) {
+  const l = all.find((x) => x.id === state.focus);
+  if (!l) return '<div class="focus"></div>';
+  const on = state.unmuted.has(l.id);
+  return `<div class="focus show">
+    <div class="video" style="background-image:${thumb(l.hue)}"></div>
+    <div class="top">
+      <span class="av" style="background:hsl(${l.hue} 55% 60%)"></span>
+      <div class="grow"><div class="tt">${l.title}</div><div class="sub">${l.ch}・${since(l.mins)}</div></div>
+      <button class="snd ${on ? "on" : ""}" data-snd="${l.id}" aria-label="${on ? "關閉聲音" : "開啟聲音"}">${on ? ICON_ON : ICON_MUTED}</button>
+      <button class="close" data-unfocus aria-label="關閉">${ICON_CLOSE}</button>
+    </div>
+  </div>`;
+}
+
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-snd],[data-unfocus],[data-focus],[data-wallfull],button.chip");
+  if (!el) return;
+  const d = el.dataset;
+  if (d.snd !== undefined) {
+    const id = Number(d.snd);
+    state.unmuted.has(id) ? state.unmuted.delete(id) : state.unmuted.add(id);
+  } else if (d.unfocus !== undefined) state.focus = null;
+  else if (d.focus !== undefined) state.focus = Number(d.focus);
+  else if (d.wallfull !== undefined) state.wallFull = true;
+  else if (d.device) { state.device = d.device; state.focus = null; activate("[data-device]", el); }
+  else if (d.count) { state.count = Number(d.count); state.unmuted.clear(); state.focus = null; activate("[data-count]", el); }
+  else if (d.themeOption) { document.documentElement.dataset.theme = d.themeOption; activate("[data-theme-option]", el); }
+  render();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (state.focus !== null) state.focus = null;
+  else state.wallFull = false;
+  render();
+});
+function activate(sel, el) { document.querySelectorAll(sel).forEach((x) => x.classList.toggle("active", x === el)); }
+$("#notesToggle").addEventListener("change", (e) => ($("#notes").hidden = !e.target.checked));
+window.addEventListener("resize", render);
+render();
+</script>
+</body>
+</html>

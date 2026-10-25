@@ -80,6 +80,7 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
         href: "/data/vtubers",
         description:
           "hololive 藝人的直播時間表與頻道數據，也可以訂閱成 Google 日曆",
+        subPages: [{ title: "電視牆", href: "/data/vtubers/wall" }],
       },
       {
         title: "即時消防出勤記錄",

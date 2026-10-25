@@ -65,6 +65,21 @@ func TestVtuberVideoMetaNotFoundAndError(t *testing.T) {
 	}
 }
 
+// 電視牆是固定路徑，不能被當成 handle 去查藝人（會回 404）
+func TestVtuberWallMeta(t *testing.T) {
+	original := fetchVtuberChannel
+	fetchVtuberChannel = func(string) (*vtuberEntity.ChannelDetail, error) {
+		t.Fatal("wall should not look up a channel")
+		return nil, nil
+	}
+	t.Cleanup(func() { fetchVtuberChannel = original })
+
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "data/vtubers/wall"})
+	if meta.Status != 0 || !strings.HasPrefix(meta.Title, vtuberWallTitle+" | ") || meta.Description != vtuberWallDescription {
+		t.Fatalf("unexpected wall meta: %d %q %q", meta.Status, meta.Title, meta.Description)
+	}
+}
+
 func TestChineseDuration(t *testing.T) {
 	cases := map[time.Duration]string{
 		20 * time.Second:           "不到 1 分鐘",

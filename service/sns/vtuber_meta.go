@@ -17,6 +17,8 @@ const (
 	vtuberTitle             = "VTuber 直播行事曆"
 	vtuberDescription       = "hololive 藝人的直播行事曆：直播中、即將直播與過去的直播一次看，也能訂閱 Google 日曆。"
 	vtuberNotFoundTitle     = "找不到影片"
+	vtuberWallTitle         = "直播電視牆"
+	vtuberWallDescription   = "把正在直播的 hololive 藝人排成一面電視牆同時播放，個別開聲音、點一路就全螢幕。"
 	vtuberDescriptionRunes  = 100 // 影片頁描述附上的 YouTube 說明開頭字數
 	vtuberVideoFetchTimeout = 5 * time.Second
 )
@@ -24,6 +26,8 @@ const (
 var (
 	// 影片掛在上傳頻道的「所有影片」底下：/data/vtubers/@name/videos/:videoId
 	vtuberVideoPattern = regexp.MustCompile(`^/data/vtubers/([^/]+)/videos/([A-Za-z0-9_-]{11})$`)
+	// 電視牆：固定路徑，要排在藝人頁前面，不然 wall 會被當成 handle 查不到而回 404
+	vtuberWallPattern = regexp.MustCompile(`^/data/vtubers/wall$`)
 	// 藝人頁與分頁：/data/vtubers/@name、/videos、/calendar、/stats
 	vtuberTalentPattern = regexp.MustCompile(`^/data/vtubers/([^/]+)(?:/(videos|calendar|stats))?$`)
 	// 各分頁的標題後綴，沒有分頁段就是預設的「即將直播」

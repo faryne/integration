@@ -113,6 +113,7 @@ var pathCollection = []pathMeta{
 		Apply:       applyNCCCMeta,
 	},
 	{Pattern: vtuberVideoPattern, Title: vtuberTitle, Description: vtuberDescription, Apply: applyVtuberVideoMeta},
+	{Pattern: vtuberWallPattern, Title: vtuberWallTitle, Description: vtuberWallDescription},
 	{Pattern: vtuberTalentPattern, Title: vtuberTitle, Description: vtuberDescription, Apply: applyVtuberTalentMeta},
 	{Path: "/", Title: siteName, Description: defaultDescription},
 	{Path: "/av/video", Title: "AV 影片搜尋", Description: "以番號、標籤、演員與片名搜尋影片資料的整理工具。", Prefix: true},
