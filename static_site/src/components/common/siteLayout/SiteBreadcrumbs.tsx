@@ -15,8 +15,11 @@ export function SiteBreadcrumbs() {
   const match = findSiteNavigationMatch(pathname);
   if (!match) return null;
 
-  // 在功能的子路徑時（例如 /data/tw-stats/人口），功能名稱可點回功能首頁
+  // 在功能的子路徑時（例如 /data/tw-stats/人口），功能名稱可點回功能首頁；有登記名稱的子頁（例如電視牆）再多一層
   const atItemRoot = pathname === match.item.href;
+  const subPage = match.item.subPages?.find(
+    (s) => pathname === s.href || pathname.startsWith(`${s.href}/`),
+  );
   return (
     <Box
       sx={{
@@ -49,6 +52,14 @@ export function SiteBreadcrumbs() {
             >
               {match.item.title}
             </MuiLink>
+          )}
+          {subPage && (
+            <Typography
+              sx={{ fontSize: "inherit", fontWeight: 600 }}
+              color="text.primary"
+            >
+              {subPage.title}
+            </Typography>
           )}
         </Breadcrumbs>
       </Container>

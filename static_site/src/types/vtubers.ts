@@ -109,6 +109,15 @@ export interface VtuberPlayingVideo {
 }
 
 // 影片 modal 點開時才查的說明
+// 電視牆的一格；電視牆只吃這份清單，不管資料從哪來（直播中、之後的自選存檔）
+export interface VtuberWallVideo {
+  videoId: string;
+  title: string;
+  channelTitle: string;
+  channelThumbnailUrl: string;
+  startedAt?: string | null; // 直播中才有：顯示 LIVE 與已開播多久
+}
+
 export interface VtuberVideoDetail {
   video_id: string;
   title: string;

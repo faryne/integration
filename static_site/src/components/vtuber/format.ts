@@ -3,6 +3,7 @@ import type {
   VtuberLiveStatus,
   VtuberPlayingVideo,
   VtuberVideoDetail,
+  VtuberWallVideo,
 } from "@/types/vtubers.ts";
 
 // 時間一律用台北時間顯示（規格），不跟著瀏覽器時區
@@ -152,5 +153,16 @@ export function detailPlayingVideo(d: VtuberVideoDetail): VtuberPlayingVideo {
     viewers: live?.concurrent_viewers,
     startedAt: live?.actual_start_at,
     endedAt: live?.actual_end_at,
+  };
+}
+
+// 電視牆的直播來源：直播中的場次轉成電視牆的一格
+export function liveWallVideo(live: VtuberLive): VtuberWallVideo {
+  return {
+    videoId: live.video_id,
+    title: live.title,
+    channelTitle: live.channel_title,
+    channelThumbnailUrl: live.channel_thumbnail_url,
+    startedAt: live.actual_start_at,
   };
 }
