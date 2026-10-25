@@ -1,11 +1,15 @@
-import { Box, IconButton, Stack, Typography } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import PauseIcon from "@mui/icons-material/Pause";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 
 import { ChannelAvatar } from "@/components/vtuber/ChannelAvatar.tsx";
 import { formatDuration } from "@/components/vtuber/format.ts";
+import { WallControlButton } from "@/components/vtuber/wall/WallControlButton.tsx";
 import {
   createYouTubePlayer,
   type YouTubePlayer,
@@ -18,10 +22,13 @@ const UNAVAILABLE_ERRORS = [100, 101, 150];
 interface WallTileProps {
   video: VtuberWallVideo;
   muted: boolean;
-  paused: boolean;
+  userPaused: boolean; // 使用者按了這一格的暫停
+  paused: boolean; // 實際要不要暫停：使用者暫停，或別格全螢幕時依常數暫停
   focused: boolean;
   now: number;
   onToggleSound: (videoId: string) => void;
+  onTogglePause: (videoId: string) => void;
+  onRemove: (videoId: string) => void;
   onFocus: (tile: HTMLElement) => void;
   onExitFocus: () => void;
   onUnavailable: (videoId: string) => void;
@@ -34,10 +41,13 @@ interface WallTileProps {
 export function WallTile({
   video,
   muted,
+  userPaused,
   paused,
   focused,
   now,
   onToggleSound,
+  onTogglePause,
+  onRemove,
   onFocus,
   onExitFocus,
   onUnavailable,
@@ -103,26 +113,38 @@ export function WallTile({
   const since = video.startedAt
     ? `已開播 ${formatDuration(now - Date.parse(video.startedAt))}`
     : "";
-  const soundButton = (size: "small" | "medium") => (
-    <IconButton
-      size={size}
-      aria-label={muted ? "開啟聲音" : "關閉聲音"}
-      onClick={(e) => {
-        e.stopPropagation();
-        onToggleSound(video.videoId);
-      }}
-      sx={{
-        color: muted ? "common.white" : "common.black",
-        bgcolor: muted ? "rgba(0,0,0,.6)" : "primary.main",
-        "&:hover": { bgcolor: muted ? "rgba(0,0,0,.8)" : "primary.light" },
-      }}
-    >
-      {muted ? (
-        <VolumeOffIcon fontSize={"small"} />
-      ) : (
-        <VolumeUpIcon fontSize={"small"} />
-      )}
-    </IconButton>
+  // 暫停、聲音兩顆：平常只在 hover 出現，開著的狀態（暫停中、有聲音）就一直顯示
+  const controls = (size: "small" | "medium") => (
+    <>
+      <WallControlButton
+        size={size}
+        label={userPaused ? "繼續播放" : "暫停"}
+        icon={
+          userPaused ? (
+            <PlayArrowIcon fontSize={"small"} />
+          ) : (
+            <PauseIcon fontSize={"small"} />
+          )
+        }
+        active={userPaused}
+        className={userPaused ? undefined : "wall-hover"}
+        onClick={() => onTogglePause(video.videoId)}
+      />
+      <WallControlButton
+        size={size}
+        label={muted ? "開啟聲音" : "關閉聲音"}
+        icon={
+          muted ? (
+            <VolumeOffIcon fontSize={"small"} />
+          ) : (
+            <VolumeUpIcon fontSize={"small"} />
+          )
+        }
+        active={!muted}
+        className={muted ? "wall-hover" : undefined}
+        onClick={() => onToggleSound(video.videoId)}
+      />
+    </>
   );
 
   return (
@@ -158,6 +180,17 @@ export function WallTile({
           cursor: focused ? "default" : "pointer",
         }}
       />
+      {/* 暫停中的格子變暗，跟播放中的分得出來 */}
+      {userPaused && (
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            bgcolor: "rgba(0,0,0,.45)",
+            pointerEvents: "none",
+          }}
+        />
+      )}
       {video.startedAt && !focused && <LiveBadge />}
       {focused ? (
         <Overlay top>
@@ -173,27 +206,30 @@ export function WallTile({
               {[video.channelTitle, since].filter(Boolean).join("・")}
             </Typography>
           </Box>
-          {soundButton("medium")}
-          <IconButton
-            aria-label={"關閉"}
+          {controls("medium")}
+          <WallControlButton
+            size={"medium"}
+            label={"關閉"}
+            icon={<CloseIcon />}
             onClick={onExitFocus}
-            sx={{
-              color: "common.white",
-              bgcolor: "rgba(0,0,0,.6)",
-              "&:hover": { bgcolor: "rgba(0,0,0,.8)" },
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
+          />
         </Overlay>
       ) : (
         <>
-          <Box
-            className={muted ? "wall-hover" : undefined}
+          <Stack
+            direction={"row"}
+            spacing={0.5}
             sx={{ position: "absolute", top: 6, right: 6 }}
           >
-            {soundButton("small")}
-          </Box>
+            {controls("small")}
+            {/* 移除：從牆上拿掉、後面的往前補；標題列可以還原，不跳確認 */}
+            <WallControlButton
+              label={"從電視牆移除"}
+              icon={<RemoveCircleOutlineIcon fontSize={"small"} />}
+              className={"wall-hover"}
+              onClick={() => onRemove(video.videoId)}
+            />
+          </Stack>
           <Overlay>
             <ChannelAvatar
               src={video.channelThumbnailUrl}
