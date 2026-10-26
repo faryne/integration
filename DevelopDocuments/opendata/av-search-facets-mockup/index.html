@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AV 搜尋篩選 mockup</title>
+<style>
+  :root { --bg:#f3f4f6; --paper:#fff; --line:#e5e7eb; --muted:#6b7280; --text:#111827; --primary:#2e7d6b; --chip:#e8f0fb; --chipb:#b9d0ee; --chipt:#1d4f91; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; background:#d1d5db; color:var(--text); }
+  .toolbar { position:sticky; top:0; z-index:5; background:#111827; color:#fff; padding:10px 16px; font-size:13px; }
+  .frames { display:flex; gap:24px; padding:24px; align-items:flex-start; overflow-x:auto; }
+  .frame { background:var(--bg); border-radius:10px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.2); flex:0 0 auto; }
+  .frame h6 { margin:0; padding:6px 12px; font-size:12px; background:#374151; color:#fff; }
+  .desktop { width:1100px; } .mobile { width:375px; }
+  .nav { background:#161b22; color:#fff; height:44px; display:flex; align-items:center; padding:0 16px; font-weight:700; font-size:14px; }
+  .crumb { background:var(--paper); border-bottom:1px solid var(--line); padding:8px 16px; font-size:12px; color:var(--muted); }
+  .page { padding:20px 16px 32px; }
+  .layout { display:grid; gap:20px; }
+  .desktop .layout { grid-template-columns:300px 1fr; }
+  .panel { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:16px; display:flex; flex-direction:column; gap:12px; align-self:start; }
+  .panel h3 { margin:0; font-size:16px; }
+  .field { border:1px solid #cbd5e1; border-radius:6px; padding:10px; font-size:13px; color:var(--muted); background:#fff; }
+  .btn { background:var(--primary); color:#fff; border:0; border-radius:6px; padding:9px; font-weight:700; }
+  .divider { border-top:1px solid var(--line); margin:4px 0; }
+  .facet h4 { margin:0 0 6px; font-size:13px; color:var(--muted); display:flex; justify-content:space-between; }
+  .facet h4 span { font-weight:400; font-size:12px; color:var(--primary); cursor:pointer; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font-size:12px; background:var(--chip); border:1px solid var(--chipb); color:var(--chipt); border-radius:6px; padding:3px 8px; cursor:pointer; }
+  .chip small { color:#6b7280; margin-left:3px; }
+  .chip.on { background:var(--chipt); color:#fff; border-color:var(--chipt); }
+  .chip.on small { color:#dbeafe; }
+  .active { display:flex; flex-wrap:wrap; gap:6px; }
+  .tag { font-size:12px; background:#e5e7eb; border-radius:4px; padding:3px 8px; }
+  .tag b { margin-left:6px; cursor:pointer; }
+  .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
+  .grid { display:grid; gap:12px; }
+  .desktop .grid { grid-template-columns:repeat(4,1fr); } .mobile .grid { grid-template-columns:repeat(2,1fr); }
+  .card { background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .card .c { aspect-ratio:1429/1944; background:repeating-linear-gradient(45deg,#cbd5e1 0 10px,#d8dee8 10px 20px); }
+  .card p { margin:6px 8px 8px; font-size:12px; }
+  .acc { display:flex; justify-content:space-between; align-items:center; font-weight:700; font-size:14px; cursor:pointer; }
+  .note { font-size:12px; color:#92400e; background:#fef3c7; border:1px dashed #f59e0b; border-radius:6px; padding:6px 10px; }
+</style>
+</head>
+<body>
+<div class="toolbar">AV 影片搜尋：篩選（分面）mockup — 點篩選裡的項目可加入條件、點已選的可取消；斜線灰塊＝封面佔位</div>
+<div class="frames">
+  <div class="frame desktop"><h6>桌機</h6><div class="view" data-mobile="0"></div></div>
+  <div class="frame mobile"><h6>手機（篩選預設收合）</h6><div class="view" data-mobile="1"></div></div>
+</div>
+
+<script>
+  // 數字取自 prod 實際統計（tag=貧乳・微乳）
+  const FACETS = [
+    { key: "tag", title: "標籤", multi: true, items: [["ハイビジョン",6560],["中出し",3526],["単体作品",3440],["美少女",2609],["スレンダー",2074],["ロリ系",1875],["フェラ",1544],["制服",1302],["パイパン",1180],["女子校生",1093],["騎乗位",987],["潮吹き",912]] },
+    { key: "maker", title: "發售商", items: [["ケー・トライブ",418],["First Star",385],["MERCURY（マーキュリー）",262],["即ヌキ",255],["SODクリエイト",229],["キチックス/妄想族",228],["アリスJAPAN",201],["MOODYZ",197]] },
+    { key: "series", title: "系列", items: [["トコダケ",165],["いもうとアイドル",51],["VR BEST",38],["エッチ倶楽部",36],["微乳A",27],["まるっと！",22]] },
+    { key: "actress", title: "出演", items: [["あべみかこ",185],["松本いちか",182],["あおいれな",174],["冬愛ことね",169],["渚みつき",143],["皆月ひかる",130],["枢木あおい",118],["美谷朱里",101]] },
+  ];
+  const LABEL = { tag: "標籤", maker: "發售商", series: "系列", actress: "出演" };
+  const state = { tag: ["貧乳・微乳"], maker: null, series: null, actress: null, expanded: {}, mobileOpen: false };
+  const SHOW = 8;
+
+  function toggle(key, value, multi) {
+    if (multi) {
+      const list = state[key];
+      state[key] = list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+    } else {
+      state[key] = state[key] === value ? null : value;
+    }
+    render();
+  }
+  function activeChips() {
+    const out = [];
+    for (const k of ["tag", "maker", "series", "actress"]) {
+      const v = state[k];
+      (Array.isArray(v) ? v : v ? [v] : []).forEach((x) =>
+        out.push(`<span class="tag">${LABEL[k]}：${x}<b onclick="toggle('${k}','${x}',${k === "tag"})">×</b></span>`));
+    }
+    return out.join("");
+  }
+  function facetHtml() {
+    return FACETS.map((f) => {
+      const n = state.expanded[f.key] ? f.items.length : SHOW;
+      const chips = f.items.slice(0, n).map(([v, c]) => {
+        const on = f.multi ? state[f.key].includes(v) : state[f.key] === v;
+        return `<a class="chip ${on ? "on" : ""}" onclick="toggle('${f.key}','${v}',${!!f.multi})">${v}<small>${c.toLocaleString()}</small></a>`;
+      }).join("");
+      const more = f.items.length > SHOW
+        ? `<span onclick="state.expanded['${f.key}']=!state.expanded['${f.key}'];render()">${state.expanded[f.key] ? "收合" : "更多"}</span>` : "";
+      return `<div class="facet"><h4>${f.title}${more}</h4><div class="chips">${chips}</div></div>`;
+    }).join("");
+  }
+  function render() {
+    document.querySelectorAll(".view").forEach((view) => {
+      const mobile = view.dataset.mobile === "1";
+      const facetBlock = mobile
+        ? `<div class="acc" onclick="state.mobileOpen=!state.mobileOpen;render()">篩選 <span>${state.mobileOpen ? "▲" : "▼"}</span></div>${state.mobileOpen ? facetHtml() : ""}`
+        : `<div class="acc">篩選</div>${facetHtml()}`;
+      const cards = Array.from({ length: mobile ? 4 : 8 }, (_, i) => `<div class="card"><div class="c"></div><p><b>SAMPLE-${100 + i}</b><br>作品標題示意</p></div>`).join("");
+      view.innerHTML = `
+        <div class="nav">Faryne 的實驗室</div>
+        <div class="crumb">首頁 / 大人的喜好 / AV 影片搜尋</div>
+        <div class="page"><div class="layout">
+          <div class="panel">
+            <h3>搜尋條件</h3>
+            <div class="field">關鍵字</div>
+            <div class="field">開始日期</div>
+            <div class="field">結束日期</div>
+            <button class="btn">搜尋</button>
+            <div class="divider"></div>
+            ${facetBlock}
+          </div>
+          <div>
+            <div class="head"><div><b>搜尋結果</b><div style="font-size:12px;color:#6b7280">共 8,665 筆資料</div></div><div class="active">${activeChips()}</div></div>
+            <div class="grid">${cards}</div>
+          </div>
+        </div>
+        <div class="note" style="margin-top:16px">篩選數字是「目前條件下」的統計；標籤可以複選（交集），發售商／系列／出演一次選一個；已選的項目以深色顯示，再點一次取消。（此說明框只存在 mockup，實作不會出現）</div>
+        </div>`;
+    });
+  }
+  render();
+</script>
+</body>
+</html>

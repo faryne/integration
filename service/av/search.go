@@ -87,6 +87,15 @@ func VideoSearch(input av.VideoQueryRequest) (*entity.ElasticSearchResponse[av.R
 		"from": (page - 1) * 30,
 		"sort": map[string]any{"pulish_date": map[string]any{"order": "desc"}, "vod_date": map[string]any{"order": "desc"}},
 	}
+	applyVideoConditions(input, q)
+	if input.Shuffle {
+		randomizeQuery(q)
+	}
+	return search.Search[av.RawVideo, av.CleanVideo](config.EnvConfig().DMMVideoIndex, q, fVideo)
+}
+
+// applyVideoConditions 把搜尋條件（日期、關鍵字、精確篩選、番號）寫進 q；搜尋與篩選統計（facets）共用，兩邊結果才會一致
+func applyVideoConditions(input av.VideoQueryRequest, q map[string]any) {
 	if input.Year > 0 && input.Month > 0 && input.Day > 0 {
 		d := time.Date(input.Year, time.Month(input.Month), input.Day, 0, 0, 0, 0, time.Local)
 		search.SetQuery(map[string]any{"range": map[string]any{"vod_date": map[string]any{"gte": d.Format("2006/01/02")}}}, true, q)
@@ -124,9 +133,14 @@ func VideoSearch(input av.VideoQueryRequest) (*entity.ElasticSearchResponse[av.R
 	if keyword := strings.TrimSpace(input.Keyword); keyword != "" {
 		search.SetQuery(videoKeywordQuery(keyword), true, q)
 	}
-	// 標籤、演員與詳細頁 chip 的篩選一律精確比對；match 會被斷詞，點「中出し」也會撈到不相干的標籤
+	// 標籤、演員與詳細頁 chip 的篩選一律精確比對；match 會被斷詞，點「中出し」也會撈到不相干的標籤。
+	// 標籤可以複選，每個各一個 term 放在 must，也就是交集
+	for _, tag := range input.Tag {
+		if tag = strings.TrimSpace(tag); tag != "" {
+			search.SetQuery(map[string]any{"term": map[string]any{"tags.keyword": tag}}, true, q)
+		}
+	}
 	for field, value := range map[string]string{
-		"tags":      input.Tag,
 		"actresses": input.Actress,
 		"makers":    input.Maker,
 		"labels":    input.Label,
@@ -141,10 +155,6 @@ func VideoSearch(input av.VideoQueryRequest) (*entity.ElasticSearchResponse[av.R
 		search.SetQuery(videoNoQuery(no), true, q)
 	}
 
-	if input.Shuffle {
-		randomizeQuery(q)
-	}
-	return search.Search[av.RawVideo, av.CleanVideo](config.EnvConfig().DMMVideoIndex, q, fVideo)
 }
 
 // randomizeQuery 把既有條件包進 function_score＋random_score 改成隨機排序；
