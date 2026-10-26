@@ -14,7 +14,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
 import { useMemo } from "react";
 import type { VideoSyncResult } from "@/apis/av/video_sync.ts";
-import { VideoRelated } from "@/components/av/video_related.tsx";
+import { VideoDetailTabs } from "@/components/av/video_detail_tabs.tsx";
 import { VideoSyncButton } from "@/components/av/video_sync_button.tsx";
 import { ImageViewer } from "@/components/common/ImageViewer.tsx";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
@@ -221,38 +221,45 @@ export function VideoDetail(props: IVideoDetail) {
         </Stack>
       </Box>
 
-      <Box
-        sx={{
-          border: "1px solid",
-          borderColor: "divider",
-          borderRadius: 2,
-          overflow: "hidden",
-        }}
-      >
-        {infoRows.map((row, index) => (
-          <Box key={row.keyPrefix}>
-            {index > 0 && <Divider />}
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "64px 1fr", sm: "96px 1fr" },
-                gap: { xs: 1, sm: 2 },
-                alignItems: "start",
-                px: { xs: 2, md: 2.5 },
-                py: 1.75,
-                textAlign: "left",
-              }}
-            >
-              <Typography color="text.secondary" fontWeight={700}>
-                {row.label}
-              </Typography>
-              <Stack direction="row" flexWrap="wrap" gap={1}>
-                {renderChips(row.items, row.keyPrefix)}
-              </Stack>
-            </Box>
+      {/* 基本資料與相關作品用 tab 切換；key 讓換片時回到基本資料 */}
+      <VideoDetailTabs
+        key={video.no}
+        video={video}
+        info={
+          <Box
+            sx={{
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 2,
+              overflow: "hidden",
+            }}
+          >
+            {infoRows.map((row, index) => (
+              <Box key={row.keyPrefix}>
+                {index > 0 && <Divider />}
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "64px 1fr", sm: "96px 1fr" },
+                    gap: { xs: 1, sm: 2 },
+                    alignItems: "start",
+                    px: { xs: 2, md: 2.5 },
+                    py: 1.75,
+                    textAlign: "left",
+                  }}
+                >
+                  <Typography color="text.secondary" fontWeight={700}>
+                    {row.label}
+                  </Typography>
+                  <Stack direction="row" flexWrap="wrap" gap={1}>
+                    {renderChips(row.items, row.keyPrefix)}
+                  </Stack>
+                </Box>
+              </Box>
+            ))}
           </Box>
-        ))}
-      </Box>
+        }
+      />
 
       {video.images.length > 0 && (
         <Stack spacing={2} sx={{ textAlign: "left" }}>
@@ -266,8 +273,6 @@ export function VideoDetail(props: IVideoDetail) {
           <ImageViewer photos={previewPhotos} title={video.title} />
         </Stack>
       )}
-
-      <VideoRelated video={video} />
     </Stack>
   );
 }

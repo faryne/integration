@@ -19,6 +19,7 @@ import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { ListByPaginationRequest } from "@/apis/interfaces";
 import type { Video } from "@/types/av.ts";
+import { AV_COVER_ASPECT_RATIO } from "@/data/avVideoCover.ts";
 import {
   AV_VIDEO_EXACT_FILTERS,
   type AVVideoExactFilterParam,
@@ -273,18 +274,22 @@ export function AVVideo() {
                   sx={{
                     display: "grid",
                     gap: 2,
+                    // 直式封面：手機 2 欄、平板 3 欄、桌機 4 欄，密度跟原本橫式卡片相近
                     gridTemplateColumns: {
-                      xs: "1fr",
-                      sm: "repeat(2, minmax(0, 1fr))",
-                      lg: "repeat(3, minmax(0, 1fr))",
+                      xs: "repeat(2, minmax(0, 1fr))",
+                      sm: "repeat(3, minmax(0, 1fr))",
+                      lg: "repeat(4, minmax(0, 1fr))",
                     },
                   }}
                 >
                   {Array.from({ length: 6 }).map((_, index) => (
                     <Stack key={index} spacing={1}>
                       <Skeleton
-                        height={180}
-                        sx={{ borderRadius: 2 }}
+                        sx={{
+                          aspectRatio: AV_COVER_ASPECT_RATIO,
+                          borderRadius: 2,
+                          height: "auto",
+                        }}
                         variant="rounded"
                       />
                       <Skeleton height={28} variant="rounded" />
@@ -328,9 +333,9 @@ export function AVVideo() {
                       display: "grid",
                       gap: 2,
                       gridTemplateColumns: {
-                        xs: "1fr",
-                        sm: "repeat(2, minmax(0, 1fr))",
-                        lg: "repeat(3, minmax(0, 1fr))",
+                        xs: "repeat(2, minmax(0, 1fr))",
+                        sm: "repeat(3, minmax(0, 1fr))",
+                        lg: "repeat(4, minmax(0, 1fr))",
                       },
                     }}
                   >
@@ -376,7 +381,7 @@ export function AVVideo() {
                         >
                           <Box
                             sx={{
-                              aspectRatio: "16 / 10",
+                              aspectRatio: AV_COVER_ASPECT_RATIO,
                               bgcolor: "grey.100",
                               overflow: "hidden",
                               width: "100%",

@@ -1,6 +1,7 @@
 import type { Video } from "@/types/av.ts";
 import { Box, Typography } from "@mui/material";
 import { Link } from "react-router-dom";
+import { AV_COVER_ASPECT_RATIO } from "@/data/avVideoCover.ts";
 
 /** 直式封面卡片：封面＋番號＋兩行標題，相關作品等橫向列表用 */
 export function VideoCoverCard({ video }: { video: Video }) {
@@ -23,7 +24,7 @@ export function VideoCoverCard({ video }: { video: Video }) {
         alt={video.title}
         loading="lazy"
         sx={{
-          aspectRatio: "1429 / 1944",
+          aspectRatio: AV_COVER_ASPECT_RATIO,
           bgcolor: "grey.200",
           borderRadius: 1,
           display: "block",
