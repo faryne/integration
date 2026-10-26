@@ -21,6 +21,8 @@ type VideoQueryRequest struct {
 	Director string `query:"director"`
 	No       string `query:"no"`
 	Page     int    `query:"page"`
+	// Shuffle 隨機排序（詳細頁追溯不到系列／女優時，隨機推薦近期作品用）
+	Shuffle bool `query:"shuffle"`
 }
 
 type RawVideo struct {

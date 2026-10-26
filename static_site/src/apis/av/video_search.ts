@@ -21,6 +21,8 @@ export interface VideoSearchRequest {
   label?: string;
   series?: string;
   director?: string;
+  // 隨機排序（詳細頁追溯不到系列／女優時的近期推薦）；ListByPaginationRequest 已有別的 random 欄位，避開同名
+  shuffle?: boolean;
   no?: string;
   maker_no?: string;
 }
