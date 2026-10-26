@@ -619,6 +619,7 @@ export function ImageViewer({
                               slideEntered,
                               true,
                               slideTransition.direction,
+                              slideTransition.maxWidth,
                             )}`,
                             transition: `transform ${SLIDE_DURATION}ms ease`,
                             width: "auto",
@@ -650,6 +651,7 @@ export function ImageViewer({
                                 slideEntered,
                                 false,
                                 slideTransition.direction,
+                                slideTransition.maxWidth,
                               )
                             : "none",
                           transition: slideTransition
