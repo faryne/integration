@@ -65,6 +65,9 @@ func videoNoQuery(no string) map[string]any {
 		"bool": map[string]any{
 			"should": []map[string]any{
 				{"term": map[string]any{"no.keyword": no}},
+				// 舊資料的 no 是大寫、同步過或新資料是小寫，舊連結同步後也要找得到
+				{"term": map[string]any{"no.keyword": strings.ToLower(no)}},
+				{"term": map[string]any{"no.keyword": strings.ToUpper(no)}},
 				{"term": map[string]any{"maker_no.keyword": no}},
 			},
 			"minimum_should_match": 1,
@@ -119,11 +122,18 @@ func VideoSearch(input av.VideoQueryRequest) (*entity.ElasticSearchResponse[av.R
 	if keyword := strings.TrimSpace(input.Keyword); keyword != "" {
 		search.SetQuery(videoKeywordQuery(keyword), true, q)
 	}
-	if tag := strings.TrimSpace(input.Tag); tag != "" {
-		search.SetQuery(map[string]any{"match": map[string]any{"tags": tag}}, true, q)
-	}
-	if actress := strings.TrimSpace(input.Actress); actress != "" {
-		search.SetQuery(map[string]any{"term": map[string]any{"actresses.keyword": actress}}, true, q)
+	// 標籤、演員與詳細頁 chip 的篩選一律精確比對；match 會被斷詞，點「中出し」也會撈到不相干的標籤
+	for field, value := range map[string]string{
+		"tags":      input.Tag,
+		"actresses": input.Actress,
+		"makers":    input.Maker,
+		"labels":    input.Label,
+		"series":    input.Series,
+		"directors": input.Director,
+	} {
+		if value = strings.TrimSpace(value); value != "" {
+			search.SetQuery(map[string]any{"term": map[string]any{field + ".keyword": value}}, true, q)
+		}
 	}
 	if no := strings.TrimSpace(input.No); no != "" {
 		search.SetQuery(videoNoQuery(no), true, q)

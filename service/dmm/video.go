@@ -1,11 +1,16 @@
 package dmm
 
 import (
+	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"sync"
 	"time"
 )
+
+// ErrVideoNotFound DMM 查無此作品（已下架或內部番號不存在），ppvContent 回 null
+var ErrVideoNotFound = errors.New("dmm video not found")
 
 var dmmAVVideoGraphQL = `
 query ContentPageData($id: ID!, $isLoggedIn: Boolean!, $isAmateur: Boolean!, $isAnime: Boolean!, $isAv: Boolean!, $isCinema: Boolean!, $isSP: Boolean!, $shouldFetchRelatedTags: Boolean = false, $isPhase4_2Released: Boolean!) {
@@ -948,7 +953,7 @@ func (i *DMM) SearchVideosByDaily(date string, page int) (videos []DmmVideo, fai
 			tmp := DmmVideo{}
 			tmp.No = v.Id
 			tmp.Title = v.Title
-			tmp.Url = fmt.Sprintf("https://video.dmm.co.jp/av/content/?id=%s&i3_ref=list&i3_ord=1&i3_pst=1&dmmref=video_list", v.Id)
+			tmp.Url = videoURL(v.Id)
 			tmp.Thumb = v.PackageImage.MediumUrl
 			if i.getDMMVideoDetailWithRetry(v.Id, &tmp) == nil {
 				out[idx], ok[idx] = tmp, true
@@ -967,14 +972,30 @@ func (i *DMM) SearchVideosByDaily(date string, page int) (videos []DmmVideo, fai
 	return videos, failed, nil
 }
 
+// FetchVideo 不經過每日清單，直接以 DMM 內部番號抓一部作品（詳細頁「同步資料」用）。
+// 舊資料的番號是大寫，DMM 只認小寫；標題、網址、封面改由明細補上
+func (i *DMM) FetchVideo(no string) (DmmVideo, error) {
+	no = strings.ToLower(strings.TrimSpace(no))
+	v := DmmVideo{}
+	v.No = no
+	v.Url = videoURL(no)
+	err := i.getDMMVideoDetailWithRetry(no, &v)
+	return v, err
+}
+
+func videoURL(no string) string {
+	return fmt.Sprintf("https://video.dmm.co.jp/av/content/?id=%s&i3_ref=list&i3_ord=1&i3_pst=1&dmmref=video_list", no)
+}
+
 // getDMMVideoDetailWithRetry 明細偶發失敗（逾時、速率限制）時退避重試，最多 3 次（等 1s、2s）
 func (i *DMM) getDMMVideoDetailWithRetry(no string, tmp *DmmVideo) (err error) {
 	for attempt := range 3 {
 		if attempt > 0 {
 			time.Sleep(time.Duration(1<<(attempt-1)) * time.Second)
 		}
-		if err = i.getDMMVideoDetail(no, tmp); err == nil {
-			return nil
+		// 查無作品是確定的結果，重試也不會變
+		if err = i.getDMMVideoDetail(no, tmp); err == nil || errors.Is(err, ErrVideoNotFound) {
+			return err
 		}
 	}
 	return err
@@ -999,8 +1020,13 @@ func (i *DMM) getDMMVideoDetail(no string, tmp *DmmVideo) error {
 		return requestError
 	}
 
+	if finalResponse.Data.PpvContent.Id == "" {
+		return ErrVideoNotFound
+	}
+
 	tz := time.FixedZone("Asia/Tokyo", 9*60*60)
 
+	tmp.Title = finalResponse.Data.PpvContent.Title
 	tmp.Thumb = finalResponse.Data.PpvContent.PackageImage.MediumUrl
 	tmp.MakerNo = finalResponse.Data.PpvContent.MakerContentId
 	tmp.Duration = int(math.Ceil(float64(finalResponse.Data.PpvContent.Duration / 60)))

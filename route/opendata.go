@@ -33,6 +33,8 @@ func OpenData(app *fiber.App) {
 	g4 := g.Group("/av")
 	g4.Get("/search/video", opendata.AvVideoSearch)
 	g4.Get("/search/actress", opendata.AvActressSearch)
+	// 詳細頁「同步資料」：用 DMM 內部番號重抓單一作品（IP＋作品冷卻限流）
+	g4.Post("/video/:no/sync", opendata.AvVideoSync)
 
 	gVtuber := g.Group("/vtubers")
 	gVtuber.Get("/channels", opendata.VtuberChannels)

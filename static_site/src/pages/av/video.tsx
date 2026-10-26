@@ -19,6 +19,10 @@ import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { ListByPaginationRequest } from "@/apis/interfaces";
 import type { Video } from "@/types/av.ts";
+import {
+  AV_VIDEO_EXACT_FILTERS,
+  type AVVideoExactFilterParam,
+} from "@/data/avVideoFilters.ts";
 import MovieFilterIcon from "@mui/icons-material/MovieFilter";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
 
@@ -55,6 +59,12 @@ const parseVideoSearchParams = (
   if (endDate) {
     search.end_date = endDate;
   }
+  for (const { param } of AV_VIDEO_EXACT_FILTERS) {
+    const value = query.get(param)?.trim();
+    if (value) {
+      search[param] = value;
+    }
+  }
 
   return search;
 };
@@ -76,6 +86,12 @@ const videoSearchToParams = (
   }
   if (search.end_date) {
     query.set("end_date", search.end_date);
+  }
+  for (const { param } of AV_VIDEO_EXACT_FILTERS) {
+    const value = search[param]?.trim();
+    if (value) {
+      query.set(param, value);
+    }
   }
 
   return query;
@@ -99,8 +115,14 @@ export function AVVideo() {
   const total = s.data?.data?.total ?? 0;
   const perPage = s.data?.data?.per_page ?? 0;
   const pageCount = perPage > 0 ? Math.ceil(total / perPage) : 0;
+  const activeExactFilters = AV_VIDEO_EXACT_FILTERS.filter(
+    ({ param }) => search[param],
+  );
   const hasActiveFilter = Boolean(
-    search.keyword || search.start_date || search.end_date,
+    search.keyword ||
+    search.start_date ||
+    search.end_date ||
+    activeExactFilters.length > 0,
   );
 
   const toVideoDetail = (video: Video) => {
@@ -118,6 +140,11 @@ export function AVVideo() {
 
   const handlePageChange = (page: number) => {
     setQuery(videoSearchToParams({ ...search, page }));
+  };
+
+  // 移除單一精確篩選條件，其餘條件保留並回到第一頁
+  const removeExactFilter = (param: AVVideoExactFilterParam) => {
+    setQuery(videoSearchToParams({ ...search, [param]: undefined, page: 1 }));
   };
 
   return (
@@ -208,6 +235,15 @@ export function AVVideo() {
                         sx={{ borderRadius: 1 }}
                       />
                     )}
+                    {activeExactFilters.map(({ param, label }) => (
+                      <Chip
+                        key={param}
+                        label={`${label}：${search[param]}`}
+                        onDelete={() => removeExactFilter(param)}
+                        size="small"
+                        sx={{ borderRadius: 1 }}
+                      />
+                    ))}
                     {search.start_date && (
                       <Chip
                         label={`開始：${search.start_date}`}
