@@ -76,6 +76,13 @@ type envConfig struct {
 	FinMindToken   string `env:"FINMIND_TOKEN"`
 	DiscordWebhook string `env:"DISCORD_WEBHOOK"`
 
+	// Telegram bot：DMM 每日上架通知與同步失敗告警用
+	TelegramBotToken string `env:"TG_BOT_TOKEN"`
+	TelegramChatID   string `env:"TG_CHAT_ID"`
+
+	// DMMVideoIndex 與 storyteller 一樣，本機跟正式環境共用 ES cluster，本機測試要蓋成別的名字
+	DMMVideoIndex string `env:"DMM_VIDEO_INDEX,default=dmmvideos"`
+
 	StorytellerAgentAPIKeyActiveKeyID string `env:"STORYTELLER_AGENT_API_KEY_ACTIVE_KEY_ID"`
 	StorytellerAgentAPIKeyMasterKeys  string `env:"STORYTELLER_AGENT_API_KEY_MASTER_KEYS"`
 

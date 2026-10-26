@@ -214,6 +214,24 @@ var cronJobs = map[string]cronGroup{
 					avService.SyncXCityActressesCron()
 				},
 			},
+			{
+				// 前一天配信作品寫入 MySQL dmm＋ES dmmvideos；回補用 -dayFrom／-dayTo（含）
+				Name:     "av-dmm-video-sync",
+				Schedule: "50 3 * * *",
+				Enabled:  true,
+				Handler: func() {
+					avService.RunDMMVideoSync(commandParams.Value("dayFrom"), commandParams.Value("dayTo"))
+				},
+			},
+			{
+				// 當天上架清單前 10 筆發到 Telegram；可用 -dayFrom 指定日期
+				Name:     "av-dmm-video-notify",
+				Schedule: "0 10 * * *",
+				Enabled:  true,
+				Handler: func() {
+					avService.RunDMMVideoDailyNotify(commandParams.Value("dayFrom"))
+				},
+			},
 		},
 	},
 	"nccc": {

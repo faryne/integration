@@ -49,6 +49,8 @@ var commandParams = commandParameter.Registry{
 	"brandIds":        commandParameter.New("comma-separated eroge_brands numeric IDs, or all for every approved brand", nil),
 	"brandName":       commandParameter.New("eroge brand name", nil),
 	"csvFile":         commandParameter.New("path to a pipe-delimited eroge brand CSV file", nil),
+	"dayFrom":         commandParameter.New("start date in YYYY-MM-DD format", commandParameter.Date),
+	"dayTo":           commandParameter.New("end date in YYYY-MM-DD format (inclusive)", commandParameter.Date),
 	"ncccKey":         commandParameter.New("single NCCC data set key, e.g. gender", nil),
 	"searchIndexName": commandParameter.New("optional Elasticsearch index name for storyteller search; defaults to STORYTELLER_SEARCH_INDEX", nil),
 	"playlist":        commandParameter.New("public YouTube playlist URL or ID", nil),
