@@ -77,13 +77,14 @@ func videoSyncRange(dayFrom, dayTo string) (time.Time, time.Time, error) {
 	return from, to, nil
 }
 
-// RunDMMVideoDailyNotify 把當天（或 -dayFrom 指定日）上架清單前 10 筆發到 TG，取代 PHP dmm:daily
+// RunDMMVideoDailyNotify 把當天（或 -dayFrom 指定日）上架清單前 10 筆發到 TG，取代 PHP dmm:daily；
+// 跟 PHP 版一樣先發文字清單，再補一組封面相簿
 func RunDMMVideoDailyNotify(day string) {
 	if day == "" {
 		day = time.Now().Format(time.DateOnly)
 	}
 	ctx := context.Background()
-	msg, err := buildVideoNotifyMessage(day)
+	msg, photos, err := buildVideoNotifyMessage(day)
 	if err != nil {
 		log.Logger().Error("DMM video notify failed: " + err.Error())
 		msg = "<b>DMM " + day + " 上架影片通知失敗</b>\n\n" + html.EscapeString(err.Error())
@@ -94,20 +95,27 @@ func RunDMMVideoDailyNotify(day string) {
 	}
 	if err := telegram.SendMessage(ctx, msg); err != nil {
 		log.Logger().Error("DMM video notify send failed: " + err.Error())
+		return
+	}
+	// 相簿失敗（例如某張封面 Telegram 抓不到）不影響已經送出的文字清單，只記 log
+	if err := telegram.SendPhotos(ctx, photos); err != nil {
+		log.Logger().Error("DMM video notify photos send failed: " + err.Error())
 	}
 }
 
-// buildVideoNotifyMessage 只需要第一頁；明細抓不到的作品直接略過，不讓通知整則失敗
-func buildVideoNotifyMessage(day string) (string, error) {
+// buildVideoNotifyMessage 只需要第一頁；明細抓不到的作品直接略過，不讓通知整則失敗。
+// 另外回傳同樣這幾筆的封面網址（直式 ps.jpg），順序與清單編號一致
+func buildVideoNotifyMessage(day string) (string, []string, error) {
 	videos, _, err := dmm.NewDMMClient().SearchVideosByDaily(day, 1)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if len(videos) == 0 {
-		return "", nil
+		return "", nil, nil
 	}
 
 	var sb strings.Builder
+	var photos []string
 	sb.WriteString("<b>DMM " + day + " 上架影片</b>\n\n")
 	for k, v := range videos[:min(len(videos), videoNotifyTopN)] {
 		actresses := "-"
@@ -115,7 +123,10 @@ func buildVideoNotifyMessage(day string) (string, error) {
 			actresses = strings.Join(v.Actresses, " / ")
 		}
 		fmt.Fprintf(&sb, "%d <a href=\"%s\">%s</a>\n\t出演：%s\n\n", k+1, html.EscapeString(v.Url), html.EscapeString(v.Title), html.EscapeString(actresses))
+		if v.Thumb != "" {
+			photos = append(photos, v.Thumb)
+		}
 	}
 	fmt.Fprintf(&sb, "<a href=\"https://www.dmm.co.jp/digital/videoa/-/delivery-list/=/delivery_date=%s/\">更多</a>", day)
-	return sb.String(), nil
+	return sb.String(), photos, nil
 }
