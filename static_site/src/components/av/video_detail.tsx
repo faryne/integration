@@ -21,8 +21,10 @@ import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 
 export interface IVideoDetail {
   video?: Video;
-  // 「同步資料」成功取得官方番號後，由頁面換到新網址並重新查詢
-  onSynced?: (result: VideoSyncResult) => void;
+  // 「同步資料」成功取得官方番號後，由頁面確認新網址查得到資料再換頁
+  onSynced?: (result: VideoSyncResult) => Promise<void>;
+  // 同步確定失敗（已標成 orphan），由頁面重新查詢讓按鈕消失
+  onOrphaned?: () => void;
 }
 
 export function VideoDetail(props: IVideoDetail) {
@@ -214,7 +216,9 @@ export function VideoDetail(props: IVideoDetail) {
             ) : (
               <VideoSyncButton
                 no={video.no}
-                onSynced={(r) => props.onSynced?.(r)}
+                orphan={!!video.is_orphan}
+                onOrphaned={() => props.onOrphaned?.()}
+                onSynced={async (r) => props.onSynced?.(r)}
               />
             )}
           </Box>

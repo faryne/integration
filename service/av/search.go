@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"faryne.dev/config"
 	"faryne.dev/model/entity"
 	"faryne.dev/model/entity/opendata/av"
 	"faryne.dev/service/search"
@@ -22,6 +23,7 @@ var fVideo = func(i av.RawVideo) av.CleanVideo {
 		Tags:     i.Tags,
 		Duration: i.Duration,
 		MakerNo:  i.MakerNo,
+		IsOrphan: i.IsOrphan,
 	}
 	if i.PublishDate != nil {
 		if publishDate, ok := i.PublishDate.(string); ok {
@@ -139,7 +141,7 @@ func VideoSearch(input av.VideoQueryRequest) (*entity.ElasticSearchResponse[av.R
 		search.SetQuery(videoNoQuery(no), true, q)
 	}
 
-	return search.Search[av.RawVideo, av.CleanVideo]("dmmvideos", q, fVideo)
+	return search.Search[av.RawVideo, av.CleanVideo](config.EnvConfig().DMMVideoIndex, q, fVideo)
 }
 
 var fActress = func(i av.Actress) av.Actress {

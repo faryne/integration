@@ -47,8 +47,11 @@ func AvVideoSync(ctx fiber.Ctx) error {
 
 	v, err := av.SyncDMMVideoByNo(ctx.Context(), no)
 	switch {
+	// 確定失敗：已標成 orphan，前端重新查詢後就不會再顯示同步按鈕
 	case errors.Is(err, dmm.ErrVideoNotFound):
 		return output.New(http.StatusNotFound, "", nil, "DMM 已查無此作品")
+	case errors.Is(err, av.ErrVideoNoMakerNo):
+		return output.New(http.StatusNotFound, "", nil, "DMM 沒有提供這部作品的官方番號")
 	case err != nil:
 		// 暫時性失敗不佔冷卻，讓使用者稍後可以再按
 		av.ReleaseVideoSync(no)

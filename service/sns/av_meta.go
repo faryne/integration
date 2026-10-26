@@ -50,6 +50,11 @@ func applyAvVideoMeta(meta *modelSNS.Meta, matches []string) {
 	if video.Thumb != "" {
 		meta.Image = video.Thumb
 	}
+	// 用 DMM 內部番號進來、但已有官方番號（例如同步過的舊資料）：canonical 與轉址都指向官方番號網址
+	if video.MakerNo != "" && !strings.EqualFold(matches[1], video.MakerNo) {
+		meta.Canonical = absoluteURL(frontendOrigin(), "/av/video/"+video.MakerNo)
+		meta.RedirectURL = meta.Canonical
+	}
 }
 
 // avVideoDescription 例：出演：石原希望、葵いぶき｜ムーディーズ｜配信日 2026/10/26；沒有的段落略過

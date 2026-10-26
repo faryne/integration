@@ -46,6 +46,7 @@ type RawVideo struct {
 	Actresses   []string      `json:"actresses"`
 	Timestamp   time.Time     `json:"@timestamp"`
 	MakerNo     string        `json:"maker_no"`
+	IsOrphan    bool          `json:"is_orphan"`
 }
 
 type CleanVideo struct {
@@ -67,4 +68,6 @@ type CleanVideo struct {
 	Series      []interface{} `json:"series"`
 	Actresses   []string      `json:"actresses"`
 	MakerNo     string        `json:"maker_no"`
+	// IsOrphan 同步資料確定失敗，前端不顯示同步按鈕
+	IsOrphan bool `json:"is_orphan,omitempty"`
 }
