@@ -9,7 +9,8 @@ export const SLIDE_DURATION = 280;
 // direction: 1 表示往下一張（新圖從右側滑入、舊圖往左滑出）；
 //            -1 表示往上一張（新圖從左側滑入、舊圖往右滑出）。
 // maxWidth: 換頁當下量到的舞台內容寬度（px）。退場圖片改成絕對定位疊在上層後，
-//           百分比寬度會變成相對於進場圖片，要用這個值維持跟靜止時一樣的顯示尺寸。
+//           百分比寬度會變成相對於進場圖片，要用這個值維持跟靜止時一樣的顯示尺寸；
+//           同時也是滑動距離（見 slideTransform）。
 export interface SlideTransition {
   direction: 1 | -1;
   index: number;
@@ -19,15 +20,21 @@ export interface SlideTransition {
 
 // 依「是否已進場」與「退場／進場」算出對應的 translateX。
 // entered=false 為動畫起始位置，entered=true 為動畫結束（定案）位置。
+// distance 是滑動距離（px）：用舞台寬度而不是圖片自身寬度（100%），
+// 圖片比舞台窄時，只移動自身寬度會讓退場圖滑完還留一截在畫面上（殘影）、進場圖從舞台中間冒出來。
+// 圖寬不會超過舞台寬，所以兩張圖各移動一個舞台寬度一定會完全離開畫面且彼此不重疊；量不到時退回 100%。
 export function slideTransform(
   entered: boolean,
   isOutgoing: boolean,
   direction: 1 | -1,
+  distance: number,
 ) {
+  const offset = (sign: number) =>
+    distance > 0 ? `translateX(${sign * distance}px)` : `translateX(${sign * 100}%)`;
   if (isOutgoing) {
     // 退場圖片：一開始待在原地，進場旗標打開後往換頁方向的反方向滑出。
-    return entered ? `translateX(${direction * -100}%)` : "translateX(0)";
+    return entered ? offset(-direction) : "translateX(0)";
   }
   // 新圖片：一開始藏在換頁方向那一側的畫面外，進場旗標打開後滑回原地。
-  return entered ? "translateX(0)" : `translateX(${direction * 100}%)`;
+  return entered ? "translateX(0)" : offset(direction);
 }
