@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -17,6 +18,8 @@ import (
 	avRepo "faryne.dev/repository/av"
 	"faryne.dev/service/client"
 	"faryne.dev/service/dmm"
+	"faryne.dev/service/log"
+	"go.uber.org/zap"
 )
 
 // 正常一天 5~15 頁，設上限只是防 DMM 分頁異常時無窮迴圈
@@ -58,7 +61,7 @@ func SyncDMMVideosByDate(ctx context.Context, date string) (VideoSyncResult, err
 
 		valid := slices.DeleteFunc(slices.Clone(videos), func(v dmm.DmmVideo) bool { return v.VodDate == "" })
 		result.Skipped += len(videos) - len(valid)
-		n, err := persistVideos(ctx, repo, valid)
+		n, err := persistVideos(ctx, repo, valid, false)
 		result.Indexed += n
 		if err != nil {
 			return result, fmt.Errorf("persist page %d: %w", page, err)
@@ -67,8 +70,9 @@ func SyncDMMVideosByDate(ctx context.Context, date string) (VideoSyncResult, err
 	return result, nil
 }
 
-// persistVideos 先整頁 upsert 進 MySQL 取得 id，再逐筆寫 ES
-func persistVideos(ctx context.Context, repo *avRepo.RepositoryDMMVideo, videos []dmm.DmmVideo) (int, error) {
+// persistVideos 先整頁 upsert 進 MySQL 取得 id，再逐筆寫 ES。
+// waitVisible 為 true 時每筆都等 ES refresh 後才回傳（單筆同步要馬上查得到）；批次同步不等，避免拖慢
+func persistVideos(ctx context.Context, repo *avRepo.RepositoryDMMVideo, videos []dmm.DmmVideo, waitVisible bool) (int, error) {
 	if len(videos) == 0 {
 		return 0, nil
 	}
@@ -106,7 +110,7 @@ func persistVideos(ctx context.Context, repo *avRepo.RepositoryDMMVideo, videos 
 		if !ok {
 			return indexed, fmt.Errorf("dmm id not found after upsert: no=%s", v.No)
 		}
-		if err := indexVideo(ctx, videoIndexDocument{DmmVideo: v, Vid: id}); err != nil {
+		if err := indexVideo(ctx, videoIndexDocument{DmmVideo: v, Vid: id}, waitVisible); err != nil {
 			return indexed, err
 		}
 		indexed++
@@ -114,7 +118,7 @@ func persistVideos(ctx context.Context, repo *avRepo.RepositoryDMMVideo, videos 
 	return indexed, nil
 }
 
-func indexVideo(ctx context.Context, doc videoIndexDocument) error {
+func indexVideo(ctx context.Context, doc videoIndexDocument, waitVisible bool) error {
 	es := client.GetElasticSearch(enum.ESDefault)
 	if es == nil {
 		return fmt.Errorf("elasticsearch client is not initialized")
@@ -128,6 +132,7 @@ func indexVideo(ctx context.Context, doc videoIndexDocument) error {
 		bytes.NewReader(body),
 		es.Index.WithContext(ctx),
 		es.Index.WithDocumentID(strconv.Itoa(doc.Vid)),
+		es.Index.WithRefresh(refreshOption(waitVisible)),
 	)
 	if err != nil {
 		return err
@@ -146,17 +151,89 @@ func truncateRunes(s string, n int) string {
 	return s
 }
 
-// SyncDMMVideoByNo 詳細頁「同步資料」：用 DMM 內部番號單獨重抓一部作品，覆寫 MySQL＋ES（id 不變）。
-// 主要用來幫缺官方番號（maker_no）的舊資料補齊，補完詳細頁才會出現 MissAV 連結
+// SyncDMMVideoByNo 詳細頁「同步資料」：用 DMM 內部番號單獨重抓一部作品，覆寫 MySQL＋ES（id 不變），
+// 並確認用官方番號已經查得到才回傳，前端收到成功就可以直接換到新網址。
+// 確定失敗（DMM 已查無、沒有配信日、沒有官方番號）會把這部標成 orphan；暫時性錯誤不標，使用者之後可以再試
 func SyncDMMVideoByNo(ctx context.Context, no string) (dmm.DmmVideo, error) {
 	v, err := dmm.NewDMMClient().FetchVideo(no)
+	// 沒有配信日的明細一律不寫入，避免再出現 0001/01/01
+	if err == nil && v.VodDate == "" {
+		err = dmm.ErrVideoNotFound
+	}
+	if errors.Is(err, dmm.ErrVideoNotFound) {
+		markVideoOrphanOrLog(ctx, no)
+		return v, err
+	}
 	if err != nil {
 		return v, err
 	}
-	// 沒有配信日的明細一律不寫入，避免再出現 0001/01/01
-	if v.VodDate == "" {
-		return v, dmm.ErrVideoNotFound
+
+	if _, err = persistVideos(ctx, avRepo.NewDMMVideo(), []dmm.DmmVideo{v}, true); err != nil {
+		return v, err
 	}
-	_, err = persistVideos(ctx, avRepo.NewDMMVideo(), []dmm.DmmVideo{v})
-	return v, err
+	// 資料是新的，但 DMM 沒給官方番號一樣出不了 MissAV 連結，視為確定失敗
+	if v.MakerNo == "" {
+		markVideoOrphanOrLog(ctx, v.No)
+		return v, ErrVideoNoMakerNo
+	}
+	if !videoVisible(v.MakerNo) {
+		return v, ErrVideoSyncNotVisible
+	}
+	return v, nil
+}
+
+// videoVisible 用官方番號查得到這部才算同步完成；ES 已經 refresh=wait_for，這裡是最後一道確認
+func videoVisible(makerNo string) bool {
+	_, rows, err := VideoSearch(avEntity.VideoQueryRequest{No: makerNo, Page: 1})
+	return err == nil && len(rows) > 0
+}
+
+// markVideoOrphanOrLog 標 orphan 失敗不影響回給使用者的結果（同步本身已確定失敗），只記 log
+func markVideoOrphanOrLog(ctx context.Context, no string) {
+	if err := markVideoOrphan(ctx, no); err != nil {
+		log.Logger().Error("Mark DMM video orphan failed: "+err.Error(), zap.String("no", no))
+	}
+}
+
+// markVideoOrphan 依內部番號找出 ES 文件（vid＝dmm.id），把 MySQL 與 ES 都標成 orphan
+func markVideoOrphan(ctx context.Context, no string) error {
+	r, _, err := VideoSearch(avEntity.VideoQueryRequest{No: no, Page: 1})
+	if err != nil || r == nil {
+		return err
+	}
+	ids := make([]int, 0, len(r.Hits.Hits))
+	for _, hit := range r.Hits.Hits {
+		ids = append(ids, hit.Source.Vid)
+	}
+	if err := avRepo.NewDMMVideo().MarkOrphan(ids); err != nil {
+		return err
+	}
+	es := client.GetElasticSearch(enum.ESDefault)
+	if es == nil {
+		return fmt.Errorf("elasticsearch client is not initialized")
+	}
+	for _, hit := range r.Hits.Hits {
+		resp, err := es.Update(
+			config.EnvConfig().DMMVideoIndex,
+			hit.Id,
+			strings.NewReader(`{"doc":{"is_orphan":true}}`),
+			es.Update.WithContext(ctx),
+			es.Update.WithRefresh("wait_for"),
+		)
+		if err != nil {
+			return err
+		}
+		resp.Body.Close()
+		if resp.IsError() {
+			return fmt.Errorf("mark dmm video orphan failed: status=%s id=%s", resp.Status(), hit.Id)
+		}
+	}
+	return nil
+}
+
+func refreshOption(waitVisible bool) string {
+	if waitVisible {
+		return "wait_for"
+	}
+	return "false"
 }

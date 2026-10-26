@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"faryne.dev/config"
 	"faryne.dev/model/entity"
 	"faryne.dev/model/entity/opendata/av"
 	"faryne.dev/service/search"
@@ -22,6 +23,7 @@ var fVideo = func(i av.RawVideo) av.CleanVideo {
 		Tags:     i.Tags,
 		Duration: i.Duration,
 		MakerNo:  i.MakerNo,
+		IsOrphan: i.IsOrphan,
 	}
 	if i.PublishDate != nil {
 		if publishDate, ok := i.PublishDate.(string); ok {
@@ -139,7 +141,27 @@ func VideoSearch(input av.VideoQueryRequest) (*entity.ElasticSearchResponse[av.R
 		search.SetQuery(videoNoQuery(no), true, q)
 	}
 
-	return search.Search[av.RawVideo, av.CleanVideo]("dmmvideos", q, fVideo)
+	if input.Shuffle {
+		randomizeQuery(q)
+	}
+	return search.Search[av.RawVideo, av.CleanVideo](config.EnvConfig().DMMVideoIndex, q, fVideo)
+}
+
+// randomizeQuery 把既有條件包進 function_score＋random_score 改成隨機排序；
+// 原本的日期排序要拿掉，否則 sort 會蓋過分數
+func randomizeQuery(q map[string]any) {
+	delete(q, "sort")
+	inner, ok := q["query"]
+	if !ok {
+		inner = map[string]any{"match_all": map[string]any{}}
+	}
+	q["query"] = map[string]any{
+		"function_score": map[string]any{
+			"query":        inner,
+			"random_score": map[string]any{},
+			"boost_mode":   "replace",
+		},
+	}
 }
 
 var fActress = func(i av.Actress) av.Actress {

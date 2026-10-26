@@ -14,6 +14,8 @@ export interface Video {
   publish_date?: string;
   // 片長（分鐘）
   duration?: number;
+  // 同步資料確定失敗（DMM 已查無、沒有官方番號），不再顯示同步按鈕
+  is_orphan?: boolean;
   tags: string[];
   images: {
     preview: string;

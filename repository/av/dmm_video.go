@@ -1,6 +1,8 @@
 package av
 
 import (
+	"time"
+
 	"faryne.dev/model/entity/opendata/av"
 	"faryne.dev/model/enum"
 	"faryne.dev/repository"
@@ -20,9 +22,19 @@ func NewDMMVideo() *RepositoryDMMVideo {
 // UpsertBatch 以 no 為唯一鍵批次寫入；既有作品只更新內容，id 不變（ES document id 才會穩定）
 func (r *RepositoryDMMVideo) UpsertBatch(videos []av.DMMVideo) error {
 	return r.GetDB().Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "no"}},
-		DoUpdates: clause.AssignmentColumns([]string{"title", "link", "thumb", "info", "updated_at"}),
+		Columns: []clause.Column{{Name: "no"}},
+		// is_orphan／orphaned_at 一併覆寫成新值（false／NULL）：DMM 重新抓得到就不再是 orphan
+		DoUpdates: clause.AssignmentColumns([]string{"title", "link", "thumb", "info", "is_orphan", "orphaned_at", "updated_at"}),
 	}).Create(&videos).Error
+}
+
+// MarkOrphan 把同步確定失敗的作品標成 orphan
+func (r *RepositoryDMMVideo) MarkOrphan(ids []int) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	return r.GetDB().Model(&av.DMMVideo{}).Where("id IN ?", ids).
+		Updates(map[string]any{"is_orphan": true, "orphaned_at": time.Now()}).Error
 }
 
 // IDsByNos 回傳 no → id；ON DUPLICATE KEY UPDATE 拿不到既有列的 id，寫完要另外查。

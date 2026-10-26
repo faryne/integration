@@ -21,27 +21,38 @@ export interface VideoSearchRequest {
   label?: string;
   series?: string;
   director?: string;
+  // 隨機排序（詳細頁追溯不到系列／女優時的近期推薦）；ListByPaginationRequest 已有別的 random 欄位，避開同名
+  shuffle?: boolean;
   no?: string;
   maker_no?: string;
 }
 export type VideoSearchResponse = CommonResponse<Pagination<Video[]>>;
+
+// 查詢 key 與實際請求抽出來，讓頁面可以用 queryClient.fetchQuery 先確認資料再換頁（快取也會共用）
+export const avVideoSearchQueryKey = (
+  params: ListByPaginationRequest<VideoSearchRequest>,
+) => [params, "av/video"];
+
+export async function fetchAVVideoSearch(
+  params: ListByPaginationRequest<VideoSearchRequest>,
+) {
+  const response = await axios.get<VideoSearchResponse>(
+    `${import.meta.env.VITE_API_BASE}/opendata/av/search/video`,
+    {
+      params,
+      timeout: 10000,
+    },
+  );
+  return response.data;
+}
 
 export function useAVVideoSearch(
   params: ListByPaginationRequest<VideoSearchRequest>,
   enabled: boolean = true,
 ) {
   return useQuery({
-    queryKey: [params, "av/video"],
-    queryFn: async () => {
-      const response = await axios.get<VideoSearchResponse>(
-        `${import.meta.env.VITE_API_BASE}/opendata/av/search/video`,
-        {
-          params,
-          timeout: 10000,
-        },
-      );
-      return response.data;
-    },
+    queryKey: avVideoSearchQueryKey(params),
+    queryFn: () => fetchAVVideoSearch(params),
     enabled: enabled,
   });
 }

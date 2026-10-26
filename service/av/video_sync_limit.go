@@ -24,6 +24,10 @@ var (
 	ErrVideoSyncIPLimited = errors.New("video sync ip limit reached")
 	// ErrVideoSyncCooldown 這部作品 24 小時內同步過，controller 據此回 429
 	ErrVideoSyncCooldown = errors.New("video sync cooldown")
+	// ErrVideoNoMakerNo DMM 查得到但沒有官方番號，已標成 orphan
+	ErrVideoNoMakerNo = errors.New("dmm video has no maker no")
+	// ErrVideoSyncNotVisible 已寫入但用官方番號還查不到，視為暫時性失敗
+	ErrVideoSyncNotVisible = errors.New("synced video not visible yet")
 )
 
 // AcquireVideoSync 檢查並占用一次同步額度：先占作品冷卻（SETNX），再計 IP 次數。

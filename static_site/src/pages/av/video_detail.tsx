@@ -1,4 +1,8 @@
-import { useAVVideoSearch } from "@/apis/av/video_search.ts";
+import {
+  avVideoSearchQueryKey,
+  fetchAVVideoSearch,
+  useAVVideoSearch,
+} from "@/apis/av/video_search.ts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import { VideoDetail } from "@/components/av/video_detail.tsx";
@@ -30,14 +34,25 @@ export function AVVideoDetail() {
     >
       <VideoDetail
         video={video}
-        onSynced={(result) => {
-          // 同步後 ES 的 no 可能改成小寫，網址換成官方番號，並讓舊的查詢結果失效重抓
-          void queryClient.invalidateQueries({
-            queryKey: [{ no }, "av/video"],
-            exact: false,
+        onSynced={async (result) => {
+          // 後端已確認寫入並可查詢；前端再用官方番號查一次，拿到資料（同時進快取）才換到新網址，
+          // replace 讓上一頁不會回到舊的內部番號網址（等同 301）
+          const params = { page: 1, no: result.maker_no };
+          const data = await queryClient.fetchQuery({
+            queryKey: avVideoSearchQueryKey(params),
+            queryFn: () => fetchAVVideoSearch(params),
           });
+          if (!data.data?.data?.length) {
+            throw new Error("synced video not found");
+          }
           navigate(`/av/video/${encodeURIComponent(result.maker_no)}`, {
             replace: true,
+          });
+        }}
+        onOrphaned={() => {
+          // 已標成 orphan：重新查詢這部，按鈕會依 is_orphan 隱藏
+          void queryClient.invalidateQueries({
+            queryKey: avVideoSearchQueryKey({ page: 1, no }),
           });
         }}
       />

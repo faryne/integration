@@ -21,6 +21,8 @@ type VideoQueryRequest struct {
 	Director string `query:"director"`
 	No       string `query:"no"`
 	Page     int    `query:"page"`
+	// Shuffle 隨機排序（詳細頁追溯不到系列／女優時，隨機推薦近期作品用）
+	Shuffle bool `query:"shuffle"`
 }
 
 type RawVideo struct {
@@ -46,6 +48,7 @@ type RawVideo struct {
 	Actresses   []string      `json:"actresses"`
 	Timestamp   time.Time     `json:"@timestamp"`
 	MakerNo     string        `json:"maker_no"`
+	IsOrphan    bool          `json:"is_orphan"`
 }
 
 type CleanVideo struct {
@@ -67,4 +70,6 @@ type CleanVideo struct {
 	Series      []interface{} `json:"series"`
 	Actresses   []string      `json:"actresses"`
 	MakerNo     string        `json:"maker_no"`
+	// IsOrphan 同步資料確定失敗，前端不顯示同步按鈕
+	IsOrphan bool `json:"is_orphan,omitempty"`
 }
