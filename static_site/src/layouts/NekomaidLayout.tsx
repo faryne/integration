@@ -1,9 +1,9 @@
 import { Box, Button, Divider, Stack, Typography } from "@mui/material";
-import AutoAwesomeMosaicIcon from "@mui/icons-material/AutoAwesomeMosaic";
 import HomeIcon from "@mui/icons-material/Home";
 import { Link as RouterLink, Outlet } from "react-router-dom";
 import "@/styles/common.css";
 import { isNekomaidSite, nekomaidPath } from "@/helpers/nekomaid.ts";
+import { MASCOT_ASSET_CDN_BASE } from "@/helpers/mascotAssets.ts";
 import IndependentFooter from "@/components/common/IndependentFooter.tsx";
 
 export function NekomaidLayout() {
@@ -44,6 +44,7 @@ export function NekomaidLayout() {
           <Stack
             component={RouterLink}
             to={nekomaidPath()}
+            title="難以名狀的抓圖器 — https://neko.maid.tw/"
             direction="row"
             alignItems="center"
             spacing={1.5}
@@ -54,20 +55,13 @@ export function NekomaidLayout() {
             }}
           >
             <Box
-              sx={{
-                alignItems: "center",
-                bgcolor: "rgba(251, 191, 36, 0.16)",
-                border: "1px solid rgba(251, 191, 36, 0.34)",
-                borderRadius: 2,
-                color: "#fde68a",
-                display: "flex",
-                height: 42,
-                justifyContent: "center",
-                width: 42,
-              }}
-            >
-              <AutoAwesomeMosaicIcon fontSize="small" />
-            </Box>
+              component="img"
+              src={`${MASCOT_ASSET_CDN_BASE}/site-icons/nekomaid-icon.webp`}
+              alt=""
+              width={42}
+              height={42}
+              sx={{ borderRadius: 2, flexShrink: 0 }}
+            />
             <Box sx={{ minWidth: 0 }}>
               <Typography
                 component="p"

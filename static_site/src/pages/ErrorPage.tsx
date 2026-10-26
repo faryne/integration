@@ -1,26 +1,18 @@
 import { Box, Button, Container, Stack, Typography } from "@mui/material";
 import HomeIcon from "@mui/icons-material/Home";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { useContext, useState } from "react";
+import { useContext } from "react";
+import { galgamePath, isGalgameSite } from "@/helpers/galgame.ts";
+import { isNekomaidSite, nekomaidPath } from "@/helpers/nekomaid.ts";
 import { storytellerMascotSrc } from "@/helpers/storytellerMascot.ts";
-import { isSteamLoomSite } from "@/helpers/steamloom.ts";
+import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
 import { StorytellerAppearanceContext } from "@/layouts/storytellerAppearanceMode.tsx";
-
-// 主站錯誤頁的貓娘插圖有好幾張，每次進到錯誤頁隨機挑一張，避免每次都看到同一張。
-const faryneMascotImages = [
-  "/error-page/ErrorPage-1.webp",
-  "/error-page/ErrorPage-2.webp",
-  "/error-page/ErrorPage-3.webp",
-  "/error-page/ErrorPage-4.webp",
-  "/error-page/ErrorPage-5.webp",
-  "/error-page/ErrorPage-6.webp",
-];
-
-function pickRandomFaryneMascotImage() {
-  return faryneMascotImages[
-    Math.floor(Math.random() * faryneMascotImages.length)
-  ];
-}
+import {
+  errorPageContent,
+  errorPageMascots,
+  fallbackErrorContent,
+  type ErrorPageSite,
+} from "@/pages/errorPageContent.ts";
 
 export interface ErrorPageProps {
   backUrl?: string;
@@ -33,49 +25,6 @@ export interface ErrorPageProps {
   // 兩層內距疊在一起、加上跟外層寬度不成比例的高度，看起來會很不對勁。
   compact?: boolean;
 }
-
-const defaultErrorContent: Record<number, { title: string; message: string }> =
-  {
-    400: {
-      title: "請求格式不太對",
-      message:
-        "喵嗚，主人送來的資料女僕看不太懂。請確認輸入內容後，再交給我一次喵。",
-    },
-    401: {
-      title: "需要先登入",
-      message: "主人還沒有通行證喵。請先登入，女僕才能帶你進去看這份資料。",
-    },
-    403: {
-      title: "沒有瀏覽權限",
-      message:
-        "這個房間目前不能讓主人進去喵。若覺得不應該被擋下，請再確認權限設定。",
-    },
-    429: {
-      title: "查詢太頻繁了",
-      message:
-        "喵嗚，主人問得太快，女僕忙不過來了。請休息一下，過一陣子再來問喵。",
-    },
-    404: {
-      title: "找不到這個頁面",
-      message:
-        "喵嗚，女僕把走廊都找過了，還是沒有找到主人想看的頁面。先回首頁休息一下喵。",
-    },
-    500: {
-      title: "伺服器累倒了",
-      message:
-        "女僕後台好像打翻茶盤了喵。請稍後再試一次，或把狀況交給管理員檢查。",
-    },
-    503: {
-      title: "服務暫時休息中",
-      message: "女僕正在整理房間，服務暫時無法使用喵。請稍後再回來看看。",
-    },
-  };
-
-const fallbackErrorContent = {
-  title: "發生了一點小狀況",
-  message:
-    "喵嗚，女僕這邊暫時處理不了主人想看的內容。請稍後再試一次，或先回首頁休息一下喵。",
-};
 
 // SteamLoom 是完全獨立的產品，錯誤頁不套用主站的貓娘女僕人設，改用蒸汽織機的故障意象。
 const steamloomErrorContent: Record<
@@ -115,6 +64,25 @@ const steamloomFallbackErrorContent = {
   message: "織機這邊暫時處理不了這次的請求。請稍後再試一次，或先回首頁看看。",
 };
 
+// 獨立網域與主站巢狀路徑共用建置檔案，因此兩種入口都要辨識。
+function getErrorPageSite(): ErrorPageSite {
+  if (typeof window === "undefined") return "faryne";
+  const { pathname } = window.location;
+  if (
+    isNekomaidSite() ||
+    pathname === "/nekomaid" ||
+    pathname.startsWith("/nekomaid/")
+  )
+    return "nekomaid";
+  if (
+    isGalgameSite() ||
+    pathname === "/galgame" ||
+    pathname.startsWith("/galgame/")
+  )
+    return "galgame";
+  return "faryne";
+}
+
 export function ErrorPage({
   backUrl,
   code,
@@ -125,13 +93,29 @@ export function ErrorPage({
 }: ErrorPageProps) {
   const storytellerAppearance = useContext(StorytellerAppearanceContext);
   const steamloom = isSteamLoomSite() || storytellerAppearance !== null;
+  const site = getErrorPageSite();
   const errorContent = steamloom
     ? (steamloomErrorContent[code] ?? steamloomFallbackErrorContent)
-    : (defaultErrorContent[code] ?? fallbackErrorContent);
-  // 用 useState 的 lazy initializer 只在第一次掛載時抽一張，避免每次重新渲染
-  // （例如切換 compact 相關 state）就重抽換圖，畫面看起來會一直閃動。
-  const [faryneMascotImage] = useState(pickRandomFaryneMascotImage);
-  const buttonHref = backUrl ?? "/";
+    : (errorPageContent[site][code] ?? fallbackErrorContent[site]);
+  const mascot = steamloom
+    ? {
+        src: storytellerMascotSrc(
+          "error",
+          storytellerAppearance?.appearance ?? "nocturne",
+          "512",
+        ),
+        alt: "梭梭",
+      }
+    : errorPageMascots[site];
+  const buttonHref =
+    backUrl ??
+    (steamloom
+      ? steamloomPath()
+      : site === "nekomaid"
+        ? nekomaidPath()
+        : site === "galgame"
+          ? galgamePath()
+          : "/");
   const ButtonIcon = backUrl ? ArrowBackIcon : HomeIcon;
   const buttonText = backUrl ? "回前頁" : "回首頁";
 
@@ -165,22 +149,12 @@ export function ErrorPage({
       >
         <Box
           component="img"
-          src={
-            steamloom
-              ? storytellerMascotSrc(
-                  "error",
-                  storytellerAppearance?.appearance ?? "nocturne",
-                  "512",
-                )
-              : faryneMascotImage
-          }
-          alt={steamloom ? "梭梭" : "Faryne mascot"}
+          src={mascot.src}
+          alt={mascot.alt}
           sx={{
             width: compact ? { xs: 120, md: 160 } : { xs: 180, md: 260 },
             height: compact ? { xs: 120, md: 160 } : { xs: 180, md: 260 },
-            objectFit: "cover",
-            borderRadius: 4,
-            boxShadow: 3,
+            objectFit: "contain",
             flexShrink: 0,
           }}
         />

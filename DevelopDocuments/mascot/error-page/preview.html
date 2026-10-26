@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>四站 ErrorPage 圖示預覽</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 32px 20px 60px; background: #e9edf1; color: #172334; font: 15px/1.6 system-ui, "Noto Sans TC", sans-serif; }
+      main { max-width: 1250px; margin: auto; }
+      h1 { margin: 0; font-size: 24px; }
+      .intro { margin: 8px 0 26px; color: #536273; }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+      .card { min-height: 390px; overflow: hidden; border-radius: 20px; box-shadow: 0 12px 36px #16253920; }
+      .brand { display: flex; align-items: center; gap: 9px; min-height: 58px; padding: 12px 22px; font-size: 15px; font-weight: 800; }
+      .brand img { width: 28px; height: 28px; border-radius: 7px; }
+      .error { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 28px 26px 34px; }
+      .art { display: block; width: min(43%, 230px); aspect-ratio: 1; object-fit: contain; flex: none; }
+      .copy { min-width: 0; max-width: 260px; }
+      .code { display: block; font-size: 49px; line-height: 1; font-weight: 900; }
+      h2 { margin: 10px 0 6px; font-size: 19px; line-height: 1.35; }
+      .copy p { margin: 0 0 18px; opacity: .8; }
+      .button { display: inline-block; padding: 7px 16px; border-radius: 8px; font-weight: 700; }
+      .faryne { background: #101c27; color: #e9f8fa; }
+      .faryne .brand { background: #0b141d; border-bottom: 1px solid #2d4c55; }
+      .faryne .code { color: #a48cf5; }
+      .faryne .button { background: #42c8c2; color: #0a1d24; }
+      .neko { background: #fff8f9; color: #382834; }
+      .neko .brand { background: #ffe8ec; border-bottom: 1px solid #f5cbd4; }
+      .neko .code { color: #e77eaa; }
+      .neko .button { background: #e986a7; color: white; }
+      .galgame { background: #f7fbff; color: #1b2944; }
+      .galgame .brand { background: #edf5ff; border-bottom: 1px solid #d1e3f8; }
+      .galgame .code { color: #528bd1; }
+      .galgame .button { background: #367cba; color: white; }
+      .steamloom { background: #191626; color: #f0e8d4; }
+      .steamloom .brand { background: #120f1d; border-bottom: 1px solid #554060; }
+      .steamloom .code { color: #d7a967; }
+      .steamloom .button { background: #ad8352; color: #17111a; }
+      .note { margin: 24px 2px 0; color: #526174; font-size: 13px; }
+      @media (max-width: 850px) { .grid { grid-template-columns: 1fr; } .card { min-height: 0; } }
+      @media (max-width: 520px) { .error { flex-direction: column; gap: 4px; padding: 14px 24px 30px; text-align: center; } .art { width: min(60%, 210px); } .copy { max-width: 330px; } .code { font-size: 40px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>四站 ErrorPage 圖示預覽</h1>
+      <p class="intro">以現有 ErrorPage 的 404 狀態與圖片區域做排版示意。三姊妹是新圖；梭梭沿用既有錯誤姿勢。</p>
+      <div class="grid">
+        <section class="card faryne">
+          <div class="brand"><img src="../site-icons/exports/faryne-icon.webp" alt="" />Faryne 的實驗室</div>
+          <div class="error"><img class="art" src="exports/faryne-error.png" alt="大姐抱著暫時斷線的 MBP" /><div class="copy"><span class="code">404</span><h2>找不到這個頁面</h2><p>這裡暫時沒有想找的內容，先回首頁看看吧。</p><span class="button">回首頁</span></div></div>
+        </section>
+        <section class="card neko">
+          <div class="brand"><img src="../site-icons/exports/nekomaid-icon.webp" alt="" />難以名狀的抓圖器</div>
+          <div class="error"><img class="art" src="exports/nekomaid-error.png" alt="二姐接住滑落的文件" /><div class="copy"><span class="code">404</span><h2>找不到這份資料</h2><p>文件好像滑到別處了，我再幫你找找。</p><span class="button">回首頁</span></div></div>
+        </section>
+        <section class="card galgame">
+          <div class="brand"><img src="../site-icons/exports/galgame-icon.webp" alt="" />Galgame TV</div>
+          <div class="error"><img class="art" src="exports/galgame-error.png" alt="三姐無奈地鴨子座並拿著低電量裝置，短黑安全褲與粉藍白膝上襪之間露出大腿膚色" /><div class="copy"><span class="code">404</span><h2>找不到這個頁面</h2><p>這裡暫時沒有想看的內容，先回首頁看看吧。</p><span class="button">回首頁</span></div></div>
+        </section>
+        <section class="card steamloom">
+          <div class="brand">SteamLoom</div>
+          <div class="error"><img class="art" src="references/suosuo-error-nocturne-512.png" alt="梭梭查看打結的絲線" /><div class="copy"><span class="code">404</span><h2>找不到這台織機</h2><p>把整座工坊翻遍了，還是沒找到你要的頁面。</p><span class="button">回首頁</span></div></div>
+        </section>
+      </div>
+      <p class="note">本頁保留確認圖稿時的四站並排版型；網站內的 ErrorPage 已依站點接入對應圖像與預設文案。</p>
+    </main>
+  </body>
+</html>

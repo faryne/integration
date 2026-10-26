@@ -12,7 +12,6 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 
-import { FaryneLogo } from "@/components/common/FaryneLogo.tsx";
 import { LanguageMenu } from "@/components/common/LanguageMenu.tsx";
 import { GalgameSearchBox } from "@/components/galgame/layout/GalgameSearchBox.tsx";
 import { GalgameSubmitMenu } from "@/components/galgame/layout/GalgameSubmitMenu.tsx";
@@ -22,6 +21,7 @@ import {
   isGalgameNavActive,
 } from "@/components/galgame/layout/galgameNavigation.ts";
 import { galgamePath } from "@/helpers/galgame.ts";
+import { MASCOT_ASSET_CDN_BASE } from "@/helpers/mascotAssets.ts";
 
 /**
  * 頂部列：中性底色，主色只留給互動元件。
@@ -49,12 +49,20 @@ export function GalgameHeader() {
           <Stack
             component={RouterLink}
             to={galgamePath()}
+            title="Galgame TV — https://galgame.tv/"
             direction="row"
             alignItems="center"
             spacing={1}
             sx={{ color: "inherit", textDecoration: "none", flexShrink: 0 }}
           >
-            <FaryneLogo width={32} alt="Galgame TV" />
+            <Box
+              component="img"
+              src={`${MASCOT_ASSET_CDN_BASE}/site-icons/galgame-icon.webp`}
+              alt=""
+              width={32}
+              height={32}
+              sx={{ borderRadius: 1, flexShrink: 0 }}
+            />
             <Typography variant="h6" component="span" fontWeight={800} noWrap>
               Galgame TV
             </Typography>

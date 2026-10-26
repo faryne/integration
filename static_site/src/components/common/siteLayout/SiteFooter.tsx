@@ -1,10 +1,10 @@
 import { Box, Container, Link as MuiLink, Typography } from "@mui/material";
 
-import { FaryneLogo } from "@/components/common/FaryneLogo.tsx";
 import { headerNavigationItems, isLayoutDropMenu } from "@/data/navigation.ts";
 import type { LayoutMenuItem } from "@/types/layout.ts";
 
 import { ExternalMark, SiteNavLink } from "./SiteNavLink.tsx";
+import { FooterMascotLinks } from "./FooterMascotLinks.tsx";
 import { siteInk } from "./siteTheme.ts";
 
 // 第一欄放沒有子選單的直接連結，其餘每個分類一欄
@@ -45,13 +45,14 @@ export function SiteFooter() {
         <Box
           sx={{
             display: "flex",
-            gap: 1.25,
-            alignItems: "flex-start",
+            flexDirection: { xs: "row", md: "column" },
+            alignItems: { xs: "center", md: "flex-start" },
+            justifyContent: { xs: "space-between", md: "flex-start" },
+            gap: { xs: 0.5, md: 1.25 },
             fontSize: 13,
             lineHeight: 1.6,
           }}
         >
-          <FaryneLogo width={28} style={{ borderRadius: 6 }} />
           <Box>
             Powered By Faryne
             <br />
@@ -62,6 +63,7 @@ export function SiteFooter() {
               faryne.dev
             </MuiLink>
           </Box>
+          <FooterMascotLinks />
         </Box>
         <Box
           component="nav"

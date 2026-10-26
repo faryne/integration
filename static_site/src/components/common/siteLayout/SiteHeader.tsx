@@ -12,9 +12,9 @@ import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import MenuIcon from "@mui/icons-material/Menu";
 
-import { FaryneLogo } from "@/components/common/FaryneLogo.tsx";
 import { headerNavigationItems, isLayoutDropMenu } from "@/data/navigation.ts";
 import { findSiteNavigationMatch } from "@/helpers/siteNavigation.ts";
+import { MASCOT_ASSET_CDN_BASE } from "@/helpers/mascotAssets.ts";
 import type { LayoutDropMenu } from "@/types/layout.ts";
 
 import { ColorModeMenu } from "./ColorModeMenu.tsx";
@@ -97,6 +97,7 @@ export function SiteHeader({ showColorMode = true }: SiteHeaderProps) {
           <Box
             component={Link}
             to="/"
+            title="Faryne 的實驗室 — https://faryne.dev/"
             sx={{
               display: "flex",
               alignItems: "center",
@@ -106,7 +107,14 @@ export function SiteHeader({ showColorMode = true }: SiteHeaderProps) {
               flexShrink: 0,
             }}
           >
-            <FaryneLogo width={30} style={{ borderRadius: 8 }} />
+            <Box
+              component="img"
+              src={`${MASCOT_ASSET_CDN_BASE}/site-icons/faryne-icon.webp`}
+              alt=""
+              width={30}
+              height={30}
+              sx={{ borderRadius: 1, flexShrink: 0 }}
+            />
             <Box>
               <Typography
                 sx={{ fontSize: 16, fontWeight: 800, lineHeight: 1.2 }}
