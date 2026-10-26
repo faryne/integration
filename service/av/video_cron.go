@@ -118,11 +118,12 @@ func buildVideoNotifyMessage(day string) (string, []string, error) {
 	var photos []string
 	sb.WriteString("<b>DMM " + day + " 上架影片</b>\n\n")
 	for k, v := range videos[:min(len(videos), videoNotifyTopN)] {
-		actresses := "-"
+		fmt.Fprintf(&sb, "%d <a href=\"%s\">%s</a>\n", k+1, html.EscapeString(v.Url), html.EscapeString(v.Title))
+		// 沒有出演資訊（素人、合集等）就整行省略，不顯示「出演：-」
 		if len(v.Actresses) > 0 {
-			actresses = strings.Join(v.Actresses, " / ")
+			sb.WriteString("\t出演：" + html.EscapeString(strings.Join(v.Actresses, " / ")) + "\n")
 		}
-		fmt.Fprintf(&sb, "%d <a href=\"%s\">%s</a>\n\t出演：%s\n\n", k+1, html.EscapeString(v.Url), html.EscapeString(v.Title), html.EscapeString(actresses))
+		sb.WriteString("\n")
 		if v.Thumb != "" {
 			photos = append(photos, v.Thumb)
 		}
