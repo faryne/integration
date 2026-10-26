@@ -107,7 +107,19 @@ export function ImageViewer({
     // 記錄「正要離開畫面」的那張圖片與換頁方向，讓下面的渲染同時疊出
     // 退場／進場兩張圖片並播放滑動動畫；動畫結束後由下方的 effect 清除。
     const direction: 1 | -1 = normalized > currentIndex ? 1 : -1;
-    setSlideTransition({ direction, index: currentIndex, photo: currentPhoto });
+    const stage = imageStageRef.current;
+    const stageStyle = stage ? window.getComputedStyle(stage) : null;
+    const maxWidth = stage && stageStyle
+      ? stage.clientWidth -
+        parseFloat(stageStyle.paddingLeft) -
+        parseFloat(stageStyle.paddingRight)
+      : 0;
+    setSlideTransition({
+      direction,
+      index: currentIndex,
+      maxWidth,
+      photo: currentPhoto,
+    });
     setCurrentIndex(normalized);
     setExpanded(false);
     onIndexChange?.(normalized);
@@ -574,34 +586,40 @@ export function ImageViewer({
                       width: expanded ? "max-content" : "100%",
                     }}
                   >
-                    <Box
-                      sx={{
-                        height: slideTransition ? "min(72vh, 820px)" : "auto",
-                        position: "relative",
-                        width: slideTransition ? "100%" : "auto",
-                      }}
-                    >
+                    {/* 換頁動畫期間兩張圖都維持跟靜止時一樣的顯示尺寸（不放大）：
+                        進場圖片照常留在版面中，只多一個 transform；退場圖片絕對定位、
+                        以容器中心對齊疊上去。不能讓兩張圖 width/height 100% 撐滿固定高度的框，
+                        比框小的圖會先被 object-fit 放大、動畫結束又縮回原尺寸，看起來像放大縮小。 */}
+                    <Box sx={{ position: "relative" }}>
                       {slideTransition && (
                         <Box
                           component="img"
                           src={slideTransition.photo.url}
                           alt={`${title} ${slideTransition.index + 1}`}
+                          width={naturalWidths[slideTransition.index] || undefined}
+                          height={naturalHeights[slideTransition.index] || undefined}
                           onError={handleRenderedImageError}
                           sx={{
                             borderRadius: 1,
                             boxShadow: "0 18px 50px rgba(0, 0, 0, 0.28)",
-                            height: "100%",
-                            inset: 0,
+                            display: "block",
+                            height: "auto",
+                            left: "50%",
+                            maxHeight: "min(72vh, 820px)",
+                            maxWidth: slideTransition.maxWidth
+                              ? `${slideTransition.maxWidth}px`
+                              : "100%",
                             objectFit: "contain",
                             pointerEvents: "none",
                             position: "absolute",
-                            transform: slideTransform(
+                            top: "50%",
+                            transform: `translate(-50%, -50%) ${slideTransform(
                               slideEntered,
                               true,
                               slideTransition.direction,
-                            ),
+                            )}`,
                             transition: `transform ${SLIDE_DURATION}ms ease`,
-                            width: "100%",
+                            width: "auto",
                           }}
                         />
                       )}
@@ -621,16 +639,10 @@ export function ImageViewer({
                             ? "none"
                             : "0 18px 50px rgba(0, 0, 0, 0.28)",
                           display: "block",
-                          height: expanded
-                            ? "auto"
-                            : slideTransition
-                              ? "100%"
-                              : "auto",
-                          inset: slideTransition ? 0 : undefined,
+                          height: "auto",
                           maxHeight: expanded ? "none" : "min(72vh, 820px)",
                           maxWidth: expanded ? "none" : "100%",
                           objectFit: "contain",
-                          position: slideTransition ? "absolute" : "static",
                           transform: slideTransition
                             ? slideTransform(
                                 slideEntered,
@@ -641,11 +653,7 @@ export function ImageViewer({
                           transition: slideTransition
                             ? `transform ${SLIDE_DURATION}ms ease`
                             : "none",
-                          width: expanded
-                            ? "auto"
-                            : slideTransition
-                              ? "100%"
-                              : "auto",
+                          width: "auto",
                         }}
                       />
                     </Box>

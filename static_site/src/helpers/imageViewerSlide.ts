@@ -8,9 +8,12 @@ export const SLIDE_DURATION = 280;
 // 換頁時「正在退場」的那張圖片資訊。
 // direction: 1 表示往下一張（新圖從右側滑入、舊圖往左滑出）；
 //            -1 表示往上一張（新圖從左側滑入、舊圖往右滑出）。
+// maxWidth: 換頁當下量到的舞台內容寬度（px）。退場圖片改成絕對定位疊在上層後，
+//           百分比寬度會變成相對於進場圖片，要用這個值維持跟靜止時一樣的顯示尺寸。
 export interface SlideTransition {
   direction: 1 | -1;
   index: number;
+  maxWidth: number;
   photo: { url: string };
 }
 
