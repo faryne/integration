@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | faryne.dev | 大姐看著暫時斷線的無貼紙 MBP，冷靜中稍微 `pon` 一下 | `exports/faryne-error.png` |
 | neko.maid.tw | 二姐在文件滑落時接住資料夾，有點慌但仍掌握得住 | `exports/nekomaid-error.png` |
-| galgame.tv | 三姐坐下休息，手持低電量圖示；大腿根部露出少量膚色，襪口位於膝蓋稍上方，膝蓋以下為粉藍白條紋 | `exports/galgame-error.png` |
+| galgame.tv | 三姐坐下休息，手持低電量圖示；裙內深色安全褲、膚色腿部與兩只粉藍白膝上襪分層清楚 | `exports/galgame-error.png` |
 | steamloom.works | 梭梭查看手中的纏結絲線，沿用已上線姿勢圖 | `references/suosuo-error-nocturne-512.png` |
 
 `masters/` 是新生成的透明 PNG 原稿；`exports/` 是適合 ErrorPage 使用的 512 × 512 透明 PNG。梭梭仍沿用 `steamloom_assets/suosuo-error-{appearance}-512.png`，預覽用的 nocturne 版本複本放在 `references/`。
