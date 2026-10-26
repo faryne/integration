@@ -69,18 +69,6 @@ fragment ContentData on PPVContent {
     }
     __typename
   }
-  priceSummary @skip(if: $isPhase4_2Released) {
-    lowestSalePrice
-    lowestPrice
-    campaign {
-      title
-      id
-      endAt
-      pointGrantRate
-      __typename
-    }
-    __typename
-  }
   pricing @include(if: $isPhase4_2Released) {
     lowestEffectivePriceInclusiveTax
     lowestRegularPriceInclusiveTax
@@ -784,12 +772,6 @@ type AvVideoResponse struct {
 				LargeImageUrl string `json:"largeImageUrl"`
 				ImageUrl      string `json:"imageUrl"`
 			} `json:"mostPopularContentImage"`
-			PriceSummary struct {
-				LowestSalePrice int         `json:"lowestSalePrice"`
-				LowestPrice     int         `json:"lowestPrice"`
-				Campaign        interface{} `json:"campaign"`
-				Typename        string      `json:"__typename"`
-			} `json:"priceSummary"`
 			WeeklyRanking  interface{} `json:"weeklyRanking"`
 			MonthlyRanking interface{} `json:"monthlyRanking"`
 			WishlistCount  int         `json:"wishlistCount"`
