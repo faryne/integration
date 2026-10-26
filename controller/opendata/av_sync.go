@@ -6,9 +6,11 @@ import (
 	"regexp"
 
 	"github.com/gofiber/fiber/v3"
+	"go.uber.org/zap"
 
 	"faryne.dev/service/av"
 	"faryne.dev/service/dmm"
+	"faryne.dev/service/log"
 	"faryne.dev/service/output"
 )
 
@@ -53,7 +55,8 @@ func AvVideoSync(ctx fiber.Ctx) error {
 	case errors.Is(err, av.ErrVideoNoMakerNo):
 		return output.New(http.StatusNotFound, "", nil, "DMM 沒有提供這部作品的官方番號")
 	case err != nil:
-		// 暫時性失敗不佔冷卻，讓使用者稍後可以再按
+		// 暫時性失敗不佔冷卻，讓使用者稍後可以再按；原因只記 log，不回給使用者
+		log.Logger().Warn("AV video sync failed: "+err.Error(), zap.String("no", no))
 		av.ReleaseVideoSync(no)
 		return output.New(http.StatusBadGateway, "", nil, "暫時無法同步，請稍後再試")
 	}
