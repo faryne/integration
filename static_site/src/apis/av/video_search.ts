@@ -15,6 +15,12 @@ export interface VideoSearchRequest {
   end_date?: string;
   keyword?: string;
   actress?: string;
+  // 詳細頁 chip 的精確篩選
+  tag?: string;
+  maker?: string;
+  label?: string;
+  series?: string;
+  director?: string;
   no?: string;
   maker_no?: string;
 }

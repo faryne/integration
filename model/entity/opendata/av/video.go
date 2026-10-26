@@ -14,8 +14,13 @@ type VideoQueryRequest struct {
 	Keyword   string                 `query:"keyword"`
 	Tag       string                 `query:"tag"`
 	Actress   string                 `query:"actress"`
-	No        string                 `query:"no"`
-	Page      int                    `query:"page"`
+	// 以下為詳細頁 chip 用的精確篩選（對 .keyword 下 term）
+	Maker    string `query:"maker"`
+	Label    string `query:"label"`
+	Series   string `query:"series"`
+	Director string `query:"director"`
+	No       string `query:"no"`
+	Page     int    `query:"page"`
 }
 
 type RawVideo struct {

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AV 影片詳細頁 mockup</title>
+<style>
+  :root { --bg:#f3f4f6; --paper:#fff; --line:#e5e7eb; --muted:#6b7280; --text:#111827; --primary:#2e7d6b; --chip:#e8f0fb; --chipb:#b9d0ee; --chipt:#1d4f91; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; background:#d1d5db; color:var(--text); }
+  .toolbar { position:sticky; top:0; z-index:5; background:#111827; color:#fff; padding:10px 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; font-size:13px; }
+  .toolbar button { background:#374151; color:#fff; border:0; border-radius:6px; padding:6px 10px; cursor:pointer; }
+  .toolbar button.on { background:#f59e0b; color:#111; }
+  .frames { display:flex; gap:24px; padding:24px; align-items:flex-start; overflow-x:auto; }
+  .frame { background:var(--bg); border-radius:10px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.2); flex:0 0 auto; }
+  .frame h6 { margin:0; padding:6px 12px; font-size:12px; background:#374151; color:#fff; }
+  .desktop { width:1040px; } .mobile { width:375px; }
+  .nav { background:#161b22; color:#fff; height:44px; display:flex; align-items:center; padding:0 16px; font-weight:700; font-size:14px; }
+  .crumb { background:var(--paper); border-bottom:1px solid var(--line); padding:8px 16px; font-size:12px; color:var(--muted); }
+  .crumb b { color:var(--text); }
+  .page { padding:20px 16px 32px; display:flex; flex-direction:column; gap:28px; }
+  .hero { display:grid; gap:28px; }
+  .desktop .hero { grid-template-columns:320px 1fr; }
+  .cover { background:repeating-linear-gradient(45deg,#cbd5e1 0 12px,#d8dee8 12px 24px); border-radius:10px; aspect-ratio:1429/1944; box-shadow:0 18px 50px rgba(15,23,42,.12); display:flex; align-items:center; justify-content:center; color:#475569; font-size:12px; }
+  .mobile .cover { max-height:60vh; width:auto; height:60vh; margin:0 auto; }
+  .meta { border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:20px 0; display:flex; flex-direction:column; gap:16px; justify-content:space-between; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .tag { font-size:12px; border:1px solid #9ca3af; border-radius:4px; padding:2px 8px; background:#fff; }
+  .tag.no { background:#e5e7eb; border-color:#e5e7eb; font-weight:700; }
+  h1 { margin:0; font-weight:800; line-height:1.3; font-size:1.75rem; }
+  .mobile h1 { font-size:1.25rem; }
+  .btn { display:inline-flex; gap:6px; align-items:center; background:var(--primary); color:#fff; border:0; border-radius:8px; padding:8px 16px; font-weight:600; font-size:14px; cursor:pointer; }
+  .btn.outline { background:#fff; color:var(--primary); border:1px solid var(--primary); }
+  .btn[disabled] { opacity:.7; cursor:wait; }
+  .table { background:var(--paper); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .row { display:grid; grid-template-columns:96px 1fr; gap:12px; padding:12px 18px; border-top:1px solid var(--line); align-items:start; }
+  .mobile .row { grid-template-columns:64px 1fr; gap:8px; padding:10px 12px; }
+  .row:first-child { border-top:0; }
+  .row > span { color:var(--muted); font-weight:700; font-size:14px; padding-top:3px; }
+  .chip { font-size:13px; background:var(--chip); border:1px solid var(--chipb); color:var(--chipt); border-radius:6px; padding:3px 9px; cursor:pointer; }
+  .chip small { color:#6b7280; margin-left:4px; }
+  h2 { margin:0 0 10px; font-size:1.15rem; font-weight:800; }
+  .gallery { height:260px; background:#0f172a; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:12px; }
+  .strip { display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; }
+  .card { flex:0 0 132px; }
+  .mobile .card { flex-basis:110px; }
+  .card .c { aspect-ratio:1429/1944; border-radius:6px; background:repeating-linear-gradient(45deg,#cbd5e1 0 10px,#d8dee8 10px 20px); }
+  .card b { display:block; font-size:12px; margin-top:6px; }
+  .card p { margin:2px 0 0; font-size:12px; color:#374151; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .snack { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#323232; color:#fff; padding:10px 16px; border-radius:6px; font-size:14px; display:none; z-index:9; }
+  .note { font-size:12px; color:#92400e; background:#fef3c7; border:1px dashed #f59e0b; border-radius:6px; padding:6px 10px; }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <strong>AV 影片詳細頁 mockup</strong>
+  <span>狀態：</span>
+  <button id="sHas" class="on" onclick="setState(true)">有官方番號（MissAV）</button>
+  <button id="sNo" onclick="setState(false)">舊資料缺官方番號（同步資料）</button>
+  <span style="opacity:.7">斜線灰塊＝封面／圖片佔位，實作時是 DMM 圖片</span>
+</div>
+<div class="frames">
+  <div class="frame desktop"><h6>桌機 1040px</h6><div class="view"></div></div>
+  <div class="frame mobile"><h6>手機 375px</h6><div class="view"></div></div>
+</div>
+<div class="snack" id="snack"></div>
+
+<template id="tpl">
+  <div class="nav">Faryne 的實驗室</div>
+  <div class="crumb">首頁 / 大人的喜好 / AV 影片搜尋 / <b class="crumb-no"></b></div>
+  <div class="page">
+    <div class="hero">
+      <div class="cover">直式封面（原比例）</div>
+      <div class="meta">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="chips">
+            <span class="tag no code"></span>
+            <span class="tag">配信日 2026/10/26</span>
+            <span class="tag">發售日 2026/11/05</span>
+            <span class="tag">132 分鐘</span>
+          </div>
+          <h1>【VR】最強ガチ親友‘ぞのぶき’コンビのVlog撮影に同行したら…飲んで、はしゃいで、歌って、エロがって自由奔放 Happy Foxy Days！ 石原希望 葵いぶき</h1>
+        </div>
+        <div class="action"></div>
+      </div>
+    </div>
+    <div class="table">
+      <div class="row"><span>發售商</span><div class="chips"><a class="chip" title="→ /av/video?maker=ムーディーズ">ムーディーズ</a></div></div>
+      <div class="row"><span>品牌</span><div class="chips"><a class="chip" title="→ /av/video?label=MOODYZ VR">MOODYZ VR</a></div></div>
+      <div class="row"><span>系列</span><div class="chips"><a class="chip" title="→ /av/video?series=MOODYZ 8KVR">MOODYZ 8KVR</a></div></div>
+      <div class="row"><span>出演</span><div class="chips"><a class="chip" title="→ /av/actress?name=石原希望">石原希望</a><a class="chip" title="→ /av/actress?name=葵いぶき">葵いぶき</a></div></div>
+      <div class="row"><span>監督</span><div class="chips"><a class="chip" title="→ /av/video?director=ZAMPA">ZAMPA</a></div></div>
+      <div class="row"><span>標籤</span><div class="chips"><a class="chip">ドキュメンタリー</a><a class="chip">ハーレム</a><a class="chip">中出し</a><a class="chip">VR専用</a><a class="chip">8KVR</a><a class="chip">ハイクオリティVR</a></div></div>
+    </div>
+    <div class="note">沒資料的列（例如沒有監督）整列不顯示，不再出現「-」。chip 滑過可看到導向的精確篩選網址。</div>
+    <div><h2>圖片預覽</h2><div class="gallery">ImageViewer（維持現狀）</div></div>
+    <div><h2>同系列作品</h2><div class="strip series"></div></div>
+    <div><h2>石原希望 的其他作品</h2><div class="strip actress"></div></div>
+  </div>
+</template>
+
+<script>
+  const cards = (prefix) => Array.from({length: 12}, (_, i) =>
+    `<div class="card"><div class="c"></div><b>${prefix}-${440 - i}</b><p>【VR】作品標題示意 第 ${i + 1} 部，太長的標題最多顯示兩行後截斷</p></div>`).join("");
+  let hasMakerNo = true;
+  let syncedCode = "";
+  function render() {
+    document.querySelectorAll(".view").forEach((view) => {
+      view.innerHTML = document.getElementById("tpl").innerHTML;
+      const code = hasMakerNo ? (syncedCode || "MDVR-448") : "H_491LOVE00068";
+      view.querySelector(".crumb-no").textContent = code;
+      view.querySelector(".code").textContent = code;
+      view.querySelector(".series").innerHTML = cards("MDVR");
+      view.querySelector(".actress").innerHTML = cards("MIDV");
+      view.querySelector(".action").innerHTML = hasMakerNo
+        ? `<button class="btn">▶ MissAV ↗</button>`
+        : `<button class="btn outline" onclick="sync(this)">⟳ 同步資料</button>`;
+    });
+  }
+  function setState(v, code = "") {
+    hasMakerNo = v;
+    syncedCode = code;
+    document.getElementById("sHas").classList.toggle("on", v);
+    document.getElementById("sNo").classList.toggle("on", !v);
+    render();
+  }
+  function sync(btn) {
+    btn.disabled = true; btn.textContent = "同步中…";
+    setTimeout(() => { setState(true, "LOVE-68"); snack("已同步，取得官方番號 LOVE-68"); }, 1200);
+  }
+  function snack(msg) {
+    const s = document.getElementById("snack"); s.textContent = msg; s.style.display = "block";
+    setTimeout(() => (s.style.display = "none"), 2500);
+  }
+  render();
+</script>
+</body>
+</html>

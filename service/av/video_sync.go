@@ -145,3 +145,18 @@ func truncateRunes(s string, n int) string {
 	}
 	return s
 }
+
+// SyncDMMVideoByNo 詳細頁「同步資料」：用 DMM 內部番號單獨重抓一部作品，覆寫 MySQL＋ES（id 不變）。
+// 主要用來幫缺官方番號（maker_no）的舊資料補齊，補完詳細頁才會出現 MissAV 連結
+func SyncDMMVideoByNo(ctx context.Context, no string) (dmm.DmmVideo, error) {
+	v, err := dmm.NewDMMClient().FetchVideo(no)
+	if err != nil {
+		return v, err
+	}
+	// 沒有配信日的明細一律不寫入，避免再出現 0001/01/01
+	if v.VodDate == "" {
+		return v, dmm.ErrVideoNotFound
+	}
+	_, err = persistVideos(ctx, avRepo.NewDMMVideo(), []dmm.DmmVideo{v})
+	return v, err
+}

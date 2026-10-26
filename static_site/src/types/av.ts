@@ -10,6 +10,10 @@ export interface Video {
   series: string[];
   actresses: string[];
   maker_no?: string;
+  // 發售日（廠商發行日）；vod_date 是配信日，兩者常常不同
+  publish_date?: string;
+  // 片長（分鐘）
+  duration?: number;
   tags: string[];
   images: {
     preview: string;
