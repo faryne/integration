@@ -6,6 +6,7 @@ import (
 	"faryne.dev/repository"
 	"faryne.dev/service/client"
 	"gorm.io/gorm/clause"
+	"gorm.io/plugin/dbresolver"
 )
 
 type RepositoryDMMVideo struct {
@@ -24,10 +25,11 @@ func (r *RepositoryDMMVideo) UpsertBatch(videos []av.DMMVideo) error {
 	}).Create(&videos).Error
 }
 
-// IDsByNos 回傳 no → id；ON DUPLICATE KEY UPDATE 拿不到既有列的 id，寫完要另外查
+// IDsByNos 回傳 no → id；ON DUPLICATE KEY UPDATE 拿不到既有列的 id，寫完要另外查。
+// 強制走 primary：剛 INSERT 的新作品 replica 可能還沒同步到，讀 replica 會查不到 id
 func (r *RepositoryDMMVideo) IDsByNos(nos []string) (map[string]int, error) {
 	var rows []av.DMMVideo
-	if err := r.GetDB().Select("id", "no").Where("no IN ?", nos).Find(&rows).Error; err != nil {
+	if err := r.GetDB().Clauses(dbresolver.Write).Select("id", "no").Where("no IN ?", nos).Find(&rows).Error; err != nil {
 		return nil, err
 	}
 	out := make(map[string]int, len(rows))
