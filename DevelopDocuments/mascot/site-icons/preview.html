@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>三姊妹 AppBar icon 預覽</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 36px 20px; background: #e8edf2; font: 16px system-ui, sans-serif; color: #142033; }
+      main { max-width: 760px; margin: auto; }
+      h1 { font-size: 20px; }
+      p { color: #526174; }
+      .bar { margin: 20px 0; padding: 16px 20px; border-radius: 12px; box-shadow: 0 6px 22px #1220321c; }
+      .bar a { display: flex; align-items: center; gap: 12px; width: fit-content; color: inherit; text-decoration: none; font-weight: 800; }
+      .bar img { border-radius: 8px; object-fit: cover; }
+      .faryne { background: #122332; color: #f6fbff; }
+      .galgame { background: white; }
+      .nekomaid { background: linear-gradient(110deg, #33251d, #111827 48%, #0f2941); color: #f8fafc; }
+      .faryne img { width: 30px; height: 30px; }
+      .galgame img { width: 32px; height: 32px; }
+      .nekomaid img { width: 42px; height: 42px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>三姊妹 AppBar icon 預覽</h1>
+      <p>圖示依網站目前的 header 尺寸顯示；滑鼠移上去可查看網站標題與 URL。</p>
+      <div class="bar faryne"><a href="https://faryne.dev/" title="Faryne 的實驗室 — https://faryne.dev/"><img src="exports/faryne-icon.webp" alt="" />Faryne 的實驗室</a></div>
+      <div class="bar nekomaid"><a href="https://neko.maid.tw/" title="難以名狀的抓圖器 — https://neko.maid.tw/"><img src="exports/nekomaid-icon.webp" alt="" />難以名狀的抓圖器</a></div>
+      <div class="bar galgame"><a href="https://galgame.tv/" title="Galgame TV — https://galgame.tv/"><img src="exports/galgame-icon.webp" alt="" />Galgame TV</a></div>
+    </main>
+  </body>
+</html>

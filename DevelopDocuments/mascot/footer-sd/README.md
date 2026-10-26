@@ -6,12 +6,12 @@
 
 | 角色 | 網站用 512px PNG | 角色特徵 |
 | --- | --- | --- |
-| 大姐 | `static_site/public/mascots/footer-sd/faryne-eldest-sd.png` | 銀色中短髮、紫眼、黑白女僕裝、無貼紙 MBP |
-| 二姐 | `static_site/public/mascots/footer-sd/neko-second-sd.png` | 貓耳與呆毛、粉白女僕裝、文件夾、無尾巴 |
-| 三姐 | `static_site/public/mascots/footer-sd/galgame-third-sd.png` | 深藍側馬尾、珊瑚粉眼、海豚髮飾與圍裙刺繡、耳機、粉藍白條紋膝上襪 |
-| 梭梭 | `static_site/public/mascots/footer-sd/suosuo-youngest-sd.png` | 紫藍長髮、金眼、齒輪髮飾、黑金蒸汽龐克洋裝、發光絲線 |
+| 大姐 | `exports/faryne-eldest-sd.png` | 銀色中短髮、紫眼、黑白女僕裝、無貼紙 MBP |
+| 二姐 | `exports/neko-second-sd.png` | 貓耳與呆毛、粉白女僕裝、文件夾、無尾巴 |
+| 三姐 | `exports/galgame-third-sd.png` | 深藍側馬尾、珊瑚粉眼、海豚髮飾與圍裙刺繡、耳機、粉藍白條紋膝上襪 |
+| 梭梭 | `exports/suosuo-youngest-sd.png` | 紫藍長髮、金眼、齒輪髮飾、黑金蒸汽龐克洋裝、發光絲線 |
 
-`masters/` 保留 ImageGen 原始透明 PNG。網站用圖經透明邊緣裁切後置入 512×512 透明畫布，四張共約 844 KB。[preview.html](preview.html) 顯示桌面與手機排列；實際版面放在 `SiteFooter`，桌面版位於站名下方、行動版位於站名右側，四張圖分別連向對應網站。
+`masters/` 保留 ImageGen 原始透明 PNG。網站用圖經透明邊緣裁切後置入 512×512 透明畫布，四張共約 844 KB，儲存於 `exports/` 並上傳至 `https://cdn.faryne.dev/mascot_assets/footer-sd/`。[preview.html](preview.html) 顯示桌面與手機排列；實際版面放在 `SiteFooter`，桌面版位於站名下方、行動版位於站名右側，四張圖分別連向對應網站。
 
 ## 生成依據
 
