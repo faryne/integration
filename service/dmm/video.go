@@ -878,7 +878,7 @@ type DmmVideoHeader struct {
 
 type DmmVideoBody struct {
 	VodDate     string          `json:"vod_date"`
-	PublishDate string          `json:"publish_date"`
+	PublishDate string          `json:"publish_date,omitempty"`
 	Duration    int             `json:"duration"`
 	Directors   []string        `json:"directors"`
 	Series      []string        `json:"series"`
@@ -894,7 +894,10 @@ type DmmVideoImage struct {
 	Preview string `json:"preview"`
 }
 
-func (i *DMM) SearchVideosByDaily(date string, page int) ([]DmmVideo, error) {
+// SearchVideosByDaily 取指定配信日某一頁的作品與明細。
+// 明細抓取失敗的作品不會出現在 videos 裡，品番改放 failed 交由呼叫端決定要整頁失敗（API）還是跳過（同步 job）；
+// err 只代表清單本身就抓不到。
+func (i *DMM) SearchVideosByDaily(date string, page int) (videos []DmmVideo, failed []string, err error) {
 	limit := 20
 	offset := (page - 1) * limit
 	variables := map[string]interface{}{
@@ -923,71 +926,58 @@ func (i *DMM) SearchVideosByDaily(date string, page int) ([]DmmVideo, error) {
 	var jsonResponse AvSearchResponse
 
 	if err := i.send(dmmAVSearchGraphQL, variables, &jsonResponse); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	out := make([]DmmVideo, len(jsonResponse.Data.LegacySearchPPV.Result.Contents))
+	contents := jsonResponse.Data.LegacySearchPPV.Result.Contents
+	out := make([]DmmVideo, len(contents))
+	ok := make([]bool, len(contents))
 
-	// [PERF-OPTIMIZED-001] N+1 查詢優化：改為低並發 + 延遲查詢詳細信息
-	// 原始: 1 次搜尋 + N 次串行詳情查詢 = N+1 (耗時: 5-10 秒)
-	// 優化後: 1 次搜尋 + N 次低並發詳情查詢 (最多 2 個並發 + 100ms 延遲，耗時: ~2-3 秒)
-	// 注意: 刻意降低並發和添加延遲以避免觸發對方速率限制/反爬蟲
+	// 明細是 1 + N 次查詢：刻意壓低並發（2）並加延遲，避免觸發對方速率限制／反爬蟲
 	const maxConcurrency = 2
-	const requestDelayMs = 100
+	const requestDelay = 100 * time.Millisecond
 
 	sem := make(chan struct{}, maxConcurrency)
 	var wg sync.WaitGroup
-	var mu sync.Mutex
-	var firstErr error
-
-	for idx, v := range jsonResponse.Data.LegacySearchPPV.Result.Contents {
-		v := v // capture loop variable
-		idx := idx
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			sem <- struct{}{}        // acquire
-			defer func() { <-sem }() // release
-
-			time.Sleep(time.Duration(requestDelayMs) * time.Millisecond)
+	for idx, v := range contents {
+		wg.Go(func() {
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			time.Sleep(requestDelay)
 
 			tmp := DmmVideo{}
-			tmp.No = fmt.Sprintf("%v", v.Id)
+			tmp.No = v.Id
 			tmp.Title = v.Title
 			tmp.Url = fmt.Sprintf("https://video.dmm.co.jp/av/content/?id=%s&i3_ref=list&i3_ord=1&i3_pst=1&dmmref=video_list", v.Id)
 			tmp.Thumb = v.PackageImage.MediumUrl
-
-			if err := i.getDMMVideoDetail(v.Id, &tmp); err != nil {
-				mu.Lock()
-				if firstErr == nil {
-					firstErr = err
-				}
-				mu.Unlock()
-				return
+			if i.getDMMVideoDetailWithRetry(v.Id, &tmp) == nil {
+				out[idx], ok[idx] = tmp, true
 			}
-
-			out[idx] = tmp
-		}()
+		})
 	}
-
 	wg.Wait()
-	if firstErr != nil {
-		return nil, firstErr
-	}
 
-	// 確保基本信息被填充（以防並發問題）
-	for idx, v := range jsonResponse.Data.LegacySearchPPV.Result.Contents {
-		if out[idx].No == "" {
-			out[idx].No = fmt.Sprintf("%v", v.Id)
-			out[idx].Title = v.Title
-			out[idx].Url = fmt.Sprintf("https://video.dmm.co.jp/av/content/?id=%s&i3_ref=list&i3_ord=1&i3_pst=1&dmmref=video_list", v.Id)
-			out[idx].Thumb = v.PackageImage.MediumUrl
+	for idx, v := range contents {
+		if ok[idx] {
+			videos = append(videos, out[idx])
+		} else {
+			failed = append(failed, v.Id)
 		}
 	}
+	return videos, failed, nil
+}
 
-	return out, nil
+// getDMMVideoDetailWithRetry 明細偶發失敗（逾時、速率限制）時退避重試，最多 3 次（等 1s、2s）
+func (i *DMM) getDMMVideoDetailWithRetry(no string, tmp *DmmVideo) (err error) {
+	for attempt := range 3 {
+		if attempt > 0 {
+			time.Sleep(time.Duration(1<<(attempt-1)) * time.Second)
+		}
+		if err = i.getDMMVideoDetail(no, tmp); err == nil {
+			return nil
+		}
+	}
+	return err
 }
 
 func (i *DMM) getDMMVideoDetail(no string, tmp *DmmVideo) error {
@@ -1015,8 +1005,8 @@ func (i *DMM) getDMMVideoDetail(no string, tmp *DmmVideo) error {
 	tmp.MakerNo = finalResponse.Data.PpvContent.MakerContentId
 	tmp.Duration = int(math.Ceil(float64(finalResponse.Data.PpvContent.Duration / 60)))
 
-	tmp.VodDate = finalResponse.Data.PpvContent.DeliveryStartDate.In(tz).Format("2006/01/02")
-	tmp.PublishDate = finalResponse.Data.PpvContent.MakerReleasedAt.In(tz).Format("2006/01/02")
+	tmp.VodDate = formatDMMDate(finalResponse.Data.PpvContent.DeliveryStartDate, tz)
+	tmp.PublishDate = formatDMMDate(finalResponse.Data.PpvContent.MakerReleasedAt, tz)
 	tmp.Actresses = make([]string, 0)
 	for _, act := range finalResponse.Data.PpvContent.Actresses {
 		tmp.Actresses = append(tmp.Actresses, act.Name)
@@ -1037,4 +1027,12 @@ func (i *DMM) getDMMVideoDetail(no string, tmp *DmmVideo) error {
 		tmp.Images = append(tmp.Images, DmmVideoImage{Thumb: img.ImageUrl, Preview: img.LargeImageUrl})
 	}
 	return nil
+}
+
+// formatDMMDate 沒有日期（zero value）時回傳空字串，不要格式化成 0001/01/01 混進資料
+func formatDMMDate(t time.Time, tz *time.Location) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.In(tz).Format("2006/01/02")
 }

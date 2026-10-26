@@ -1,8 +1,10 @@
 package opendata
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -100,9 +102,13 @@ func DMMDailyVideo(ctx fiber.Ctx) error {
 	}
 	dmmInstance := dmm.NewDMMClient()
 
-	videos, videosError := dmmInstance.SearchVideosByDaily(dParams, page)
+	videos, failed, videosError := dmmInstance.SearchVideosByDaily(dParams, page)
 	if videosError != nil {
 		return output.New(http.StatusInternalServerError, "", nil, videosError.Error())
+	}
+	// API 維持原本行為：任何一筆明細抓不到就整頁失敗，不回傳缺資料的半套清單
+	if len(failed) > 0 {
+		return output.New(http.StatusInternalServerError, "", nil, fmt.Sprintf("dmm video detail failed: %s", strings.Join(failed, ",")))
 	}
 	var finalResponse = dmm.DmmVideosList{Videos: videos}
 	return output.Success(finalResponse)

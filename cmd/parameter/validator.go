@@ -11,3 +11,10 @@ func YearMonth(value string) error {
 	}
 	return nil
 }
+
+func Date(value string) error {
+	if _, err := time.Parse(time.DateOnly, value); err != nil {
+		return errors.New("must use YYYY-MM-DD format")
+	}
+	return nil
+}
