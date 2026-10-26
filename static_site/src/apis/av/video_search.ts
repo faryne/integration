@@ -15,8 +15,8 @@ export interface VideoSearchRequest {
   end_date?: string;
   keyword?: string;
   actress?: string;
-  // 詳細頁 chip 的精確篩選
-  tag?: string;
+  // 詳細頁 chip 的精確篩選；標籤可複選（交集）
+  tag?: string[];
   maker?: string;
   label?: string;
   series?: string;
@@ -40,6 +40,8 @@ export async function fetchAVVideoSearch(
     `${import.meta.env.VITE_API_BASE}/opendata/av/search/video`,
     {
       params,
+      // 陣列參數送成 tag=A&tag=B（axios 預設是 tag[]=A，後端讀不到）
+      paramsSerializer: { indexes: null },
       timeout: 10000,
     },
   );

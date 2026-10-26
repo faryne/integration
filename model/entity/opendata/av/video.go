@@ -12,8 +12,9 @@ type VideoQueryRequest struct {
 	StartDate *entity.OnlyDateFormat `query:"start_date"`
 	EndDate   *entity.OnlyDateFormat `query:"end_date"`
 	Keyword   string                 `query:"keyword"`
-	Tag       string                 `query:"tag"`
-	Actress   string                 `query:"actress"`
+	// Tag 可複選（?tag=A&tag=B），結果需同時符合
+	Tag     []string `query:"tag"`
+	Actress string   `query:"actress"`
 	// 以下為詳細頁 chip 用的精確篩選（對 .keyword 下 term）
 	Maker    string `query:"maker"`
 	Label    string `query:"label"`
@@ -72,4 +73,18 @@ type CleanVideo struct {
 	MakerNo     string        `json:"maker_no"`
 	// IsOrphan 同步資料確定失敗，前端不顯示同步按鈕
 	IsOrphan bool `json:"is_orphan,omitempty"`
+}
+
+// VideoFacetBucket 篩選統計的一個值與筆數
+type VideoFacetBucket struct {
+	Value string `json:"value"`
+	Count int    `json:"count"`
+}
+
+// VideoFacets 目前搜尋條件下的常見標籤／發售商／系列／出演
+type VideoFacets struct {
+	Tags      []VideoFacetBucket `json:"tags"`
+	Makers    []VideoFacetBucket `json:"makers"`
+	Series    []VideoFacetBucket `json:"series"`
+	Actresses []VideoFacetBucket `json:"actresses"`
 }

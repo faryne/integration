@@ -29,7 +29,7 @@ import (
 // @Param start_date query string false "Start date in YYYY-MM-DD"
 // @Param end_date query string false "End date in YYYY-MM-DD"
 // @Param keyword query string false "Keyword"
-// @Param tag query string false "Tag"
+// @Param tag query []string false "Tag (repeatable, AND)" collectionFormat(multi)
 // @Param actress query string false "Actress name"
 // @Param no query string false "Video number"
 // @Param page query int false "Page number"
@@ -47,6 +47,34 @@ func AvVideoSearch(ctx fiber.Ctx) error {
 		return output.New(http.StatusInternalServerError, "", nil, err.Error())
 	}
 	return output.Success(serviceHelper.ResultPaginate(ctx, rows, r.Hits.Total.Value))
+}
+
+// AvVideoFacets counts common tags, makers, series and actresses under the current video search conditions.
+// @Summary Facets for AV video search
+// @Tags OpenData AV
+// @Produce json
+// @Param keyword query string false "Keyword"
+// @Param tag query []string false "Tag (repeatable, AND)" collectionFormat(multi)
+// @Param actress query string false "Actress name"
+// @Param maker query string false "Maker"
+// @Param label query string false "Label"
+// @Param series query string false "Series"
+// @Param director query string false "Director"
+// @Param start_date query string false "Start date in YYYY-MM-DD"
+// @Param end_date query string false "End date in YYYY-MM-DD"
+// @Success 200 {object} output.CommonOutput
+// @Failure 500 {object} output.CommonOutput
+// @Router /opendata/av/search/video/facets [get]
+func AvVideoFacets(ctx fiber.Ctx) error {
+	var req avEntity.VideoQueryRequest
+	if err := helper.BindQuery(ctx, &req); err != nil {
+		return err
+	}
+	facets, err := av.VideoFacets(req)
+	if err != nil {
+		return output.New(http.StatusInternalServerError, "", nil, err.Error())
+	}
+	return output.Success(facets)
 }
 
 // AvActressSearch searches AV actress records.

@@ -12,16 +12,41 @@ import (
 )
 
 type videoSearchArguments struct {
-	Year      int    `json:"year"`
-	Month     int    `json:"month"`
-	Day       int    `json:"day"`
-	StartDate string `json:"start_date"`
-	EndDate   string `json:"end_date"`
-	Keyword   string `json:"keyword"`
-	Tag       string `json:"tag"`
-	Actress   string `json:"actress"`
-	No        string `json:"no"`
-	Page      int    `json:"page"`
+	Year      int             `json:"year"`
+	Month     int             `json:"month"`
+	Day       int             `json:"day"`
+	StartDate string          `json:"start_date"`
+	EndDate   string          `json:"end_date"`
+	Keyword   string          `json:"keyword"`
+	Tag       stringOrStrings `json:"tag"`
+	Actress   string          `json:"actress"`
+	Maker     string          `json:"maker"`
+	Label     string          `json:"label"`
+	Series    string          `json:"series"`
+	Director  string          `json:"director"`
+	No        string          `json:"no"`
+	Page      int             `json:"page"`
+	// Facets 為 true 時結果多帶目前條件下的常見標籤／發售商／系列／出演
+	Facets bool `json:"facets"`
+}
+
+// stringOrStrings 同時接受單一字串或字串陣列（tag 可複選，舊的單一字串呼叫照樣可用）
+type stringOrStrings []string
+
+func (s *stringOrStrings) UnmarshalJSON(data []byte) error {
+	var one string
+	if err := json.Unmarshal(data, &one); err == nil {
+		if one != "" {
+			*s = []string{one}
+		}
+		return nil
+	}
+	var many []string
+	if err := json.Unmarshal(data, &many); err != nil {
+		return fmt.Errorf("tag must be a string or an array of strings")
+	}
+	*s = many
+	return nil
 }
 
 type actressSearchArguments struct {
@@ -39,15 +64,16 @@ type actressSearchArguments struct {
 }
 
 type searchResult struct {
-	Total int64       `json:"total"`
-	Page  int         `json:"page"`
-	Data  interface{} `json:"data"`
+	Total  int64                 `json:"total"`
+	Page   int                   `json:"page"`
+	Data   interface{}           `json:"data"`
+	Facets *avEntity.VideoFacets `json:"facets,omitempty"`
 }
 
 func (s *Server) registerAVTools() {
 	_ = s.RegisterTool(Tool{
 		Name:        "av_video_search",
-		Description: "Search AV video records by keyword, tag, actress, video number, date, or page.",
+		Description: "Search AV video records by keyword, tags, actress, maker, label, series, director, video number, date, or page. Set facets=true to also get the most common tags/makers/series/actresses (with counts) under the same conditions, useful for narrowing down.",
 		InputSchema: objectSchema(map[string]interface{}{
 			"year":       integerSchema("Release year."),
 			"month":      integerSchema("Release month."),
@@ -55,10 +81,21 @@ func (s *Server) registerAVTools() {
 			"start_date": stringSchema("Start date in YYYY-MM-DD."),
 			"end_date":   stringSchema("End date in YYYY-MM-DD."),
 			"keyword":    stringSchema("Keyword matched against title, tags, labels, makers, actresses, series, and directors."),
-			"tag":        stringSchema("Tag filter."),
-			"actress":    stringSchema("Actress name filter."),
-			"no":         stringSchema("Video number or maker number."),
-			"page":       integerSchema("Page number, defaults to 1."),
+			"tag": map[string]interface{}{
+				"description": "Exact tag filter. A string, or an array of strings that must all match (AND).",
+				"anyOf": []interface{}{
+					map[string]interface{}{"type": "string"},
+					map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
+				},
+			},
+			"actress":  stringSchema("Exact actress name filter."),
+			"maker":    stringSchema("Exact maker filter."),
+			"label":    stringSchema("Exact label filter."),
+			"series":   stringSchema("Exact series filter."),
+			"director": stringSchema("Exact director filter."),
+			"facets":   map[string]interface{}{"type": "boolean", "description": "Also return facets (top tags 15, makers/series/actresses 10 each, with counts) for the same conditions. Defaults to false."},
+			"no":       stringSchema("Video number or maker number."),
+			"page":     integerSchema("Page number, defaults to 1."),
 		}, nil),
 		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
 			var args videoSearchArguments
@@ -66,14 +103,18 @@ func (s *Server) registerAVTools() {
 				return nil, err
 			}
 			req := avEntity.VideoQueryRequest{
-				Year:    args.Year,
-				Month:   args.Month,
-				Day:     args.Day,
-				Keyword: args.Keyword,
-				Tag:     args.Tag,
-				Actress: args.Actress,
-				No:      args.No,
-				Page:    normalizedPage(args.Page),
+				Year:     args.Year,
+				Month:    args.Month,
+				Day:      args.Day,
+				Keyword:  args.Keyword,
+				Tag:      args.Tag,
+				Actress:  args.Actress,
+				Maker:    args.Maker,
+				Label:    args.Label,
+				Series:   args.Series,
+				Director: args.Director,
+				No:       args.No,
+				Page:     normalizedPage(args.Page),
 			}
 			if args.StartDate != "" {
 				startDate, err := parseOnlyDate(args.StartDate)
@@ -94,11 +135,15 @@ func (s *Server) registerAVTools() {
 			if err != nil {
 				return nil, err
 			}
-			return jsonTextResult(searchResult{
-				Total: r.Hits.Total.Value,
-				Page:  req.Page,
-				Data:  rows,
-			})
+			result := searchResult{Total: r.Hits.Total.Value, Page: req.Page, Data: rows}
+			if args.Facets {
+				facets, err := avService.VideoFacets(req)
+				if err != nil {
+					return nil, err
+				}
+				result.Facets = &facets
+			}
+			return jsonTextResult(result)
 		},
 	})
 

@@ -18,6 +18,7 @@ import { VideoDetailTabs } from "@/components/av/video_detail_tabs.tsx";
 import { VideoSyncButton } from "@/components/av/video_sync_button.tsx";
 import { ImageViewer } from "@/components/common/ImageViewer.tsx";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
+import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
 
 export interface IVideoDetail {
   video?: Video;
@@ -126,8 +127,7 @@ export function VideoDetail(props: IVideoDetail) {
             maxWidth: "100%",
           }}
         >
-          <Box
-            component="img"
+          <AvCoverImage
             src={video.thumb}
             alt={video.title}
             sx={{

@@ -2,6 +2,7 @@ import type { Video } from "@/types/av.ts";
 import { Box, Typography } from "@mui/material";
 import { Link } from "react-router-dom";
 import { AV_COVER_ASPECT_RATIO } from "@/data/avVideoCover.ts";
+import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
 
 /** 直式封面卡片：封面＋番號＋兩行標題，相關作品等橫向列表用 */
 export function VideoCoverCard({ video }: { video: Video }) {
@@ -18,8 +19,7 @@ export function VideoCoverCard({ video }: { video: Video }) {
         "&:hover img": { transform: "translateY(-2px)" },
       }}
     >
-      <Box
-        component="img"
+      <AvCoverImage
         src={video.thumb}
         alt={video.title}
         loading="lazy"

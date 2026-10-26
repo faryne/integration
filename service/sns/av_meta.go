@@ -18,6 +18,8 @@ const (
 var (
 	// 影片詳細頁：/av/video/MDVR-448（官方番號）或 /av/video/h_491love00068（DMM 內部番號）
 	avVideoPattern = regexp.MustCompile(`^/av/video/([^/]+)$`)
+	// DMM 封面網址結尾：ps＝直式封面、pt＝舊資料的小縮圖；pl 是整片外盒的大圖
+	avCoverSuffixPattern = regexp.MustCompile(`p[st]\.jpg$`)
 	// 抽成變數方便測試替換
 	fetchAvVideo = func(no string) (*avEntity.CleanVideo, error) {
 		_, rows, err := avService.VideoSearch(avEntity.VideoQueryRequest{No: no, Page: 1})
@@ -48,7 +50,7 @@ func applyAvVideoMeta(meta *modelSNS.Meta, matches []string) {
 	meta.Title = fullTitle(code + " " + truncateRunes(video.Title, avVideoTitleRunes))
 	meta.Description = avVideoDescription(video)
 	if video.Thumb != "" {
-		meta.Image = video.Thumb
+		meta.Image = avPackageLargeURL(video.Thumb)
 	}
 	// 用 DMM 內部番號進來、但已有官方番號（例如同步過的舊資料）：canonical 與轉址都指向官方番號網址
 	if video.MakerNo != "" && !strings.EqualFold(matches[1], video.MakerNo) {
@@ -80,4 +82,10 @@ func nonEmpty(values []string) []string {
 		}
 	}
 	return out
+}
+
+// avPackageLargeURL 分享卡片改用整片外盒大圖（pl.jpg）：橫式比直式封面適合社群預覽，
+// 舊作的 ps／pt 只有 147×200／90×122，pl 也有 800px 寬；網址不是 DMM 慣例格式就原樣使用
+func avPackageLargeURL(thumb string) string {
+	return avCoverSuffixPattern.ReplaceAllString(thumb, "pl.jpg")
 }

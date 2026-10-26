@@ -22,10 +22,21 @@ import type { Video } from "@/types/av.ts";
 import { AV_COVER_ASPECT_RATIO } from "@/data/avVideoCover.ts";
 import {
   AV_VIDEO_EXACT_FILTERS,
+  AV_VIDEO_TAG_LABEL,
   type AVVideoExactFilterParam,
 } from "@/data/avVideoFilters.ts";
+import {
+  parseVideoSearchParams,
+  videoSearchToParams,
+} from "@/helpers/avVideoSearchParams.ts";
+import { useAVVideoFacets } from "@/apis/av/video_facets.ts";
+import {
+  VideoFacetsPanel,
+  type FacetParam,
+} from "@/components/av/video_facets.tsx";
 import MovieFilterIcon from "@mui/icons-material/MovieFilter";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
+import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
 
 const videoDetailId = (video: Video) =>
   video.maker_no?.trim() || video.no?.trim() || undefined;
@@ -33,77 +44,14 @@ const videoDetailId = (video: Video) =>
 const videoDisplayMakerNo = (video: Video) =>
   video.maker_no?.trim() || undefined;
 
-const parsePositiveInt = (value: string | null) => {
-  if (!value) {
-    return undefined;
-  }
-
-  const parsed = parseInt(value, 10);
-  return Number.isNaN(parsed) || parsed <= 0 ? undefined : parsed;
-};
-
-const parseVideoSearchParams = (
-  query: URLSearchParams,
-): ListByPaginationRequest<VideoSearchRequest> => {
-  const page = parsePositiveInt(query.get("page")) ?? 1;
-  const search: ListByPaginationRequest<VideoSearchRequest> = { page };
-  const keyword = query.get("keyword")?.trim();
-  const startDate = query.get("start_date")?.trim();
-  const endDate = query.get("end_date")?.trim();
-
-  if (keyword) {
-    search.keyword = keyword;
-  }
-  if (startDate) {
-    search.start_date = startDate;
-  }
-  if (endDate) {
-    search.end_date = endDate;
-  }
-  for (const { param } of AV_VIDEO_EXACT_FILTERS) {
-    const value = query.get(param)?.trim();
-    if (value) {
-      search[param] = value;
-    }
-  }
-
-  return search;
-};
-
-const videoSearchToParams = (
-  search: ListByPaginationRequest<VideoSearchRequest>,
-) => {
-  const query = new URLSearchParams();
-  const page = search.page ?? 1;
-
-  if (page > 1) {
-    query.set("page", String(page));
-  }
-  if (search.keyword?.trim()) {
-    query.set("keyword", search.keyword.trim());
-  }
-  if (search.start_date) {
-    query.set("start_date", search.start_date);
-  }
-  if (search.end_date) {
-    query.set("end_date", search.end_date);
-  }
-  for (const { param } of AV_VIDEO_EXACT_FILTERS) {
-    const value = search[param]?.trim();
-    if (value) {
-      query.set(param, value);
-    }
-  }
-
-  return query;
-};
-
 export function AVVideo() {
   const [query, setQuery] = useSearchParams();
   const [search, setSearch] = useState<
     ListByPaginationRequest<VideoSearchRequest>
   >(() => parseVideoSearchParams(query));
   const s = useAVVideoSearch(search);
+  // 篩選統計跟分頁無關：page 設成 undefined，查詢 key 會忽略它，換頁時沿用快取
+  const facets = useAVVideoFacets({ ...search, page: undefined });
   useTitle("AV 影片搜尋");
 
   const navigate = useNavigate();
@@ -119,10 +67,12 @@ export function AVVideo() {
   const activeExactFilters = AV_VIDEO_EXACT_FILTERS.filter(
     ({ param }) => search[param],
   );
+  const activeTags = search.tag ?? [];
   const hasActiveFilter = Boolean(
     search.keyword ||
     search.start_date ||
     search.end_date ||
+    activeTags.length > 0 ||
     activeExactFilters.length > 0,
   );
 
@@ -146,6 +96,30 @@ export function AVVideo() {
   // 移除單一精確篩選條件，其餘條件保留並回到第一頁
   const removeExactFilter = (param: AVVideoExactFilterParam) => {
     setQuery(videoSearchToParams({ ...search, [param]: undefined, page: 1 }));
+  };
+  const removeTag = (tag: string) => {
+    setQuery(
+      videoSearchToParams({
+        ...search,
+        tag: activeTags.filter((t) => t !== tag),
+        page: 1,
+      }),
+    );
+  };
+
+  // 篩選：標籤複選（加入／移除），其餘單選（再點一次取消）；一律回到第一頁
+  const isFacetSelected = (param: FacetParam, value: string) =>
+    param === "tag" ? activeTags.includes(value) : search[param] === value;
+  const toggleFacet = (param: FacetParam, value: string) => {
+    if (param === "tag") {
+      const tag = activeTags.includes(value)
+        ? activeTags.filter((t) => t !== value)
+        : [...activeTags, value];
+      setQuery(videoSearchToParams({ ...search, tag, page: 1 }));
+      return;
+    }
+    const next = search[param] === value ? undefined : value;
+    setQuery(videoSearchToParams({ ...search, [param]: next, page: 1 }));
   };
 
   return (
@@ -202,6 +176,17 @@ export function AVVideo() {
                 搜尋條件
               </Typography>
               <VideoSearch onClick={handleSearch} conditions={search} />
+              {facets.data && (
+                <Box
+                  sx={{ borderTop: 1, borderColor: "divider", mt: 2.5, pt: 1 }}
+                >
+                  <VideoFacetsPanel
+                    facets={facets.data}
+                    isSelected={isFacetSelected}
+                    onToggle={toggleFacet}
+                  />
+                </Box>
+              )}
             </Box>
           </Grid>
 
@@ -236,6 +221,15 @@ export function AVVideo() {
                         sx={{ borderRadius: 1 }}
                       />
                     )}
+                    {activeTags.map((tag) => (
+                      <Chip
+                        key={`tag-${tag}`}
+                        label={`${AV_VIDEO_TAG_LABEL}：${tag}`}
+                        onDelete={() => removeTag(tag)}
+                        size="small"
+                        sx={{ borderRadius: 1 }}
+                      />
+                    ))}
                     {activeExactFilters.map(({ param, label }) => (
                       <Chip
                         key={param}
@@ -387,8 +381,7 @@ export function AVVideo() {
                               width: "100%",
                             }}
                           >
-                            <Box
-                              component="img"
+                            <AvCoverImage
                               src={video.thumb}
                               alt={video.title}
                               loading="lazy"
