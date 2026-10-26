@@ -567,7 +567,9 @@ export function ImageViewer({
                     cursor: expanded ? "zoom-out" : "zoom-in",
                     display: "block",
                     minHeight: "min(76vh, 860px)",
-                    overflow: "auto",
+                    // 放大檢視要能捲動所以平常是 auto；換頁動畫時圖片會被 translateX 推出舞台外，
+                    // 若仍是 auto 會短暫冒出橫向捲軸（連帶整頁高度跳動），動畫期間改成裁切
+                    overflow: slideTransition ? "hidden" : "auto",
                     p: expanded ? 0 : { xs: 1, md: 2 },
                     touchAction: expanded ? "auto" : "pan-y",
                     width: "100%",
