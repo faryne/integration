@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>faryne.dev footer SD 排列草圖</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, "Noto Sans TC", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 28px; background: #152027; color: #d9f8fa; }
+    h1 { margin: 0 0 8px; font-size: 20px; }
+    p { margin: 0 0 22px; color: #9bb2b6; font-size: 14px; }
+    .samples { display: grid; gap: 28px; justify-items: center; }
+    .sample { width: 100%; max-width: 1120px; }
+    .label { margin: 0 0 8px; color: #a8c8cc; font-size: 13px; letter-spacing: .04em; }
+    .footer { overflow: hidden; background: linear-gradient(180deg, #0c151b, #070c10); border-top: 1px solid rgba(147,236,229,.18); }
+    .content { display: grid; grid-template-columns: 220px repeat(4, 1fr); gap: 24px; padding: 24px 30px 30px; color: #8fa6aa; font-size: 13px; }
+    .brand { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; line-height: 1.6; }
+    .parade { display: flex; align-items: flex-end; flex-shrink: 0; }
+    .sprite { display: block; position: relative; width: 62px; height: 62px; flex-shrink: 0; border-radius: 4px; outline-offset: 2px; transition: transform 160ms ease; }
+    .sprite + .sprite { margin-left: -10px; }
+    .sprite:hover, .sprite:focus-visible { transform: translateY(-3px); }
+    .sprite img { width: 100%; height: 100%; object-fit: contain; transform: scaleX(-1); }
+    .col strong { display: block; margin-bottom: 8px; color: #d9f8fa; font-size: 12px; }
+    .col span { display: block; margin: 6px 0; }
+    .mobile { max-width: 390px; }
+    .mobile .content { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding: 20px 22px; }
+    .mobile .brand { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; gap: 4px; }
+    .mobile .sprite { width: 48px; height: 48px; }
+    .mobile .sprite + .sprite { margin-left: -6px; }
+    @media (prefers-reduced-motion: reduce) { .sprite { transition: none; } }
+  </style>
+</head>
+<body>
+  <h1>footer SD 排列草圖</h1>
+  <p>桌面版位於版權文字下方、手機版位於右側；由左至右為大姐、二姐、三姐、梭梭。每隻均可點擊前往對應網站。</p>
+  <div class="samples">
+    <section class="sample">
+      <div class="label">桌面版・1120 px 示意</div>
+      <div class="footer">
+        <div class="content">
+          <div class="brand">
+            <div>Powered By Faryne<br />faryne.dev</div>
+            <nav class="parade" aria-label="姊妹網站">
+              <a class="sprite" href="https://faryne.dev/" aria-label="前往 faryne.dev 大姐"><img src="../../../static_site/public/mascots/footer-sd/faryne-eldest-sd.png" alt="" /></a>
+              <a class="sprite" href="https://neko.maid.tw/" aria-label="前往 neko.maid.tw 二姐"><img src="../../../static_site/public/mascots/footer-sd/neko-second-sd.png" alt="" /></a>
+              <a class="sprite" href="https://galgame.tv/" aria-label="前往 galgame.tv 三姐"><img src="../../../static_site/public/mascots/footer-sd/galgame-third-sd.png" alt="" /></a>
+              <a class="sprite" href="https://steamloom.works/" aria-label="前往 SteamLoom 梭梭"><img src="../../../static_site/public/mascots/footer-sd/suosuo-youngest-sd.png" alt="" /></a>
+            </nav>
+          </div>
+          <div class="col"><strong>主要連結</strong><span>首頁</span><span>關於我</span></div>
+          <div class="col"><strong>專案</strong><span>作品列表</span><span>開發紀錄</span></div>
+          <div class="col"><strong>內容</strong><span>文章</span><span>收藏</span></div>
+          <div class="col"><strong>其他</strong><span>聯絡方式</span><span>社群連結</span></div>
+        </div>
+      </div>
+    </section>
+    <section class="sample mobile">
+      <div class="label">手機版・390 px 示意</div>
+      <div class="footer">
+        <div class="content">
+          <div class="brand">
+            <div>Powered By Faryne<br />faryne.dev</div>
+            <nav class="parade" aria-label="姊妹網站">
+              <a class="sprite" href="https://faryne.dev/" aria-label="前往 faryne.dev 大姐"><img src="../../../static_site/public/mascots/footer-sd/faryne-eldest-sd.png" alt="" /></a>
+              <a class="sprite" href="https://neko.maid.tw/" aria-label="前往 neko.maid.tw 二姐"><img src="../../../static_site/public/mascots/footer-sd/neko-second-sd.png" alt="" /></a>
+              <a class="sprite" href="https://galgame.tv/" aria-label="前往 galgame.tv 三姐"><img src="../../../static_site/public/mascots/footer-sd/galgame-third-sd.png" alt="" /></a>
+              <a class="sprite" href="https://steamloom.works/" aria-label="前往 SteamLoom 梭梭"><img src="../../../static_site/public/mascots/footer-sd/suosuo-youngest-sd.png" alt="" /></a>
+            </nav>
+          </div>
+          <div class="col"><strong>主要連結</strong><span>首頁</span><span>關於我</span></div>
+          <div class="col"><strong>專案</strong><span>作品列表</span><span>開發紀錄</span></div>
+          <div class="col"><strong>內容</strong><span>文章</span><span>收藏</span></div>
+          <div class="col"><strong>其他</strong><span>聯絡方式</span><span>社群連結</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
