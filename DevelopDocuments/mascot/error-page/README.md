@@ -1,8 +1,6 @@
 # 四站 ErrorPage 看板娘圖示提案
 
-目前 `static_site/src/pages/ErrorPage.tsx` 對 SteamLoom 已使用梭梭錯誤姿勢圖；其餘三站共用六張舊的銀髮貓耳女僕圖，與新定案的三姊妹造型不符。
-
-本稿先確認圖像與 404 頁排版，尚未修改 `ErrorPage.tsx` 或上傳新圖到 S3。預覽見 [preview.html](preview.html)。
+四站 ErrorPage 已接入對應看板娘圖像與文案。圖像與 404 頁排版預覽見 [preview.html](preview.html)。
 
 | 網站 | 錯誤狀態動作 | 素材 |
 | --- | --- | --- |
@@ -13,6 +11,6 @@
 
 `masters/` 是新生成的透明 PNG 原稿；`exports/` 是適合 ErrorPage 使用的 512 × 512 透明 PNG。梭梭仍沿用 `steamloom_assets/suosuo-error-{appearance}-512.png`，預覽用的 nocturne 版本複本放在 `references/`。
 
-實作時三站圖片預計放到既有共用 bucket 的 `mascot_assets/error-page/`，頁面依站點或巢狀路徑選圖。SteamLoom 的 appearance 切換與現有 CDN 路徑維持原設定。現有六張舊圖在新圖正式切換後才清理。
+三姊妹圖片放在既有共用 bucket 的 `mascot_assets/error-page/`，對外網址為 `https://cdn.faryne.dev/mascot_assets/error-page/`。在 repo 根目錄執行 `bash scripts/upload-mascot-assets.sh error-page` 可單獨上傳這組圖，並逐一驗證 S3 物件。頁面依站點網域或巢狀路徑選圖；SteamLoom 的 appearance 切換與現有 CDN 路徑維持原設定。
 
-目前非 SteamLoom 頁面的預設錯誤文案也共用「貓娘女僕」語氣，因此大姐、三姐會與文字不一致。這份預覽的文案只供排版示意；實作前應確認是否一併按站點調整文案。
+預設錯誤文案依站點切換。若呼叫方明確指定 `title` 或 `message`，仍以呼叫方內容為準。

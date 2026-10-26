@@ -30,5 +30,17 @@ upload_group() {
   done
 }
 
-upload_group "$root_dir/DevelopDocuments/mascot/footer-sd/exports" "footer-sd" "image/png"
-upload_group "$root_dir/DevelopDocuments/mascot/site-icons/exports" "site-icons" "image/webp"
+case "${1:-all}" in
+  all)
+    upload_group "$root_dir/DevelopDocuments/mascot/footer-sd/exports" "footer-sd" "image/png"
+    upload_group "$root_dir/DevelopDocuments/mascot/site-icons/exports" "site-icons" "image/webp"
+    upload_group "$root_dir/DevelopDocuments/mascot/error-page/exports" "error-page" "image/png"
+    ;;
+  error-page)
+    upload_group "$root_dir/DevelopDocuments/mascot/error-page/exports" "error-page" "image/png"
+    ;;
+  *)
+    echo "Usage: $0 [all|error-page]" >&2
+    exit 2
+    ;;
+esac
