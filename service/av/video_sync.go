@@ -70,11 +70,24 @@ func SyncDMMVideosByDate(ctx context.Context, date string) (VideoSyncResult, err
 	return result, nil
 }
 
+// ErrVideoWritesDisabled 非正式環境卻要寫正式的 dmmvideos：本機 DB 的 id 跟正式環境不同，寫進去會覆蓋別部作品
+var ErrVideoWritesDisabled = errors.New("dmm video writes are disabled outside production unless DMM_VIDEO_INDEX points to a test index")
+
+// videoWritesAllowed 本機與正式環境共用 ES cluster，只有正式環境、或明確把 DMM_VIDEO_INDEX 換成測試 index 時才允許寫入。
+// 本機 go run 也會跑排程（凌晨的每日同步），沒有這道檢查就會用本機 id 覆寫正式資料
+func videoWritesAllowed() bool {
+	cfg := config.EnvConfig()
+	return cfg.IsProduction() || cfg.DMMVideoIndex != "dmmvideos"
+}
+
 // persistVideos 先整頁 upsert 進 MySQL 取得 id，再逐筆寫 ES。
 // waitVisible 為 true 時每筆都等 ES refresh 後才回傳（單筆同步要馬上查得到）；批次同步不等，避免拖慢
 func persistVideos(ctx context.Context, repo *avRepo.RepositoryDMMVideo, videos []dmm.DmmVideo, waitVisible bool) (int, error) {
 	if len(videos) == 0 {
 		return 0, nil
+	}
+	if !videoWritesAllowed() {
+		return 0, ErrVideoWritesDisabled
 	}
 	now := time.Now()
 	rows := make([]avEntity.DMMVideo, 0, len(videos))
@@ -197,6 +210,9 @@ func markVideoOrphanOrLog(ctx context.Context, no string) {
 
 // markVideoOrphan 依內部番號找出 ES 文件（vid＝dmm.id），把 MySQL 與 ES 都標成 orphan
 func markVideoOrphan(ctx context.Context, no string) error {
+	if !videoWritesAllowed() {
+		return ErrVideoWritesDisabled
+	}
 	r, _, err := VideoSearch(avEntity.VideoQueryRequest{No: no, Page: 1})
 	if err != nil || r == nil {
 		return err
