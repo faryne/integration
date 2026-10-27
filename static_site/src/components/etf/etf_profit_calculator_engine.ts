@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 import type { EtfDistribution, EtfDivideInfo } from "@/types/etf.ts";
 import type {
   ProfitDetailRow,
@@ -32,7 +34,8 @@ export function calcTransactionsResult(
   currentPrice: number,
   withholdingRate: number,
 ): ProfitResult {
-  const today = new Date().toISOString().slice(0, 10);
+  // 用本地日期：toISOString() 是 UTC，台灣早上 8 點前會被當成前一天，除息日當天的配息會被誤判成未實現
+  const today = dayjs().format("YYYY-MM-DD");
 
   const getCumulativeFactor = (startDate: string) => {
     if (!startDate) return 1;
