@@ -8,7 +8,6 @@ import {
   Chip,
   Grid,
   Pagination,
-  Skeleton,
   Stack,
   Typography,
 } from "@mui/material";
@@ -16,10 +15,8 @@ import { useTitle } from "@/helpers/title";
 import { useEffect, useState } from "react";
 import { VideoSearch } from "@/components/av/video_search";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import type { ListByPaginationRequest } from "@/apis/interfaces";
-import type { Video } from "@/types/av.ts";
-import { AV_COVER_ASPECT_RATIO } from "@/data/avVideoCover.ts";
 import {
   AV_VIDEO_EXACT_FILTERS,
   AV_VIDEO_TAG_LABEL,
@@ -36,13 +33,11 @@ import {
 } from "@/components/av/video_facets.tsx";
 import MovieFilterIcon from "@mui/icons-material/MovieFilter";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
-import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
-
-const videoDetailId = (video: Video) =>
-  video.maker_no?.trim() || video.no?.trim() || undefined;
-
-const videoDisplayMakerNo = (video: Video) =>
-  video.maker_no?.trim() || undefined;
+import {
+  VideoResultCard,
+  VideoResultSkeleton,
+} from "@/components/av/video_result_card.tsx";
+import { AV_VIDEO_GRID_COLUMNS } from "@/data/avVideoCover.ts";
 
 export function AVVideo() {
   const [query, setQuery] = useSearchParams();
@@ -53,8 +48,6 @@ export function AVVideo() {
   // 篩選統計跟分頁無關：page 設成 undefined，查詢 key 會忽略它，換頁時沿用快取
   const facets = useAVVideoFacets({ ...search, page: undefined });
   useTitle("AV 影片搜尋");
-
-  const navigate = useNavigate();
 
   useEffect(() => {
     setSearch(parseVideoSearchParams(query));
@@ -75,15 +68,6 @@ export function AVVideo() {
     activeTags.length > 0 ||
     activeExactFilters.length > 0,
   );
-
-  const toVideoDetail = (video: Video) => {
-    const id = videoDetailId(video);
-    if (!id) {
-      return;
-    }
-
-    navigate(`/av/video/${id}`);
-  };
 
   const handleSearch = (input: VideoSearchRequest) => {
     setQuery(videoSearchToParams({ ...input, page: 1 }));
@@ -268,27 +252,11 @@ export function AVVideo() {
                   sx={{
                     display: "grid",
                     gap: 2,
-                    // 直式封面：手機 2 欄、平板 3 欄、桌機 4 欄，密度跟原本橫式卡片相近
-                    gridTemplateColumns: {
-                      xs: "repeat(2, minmax(0, 1fr))",
-                      sm: "repeat(3, minmax(0, 1fr))",
-                      lg: "repeat(4, minmax(0, 1fr))",
-                    },
+                    gridTemplateColumns: AV_VIDEO_GRID_COLUMNS,
                   }}
                 >
                   {Array.from({ length: 6 }).map((_, index) => (
-                    <Stack key={index} spacing={1}>
-                      <Skeleton
-                        sx={{
-                          aspectRatio: AV_COVER_ASPECT_RATIO,
-                          borderRadius: 2,
-                          height: "auto",
-                        }}
-                        variant="rounded"
-                      />
-                      <Skeleton height={28} variant="rounded" />
-                      <Skeleton height={22} width="70%" variant="rounded" />
-                    </Stack>
+                    <VideoResultSkeleton key={index} />
                   ))}
                 </Box>
               )}
@@ -326,132 +294,12 @@ export function AVVideo() {
                     sx={{
                       display: "grid",
                       gap: 2,
-                      gridTemplateColumns: {
-                        xs: "repeat(2, minmax(0, 1fr))",
-                        sm: "repeat(3, minmax(0, 1fr))",
-                        lg: "repeat(4, minmax(0, 1fr))",
-                      },
+                      gridTemplateColumns: AV_VIDEO_GRID_COLUMNS,
                     }}
                   >
-                    {videos.map((video) => {
-                      const detailId = videoDetailId(video);
-                      const displayMakerNo = videoDisplayMakerNo(video);
-
-                      return (
-                        <Box
-                          component="button"
-                          disabled={!detailId}
-                          key={detailId ?? video.url ?? video.title}
-                          onClick={() => toVideoDetail(video)}
-                          sx={{
-                            appearance: "none",
-                            bgcolor: "background.paper",
-                            border: "1px solid",
-                            borderColor: "divider",
-                            borderRadius: 2,
-                            cursor: detailId ? "pointer" : "default",
-                            display: "flex",
-                            flexDirection: "column",
-                            overflow: "hidden",
-                            p: 0,
-                            textAlign: "left",
-                            transition:
-                              "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
-                            width: "100%",
-                            "&:focus-visible": {
-                              borderColor: "primary.main",
-                              boxShadow: "0 0 0 3px rgba(25, 118, 210, 0.28)",
-                              outline: 0,
-                            },
-                            "&:hover": detailId
-                              ? {
-                                  borderColor: "rgba(25, 118, 210, 0.42)",
-                                  boxShadow:
-                                    "0 14px 34px rgba(15, 23, 42, 0.13)",
-                                  transform: "translateY(-2px)",
-                                }
-                              : undefined,
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              aspectRatio: AV_COVER_ASPECT_RATIO,
-                              bgcolor: "grey.100",
-                              overflow: "hidden",
-                              width: "100%",
-                            }}
-                          >
-                            <AvCoverImage
-                              src={video.thumb}
-                              alt={video.title}
-                              loading="lazy"
-                              sx={{
-                                display: "block",
-                                height: "100%",
-                                objectFit: "cover",
-                                width: "100%",
-                              }}
-                            />
-                          </Box>
-                          <Stack spacing={1} sx={{ p: 1.5 }}>
-                            <Stack direction="row" flexWrap="wrap" gap={0.75}>
-                              {displayMakerNo && (
-                                <Chip
-                                  label={displayMakerNo}
-                                  size="small"
-                                  sx={{
-                                    borderRadius: 1,
-                                    fontSize: "0.72rem",
-                                    fontWeight: 700,
-                                  }}
-                                />
-                              )}
-                              {video.vod_date && (
-                                <Chip
-                                  label={video.vod_date}
-                                  size="small"
-                                  sx={{
-                                    borderRadius: 1,
-                                    fontSize: "0.72rem",
-                                  }}
-                                  variant="outlined"
-                                />
-                              )}
-                            </Stack>
-                            <Typography
-                              sx={{
-                                color: "text.primary",
-                                display: "-webkit-box",
-                                fontWeight: 800,
-                                letterSpacing: 0,
-                                lineHeight: 1.35,
-                                minHeight: "2.7em",
-                                overflow: "hidden",
-                                WebkitBoxOrient: "vertical",
-                                WebkitLineClamp: 2,
-                              }}
-                              variant="body1"
-                            >
-                              {video.title}
-                            </Typography>
-                            <Typography
-                              color="text.secondary"
-                              sx={{
-                                minHeight: "1.43em",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                              variant="body2"
-                            >
-                              {video.actresses
-                                .filter((a) => a !== "")
-                                .join(" / ") || "未登錄出演資訊"}
-                            </Typography>
-                          </Stack>
-                        </Box>
-                      );
-                    })}
+                    {videos.map((video) => (
+                      <VideoResultCard key={video.no} video={video} />
+                    ))}
                   </Box>
 
                   {pageCount > 1 && (

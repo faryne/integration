@@ -6,7 +6,6 @@ import {
   Chip,
   Grid,
   Pagination,
-  Skeleton,
   Stack,
   Typography,
 } from "@mui/material";
@@ -14,12 +13,11 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import type { VideoSearchResponse } from "@/apis/av/video_search.ts";
 import { useNavigate } from "react-router-dom";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
-
-const videoDetailId = (video: Video) =>
-  video.maker_no?.trim() || video.no?.trim() || undefined;
-
-const videoDisplayMakerNo = (video: Video) =>
-  video.maker_no?.trim() || undefined;
+import {
+  VideoResultCard,
+  VideoResultSkeleton,
+} from "@/components/av/video_result_card.tsx";
+import { AV_VIDEO_GRID_COLUMNS } from "@/data/avVideoCover.ts";
 
 const uniqueNonEmpty = (items: string[]) =>
   Array.from(new Set(items.map((item) => item.trim()).filter(Boolean)));
@@ -84,15 +82,6 @@ export function ActressDetail(props: IActressDetail) {
     props.videos?.data?.data?.current_page ?? props.videoPage ?? 1;
   const relatedMakers = uniqueNonEmpty(videos.flatMap((video) => video.makers));
   const relatedTags = videoTagStats(videos);
-
-  const toVideoDetail = (video: (typeof videos)[number]) => {
-    const id = videoDetailId(video);
-    if (!id) {
-      return;
-    }
-
-    navigate(`/av/video/${id}`);
-  };
 
   const toVideoSearch = (keyword: string) => {
     navigate(`/av/video?keyword=${encodeURIComponent(keyword)}`);
@@ -253,23 +242,11 @@ export function ActressDetail(props: IActressDetail) {
               sx={{
                 display: "grid",
                 gap: 2,
-                gridTemplateColumns: {
-                  xs: "1fr",
-                  sm: "repeat(2, minmax(0, 1fr))",
-                  lg: "repeat(3, minmax(0, 1fr))",
-                },
+                gridTemplateColumns: AV_VIDEO_GRID_COLUMNS,
               }}
             >
               {Array.from({ length: 6 }).map((_, index) => (
-                <Stack key={index} spacing={1}>
-                  <Skeleton
-                    height={180}
-                    sx={{ borderRadius: 2 }}
-                    variant="rounded"
-                  />
-                  <Skeleton height={28} variant="rounded" />
-                  <Skeleton height={22} width="70%" variant="rounded" />
-                </Stack>
+                <VideoResultSkeleton key={index} />
               ))}
             </Box>
           )}
@@ -311,132 +288,12 @@ export function ActressDetail(props: IActressDetail) {
                   sx={{
                     display: "grid",
                     gap: 2,
-                    gridTemplateColumns: {
-                      xs: "1fr",
-                      sm: "repeat(2, minmax(0, 1fr))",
-                      lg: "repeat(3, minmax(0, 1fr))",
-                    },
+                    gridTemplateColumns: AV_VIDEO_GRID_COLUMNS,
                   }}
                 >
-                  {videos.map((video) => {
-                    const detailId = videoDetailId(video);
-                    const displayMakerNo = videoDisplayMakerNo(video);
-
-                    return (
-                      <Box
-                        component="button"
-                        disabled={!detailId}
-                        key={detailId ?? video.url ?? video.title}
-                        onClick={() => toVideoDetail(video)}
-                        sx={{
-                          appearance: "none",
-                          bgcolor: "background.paper",
-                          border: "1px solid",
-                          borderColor: "divider",
-                          borderRadius: 2,
-                          cursor: detailId ? "pointer" : "default",
-                          display: "flex",
-                          flexDirection: "column",
-                          overflow: "hidden",
-                          p: 0,
-                          textAlign: "left",
-                          transition:
-                            "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
-                          width: "100%",
-                          "&:focus-visible": {
-                            borderColor: "primary.main",
-                            boxShadow: "0 0 0 3px rgba(25, 118, 210, 0.28)",
-                            outline: 0,
-                          },
-                          "&:hover": detailId
-                            ? {
-                                borderColor: "rgba(25, 118, 210, 0.42)",
-                                boxShadow: "0 14px 34px rgba(15, 23, 42, 0.13)",
-                                transform: "translateY(-2px)",
-                              }
-                            : undefined,
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            aspectRatio: "16 / 10",
-                            bgcolor: "grey.100",
-                            overflow: "hidden",
-                            width: "100%",
-                          }}
-                        >
-                          <Box
-                            component="img"
-                            src={video.thumb}
-                            alt={video.title}
-                            loading="lazy"
-                            sx={{
-                              display: "block",
-                              height: "100%",
-                              objectFit: "cover",
-                              width: "100%",
-                            }}
-                          />
-                        </Box>
-                        <Stack spacing={1} sx={{ p: 1.5 }}>
-                          <Stack direction="row" flexWrap="wrap" gap={0.75}>
-                            {displayMakerNo && (
-                              <Chip
-                                label={displayMakerNo}
-                                size="small"
-                                sx={{
-                                  borderRadius: 1,
-                                  fontSize: "0.72rem",
-                                  fontWeight: 700,
-                                }}
-                              />
-                            )}
-                            {video.vod_date && (
-                              <Chip
-                                label={video.vod_date}
-                                size="small"
-                                sx={{
-                                  borderRadius: 1,
-                                  fontSize: "0.72rem",
-                                }}
-                                variant="outlined"
-                              />
-                            )}
-                          </Stack>
-                          <Typography
-                            sx={{
-                              color: "text.primary",
-                              display: "-webkit-box",
-                              fontWeight: 800,
-                              letterSpacing: 0,
-                              lineHeight: 1.35,
-                              minHeight: "2.7em",
-                              overflow: "hidden",
-                              WebkitBoxOrient: "vertical",
-                              WebkitLineClamp: 2,
-                            }}
-                            variant="body1"
-                          >
-                            {video.title}
-                          </Typography>
-                          <Typography
-                            color="text.secondary"
-                            sx={{
-                              minHeight: "1.43em",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                            variant="body2"
-                          >
-                            {video.actresses
-                              .filter((a) => a !== "")
-                              .join(" / ") || "未登錄出演資訊"}
-                          </Typography>
-                        </Stack>
-                      </Box>
-                    );
-                  })}
+                  {videos.map((video) => (
+                    <VideoResultCard key={video.no} video={video} />
+                  ))}
                 </Box>
 
                 {pageCount > 1 && (
