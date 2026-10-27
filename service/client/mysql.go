@@ -22,6 +22,9 @@ func InitMySql(name enum.DBName, dsn string, replicaDSNs ...string) error {
 		return fmt.Errorf("connection %s already exists", name)
 	}
 	r, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		// 把 MySQL 1062（重複鍵）、1451／1452（外鍵）轉成 gorm.ErrDuplicatedKey／ErrForeignKeyViolated，
+		// output.FromError 才能用 errors.Is 判斷成 409；轉換後 err.Error() 不再是 MySQL 原始訊息。
+		TranslateError: true,
 		Logger: logger.New(&log.DBLogger{}, logger.Config{
 			SlowThreshold:             time.Millisecond * 500,
 			LogLevel:                  logger.Info,
