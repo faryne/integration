@@ -80,7 +80,7 @@ func (s *Server) registerAVTools() {
 			"day":        integerSchema("Release day."),
 			"start_date": stringSchema("Start date in YYYY-MM-DD."),
 			"end_date":   stringSchema("End date in YYYY-MM-DD."),
-			"keyword":    stringSchema("Keyword matched against title, tags, labels, makers, actresses, series, and directors."),
+			"keyword":    stringSchema("Keyword: phrase match on title, partial (substring) match on actresses, series, makers, directors, labels and tags. Use the exact filters (actress, series, maker, ...) when the full name is known."),
 			"tag": map[string]interface{}{
 				"description": "Exact tag filter. A string, or an array of strings that must all match (AND).",
 				"anyOf": []interface{}{
