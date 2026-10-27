@@ -42,6 +42,7 @@ import { DetailStat } from "@/components/etf/etf_detail_stat.tsx";
 import {
   formatDateOrDash,
   getWinRateTone,
+  toTwseDistribution,
 } from "@/pages/etfs/twse_format_helpers.ts";
 
 const EtfDetailSummary = ({ etf }: { etf: TwseEtfInfo }) => (
@@ -166,13 +167,9 @@ export function EtfDetailDialog({ code, open, onClose }: EtfDetailDialogProps) {
     () => ({
       code,
       description: etf?.name ?? "",
-      distributions: (queryShares.data?.data?.stats ?? []).map((s) => ({
-        per_share: s.share,
-        declared_date: formatDateOrDash(s.ex_date),
-        ex_date: formatDateOrDash(s.ex_date),
-        payable_date: formatDateOrDash(s.payable_date),
-        roc: -1, // 台股境內配息無 ROC 預扣退稅資料
-      })),
+      distributions: (queryShares.data?.data?.stats ?? []).map(
+        toTwseDistribution,
+      ),
     }),
     [code, etf, queryShares.data],
   );
