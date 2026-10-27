@@ -42,24 +42,17 @@ var fVideo = func(i av.RawVideo) av.CleanVideo {
 	return o
 }
 
+// videoKeywordQuery 關鍵字：標題用片語比對，出演／系列／發售商／監督／品牌／標籤用 keyword 部分比對（「春咲」找得到「春咲あずみ」）。
+// 不用 match：會把「春咲」拆成「春」「咲」做 OR，混進「思春期.com」這類不相干的品牌；
+// 也不用 match_phrase：片假名整串是一個 token，「トコ」比對不到「トコダケ」。
+// 只影響關鍵字；actress／series 等精確篩選參數維持完全比對
 func videoKeywordQuery(keyword string) map[string]any {
-	return map[string]any{
-		"bool": map[string]any{
-			"should": []map[string]any{
-				{"match_phrase": map[string]any{"title": keyword}},
-				{"term": map[string]any{"title.keyword": keyword}},
-				{"match": map[string]any{"tags": keyword}},
-				{"term": map[string]any{"tags.keyword": keyword}},
-				{"match": map[string]any{"labels": keyword}},
-				{"term": map[string]any{"labels.keyword": keyword}},
-				{"term": map[string]any{"makers.keyword": keyword}},
-				{"term": map[string]any{"actresses.keyword": keyword}},
-				{"term": map[string]any{"series.keyword": keyword}},
-				{"term": map[string]any{"directors.keyword": keyword}},
-			},
-			"minimum_should_match": 1,
-		},
+	pattern := "*" + wildcardEscaper.Replace(keyword) + "*"
+	should := []map[string]any{{"match_phrase": map[string]any{"title": keyword}}}
+	for _, field := range []string{"actresses", "series", "makers", "directors", "labels", "tags"} {
+		should = append(should, map[string]any{"wildcard": map[string]any{field + ".keyword": map[string]any{"value": pattern}}})
 	}
+	return map[string]any{"bool": map[string]any{"should": should, "minimum_should_match": 1}}
 }
 
 func videoNoQuery(no string) map[string]any {
