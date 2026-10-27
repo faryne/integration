@@ -756,7 +756,7 @@ func isAgentProviderError(err error) bool {
 func Stories(ctx fiber.Ctx) error {
 	rows, err := storyteller.NewService().Stories(authsession.Session(ctx).UserId, ctx.Params("project"))
 	if err != nil {
-		return listError(err)
+		return output.FromError(err)
 	}
 	return output.Success(rows)
 }
@@ -814,7 +814,7 @@ func DeleteStory(ctx fiber.Ctx) error {
 func Volumes(ctx fiber.Ctx) error {
 	rows, err := storyteller.NewService().Volumes(authsession.Session(ctx).UserId, ctx.Params("project"))
 	if err != nil {
-		return listError(err)
+		return output.FromError(err)
 	}
 	return output.Success(rows)
 }
@@ -1031,7 +1031,7 @@ func DeleteStoryBookmark(ctx fiber.Ctx) error {
 func Lores(ctx fiber.Ctx) error {
 	rows, err := storyteller.NewService().Lores(authsession.Session(ctx).UserId, ctx.Params("project"))
 	if err != nil {
-		return listError(err)
+		return output.FromError(err)
 	}
 	return output.Success(rows)
 }
@@ -1044,7 +1044,7 @@ func LoresPage(ctx fiber.Ctx) error {
 	pageSize, _ := strconv.Atoi(ctx.Query("per_page", "10"))
 	rows, total, err := storyteller.NewService().LoresPage(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Query("collection_id"), page, pageSize)
 	if err != nil {
-		return listError(err)
+		return output.FromError(err)
 	}
 	return output.Success(map[string]any{
 		"lores":       rows,
@@ -1057,7 +1057,7 @@ func LoresPage(ctx fiber.Ctx) error {
 func LoreCollections(ctx fiber.Ctx) error {
 	rows, err := storyteller.NewService().LoreCollections(authsession.Session(ctx).UserId, ctx.Params("project"))
 	if err != nil {
-		return listError(err)
+		return output.FromError(err)
 	}
 	return output.Success(rows)
 }

@@ -39,6 +39,7 @@ Follow the existing module boundaries.
   3. add business logic in `service/`
   4. add handlers in `controller/`
   5. always use `faryne.dev/service/output` as standard api response if no anotation is provided.
+     - For errors returned by `service/` or `repository/`, use `output.FromError(err)` instead of hand-written `repository.IsRecordNotFound` / `output.BadRequest(err)` chains (404 for not found, 409 for duplicate key / FK, 400 otherwise). Only handle feature-specific errors yourself first. Existing call sites are being migrated gradually.
   6. register routes in `route/`
 - Add cron logic in the `cronjob` section of `main.go`, and keep substantial logic in `service/`.
 
