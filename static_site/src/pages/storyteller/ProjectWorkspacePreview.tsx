@@ -1,7 +1,6 @@
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import { Box, Button, CircularProgress, Typography } from "@mui/material";
-import axios from "axios";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -24,6 +23,7 @@ import {
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { StorytellerUnsavedChangesDialog } from "@/components/storyteller/StorytellerUnsavedChangesDialog.tsx";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
+import { httpStatusOf } from "@/helpers/httpError.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
@@ -323,16 +323,13 @@ export default function StorytellerProjectWorkspacePreview() {
         ? loresPageQuery.error
         : assetsQuery.error;
   // isUnknownCollection 要比原始的 query 錯誤優先判斷——設定集／資產集的清單
-  // 是後端依 collectionId 篩選的，帶一個不存在的 id 過去，後端會直接回
-  // 400（無效參數），不像作品是純前端用 volumes 清單過濾、後端請求本身不會出錯。
-  // 兩種情況使用者看到的都應該是「這個冊/分類找不到」的 404，不是依內部實作
-  // 細節而異的 400 或 404 混雜。
+  // 是後端依 collectionId 篩選的，帶一個不存在的 id 過去後端回 404；作品則是
+  // 純前端用 volumes 清單過濾、後端請求本身不會出錯。兩種情況都要在分組清單
+  // 載入完就判定成「這個冊/分類找不到」的 404，不用等列表請求的結果。
   const activeListErrorCode = isUnknownCollection
     ? 404
     : activeListIsError
-      ? axios.isAxiosError(activeListError)
-        ? (activeListError.response?.status ?? 500)
-        : 500
+      ? httpStatusOf(activeListError)
       : undefined;
 
   const activeTitle = toolPage
@@ -598,7 +595,9 @@ export default function StorytellerProjectWorkspacePreview() {
         <WorkspaceCentered>
           <AutoStoriesIcon color="primary" />
           <Box>
-            <Typography fontWeight={900}>{t("web.home.loginRequired")}</Typography>
+            <Typography fontWeight={900}>
+              {t("web.home.loginRequired")}
+            </Typography>
             <Typography variant="body2" color="text.secondary">
               {t("web.workspacePreview.loginDescription")}
             </Typography>
@@ -621,6 +620,13 @@ export default function StorytellerProjectWorkspacePreview() {
         </WorkspaceCentered>
       </WorkspaceChrome>
     );
+  }
+  // 專案本身抓不到（網址 id 錯、被刪、不是自己的）就整頁顯示錯誤頁，不能往下渲染工作台：
+  // 底下常駐的資產上傳抽屜也訂了同一把 project query，失敗狀態下一掛載就會重抓、
+  // 把狀態打回 loading 再卸載，形成無限重打 API 的迴圈。只在沒有任何資料時才擋，
+  // 已經載入過的專案背景重抓失敗時保留原畫面。
+  if (projectQuery.isError && !project) {
+    return <ErrorPage code={httpStatusOf(projectQuery.error)} />;
   }
 
   return (
@@ -651,7 +657,9 @@ export default function StorytellerProjectWorkspacePreview() {
           open={workspaceSearch.open}
           initialKeyword={workspaceSearch.keyword}
           onClose={workspaceSearch.closeSearch}
-          projectName={project?.name ?? t("web.workspacePreview.currentProject")}
+          projectName={
+            project?.name ?? t("web.workspacePreview.currentProject")
+          }
           projectPublicId={project?.public_id ?? id ?? ""}
           onOpenResult={openWorkspaceSearchResult}
         />
@@ -772,11 +780,7 @@ export default function StorytellerProjectWorkspacePreview() {
                     backUrl={steamloomPath(
                       browsingPath(selected.section, selected.collectionId),
                     )}
-                    code={
-                      axios.isAxiosError(routeAssetQuery.error)
-                        ? (routeAssetQuery.error.response?.status ?? 404)
-                        : 404
-                    }
+                    code={httpStatusOf(routeAssetQuery.error, 404)}
                   />
                 ) : null}
               </EditorBleedContainer>

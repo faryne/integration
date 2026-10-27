@@ -1,5 +1,6 @@
 import { AuthContext, type AuthContextValue } from "@/components/auth/AuthContext.ts";
 import { apiBase } from "@/apis/storyteller/shared.ts";
+import { isClientHttpError } from "@/helpers/httpError.ts";
 import { SeoDisabledContext } from "@/helpers/title.tsx";
 import { StorytellerAppearanceContext } from "@/layouts/storytellerAppearanceMode.tsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -87,9 +88,16 @@ export function WebApiProvider({ onExpired, children }: { onExpired: () => void;
       onSessionExpired = null;
     };
   }, [onExpired]);
-  // 授權失效不重試，免得同一個 401 連打三次
+  // 授權失效、4xx（找不到／沒權限）都不重試，免得同一個錯誤連打三次；跟網站 main.tsx 的全域 retry 規則一致
   const [queryClient] = useState(
-    () => new QueryClient({ defaultOptions: { queries: { retry: (count, err) => count < 3 && !isNotLoggedIn((err as AxiosError).message) } } }),
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: (count, err) => count < 3 && !isNotLoggedIn((err as AxiosError).message) && !isClientHttpError(err),
+          },
+        },
+      }),
   );
   return (
     <QueryClientProvider client={queryClient}>
