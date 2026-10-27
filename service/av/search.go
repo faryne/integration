@@ -256,43 +256,42 @@ func buildActressSearchQuery(input av.ActressQueryRequest, domain string) map[st
 	if bloodType := strings.ToUpper(strings.TrimSpace(input.BloodType)); bloodType != "" {
 		search.SetQuery(exactStringQuery("blood", bloodType), true, q)
 	}
-	if bLength := len(input.B); bLength > 0 {
-		switch bLength {
-		case 1:
-			search.SetQuery(map[string]any{"term": map[string]any{"bust": input.B[0]}}, true, q)
-		case 2:
-			search.SetQuery(map[string]any{"range": map[string]any{"bust": map[string]any{"gte": input.B[0], "lt": input.B[1]}}}, true, q)
+	// 三圍與身高的區間條件；有條件時也改依該欄位由大到小排序（後面的條件優先，維持原本行為）
+	for _, size := range []struct {
+		field  string
+		values []int
+	}{
+		{"bust", input.B},
+		{"waist", input.W},
+		{"hips", input.H},
+		{"height", input.Height},
+	} {
+		if cond := actressSizeQuery(size.field, size.values); cond != nil {
+			search.SetQuery(cond, true, q)
+			q["sort"] = map[string]any{size.field: map[string]any{"order": "desc"}}
 		}
-		q["sort"] = map[string]any{"bust": map[string]any{"order": "desc"}}
-	}
-	if wLength := len(input.W); wLength > 0 {
-		switch wLength {
-		case 1:
-			search.SetQuery(map[string]any{"term": map[string]any{"waist": input.W[0]}}, true, q)
-		case 2:
-			search.SetQuery(map[string]any{"range": map[string]any{"waist": map[string]any{"gte": input.W[0], "lt": input.W[1]}}}, true, q)
-		}
-		q["sort"] = map[string]any{"waist": map[string]any{"order": "desc"}}
-	}
-	if hLength := len(input.H); hLength > 0 {
-		switch hLength {
-		case 1:
-			search.SetQuery(map[string]any{"term": map[string]any{"hips": input.H[0]}}, true, q)
-		case 2:
-			search.SetQuery(map[string]any{"range": map[string]any{"hips": map[string]any{"gte": input.H[0], "lt": input.H[1]}}}, true, q)
-		}
-		q["sort"] = map[string]any{"hips": map[string]any{"order": "desc"}}
-	}
-	if heightLength := len(input.Height); heightLength > 0 {
-		switch heightLength {
-		case 1:
-			search.SetQuery(map[string]any{"term": map[string]any{"height": input.Height[0]}}, true, q)
-		case 2:
-			search.SetQuery(map[string]any{"range": map[string]any{"height": map[string]any{"gte": input.Height[0], "lt": input.Height[1]}}}, true, q)
-		}
-		q["sort"] = map[string]any{"height": map[string]any{"order": "desc"}}
 	}
 	return q
+}
+
+// actressSizeQuery 三圍／身高的條件：[N] 是剛好 N，[min, max] 是區間。
+// 沒資料的女優存成 0（約 45%），有條件時一律排除，不然「胸圍 70 以下」會把沒資料的全部列出來；
+// 上限含本身（「70 以下」包含 70），上限 0 代表不限（「80 以上」前端送的是 [80, 0]）
+func actressSizeQuery(field string, values []int) map[string]any {
+	switch len(values) {
+	case 1:
+		if values[0] <= 0 {
+			return nil
+		}
+		return map[string]any{"term": map[string]any{field: values[0]}}
+	case 2:
+		bound := map[string]any{"gte": max(values[0], 1)}
+		if values[1] > 0 {
+			bound["lte"] = values[1]
+		}
+		return map[string]any{"range": map[string]any{field: bound}}
+	}
+	return nil
 }
 
 func xcityActressIndexReady() (bool, error) {
