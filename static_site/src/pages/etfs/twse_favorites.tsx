@@ -40,7 +40,7 @@ import {
   formatRate,
 } from "@/components/etf/etf_profit_calculator_format.ts";
 import type { ProfitResult } from "@/components/etf/etf_profit_calculator_types.ts";
-import type { EtfDistribution } from "@/types/etf.ts";
+import { toTwseDistribution } from "@/pages/etfs/twse_format_helpers.ts";
 
 // 台股慣例：正數紅、負數綠
 const getTrendColor = (value: number) => {
@@ -147,15 +147,6 @@ export default function TwseEtfFavoritesPage() {
     () =>
       favoriteItems.map((item) => {
         const etf = etfByCode.get(item.code);
-        const distributions: EtfDistribution[] = item.distributions.map(
-          (s) => ({
-            per_share: s.share,
-            declared_date: s.ex_date,
-            ex_date: s.ex_date,
-            payable_date: s.payable_date,
-            roc: -1, // 台股境內配息無 ROC 預扣退稅資料
-          }),
-        );
         const latestClose = etf?.latest_close ?? 0;
         const livePrice = livePriceByCode.get(item.code);
         const currentPrice = livePrice ?? latestClose;
@@ -166,7 +157,7 @@ export default function TwseEtfFavoritesPage() {
           isLive: livePrice !== undefined,
           result: calcTransactionsResult(
             item.transactions,
-            distributions,
+            item.distributions.map(toTwseDistribution),
             [],
             currentPrice,
             0,
