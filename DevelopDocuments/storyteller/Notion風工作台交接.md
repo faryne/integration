@@ -171,6 +171,16 @@ my/agent/:agentId/diff/:diffId1/:diffId2             → StorytellerAgentDiffCom
    - 如果之後確定完全不需要相容舊連結，這些檔案跟對應路由可以評估整批砍掉，但這次沒有做。
 7. **沒有動後端**——這次全部是前端改動，沒有新增/修改任何 API 或 migration。
 
+## 已知 Bug 記錄
+
+| 現象 | Root cause | 解法 | 狀態 |
+|---|---|---|---|
+| 工作台網址帶不存在的專案 id（例如 `/my/workspace/<少一碼>`）時，`GET /projects/:id` 每約 7 秒一輪（1 次＋retry 3 次）無限重打，畫面一直停在「載入工作台...」，永遠不會出現 ErrorPage | ① `ProjectWorkspacePreview` 只擋 `projectQuery.isLoading`，沒處理 `isError`，專案 404 後照樣渲染整個工作台；② 工作台底下常駐的 `StorytellerAssetUploadDrawer`（關著也有掛載）也呼叫 `useStorytellerProject` 訂同一把 key。TanStack Query v5 對「error 且沒有 data」的 query，新 observer 掛載時會因 `retryOnMount` 重抓，並把 status 打回 `pending` → 父層 `isLoading` 變 true、切回 loading、抽屜卸載 → 失敗後抽屜再掛載 → 無限循環 | 專案查詢失敗且沒有任何資料時，直接整頁回 `<ErrorPage code={httpStatusOf(error)} />`，不往下渲染（抽屜不會掛載，循環就斷了） | 已修（`fix/storyteller-notfound-retry-loop`） |
+| 已登入時閱讀頁網址帶錯專案 id，要轉圈約 7 秒、`/projects/:id` 打 4 次才出 404（看起來像停不下來，但不是無限迴圈） | 全域 `QueryClient` 用預設值，任何錯誤都 retry 3 次＋退避（1s→2s→4s），連 404 也一樣 | `main.tsx` 全域 retry 改成 4xx 不重試、5xx／網路錯誤才沿用最多 3 次（判斷用 `helpers/httpError.ts` 的 `isClientHttpError`）；Writer 的 `WebApiProvider` 同步套用同一規則 | 已修（同上） |
+| 專案不存在時，`/projects/:id` 回 404，但底下的 stories／volumes／lores／lores 分頁／lore-collections／asset-collections／assets 回 400 | 這幾支 controller 一律 `output.BadRequest(err)`，沒有分辨 `RecordNotFound` | 新增 `controller/storyteller/list_error.go` 的 `listError`：找不到回 404，其餘維持 400；不存在的分組篩選（`collection_id`）也因此改回 404，前端 `isUnknownCollection` 本來就先判定，行為不變 | 已修（同上） |
+
+> **給後續 agent**：父元件用某個 query 的 `isLoading` 擋畫面、子元件又訂同一把 key 時，只要 query 落到「error 且沒 data」，就會掉進上面第一列的循環。新增頁面時務必處理 `isError`，不要只擋 loading。
+
 ## 驗證方式
 
 每次改動都跑過（在 `static_site/` 目錄下）：

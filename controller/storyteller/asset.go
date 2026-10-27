@@ -25,7 +25,7 @@ func Assets(ctx fiber.Ctx) error {
 		pageSize,
 	)
 	if err != nil {
-		return output.BadRequest(err)
+		return listError(err)
 	}
 	return output.Success(rows)
 }
@@ -138,7 +138,7 @@ func DeleteAsset(ctx fiber.Ctx) error {
 func AssetCollections(ctx fiber.Ctx) error {
 	rows, err := storyteller.NewService().AssetCollections(authsession.Session(ctx).UserId, ctx.Params("project"))
 	if err != nil {
-		return output.BadRequest(err)
+		return listError(err)
 	}
 	return output.Success(rows)
 }
