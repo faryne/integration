@@ -209,6 +209,25 @@ func exactStringQuery(field string, value string) map[string]any {
 	}
 }
 
+// actressNameQuery 姓名可部分比對（「春咲」找得到「春咲あずみ」），也比對假名；完全相符的加權排前面。
+// 女優 index 約 1.6 萬筆，keyword 前後萬用字元的成本可以接受
+func actressNameQuery(name string) map[string]any {
+	pattern := "*" + wildcardEscaper.Replace(name) + "*"
+	return map[string]any{
+		"bool": map[string]any{
+			"should": []map[string]any{
+				{"term": map[string]any{"name.keyword": map[string]any{"value": name, "boost": 10}}},
+				{"wildcard": map[string]any{"name.keyword": map[string]any{"value": pattern}}},
+				{"wildcard": map[string]any{"kana.keyword": map[string]any{"value": pattern}}},
+			},
+			"minimum_should_match": 1,
+		},
+	}
+}
+
+// wildcard 查詢的特殊字元要跳脫，使用者輸入的 * ? 才會被當成一般字元
+var wildcardEscaper = strings.NewReplacer(`\`, `\\`, `*`, `\*`, `?`, `\?`)
+
 func buildActressSearchQuery(input av.ActressQueryRequest, domain string) map[string]any {
 	page := input.Page
 	if page <= 0 {
@@ -223,7 +242,9 @@ func buildActressSearchQuery(input av.ActressQueryRequest, domain string) map[st
 		search.SetQuery(exactStringQuery("domain", domain), true, q)
 	}
 	if name := strings.TrimSpace(input.Name); name != "" {
-		search.SetQuery(map[string]any{"term": map[string]any{"name.keyword": name}}, true, q)
+		search.SetQuery(actressNameQuery(name), true, q)
+		// 有姓名條件時完全相符的排最前面，其餘再照生日排
+		q["sort"] = append([]map[string]any{{"_score": map[string]any{"order": "desc"}}}, actressBirthdaySort()...)
 	}
 	if input.BirthYear > 0 && input.BirthMonth > 0 && input.BirthDay > 0 {
 		search.SetQuery(map[string]any{"term": map[string]any{"birth_year": input.BirthYear}}, true, q)

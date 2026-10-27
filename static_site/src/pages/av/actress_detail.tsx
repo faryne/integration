@@ -10,7 +10,8 @@ export function AVActressDetail() {
   const { name } = useParams<{ name: string }>();
   const [videoPage, setVideoPage] = useState(1);
   const s = useAVActressSearch({ name, page: 1 }, !!name);
-  const actress = s.data?.data?.data?.[0];
+  // 姓名搜尋是部分比對（「みずき」也會找到「志田みずき」），詳細頁只認完全相符的那位
+  const actress = s.data?.data?.data?.find((a) => a.name === name);
   const videoQuery = useAVVideoSearch(
     { page: videoPage, actress: name },
     !!name && !!actress,
