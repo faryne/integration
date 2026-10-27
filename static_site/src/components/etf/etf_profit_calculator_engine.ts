@@ -70,9 +70,11 @@ export function calcTransactionsResult(
     ) => {
       if (shares <= 0) return;
 
+      // 配息資格：除息日「前」就持有（除息日當天才買不算），且除息日當天或之後才賣（除息日當天賣出仍可領）。
+      // 所以持有區間是 (fromDate, toDate]，前後段區間剛好接得起來不會重複計算。
       distributions
         .filter(
-          (d) => d.ex_date >= fromDate && (toDate ? d.ex_date < toDate : true),
+          (d) => d.ex_date > fromDate && (toDate ? d.ex_date <= toDate : true),
         )
         .forEach((d) => {
           const sharesHeld = shares * factor;
@@ -114,7 +116,7 @@ export function calcTransactionsResult(
 
     // 一筆購入可以分好幾次賣出：依賣出日期排序後，切成一段一段的持有區間，
     // 每段區間內實際持有的股數 = 原始股數扣掉「這段之前」已經賣掉的部分。
-    // 例如買 4000 股分 3 次賣：[買進, 賣1) 持有 4000、[賣1, 賣2) 持有 3500...
+    // 例如買 4000 股分 3 次賣：(買進, 賣1] 持有 4000、(賣1, 賣2] 持有 3500...
     // 最後一段 [最後一次賣出, 現在] 持有的就是還沒賣掉的剩餘股數。
     const sortedSells = rec.sells
       .filter((s) => s.sellDate && s.sellShares > 0)
