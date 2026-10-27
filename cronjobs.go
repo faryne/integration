@@ -224,12 +224,12 @@ var cronJobs = map[string]cronGroup{
 				},
 			},
 			{
-				// 當天上架清單前 10 筆發到 Telegram；可用 -dayFrom 指定日期
+				// 先同步當天作品，同步完再把當天上架清單前 10 筆發到 Telegram；可用 -dayFrom 指定日期
 				Name:     "av-dmm-video-notify",
 				Schedule: "0 10 * * *",
 				Enabled:  true,
 				Handler: func() {
-					avService.RunDMMVideoDailyNotify(commandParams.Value("dayFrom"))
+					avService.RunDMMVideoSyncAndNotify(commandParams.Value("dayFrom"))
 				},
 			},
 		},
