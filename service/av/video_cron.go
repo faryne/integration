@@ -77,6 +77,18 @@ func videoSyncRange(dayFrom, dayTo string) (time.Time, time.Time, error) {
 	return from, to, nil
 }
 
+// RunDMMVideoSyncAndNotify 每日通知排程：先同步當天的作品，同步完才發 TG 通知，
+// 通知裡的片在網站上一定查得到（不用等隔天 03:50 的前一天同步）。
+// 一天約 80～150 部、同步約 1 分鐘，通知會比排程時間晚一點；同步失敗仍照常發通知（失敗另有 TG 告警）。
+// 手動 -cmd 也走同一個流程，全部跑完程式才結束
+func RunDMMVideoSyncAndNotify(day string) {
+	if day == "" {
+		day = time.Now().Format(time.DateOnly)
+	}
+	RunDMMVideoSync(day, day)
+	RunDMMVideoDailyNotify(day)
+}
+
 // RunDMMVideoDailyNotify 把當天（或 -dayFrom 指定日）上架清單前 10 筆發到 TG，取代 PHP dmm:daily；
 // 跟 PHP 版一樣先發文字清單，再補一組封面相簿
 func RunDMMVideoDailyNotify(day string) {
