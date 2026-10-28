@@ -30,9 +30,13 @@ interface ProfitDetailTableProps {
   maxVisibleRows?: number;
 }
 
-const TYPE_LABEL: Record<ProfitDetailRow["type"], string> = {
-  dividend: "配息",
-  sell: "賣出",
+// 類型欄用不同顏色的 outlined Chip 區分，避開狀態欄已用的 success／warning
+const TYPE_CHIP: Record<
+  ProfitDetailRow["type"],
+  { label: string; color: "info" | "secondary" }
+> = {
+  dividend: { label: "配息", color: "info" },
+  sell: { label: "處分", color: "secondary" },
 };
 
 // 可排序的欄位：日期 + 三個金額類欄位（金額本身、稅後實領、預估退稅）
@@ -181,7 +185,9 @@ export function ProfitDetailTable({
             {visibleRows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>{row.date}</TableCell>
-                <TableCell>{TYPE_LABEL[row.type]}</TableCell>
+                <TableCell>
+                  <Chip size="small" variant="outlined" {...TYPE_CHIP[row.type]} />
+                </TableCell>
                 <TableCell>{row.description}</TableCell>
                 <TableCell
                   align="right"
