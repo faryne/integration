@@ -43,12 +43,12 @@ const TYPE_CHIP: Record<
 type SortField = "date" | "grossAmount" | "netAmount" | "refundAmount";
 type SortDirection = "asc" | "desc";
 
-// 明細分頁：全部／配息／已處分（賣出），all 以外直接對應 row.type
+// 明細分頁：全部／配息／賣出，all 以外直接對應 row.type
 type DetailTab = "all" | ProfitDetailRow["type"];
 const DETAIL_TABS: { value: DetailTab; label: string }[] = [
   { value: "all", label: "全部" },
   { value: "dividend", label: "配息" },
-  { value: "sell", label: "已處分" },
+  { value: "sell", label: "賣出" },
 ];
 
 // 配息（含尚未除息、已公告金額的）跟賣出損益混在一起、依日期排序的明細，
@@ -142,7 +142,7 @@ export function ProfitDetailTable({
   return (
     <Box>
       <Typography variant="subtitle2" gutterBottom>
-        配息 & 已處分獲利明細
+        配息 & 賣出獲利明細
       </Typography>
       <Tabs
         value={tab}
