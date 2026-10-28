@@ -19,6 +19,7 @@ import { ActressSearch } from "@/components/av/actress_search";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import type { ListByPaginationRequest } from "@/apis/interfaces.ts";
 import type { Actress } from "@/types/av.ts";
+import { formatSizeRange } from "@/helpers/avSizeRange.ts";
 import FaceRetouchingNaturalIcon from "@mui/icons-material/FaceRetouchingNatural";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
 
@@ -174,7 +175,7 @@ export function AVActress() {
   );
 
   const rangeLabel = (label: string, value?: number[]) =>
-    value ? `${label} ${value.join("~")}` : "";
+    value ? `${label} ${formatSizeRange(value)}` : "";
 
   const handleSearch = (input: ActressSearchRequest) => {
     setQuery(actressSearchToParams({ ...input, page: 1 }));
