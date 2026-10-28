@@ -10,6 +10,7 @@ import {
 import { useEffect, useState } from "react";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import SearchIcon from "@mui/icons-material/Search";
+import { formatSizeRange } from "@/helpers/avSizeRange.ts";
 
 export interface IActressSearch {
   onClick: (input: ActressSearchRequest) => void;
@@ -103,21 +104,6 @@ export function ActressSearch(props: IActressSearch) {
     }));
   };
 
-  const rangeText = (value: number[] | undefined, unit: string) => {
-    if (!value) {
-      return "不限";
-    }
-
-    const [min, max] = value;
-    if (min > 0 && max > 0) {
-      return `${min}~${max}${unit}`;
-    }
-    if (min > 0) {
-      return `${min}${unit}以上`;
-    }
-    return `${max}${unit}以下`;
-  };
-
   const renderRangeInputs = (
     label: string,
     key: RangeKey,
@@ -135,7 +121,7 @@ export function ActressSearch(props: IActressSearch) {
         </Typography>
         <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
           <Typography color="text.secondary" variant="caption">
-            {rangeText(value, unit)}
+            {formatSizeRange(value, unit)}
           </Typography>
           {value && (
             <IconButton
