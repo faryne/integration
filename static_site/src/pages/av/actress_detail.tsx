@@ -1,14 +1,19 @@
 import { ActressDetail } from "@/components/av/actress_detail.tsx";
 import { useAVActressSearch } from "@/apis/av/actress_search.ts";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useAVVideoSearch } from "@/apis/av/video_search.ts";
-import { useEffect, useState } from "react";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 
 export function AVActressDetail() {
   const { name } = useParams<{ name: string }>();
-  const [videoPage, setVideoPage] = useState(1);
+  // 出演影片的頁碼存在網址（?page=N），分頁可以直接分享、上一頁也回得去；換女優時網址不帶 page，自然回到第 1 頁
+  const [searchParams, setSearchParams] = useSearchParams();
+  const parsedPage = Number(searchParams.get("page"));
+  const videoPage =
+    Number.isInteger(parsedPage) && parsedPage > 1 ? parsedPage : 1;
+  const setVideoPage = (page: number) =>
+    setSearchParams(page > 1 ? { page: String(page) } : {});
   const s = useAVActressSearch({ name, page: 1 }, !!name);
   // 姓名搜尋是部分比對（「みずき」也會找到「志田みずき」），詳細頁只認完全相符的那位
   const actress = s.data?.data?.data?.find((a) => a.name === name);
@@ -16,10 +21,6 @@ export function AVActressDetail() {
     { page: videoPage, actress: name },
     !!name && !!actress,
   );
-
-  useEffect(() => {
-    setVideoPage(1);
-  }, [name]);
 
   if (!name || (s.isSuccess && !actress)) {
     return (
