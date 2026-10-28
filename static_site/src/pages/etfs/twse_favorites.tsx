@@ -23,6 +23,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import { useTitle } from "@/helpers/title.tsx";
+import { useReplaceUrlWhile } from "@/helpers/useReplaceUrlWhile.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import {
   useSaveTwseEtfFavorite,
@@ -103,6 +104,8 @@ export default function TwseEtfFavoritesPage() {
   const navigate = useNavigate();
   const { session } = useAuth();
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  // 開啟明細時網址比照首頁換成 /data/etf/twse/:code，關閉後還原成最愛頁
+  useReplaceUrlWhile(selectedCode ? `/data/etf/twse/${selectedCode}` : null);
 
   const codeListQuery = useGetTwseEtfCodeList();
   const etfByCode = useMemo(
