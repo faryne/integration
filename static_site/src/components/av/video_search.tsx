@@ -39,7 +39,17 @@ export function VideoSearch(props: IVideoSearch) {
 
   return (
     <>
-      <Stack direction={"column"} spacing={2} sx={{ marginTop: "10px" }}>
+      {/* 包成 form：在輸入框按 Enter 就會送出 */}
+      <Stack
+        component="form"
+        direction={"column"}
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmit();
+        }}
+        spacing={2}
+        sx={{ marginTop: "10px" }}
+      >
         <TextField
           label={"關鍵字"}
           variant={"outlined"}
@@ -87,7 +97,7 @@ export function VideoSearch(props: IVideoSearch) {
           />
         </LocalizationProvider>
 
-        <Button onClick={handleSubmit} variant={"contained"}>
+        <Button type="submit" variant={"contained"}>
           搜尋
         </Button>
       </Stack>

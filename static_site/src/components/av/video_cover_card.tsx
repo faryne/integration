@@ -13,7 +13,6 @@ export function VideoCoverCard({ video }: { video: Video }) {
       to={`/av/video/${encodeURIComponent(video.maker_no || video.no)}`}
       sx={{
         color: "inherit",
-        flex: { xs: "0 0 110px", md: "0 0 132px" },
         textAlign: "left",
         textDecoration: "none",
         "&:hover img": { transform: "translateY(-2px)" },
