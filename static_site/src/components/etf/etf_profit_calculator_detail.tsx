@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -42,6 +42,9 @@ const TYPE_CHIP: Record<
 // 可排序的欄位：日期 + 三個金額類欄位（金額本身、稅後實領、預估退稅）
 type SortField = "date" | "grossAmount" | "netAmount" | "refundAmount";
 type SortDirection = "asc" | "desc";
+
+// 明細依年份分群，date 固定為 YYYY-MM-DD
+const yearOf = (row: ProfitDetailRow) => row.date.slice(0, 4);
 
 // 明細分頁：全部／配息／賣出，all 以外直接對應 row.type
 type DetailTab = "all" | ProfitDetailRow["type"];
@@ -89,6 +92,14 @@ export function ProfitDetailTable({
     if (!sortField) return tabRows;
 
     return [...tabRows].sort((a, b) => {
+      // 先依年份排，確保同一年的資料連在一起才能分群；只有依日期降冪時年份才跟著降冪，
+      // 依金額排序時則是「年份升冪、年內依金額」
+      const yearDiff = yearOf(a).localeCompare(yearOf(b));
+      if (yearDiff !== 0) {
+        return sortField === "date" && sortDirection === "desc"
+          ? -yearDiff
+          : yearDiff;
+      }
       if (sortField === "date") {
         return sortDirection === "asc"
           ? a.date.localeCompare(b.date)
@@ -111,6 +122,15 @@ export function ProfitDetailTable({
     () => tabRows.reduce((sum, row) => sum + row.grossAmount, 0),
     [tabRows],
   );
+
+  // 各年份「金額」欄小計，顯示在年份分群列上（以整個分頁計算，不受「顯示更多」截斷影響）
+  const yearTotals = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const row of tabRows) {
+      totals.set(yearOf(row), (totals.get(yearOf(row)) ?? 0) + row.grossAmount);
+    }
+    return totals;
+  }, [tabRows]);
 
   const isLimited = maxVisibleRows > 0 && sortedRows.length > maxVisibleRows;
   const visibleRows =
@@ -182,59 +202,94 @@ export function ProfitDetailTable({
             </TableRow>
           </TableHead>
           <TableBody>
-            {visibleRows.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell>{row.date}</TableCell>
-                <TableCell>
-                  <Chip size="small" variant="outlined" {...TYPE_CHIP[row.type]} />
-                </TableCell>
-                <TableCell>{row.description}</TableCell>
-                <TableCell
-                  align="right"
-                  sx={
-                    row.type === "sell"
-                      ? { color: getTrendColor(row.grossAmount) }
-                      : undefined
-                  }
-                >
-                  {formatCurrencyAmount(
-                    currencySymbol,
-                    row.grossAmount,
-                    amountDecimals,
+            {visibleRows.map((row, index) => {
+              const year = yearOf(row);
+              const yearTotal = yearTotals.get(year) ?? 0;
+              // 跟上一列年份不同時，先插入年份分群列
+              const isNewYear =
+                index === 0 || yearOf(visibleRows[index - 1]) !== year;
+              return (
+                <Fragment key={row.id}>
+                  {isNewYear && (
+                    <TableRow sx={{ bgcolor: "action.hover" }}>
+                      <TableCell colSpan={3}>
+                        <Typography variant="body2" fontWeight="bold">
+                          {year} 年
+                        </Typography>
+                      </TableCell>
+                      <TableCell
+                        align="right"
+                        sx={{ color: getTrendColor(yearTotal) }}
+                      >
+                        <Typography variant="body2" fontWeight="bold">
+                          {formatCurrencyAmount(
+                            currencySymbol,
+                            yearTotal,
+                            amountDecimals,
+                          )}
+                        </Typography>
+                      </TableCell>
+                      <TableCell colSpan={showNetAmount ? 3 : 1} />
+                    </TableRow>
                   )}
-                </TableCell>
-                {showNetAmount && (
-                  <TableCell align="right">
-                    {row.netAmount === null
-                      ? "—"
-                      : formatCurrencyAmount(
-                          currencySymbol,
-                          row.netAmount,
-                          amountDecimals,
-                        )}
-                  </TableCell>
-                )}
-                {showNetAmount && (
-                  <TableCell align="right">
-                    {row.refundAmount === null
-                      ? "—"
-                      : formatCurrencyAmount(
-                          currencySymbol,
-                          row.refundAmount,
-                          amountDecimals,
-                        )}
-                  </TableCell>
-                )}
-                <TableCell align="center">
-                  <Chip
-                    size="small"
-                    label={row.realized ? "已實現" : "未實現"}
-                    color={row.realized ? "success" : "warning"}
-                    variant={row.realized ? "filled" : "outlined"}
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
+                  <TableRow>
+                    <TableCell>{row.date}</TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        {...TYPE_CHIP[row.type]}
+                      />
+                    </TableCell>
+                    <TableCell>{row.description}</TableCell>
+                    <TableCell
+                      align="right"
+                      sx={
+                        row.type === "sell"
+                          ? { color: getTrendColor(row.grossAmount) }
+                          : undefined
+                      }
+                    >
+                      {formatCurrencyAmount(
+                        currencySymbol,
+                        row.grossAmount,
+                        amountDecimals,
+                      )}
+                    </TableCell>
+                    {showNetAmount && (
+                      <TableCell align="right">
+                        {row.netAmount === null
+                          ? "—"
+                          : formatCurrencyAmount(
+                              currencySymbol,
+                              row.netAmount,
+                              amountDecimals,
+                            )}
+                      </TableCell>
+                    )}
+                    {showNetAmount && (
+                      <TableCell align="right">
+                        {row.refundAmount === null
+                          ? "—"
+                          : formatCurrencyAmount(
+                              currencySymbol,
+                              row.refundAmount,
+                              amountDecimals,
+                            )}
+                      </TableCell>
+                    )}
+                    <TableCell align="center">
+                      <Chip
+                        size="small"
+                        label={row.realized ? "已實現" : "未實現"}
+                        color={row.realized ? "success" : "warning"}
+                        variant={row.realized ? "filled" : "outlined"}
+                      />
+                    </TableCell>
+                  </TableRow>
+                </Fragment>
+              );
+            })}
           </TableBody>
           <TableFooter>
             <TableRow>
