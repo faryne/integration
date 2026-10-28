@@ -4,13 +4,16 @@ import {
   Button,
   Chip,
   Paper,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableContainer,
+  TableFooter,
   TableHead,
   TableRow,
   TableSortLabel,
+  Tabs,
   Typography,
 } from "@mui/material";
 import type { ProfitDetailRow } from "@/components/etf/etf_profit_calculator_types.ts";
@@ -36,6 +39,18 @@ const TYPE_LABEL: Record<ProfitDetailRow["type"], string> = {
 type SortField = "date" | "grossAmount" | "netAmount" | "refundAmount";
 type SortDirection = "asc" | "desc";
 
+// 明細分頁：全部／配息／已處分（賣出），all 以外直接對應 row.type
+type DetailTab = "all" | ProfitDetailRow["type"];
+const DETAIL_TABS: { value: DetailTab; label: string }[] = [
+  { value: "all", label: "全部" },
+  { value: "dividend", label: "配息" },
+  { value: "sell", label: "已處分" },
+];
+
+// 加總金額欄位（配息為總配息、賣出為已實現損益）
+const sumGross = (rows: ProfitDetailRow[]) =>
+  rows.reduce((sum, row) => sum + row.grossAmount, 0);
+
 // 配息（含尚未除息、已公告金額的）跟賣出損益混在一起、依日期排序的明細，
 // 用「狀態」欄位的 Chip 區分已實現／未實現。
 export function ProfitDetailTable({
@@ -49,6 +64,7 @@ export function ProfitDetailTable({
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [showAll, setShowAll] = useState(false);
+  const [tab, setTab] = useState<DetailTab>("all");
 
   const toggleSort = (field: SortField) => {
     if (sortField !== field) {
@@ -63,10 +79,16 @@ export function ProfitDetailTable({
     }
   };
 
-  const sortedRows = useMemo(() => {
-    if (!sortField) return rows;
+  // 目前分頁的資料列；footer 合計也以此為範圍（不受「顯示更多」截斷影響）
+  const tabRows = useMemo(
+    () => (tab === "all" ? rows : rows.filter((row) => row.type === tab)),
+    [rows, tab],
+  );
 
-    return [...rows].sort((a, b) => {
+  const sortedRows = useMemo(() => {
+    if (!sortField) return tabRows;
+
+    return [...tabRows].sort((a, b) => {
       if (sortField === "date") {
         return sortDirection === "asc"
           ? a.date.localeCompare(b.date)
@@ -82,7 +104,16 @@ export function ProfitDetailTable({
       if (bv === null) return -1;
       return sortDirection === "asc" ? av - bv : bv - av;
     });
-  }, [rows, sortField, sortDirection]);
+  }, [tabRows, sortField, sortDirection]);
+
+  const totals = useMemo(
+    () => [
+      { label: "總金額", value: sumGross(tabRows) },
+      { label: "已實現", value: sumGross(tabRows.filter((row) => row.realized)) },
+      { label: "未實現", value: sumGross(tabRows.filter((row) => !row.realized)) },
+    ],
+    [tabRows],
+  );
 
   const isLimited = maxVisibleRows > 0 && sortedRows.length > maxVisibleRows;
   const visibleRows =
@@ -116,6 +147,28 @@ export function ProfitDetailTable({
       <Typography variant="subtitle2" gutterBottom>
         配息 & 已處分獲利明細
       </Typography>
+      <Tabs
+        value={tab}
+        onChange={(_, value: DetailTab) => setTab(value)}
+        variant="scrollable"
+        allowScrollButtonsMobile
+        sx={{ mb: 1 }}
+      >
+        {DETAIL_TABS.map(({ value, label }) => {
+          const count =
+            value === "all"
+              ? rows.length
+              : rows.filter((row) => row.type === value).length;
+          return (
+            <Tab
+              key={value}
+              value={value}
+              label={`${label} (${count})`}
+              disabled={count === 0}
+            />
+          );
+        })}
+      </Tabs>
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">
           <TableHead>
@@ -184,6 +237,24 @@ export function ProfitDetailTable({
               </TableRow>
             ))}
           </TableBody>
+          <TableFooter>
+            {totals.map(({ label, value }) => (
+              <TableRow key={label}>
+                <TableCell colSpan={3} align="right">
+                  <Typography variant="body2" fontWeight="bold">
+                    {label}
+                  </Typography>
+                </TableCell>
+                <TableCell align="right" sx={{ color: getTrendColor(value) }}>
+                  <Typography variant="body2" fontWeight="bold">
+                    {formatCurrencyAmount(currencySymbol, value, amountDecimals)}
+                  </Typography>
+                </TableCell>
+                {/* 稅後實領／預估退稅／狀態欄位不加總，留白 */}
+                <TableCell colSpan={showNetAmount ? 3 : 1} />
+              </TableRow>
+            ))}
+          </TableFooter>
         </Table>
       </TableContainer>
       {isLimited && !showAll && (
