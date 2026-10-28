@@ -100,7 +100,6 @@ const columns = [
 // 我的最愛 ETF 總覽：彙整每支已收藏 ETF 的已儲存交易紀錄，重用獲利試算的
 // 計算引擎算出目前持股數、已實現/未實現/總盈虧與投入成本，列表 + 總計列呈現。
 export default function TwseEtfFavoritesPage() {
-  useTitle("我的最愛 ETF - Faryne 的實驗室");
   const navigate = useNavigate();
   const { session } = useAuth();
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
@@ -111,6 +110,14 @@ export default function TwseEtfFavoritesPage() {
   const etfByCode = useMemo(
     () => new Map((codeListQuery.data?.data ?? []).map((e) => [e.code, e])),
     [codeListQuery.data],
+  );
+
+  // 開啟明細時標題比照首頁換成該檔 ETF，關閉後還原成最愛頁標題
+  const selectedEtf = selectedCode ? etfByCode.get(selectedCode) : undefined;
+  useTitle(
+    selectedEtf
+      ? `ETF 投資導航 - ${selectedEtf.code} ${selectedEtf.name}`
+      : "我的最愛 ETF - Faryne 的實驗室",
   );
 
   // 一支 API 同時拿回配息紀錄跟已儲存交易紀錄，取代原本各支收藏各打兩支 API
