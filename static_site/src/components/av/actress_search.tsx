@@ -241,7 +241,16 @@ export function ActressSearch(props: IActressSearch) {
   ];
 
   return (
-    <Stack direction={"column"} spacing={2.5}>
+    // 包成 form：在任一輸入框按 Enter 就會送出（其他按鈕預設 type="button"，不會誤觸）
+    <Stack
+      component="form"
+      direction={"column"}
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSubmit();
+      }}
+      spacing={2.5}
+    >
       <Stack direction={"column"} spacing={1.5}>
         <TextField
           label={"關鍵字"}
@@ -327,7 +336,7 @@ export function ActressSearch(props: IActressSearch) {
       {renderRangeInputs("臀圍", "h", req.h, "cm", bodyPresets)}
 
       <Button
-        onClick={handleSubmit}
+        type="submit"
         startIcon={<SearchIcon />}
         sx={{ borderRadius: 1.5 }}
         variant={"contained"}
