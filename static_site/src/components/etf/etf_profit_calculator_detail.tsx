@@ -36,7 +36,7 @@ const TYPE_CHIP: Record<
   { label: string; color: "info" | "secondary" }
 > = {
   dividend: { label: "配息", color: "info" },
-  sell: { label: "處分", color: "secondary" },
+  sell: { label: "賣出", color: "secondary" },
 };
 
 // 可排序的欄位：日期 + 三個金額類欄位（金額本身、稅後實領、預估退稅）
