@@ -6,7 +6,9 @@ type ActressQuery struct {
 }
 
 type ActressQueryRequest struct {
-	Cup        string `query:"cup"`
+	Cup string `query:"cup"`
+	// Cups 複選罩杯，逗號分隔（cups=A,B,D），符合任一個即可；可與 Cup 並用
+	Cups       string `query:"cups"`
 	B          []int  `query:"b"`
 	W          []int  `query:"w"`
 	H          []int  `query:"h"`

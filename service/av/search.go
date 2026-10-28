@@ -1,6 +1,7 @@
 package av
 
 import (
+	"slices"
 	"strings"
 	"time"
 
@@ -249,8 +250,8 @@ func buildActressSearchQuery(input av.ActressQueryRequest, domain string) map[st
 	} else if input.BirthYear > 0 {
 		search.SetQuery(map[string]any{"term": map[string]any{"birth_year": input.BirthYear}}, true, q)
 	}
-	if cup := strings.ToUpper(strings.TrimSpace(input.Cup)); cup != "" {
-		search.SetQuery(exactStringQuery("cup", cup), true, q)
+	if cups := actressCups(input); len(cups) > 0 {
+		search.SetQuery(actressCupQuery(cups), true, q)
 		q["sort"] = map[string]any{"cup.keyword": map[string]any{"order": "desc", "unmapped_type": "keyword"}}
 	}
 	if bloodType := strings.ToUpper(strings.TrimSpace(input.BloodType)); bloodType != "" {
@@ -272,6 +273,29 @@ func buildActressSearchQuery(input av.ActressQueryRequest, domain string) map[st
 		}
 	}
 	return q
+}
+
+// actressCups 合併 cup=A（單選）與 cups=A,B,D（複選）兩種寫法，轉大寫並去掉重複
+func actressCups(input av.ActressQueryRequest) []string {
+	var cups []string
+	for _, cup := range append([]string{input.Cup}, strings.Split(input.Cups, ",")...) {
+		if cup = strings.ToUpper(strings.TrimSpace(cup)); cup != "" && !slices.Contains(cups, cup) {
+			cups = append(cups, cup)
+		}
+	}
+	return cups
+}
+
+// actressCupQuery 複選罩杯是「符合任一個」：A、B、D 選三個就是 A 或 B 或 D
+func actressCupQuery(cups []string) map[string]any {
+	if len(cups) == 1 {
+		return exactStringQuery("cup", cups[0])
+	}
+	should := make([]map[string]any, 0, len(cups))
+	for _, cup := range cups {
+		should = append(should, exactStringQuery("cup", cup))
+	}
+	return map[string]any{"bool": map[string]any{"should": should, "minimum_should_match": 1}}
 }
 
 // actressSizeQuery 三圍／身高的條件：[N] 是剛好 N，[min, max] 是區間。

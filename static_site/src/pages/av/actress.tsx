@@ -20,6 +20,7 @@ import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import type { ListByPaginationRequest } from "@/apis/interfaces.ts";
 import type { Actress } from "@/types/av.ts";
 import { formatSizeRange } from "@/helpers/avSizeRange.ts";
+import { selectedCups, withCups } from "@/helpers/avActressCups.ts";
 import FaceRetouchingNaturalIcon from "@mui/icons-material/FaceRetouchingNatural";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
 
@@ -58,16 +59,19 @@ const parseActressSearchParams = (
   query: URLSearchParams,
 ): ListByPaginationRequest<ActressSearchRequest> => {
   const page = parsePositiveInt(query.get("page")) ?? 1;
-  const search: ListByPaginationRequest<ActressSearchRequest> = { page };
+  // 罩杯：cup=A（單選）或 cups=A,B,D（複選），統一整理成單選 cup／複選 cups
+  const search = withCups<ListByPaginationRequest<ActressSearchRequest>>(
+    { page },
+    selectedCups({
+      cup: query.get("cup") ?? undefined,
+      cups: query.get("cups") ?? undefined,
+    }),
+  );
   const name = query.get("name")?.trim();
-  const cup = query.get("cup")?.trim().toUpperCase();
   const birthYear = parsePositiveInt(query.get("birth_year"));
 
   if (name) {
     search.name = name;
-  }
-  if (cup) {
-    search.cup = cup;
   }
   if (birthYear) {
     search.birth_year = birthYear;
@@ -95,8 +99,12 @@ const actressSearchToParams = (
   if (search.name?.trim()) {
     query.set("name", search.name.trim());
   }
-  if (search.cup?.trim()) {
-    query.set("cup", search.cup.trim().toUpperCase());
+  const cups = selectedCups(search);
+  if (cups.length === 1) {
+    query.set("cup", cups[0]);
+  }
+  if (cups.length > 1) {
+    query.set("cups", cups.join(","));
   }
   if (search.birth_year && search.birth_year > 0) {
     query.set("birth_year", String(search.birth_year));
@@ -167,6 +175,7 @@ export function AVActress() {
   const hasActiveFilter = Boolean(
     search.name ||
     search.cup ||
+    search.cups ||
     search.birth_year ||
     search.height ||
     search.b ||
@@ -273,9 +282,9 @@ export function AVActress() {
                         sx={{ borderRadius: 1 }}
                       />
                     )}
-                    {search.cup && (
+                    {(search.cup || search.cups) && (
                       <Chip
-                        label={`罩杯：${search.cup}`}
+                        label={`罩杯：${selectedCups(search).join("、")}`}
                         size="small"
                         sx={{ borderRadius: 1 }}
                       />

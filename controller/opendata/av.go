@@ -82,6 +82,7 @@ func AvVideoFacets(ctx fiber.Ctx) error {
 // @Tags OpenData AV
 // @Produce json
 // @Param cup query string false "Cup"
+// @Param cups query string false "Cups, comma separated (A,B,D); matches any"
 // @Param b query []int false "Bust range" collectionFormat(multi)
 // @Param w query []int false "Waist range" collectionFormat(multi)
 // @Param h query []int false "Hip range" collectionFormat(multi)
