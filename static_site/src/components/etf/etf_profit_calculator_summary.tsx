@@ -24,11 +24,11 @@ export function ProfitSummary({
   const formatAmount = (amount: number) =>
     formatCurrencyAmount(currencySymbol, amount, amountDecimals);
   const realizedCaption =
-    `配息 ${formatAmount(result.realizedDividend)} + 已處分 ${formatAmount(result.realizedPriceGain)}` +
+    `配息 ${formatAmount(result.realizedDividend)} + 已賣出 ${formatAmount(result.realizedPriceGain)}` +
     (withholdingRate > 0
       ? ` + 預估退稅 ${formatAmount(result.realizedRefund)}`
       : "");
-  const unrealizedCaption = `配息(未除息) ${formatAmount(result.unrealizedDividend)} + 未處分 ${formatAmount(result.unrealizedPriceGain)}`;
+  const unrealizedCaption = `配息(未除息) ${formatAmount(result.unrealizedDividend)} + 未賣出 ${formatAmount(result.unrealizedPriceGain)}`;
 
   return (
     <Box sx={{ py: 2 }}>
