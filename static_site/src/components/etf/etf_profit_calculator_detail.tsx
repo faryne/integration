@@ -47,10 +47,6 @@ const DETAIL_TABS: { value: DetailTab; label: string }[] = [
   { value: "sell", label: "已處分" },
 ];
 
-// 加總金額欄位（配息為總配息、賣出為已實現損益）
-const sumGross = (rows: ProfitDetailRow[]) =>
-  rows.reduce((sum, row) => sum + row.grossAmount, 0);
-
 // 配息（含尚未除息、已公告金額的）跟賣出損益混在一起、依日期排序的明細，
 // 用「狀態」欄位的 Chip 區分已實現／未實現。
 export function ProfitDetailTable({
@@ -106,12 +102,9 @@ export function ProfitDetailTable({
     });
   }, [tabRows, sortField, sortDirection]);
 
-  const totals = useMemo(
-    () => [
-      { label: "總金額", value: sumGross(tabRows) },
-      { label: "已實現", value: sumGross(tabRows.filter((row) => row.realized)) },
-      { label: "未實現", value: sumGross(tabRows.filter((row) => !row.realized)) },
-    ],
+  // 目前分頁「金額」欄合計（配息為總配息、賣出為已實現損益）
+  const total = useMemo(
+    () => tabRows.reduce((sum, row) => sum + row.grossAmount, 0),
     [tabRows],
   );
 
@@ -238,22 +231,20 @@ export function ProfitDetailTable({
             ))}
           </TableBody>
           <TableFooter>
-            {totals.map(({ label, value }) => (
-              <TableRow key={label}>
-                <TableCell colSpan={3} align="right">
-                  <Typography variant="body2" fontWeight="bold">
-                    {label}
-                  </Typography>
-                </TableCell>
-                <TableCell align="right" sx={{ color: getTrendColor(value) }}>
-                  <Typography variant="body2" fontWeight="bold">
-                    {formatCurrencyAmount(currencySymbol, value, amountDecimals)}
-                  </Typography>
-                </TableCell>
-                {/* 稅後實領／預估退稅／狀態欄位不加總，留白 */}
-                <TableCell colSpan={showNetAmount ? 3 : 1} />
-              </TableRow>
-            ))}
+            <TableRow>
+              <TableCell colSpan={3} align="right">
+                <Typography variant="body2" fontWeight="bold">
+                  總金額
+                </Typography>
+              </TableCell>
+              <TableCell align="right" sx={{ color: getTrendColor(total) }}>
+                <Typography variant="body2" fontWeight="bold">
+                  {formatCurrencyAmount(currencySymbol, total, amountDecimals)}
+                </Typography>
+              </TableCell>
+              {/* 稅後實領／預估退稅／狀態欄位不加總，留白 */}
+              <TableCell colSpan={showNetAmount ? 3 : 1} />
+            </TableRow>
           </TableFooter>
         </Table>
       </TableContainer>
