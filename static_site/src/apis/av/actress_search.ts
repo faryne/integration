@@ -13,6 +13,8 @@ export interface ActressSearchRequest {
   w?: number[];
   h?: number[];
   cup?: string;
+  // 複選罩杯，逗號分隔（A,B,D），符合任一個即可
+  cups?: string;
   height?: number[];
   random?: number;
   birth_year?: number;

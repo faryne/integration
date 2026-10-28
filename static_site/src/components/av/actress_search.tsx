@@ -11,6 +11,11 @@ import { useEffect, useState } from "react";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import SearchIcon from "@mui/icons-material/Search";
 import { formatSizeRange } from "@/helpers/avSizeRange.ts";
+import {
+  normalizeCups,
+  selectedCups,
+  withCups,
+} from "@/helpers/avActressCups.ts";
 
 export interface IActressSearch {
   onClick: (input: ActressSearchRequest) => void;
@@ -44,10 +49,18 @@ export function ActressSearch(props: IActressSearch) {
   const [req, setReq] = useState<ActressSearchRequest>({
     page: 1,
   });
+  // 自訂罩杯輸入框自己留原始文字，不然打到一半的逗號（「K,」）會被正規化吃掉
+  const [customCups, setCustomCups] = useState("");
+  const cups = selectedCups(req);
 
   useEffect(() => {
     if (props.conditions) {
       setReq({ ...props.conditions, page: props.conditions.page ?? 1 });
+      setCustomCups(
+        selectedCups(props.conditions)
+          .filter((cup) => !cupOptions.includes(cup))
+          .join(","),
+      );
     }
   }, [props.conditions]);
 
@@ -182,29 +195,36 @@ export function ActressSearch(props: IActressSearch) {
     </Stack>
   );
 
-  const setCup = (cup: string) => {
+  // 罩杯可複選（符合任一個）：點選項切換選取
+  const toggleCup = (cup: string) =>
     setReq((current) => {
-      const next = { ...current };
-      if (next.cup === cup || cup === "") {
-        delete next.cup;
-        return next;
-      }
-
-      next.cup = cup;
-      return next;
+      const list = selectedCups(current);
+      return withCups(
+        current,
+        list.includes(cup) ? list.filter((c) => c !== cup) : [...list, cup],
+      );
     });
+
+  // 自訂罩杯可用逗號輸入多個（K,L），與上面點選的選項合併
+  const updateCustomCups = (text: string) => {
+    setCustomCups(text);
+    setReq((current) =>
+      withCups(
+        current,
+        normalizeCups([
+          ...selectedCups(current).filter((c) => cupOptions.includes(c)),
+          text,
+        ]),
+      ),
+    );
   };
 
   const handleSubmit = () => {
-    const next = { ...req };
+    const next = withCups(req, cups);
     next.name = next.name?.trim();
-    next.cup = next.cup?.trim().toUpperCase();
 
     if (!next.name) {
       delete next.name;
-    }
-    if (!next.cup) {
-      delete next.cup;
     }
     (["height", "b", "w", "h"] as RangeKey[]).forEach((key) => {
       const range = next[key];
@@ -256,7 +276,7 @@ export function ActressSearch(props: IActressSearch) {
               罩杯
             </Typography>
             <Typography color="text.secondary" variant="caption">
-              {req.cup ? `${req.cup} Cup` : "不限"}
+              {cups.length > 0 ? `${cups.join("、")} Cup` : "不限"}
             </Typography>
           </Stack>
           <Stack direction="row" flexWrap="wrap" gap={0.75}>
@@ -265,27 +285,18 @@ export function ActressSearch(props: IActressSearch) {
                 clickable
                 key={cup}
                 label={cup}
-                onClick={() => setCup(cup)}
+                onClick={() => toggleCup(cup)}
                 size="small"
                 sx={{ borderRadius: 1, minWidth: 36 }}
-                variant={req.cup === cup ? "filled" : "outlined"}
+                variant={cups.includes(cup) ? "filled" : "outlined"}
               />
             ))}
-            {req.cup && !cupOptions.includes(req.cup) && (
-              <Chip
-                clickable
-                label={req.cup}
-                onClick={() => setCup(req.cup ?? "")}
-                size="small"
-                sx={{ borderRadius: 1 }}
-              />
-            )}
           </Stack>
           <TextField
             label="自訂罩杯"
-            onChange={(e) => setCup(e.target.value.trim().toUpperCase())}
+            onChange={(e) => updateCustomCups(e.target.value)}
             size="small"
-            value={req.cup && !cupOptions.includes(req.cup) ? req.cup : ""}
+            value={customCups}
           />
         </Stack>
         <TextField

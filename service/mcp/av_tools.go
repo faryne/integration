@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"faryne.dev/model/entity"
@@ -30,7 +31,7 @@ type videoSearchArguments struct {
 	Facets bool `json:"facets"`
 }
 
-// stringOrStrings 同時接受單一字串或字串陣列（tag 可複選，舊的單一字串呼叫照樣可用）
+// stringOrStrings 同時接受單一字串或字串陣列（tag、cups 可複選，舊的單一字串呼叫照樣可用）
 type stringOrStrings []string
 
 func (s *stringOrStrings) UnmarshalJSON(data []byte) error {
@@ -43,24 +44,26 @@ func (s *stringOrStrings) UnmarshalJSON(data []byte) error {
 	}
 	var many []string
 	if err := json.Unmarshal(data, &many); err != nil {
-		return fmt.Errorf("tag must be a string or an array of strings")
+		return fmt.Errorf("must be a string or an array of strings")
 	}
 	*s = many
 	return nil
 }
 
 type actressSearchArguments struct {
-	Cup        string `json:"cup"`
-	B          []int  `json:"b"`
-	W          []int  `json:"w"`
-	H          []int  `json:"h"`
-	Height     []int  `json:"height"`
-	Name       string `json:"name"`
-	BirthYear  int    `json:"birth_year"`
-	BirthMonth int    `json:"birth_month"`
-	BirthDay   int    `json:"birth_day"`
-	BloodType  string `json:"blood_type"`
-	Page       int    `json:"page"`
+	Cup string `json:"cup"`
+	// Cups 複選罩杯，符合任一個即可；接受陣列或逗號分隔字串
+	Cups       stringOrStrings `json:"cups"`
+	B          []int           `json:"b"`
+	W          []int           `json:"w"`
+	H          []int           `json:"h"`
+	Height     []int           `json:"height"`
+	Name       string          `json:"name"`
+	BirthYear  int             `json:"birth_year"`
+	BirthMonth int             `json:"birth_month"`
+	BirthDay   int             `json:"birth_day"`
+	BloodType  string          `json:"blood_type"`
+	Page       int             `json:"page"`
 }
 
 type searchResult struct {
@@ -151,12 +154,13 @@ func (s *Server) registerAVTools() {
 		Name:        "av_actress_search",
 		Description: "Search AV actress records by name, measurements, birthday, cup, blood type, or page.",
 		InputSchema: objectSchema(map[string]interface{}{
-			"cup":         stringSchema("Cup filter."),
-			"b":           integerArraySchema("Bust value or [min, max) range."),
-			"w":           integerArraySchema("Waist value or [min, max) range."),
-			"h":           integerArraySchema("Hips value or [min, max) range."),
-			"height":      integerArraySchema("Height value or [min, max) range."),
-			"name":        stringSchema("Exact actress name."),
+			"cup":         stringSchema("Single cup filter, e.g. \"A\"."),
+			"cups":        stringArraySchema("Multiple cups, matches any of them, e.g. [\"A\", \"B\", \"D\"]. Can be combined with cup."),
+			"b":           integerArraySchema("Bust: [N] exact, or [min, max] inclusive range; 0 means unbounded (e.g. [80, 0] = 80 and above). Actresses without data are excluded."),
+			"w":           integerArraySchema("Waist: [N] exact, or [min, max] inclusive range; 0 means unbounded (e.g. [80, 0] = 80 and above). Actresses without data are excluded."),
+			"h":           integerArraySchema("Hips: [N] exact, or [min, max] inclusive range; 0 means unbounded (e.g. [80, 0] = 80 and above). Actresses without data are excluded."),
+			"height":      integerArraySchema("Height: [N] exact, or [min, max] inclusive range; 0 means unbounded (e.g. [80, 0] = 80 and above). Actresses without data are excluded."),
+			"name":        stringSchema("Actress name or kana, partial match; exact match ranks first."),
 			"birth_year":  integerSchema("Birth year."),
 			"birth_month": integerSchema("Birth month."),
 			"birth_day":   integerSchema("Birth day."),
@@ -170,6 +174,7 @@ func (s *Server) registerAVTools() {
 			}
 			req := avEntity.ActressQueryRequest{
 				Cup:        args.Cup,
+				Cups:       strings.Join(args.Cups, ","),
 				B:          args.B,
 				W:          args.W,
 				H:          args.H,
