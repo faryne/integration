@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>四站 Loading 看板娘預覽</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 32px 20px 60px; background: #e9edf1; color: #172334; font: 15px/1.6 system-ui, "Noto Sans TC", sans-serif; }
+      main { max-width: 1120px; margin: auto; }
+      h1 { margin: 0; font-size: 24px; }
+      .intro { margin: 8px 0 24px; color: #536273; }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+      .card { overflow: hidden; border-radius: 20px; box-shadow: 0 12px 36px #16253920; }
+      .brand { display: flex; align-items: center; gap: 9px; min-height: 58px; padding: 12px 22px; font-weight: 800; }
+      .brand img { width: 28px; height: 28px; border-radius: 7px; }
+      .loading { min-height: 330px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 20px 34px; text-align: center; }
+      .mascot { display: block; width: 210px; height: 210px; object-fit: contain; }
+      .still { display: none; }
+      h2 { margin: 2px 0 3px; font-size: 19px; }
+      p { margin: 0; }
+      .loading p { opacity: .7; }
+      .faryne { background: linear-gradient(#f8fbff, #fff 55%, #f6f7fb); color: #263348; }
+      .faryne .brand { background: #ecf2fa; border-bottom: 1px solid #d8e4f2; }
+      .neko { background: linear-gradient(#fff8f9, #fff 55%, #fff6f8); color: #382834; }
+      .neko .brand { background: #ffe8ec; border-bottom: 1px solid #f5cbd4; }
+      .galgame { background: linear-gradient(#f7fbff, #fff 55%, #f1f7ff); color: #1b2944; }
+      .galgame .brand { background: #edf5ff; border-bottom: 1px solid #d1e3f8; }
+      .steamloom { background: linear-gradient(#16110d, #241b14 48%, #16110d); color: #f0e8d4; }
+      .steamloom .brand { background: #120f1d; border-bottom: 1px solid #554060; }
+      .steamloom .loading p { color: #c9974f; }
+      .note { margin: 22px 2px 0; color: #526174; font-size: 13px; }
+      @media (prefers-reduced-motion: reduce) { .animated { display: none; } .still { display: block; } }
+      @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } .loading { min-height: 290px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>四站 Loading 看板娘預覽</h1>
+      <p class="intro">三姊妹各有不同的前進節奏；梭梭暫沿用既有 Loading 動畫。GIF 會在原地循環，不會橫越畫面。</p>
+      <div class="grid">
+        <section class="card faryne">
+          <div class="brand"><img src="../site-icons/exports/faryne-icon.webp" alt="" />Faryne 的實驗室</div>
+          <div class="loading"><img class="mascot animated" src="exports/faryne-walk-draft.gif" alt="大姐抱著 MBP 優雅步行" /><img class="mascot still" src="exports/faryne-walk-still.png" alt="大姐抱著 MBP" /><h2>正在整理頁面</h2><p>稍等一下，馬上帶你過去。</p></div>
+        </section>
+        <section class="card neko">
+          <div class="brand"><img src="../site-icons/exports/nekomaid-icon.webp" alt="" />難以名狀的抓圖器</div>
+          <div class="loading"><img class="mascot animated" src="exports/nekomaid-trot-draft.gif" alt="二姐抱著文件像貓咪般小碎步" /><img class="mascot still" src="exports/nekomaid-trot-still.png" alt="二姐抱著文件" /><h2>正在搬運資料</h2><p>再跑幾步就送到了喵。</p></div>
+        </section>
+        <section class="card galgame">
+          <div class="brand"><img src="../site-icons/exports/galgame-icon.webp" alt="" />Galgame TV</div>
+          <div class="loading"><img class="mascot animated" src="exports/galgame-run-draft.gif" alt="三姐朝前方奔跑" /><img class="mascot still" src="exports/galgame-run-still.png" alt="三姐準備奔跑" /><h2>正在尋找影片</h2><p>再等一下，馬上把畫面帶過來。</p></div>
+        </section>
+        <section class="card steamloom">
+          <div class="brand">SteamLoom</div>
+          <div class="loading"><img class="mascot" src="https://cdn.faryne.dev/steamloom_assets/suosuo-loading-thinking-v1-256.gif" alt="梭梭正在思考" /><h2>齒輪正在對位</h2><p>織機正在暖機，馬上把頁面織好。</p></div>
+        </section>
+      </div>
+      <p class="note">此頁是圖像與節奏草稿；確認後才會接入網站 Loading 元件及上傳三張 GIF。</p>
+    </main>
+  </body>
+</html>
