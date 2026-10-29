@@ -49,6 +49,11 @@ func OpenData(app *fiber.App) {
 	gVtuber.Get("/lives", opendata.VtuberLives)
 	gVtuber.Get("/videos/:video_id", opendata.VtuberVideo)
 
+	// 台灣指標：資料常駐記憶體（service/twstats 資料方塊），指標明細仍由前端直接讀 GitHub raw
+	gTwStats := g.Group("/tw-stats")
+	gTwStats.Get("/areas/:area", opendata.TwStatsAreaProfile)
+	gTwStats.Get("/movers", opendata.TwStatsMovers)
+
 	gNCCC := g.Group("/nccc")
 	gNCCC.Get("/indexes", opendata.NCCCIndexes)
 	gNCCC.Get("/indexes/:token/records", opendata.NCCCRecords)

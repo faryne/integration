@@ -328,6 +328,8 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	}
 
 	c.Start()
+	// 台灣指標資料方塊在背景先載入一次，失敗時由 tw-stats-refresh 排程每小時重試
+	go runCronJob("tw-stats-refresh")
 	// </editor-fold>
 
 	listenErr := make(chan error, 1)
