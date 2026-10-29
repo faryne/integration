@@ -33,6 +33,13 @@
     "noResults": "조건과 일치하는 결과가 없습니다",
     "operationFailed": "작업 실패: {{message}}"
   },
+  "loadingPage": {
+    "steamloom": {
+      "alt": "생각 중인 쑤오쑤오",
+      "title": "톱니바퀴를 맞추는 중",
+      "description": "직조기를 예열하고 있어요. 곧 페이지를 보여드릴게요."
+    }
+  },
   "layout": {
     "searchPlaceholder": "작품 검색…",
     "submitSearch": "검색 실행",

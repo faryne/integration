@@ -33,6 +33,13 @@
     "noResults": "No matching results",
     "operationFailed": "Operation failed: {{message}}"
   },
+  "loadingPage": {
+    "steamloom": {
+      "alt": "Suo-suo is thinking",
+      "title": "Aligning the gears",
+      "description": "The loom is warming up. Your page will be ready soon."
+    }
+  },
   "layout": {
     "searchPlaceholder": "Search works…",
     "submitSearch": "Submit search",

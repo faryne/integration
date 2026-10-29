@@ -20,8 +20,9 @@ S3_BUCKET="${S3_BUCKET:-$(read_env S3_BUCKET)}"
 aws sts get-caller-identity --query '{Account:Account,Arn:Arn}'
 
 upload_group() {
-  local source_dir="$1" key_prefix="$2" content_type="$3" file key
+  local source_dir="$1" key_prefix="$2" content_type="$3" suffix="${4:-}" file key
   for file in "$source_dir"/*; do
+    [[ -z "$suffix" || "${file##*.}" == "$suffix" ]] || continue
     key="mascot_assets/$key_prefix/${file##*/}"
     aws s3 cp "$file" "s3://$S3_BUCKET/$key" \
       --content-type "$content_type" \
@@ -35,12 +36,18 @@ case "${1:-all}" in
     upload_group "$root_dir/DevelopDocuments/mascot/footer-sd/exports" "footer-sd" "image/png"
     upload_group "$root_dir/DevelopDocuments/mascot/site-icons/exports" "site-icons" "image/webp"
     upload_group "$root_dir/DevelopDocuments/mascot/error-page/exports" "error-page" "image/png"
+    upload_group "$root_dir/DevelopDocuments/mascot/loading-page/exports" "loading-page" "image/gif" gif
+    upload_group "$root_dir/DevelopDocuments/mascot/loading-page/exports" "loading-page" "image/png" png
     ;;
   error-page)
     upload_group "$root_dir/DevelopDocuments/mascot/error-page/exports" "error-page" "image/png"
     ;;
+  loading-page)
+    upload_group "$root_dir/DevelopDocuments/mascot/loading-page/exports" "loading-page" "image/gif" gif
+    upload_group "$root_dir/DevelopDocuments/mascot/loading-page/exports" "loading-page" "image/png" png
+    ;;
   *)
-    echo "Usage: $0 [all|error-page]" >&2
+    echo "Usage: $0 [all|error-page|loading-page]" >&2
     exit 2
     ;;
 esac

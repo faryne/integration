@@ -33,6 +33,13 @@
     "noResults": "找不到符合條件的結果",
     "operationFailed": "操作失敗：{{message}}"
   },
+  "loadingPage": {
+    "steamloom": {
+      "alt": "梭梭正在思考",
+      "title": "齒輪正在對位",
+      "description": "織機正在暖機，馬上把頁面織好。"
+    }
+  },
   "layout": {
     "searchPlaceholder": "搜尋作品…",
     "submitSearch": "送出搜尋",

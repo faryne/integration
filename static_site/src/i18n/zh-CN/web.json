@@ -33,6 +33,13 @@
     "noResults": "找不到符合条件的结果",
     "operationFailed": "操作失败：{{message}}"
   },
+  "loadingPage": {
+    "steamloom": {
+      "alt": "梭梭正在思考",
+      "title": "齿轮正在对位",
+      "description": "织机正在预热，马上把页面织好。"
+    }
+  },
   "layout": {
     "searchPlaceholder": "搜索作品…",
     "submitSearch": "提交搜索",

@@ -33,6 +33,13 @@
     "noResults": "条件に一致する結果がありません",
     "operationFailed": "操作に失敗しました：{{message}}"
   },
+  "loadingPage": {
+    "steamloom": {
+      "alt": "考え中の梭梭",
+      "title": "歯車を調整中",
+      "description": "織機を暖機しています。まもなくページを表示します。"
+    }
+  },
   "layout": {
     "searchPlaceholder": "作品を検索…",
     "submitSearch": "検索を実行",

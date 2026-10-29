@@ -7,7 +7,7 @@ import {
   useParams,
   Navigate,
 } from "react-router-dom";
-import { Box, CircularProgress, Stack, Typography } from "@mui/material";
+import { LoadingFallback } from "@/components/common/LoadingFallback.tsx";
 import { DefaultLayout } from "./layouts/DefaultLayout.tsx";
 import { NekomaidLayout } from "./layouts/NekomaidLayout.tsx";
 import { GalgameLayout } from "./layouts/GalgameLayout.tsx";
@@ -206,81 +206,6 @@ const GalgameSubmitVideo = lazy(
   () => import("@/pages/galgame/submit-video.tsx"),
 );
 const GalgameAdmin = lazy(() => import("@/pages/galgame/admin.tsx"));
-
-// SteamLoom 是完全獨立的產品，這個畫面是唯一的頂層 Suspense fallback，
-// lazy chunk（含 StorytellerLayout 的 ThemeProvider）還沒下載完成前就會顯示，
-// 吃不到 brass 主題色，所以色碼直接寫死跟 favicon/ErrorPage 同一套黃銅色。
-function LoadingFallback() {
-  const steamloom = isSteamLoomSite();
-
-  return (
-    <Box
-      role="status"
-      aria-live="polite"
-      sx={{
-        minHeight: "100vh",
-        display: "grid",
-        placeItems: "center",
-        px: 3,
-        background: steamloom
-          ? "linear-gradient(180deg, #16110d 0%, #241b14 48%, #16110d 100%)"
-          : "linear-gradient(180deg, #f8fbff 0%, #ffffff 48%, #f6f7fb 100%)",
-      }}
-    >
-      <Stack
-        spacing={2}
-        alignItems="center"
-        sx={{
-          width: "min(100%, 360px)",
-          textAlign: "center",
-        }}
-      >
-        <Box
-          component="img"
-          src={steamloom ? "/steamloom-icon.svg" : "/faryne-icon-1024.jpg"}
-          alt={steamloom ? "SteamLoom mark" : "Faryne mascot"}
-          sx={{
-            width: 112,
-            height: 112,
-            borderRadius: 4,
-            objectFit: "cover",
-            boxShadow: steamloom
-              ? "0 16px 40px rgba(201, 151, 79, 0.35)"
-              : "0 16px 40px rgba(25, 118, 210, 0.18)",
-          }}
-        />
-
-        <CircularProgress
-          size={28}
-          thickness={4}
-          sx={{ color: steamloom ? "#c9974f" : "primary.main" }}
-        />
-
-        <Box>
-          <Typography
-            component="p"
-            variant="h6"
-            sx={{
-              fontWeight: 800,
-              color: steamloom ? "#e6bd76" : "text.primary",
-            }}
-          >
-            {steamloom ? "齒輪正在對位" : "女僕正在整理頁面"}
-          </Typography>
-          <Typography
-            component="p"
-            variant="body2"
-            sx={{ mt: 0.5, color: steamloom ? "#c9974f" : "text.secondary" }}
-          >
-            {steamloom
-              ? "織機正在暖機，馬上把頁面織好。"
-              : "請稍等一下，馬上替主人把資料端上來。"}
-          </Typography>
-        </Box>
-      </Stack>
-    </Box>
-  );
-}
 
 function AnalyticsTracker() {
   const location = useLocation();
