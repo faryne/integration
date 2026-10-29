@@ -12,7 +12,6 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AddIcon from "@mui/icons-material/Add";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
 import RemoveIcon from "@mui/icons-material/Remove";
-import { geoMercator, geoPath } from "d3-geo";
 import { select } from "d3-selection";
 import {
   zoom,
@@ -21,85 +20,24 @@ import {
   type ZoomTransform,
 } from "d3-zoom";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { feature } from "topojson-client";
-import type { FeatureCollection, GeoJsonProperties, Geometry } from "geojson";
-import type { Objects, Topology } from "topojson-specification";
+import type { FeatureCollection, Geometry } from "geojson";
+import {
+  countyGeographicOrder,
+  countyTopologyPath,
+  type CountyProperties,
+  loadTopology,
+  mapPaths,
+  normalizeAreaName,
+  topologyFeatures,
+  type TownProperties,
+  townTopologyPath,
+} from "@/components/common/taiwanMapGeo.ts";
 
 const mapWidth = 560;
 const mapHeight = 720;
-const countyGeographicOrder = [
-  "基隆市",
-  "臺北市",
-  "新北市",
-  "桃園市",
-  "新竹縣",
-  "新竹市",
-  "苗栗縣",
-  "臺中市",
-  "彰化縣",
-  "南投縣",
-  "雲林縣",
-  "嘉義縣",
-  "嘉義市",
-  "臺南市",
-  "高雄市",
-  "屏東縣",
-  "宜蘭縣",
-  "花蓮縣",
-  "臺東縣",
-  "澎湖縣",
-  "金門縣",
-  "連江縣",
-];
-
-interface CountyProperties extends Record<string, unknown> {
-  COUNTYNAME: string;
-}
-
-interface TownProperties extends CountyProperties {
-  TOWNNAME: string;
-}
 
 interface TaiwanAdministrativeMapProps {
   onDistrictSelect: (cityArea: string) => void;
-}
-
-function normalizeAreaName(value: string) {
-  return value.replaceAll("臺", "台");
-}
-
-async function loadTopology<T extends Objects>(path: string) {
-  const response = await fetch(path);
-  if (!response.ok) {
-    throw new Error(`載入地圖失敗：${response.status}`);
-  }
-  return (await response.json()) as Topology<T>;
-}
-
-function topologyFeatures<P extends GeoJsonProperties>(
-  topology: Topology<Objects>,
-): FeatureCollection<Geometry, P> {
-  const object = topology.objects[Object.keys(topology.objects)[0]];
-  return feature(topology, object) as unknown as FeatureCollection<Geometry, P>;
-}
-
-function mapPaths<P extends GeoJsonProperties>(
-  features: FeatureCollection<Geometry, P>,
-  width: number,
-  height: number,
-) {
-  const projection = geoMercator().fitExtent(
-    [
-      [18, 18],
-      [width - 18, height - 18],
-    ],
-    features,
-  );
-  const path = geoPath(projection);
-  return features.features.map((item) => ({
-    feature: item,
-    path: path(item) ?? "",
-  }));
 }
 
 export function TaiwanAdministrativeMap({
@@ -119,8 +57,8 @@ export function TaiwanAdministrativeMap({
 
   useEffect(() => {
     Promise.all([
-      loadTopology("/maps/taiwan-county.json"),
-      loadTopology("/maps/taiwan-town.json"),
+      loadTopology(countyTopologyPath),
+      loadTopology(townTopologyPath),
     ])
       .then(([countyTopology, townTopology]) => {
         setCounties(topologyFeatures<CountyProperties>(countyTopology));

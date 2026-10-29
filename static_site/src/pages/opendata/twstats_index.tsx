@@ -2,6 +2,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   InputAdornment,
   Paper,
@@ -24,6 +25,12 @@ import { Link } from "react-router-dom";
 import { useGetTwStatsIndex } from "@/apis/opendata/twstats.ts";
 import { useMemo, useState } from "react";
 import { useTitle } from "@/helpers/title.tsx";
+import { useUpdateSearchParams } from "@/helpers/useUpdateSearchParams.ts";
+import {
+  categoryOf,
+  isTwStatsCategory,
+  twStatsCategories,
+} from "@/components/twstats/twStatsCategories.ts";
 
 const twStatsDocsBaseUri =
   "https://raw.githubusercontent.com/faryne/tw-stats/master/docs";
@@ -34,7 +41,11 @@ type SortDirection = "asc" | "desc";
 
 export function TwStatsIndex() {
   const statsQuery = useGetTwStatsIndex();
-  const [keyword, setKeyword] = useState("");
+  // 關鍵字與分類都寫回網址，分享或返回時保留篩選
+  const [searchParams, updateParams] = useUpdateSearchParams();
+  const [keyword, setKeyword] = useState(() => searchParams.get("q") ?? "");
+  const categoryParam = searchParams.get("cat");
+  const category = isTwStatsCategory(categoryParam) ? categoryParam : null;
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   useTitle("台灣指標");
@@ -48,7 +59,7 @@ export function TwStatsIndex() {
       ),
     [sortDirection, statsQuery.data],
   );
-  const filteredStats = useMemo(() => {
+  const keywordStats = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
     if (!normalizedKeyword) {
@@ -61,6 +72,22 @@ export function TwStatsIndex() {
         name.toLowerCase().includes(normalizedKeyword),
     );
   }, [keyword, stats]);
+  // 分類數量依關鍵字篩選後的結果計算，切換分類前就知道各類還剩幾筆
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    keywordStats.forEach(([key]) => {
+      const id = categoryOf(key) ?? "";
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+    });
+    return counts;
+  }, [keywordStats]);
+  const filteredStats = useMemo(
+    () =>
+      category
+        ? keywordStats.filter(([key]) => categoryOf(key) === category)
+        : keywordStats,
+    [category, keywordStats],
+  );
 
   return (
     <Stack spacing={3}>
@@ -78,7 +105,10 @@ export function TwStatsIndex() {
         label={"搜尋指標"}
         placeholder={"例如：人口、所得、出生"}
         value={keyword}
-        onChange={(e) => setKeyword(e.target.value)}
+        onChange={(e) => {
+          setKeyword(e.target.value);
+          updateParams({ q: e.target.value.trim() });
+        }}
         slotProps={{
           input: {
             startAdornment: (
@@ -103,6 +133,25 @@ export function TwStatsIndex() {
 
       {statsQuery.isSuccess && (
         <Stack spacing={2}>
+          <Stack direction={"row"} spacing={0.75} flexWrap={"wrap"} useFlexGap>
+            <Chip
+              label={`全部 ${keywordStats.length}`}
+              color={category ? "default" : "primary"}
+              variant={category ? "outlined" : "filled"}
+              onClick={() => updateParams({ cat: null })}
+            />
+            {twStatsCategories.map(({ id, label }) => (
+              <Chip
+                key={id}
+                label={`${label} ${categoryCounts.get(id) ?? 0}`}
+                color={category === id ? "primary" : "default"}
+                variant={category === id ? "filled" : "outlined"}
+                disabled={!categoryCounts.get(id)}
+                onClick={() => updateParams({ cat: id })}
+              />
+            ))}
+          </Stack>
+
           <Typography variant={"subtitle2"} color={"text.secondary"}>
             目前共有 {filteredStats.length.toLocaleString("zh-TW")}{" "}
             個符合條件指標

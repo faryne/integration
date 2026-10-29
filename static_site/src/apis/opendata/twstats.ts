@@ -17,8 +17,10 @@ export function useGetTwStatsIndex() {
   });
 }
 
-export function useGetTwStatsByName(name: string) {
+// enabled 給「每萬人」換算用：只有開啟換算時才抓人口指標
+export function useGetTwStatsByName(name: string, enabled = true) {
   return useQuery({
+    enabled,
     queryKey: [`opendata/twstats/${name}/index`],
     queryFn: async () => {
       const response = await axios.get<TwStatsByYear>(
