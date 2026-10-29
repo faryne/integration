@@ -70,6 +70,16 @@ const TwStatsIndex = lazy(() =>
     default: module.TwStatsIndex,
   })),
 );
+const TwStatsArea = lazy(() =>
+  import("@/pages/opendata/twstats_area.tsx").then((module) => ({
+    default: module.TwStatsArea,
+  })),
+);
+const TwStatsTrends = lazy(() =>
+  import("@/pages/opendata/twstats_trends.tsx").then((module) => ({
+    default: module.TwStatsTrends,
+  })),
+);
 const TwStatsByName = lazy(() =>
   import("@/pages/opendata/twstats_byname.tsx").then((module) => ({
     default: module.TwStatsByName,
@@ -719,6 +729,14 @@ function App() {
                   />
                   <Route path={"/av/actress"} element={<AVActress />} />
 
+                  <Route
+                    path={"/data/tw-stats/area/:code"}
+                    element={<TwStatsArea />}
+                  />
+                  <Route
+                    path={"/data/tw-stats/trends"}
+                    element={<TwStatsTrends />}
+                  />
                   <Route
                     path={"/data/tw-stats/:name"}
                     element={<TwStatsByName />}

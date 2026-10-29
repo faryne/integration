@@ -9,20 +9,22 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
+
+	model "faryne.dev/model/entity/opendata/twstats"
 )
 
 const (
-	defaultBaseURL = "https://raw.githubusercontent.com/faryne/tw-stats/master/docs"
+	// rawBaseURL 只用來組給使用者的原始資料連結，資料本身一律從資料方塊讀
+	rawBaseURL     = "https://raw.githubusercontent.com/faryne/tw-stats/master/docs"
 	defaultPerPage = 30
 	maxPerPage     = 100
 )
 
-type Area struct {
-	Code string `json:"code"`
-	Name string `json:"name"`
-}
+type Area = model.Area
 
+// areas 的順序即資料方塊的欄位順序：第 0 欄是全國彙總「台灣」，其後 22 縣市
 var areas = []Area{
 	{Code: "Taiwan", Name: "台灣"},
 	{Code: "NewTaipei", Name: "新北市"},
@@ -88,12 +90,16 @@ type RetrieveResult struct {
 }
 
 type Service struct {
-	baseURL string
-	client  *http.Client
+	tarballURL string
+	client     *http.Client
+	cube       atomic.Pointer[Cube]
 }
 
+// Default 全站共用的實例：API、MCP 與排程讀寫同一份資料方塊
+var Default = NewService()
+
 func NewService() *Service {
-	return &Service{baseURL: defaultBaseURL, client: &http.Client{Timeout: 15 * time.Second}}
+	return &Service{tarballURL: defaultTarballURL, client: &http.Client{Timeout: time.Minute}}
 }
 
 // Search 依照網站相同規則比對指標 key 與名稱，並限制單次 MCP 回應大小。
@@ -102,18 +108,18 @@ func (s *Service) Search(ctx context.Context, keyword string, page, perPage int)
 	if err != nil {
 		return nil, err
 	}
-	index := make(map[string]string)
-	if err := s.getJSON(ctx, "index.json", &index); err != nil {
+	cube, err := s.loadedCube()
+	if err != nil {
 		return nil, err
 	}
 
 	normalizedKeyword := strings.ToLower(strings.TrimSpace(keyword))
-	rows := make([]Indicator, 0, len(index))
-	for key, name := range index {
-		if normalizedKeyword != "" && !strings.Contains(strings.ToLower(key), normalizedKeyword) && !strings.Contains(strings.ToLower(name), normalizedKeyword) {
+	rows := make([]Indicator, 0, len(cube.indicators))
+	for _, data := range cube.indicators {
+		if normalizedKeyword != "" && !strings.Contains(strings.ToLower(data.Key), normalizedKeyword) && !strings.Contains(strings.ToLower(data.Name), normalizedKeyword) {
 			continue
 		}
-		rows = append(rows, indicator(s.baseURL, key, name))
+		rows = append(rows, indicator(data.Key, data.Name))
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].Name < rows[j].Name })
 
@@ -137,71 +143,60 @@ func (s *Service) Retrieve(ctx context.Context, input RetrieveRequest) (*Retriev
 		return nil, err
 	}
 
-	raw := make(map[string]map[string]any)
-	path := url.PathEscape(input.Name) + "/index.json"
-	if err := s.getJSON(ctx, path, &raw); err != nil {
+	cube, err := s.loadedCube()
+	if err != nil {
 		return nil, err
+	}
+	data, ok := cube.byName[input.Name]
+	if !ok {
+		return nil, ErrIndicatorNotFound
 	}
 	selectedYears := make(map[int]struct{}, len(input.Years))
 	for _, year := range input.Years {
 		selectedYears[year] = struct{}{}
 	}
-	years := make([]int, 0, len(raw))
-	for value := range raw {
-		year, err := strconv.Atoi(value)
-		if err != nil || input.StartYear > 0 && year < input.StartYear || input.EndYear > 0 && year > input.EndYear {
+
+	ref := indicator(data.Key, data.Name)
+	result := &RetrieveResult{
+		Name: data.Name, Unit: data.Unit, Explanation: data.Explain,
+		Areas: make(map[string]string, len(selectedAreas)), Data: make([]YearData, 0, len(data.Years)),
+		PageURL: ref.PageURL, SourceURL: ref.SourceURL,
+	}
+	for _, area := range selectedAreas {
+		result.Areas[area.Code] = area.Name
+	}
+	for _, year := range data.Years {
+		if input.StartYear > 0 && year < input.StartYear || input.EndYear > 0 && year > input.EndYear {
 			continue
 		}
 		if _, ok := selectedYears[year]; len(selectedYears) > 0 && !ok {
 			continue
 		}
-		years = append(years, year)
-	}
-	sort.Ints(years)
-
-	result := &RetrieveResult{
-		Name: input.Name, Areas: make(map[string]string, len(selectedAreas)), Data: make([]YearData, 0, len(years)),
-		PageURL: "https://faryne.dev/data/tw-stats/" + url.PathEscape(input.Name), SourceURL: s.baseURL + "/" + path,
-	}
-	for _, area := range selectedAreas {
-		result.Areas[area.Code] = area.Name
-	}
-	for _, year := range years {
-		row := raw[strconv.Itoa(year)]
-		if len(result.Data) == 0 {
-			result.Name = stringValue(row["Name"], input.Name)
-			result.Unit = stringValue(row["Unit"], "")
-			result.Explanation = stringValue(row["Explain"], "")
-		}
 		values := make(map[string]string, len(selectedAreas))
 		for _, area := range selectedAreas {
-			values[area.Code] = stringValue(row[area.Code], "")
+			values[area.Code] = formatNumber(data.value(year, columnOf(area.Code)))
 		}
-		result.Data = append(result.Data, YearData{Year: year, Total: stringValue(row["Total"], ""), Values: values})
+		result.Data = append(result.Data, YearData{Year: year, Total: formatNumber(data.value(year, totalColumn)), Values: values})
 	}
 	return result, nil
 }
 
-func (s *Service) getJSON(ctx context.Context, path string, out interface{}) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(s.baseURL, "/")+"/"+path, nil)
-	if err != nil {
-		return err
+// formatNumber 無資料時沿用原始資料的「-」
+func formatNumber(value float64, ok bool) string {
+	if !ok {
+		return "-"
 	}
-	req.Header.Set("Accept", "application/json")
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("fetch Taiwan stats: %w", err)
+	return strconv.FormatFloat(value, 'f', -1, 64)
+}
+
+// columnOf 區域代碼在資料方塊中的欄位；代碼一律先經 resolveAreas 驗證，找不到時回傳 -1
+func columnOf(code string) int {
+	for i, area := range areas {
+		if area.Code == code {
+			return i
+		}
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("fetch Taiwan stats: status %d", resp.StatusCode)
-	}
-	decoder := json.NewDecoder(resp.Body)
-	decoder.UseNumber()
-	if err := decoder.Decode(out); err != nil {
-		return fmt.Errorf("decode Taiwan stats: %w", err)
-	}
-	return nil
+	return -1
 }
 
 func normalizePagination(page, perPage int) (int, int, error) {
@@ -247,11 +242,11 @@ func resolveAreas(values []string) ([]Area, error) {
 	return resolved, nil
 }
 
-func indicator(baseURL, key, name string) Indicator {
+func indicator(key, name string) Indicator {
 	escaped := url.PathEscape(name)
 	return Indicator{
 		Key: key, Name: name,
-		PageURL: "https://faryne.dev/data/tw-stats/" + escaped, SourceURL: strings.TrimRight(baseURL, "/") + "/" + escaped + "/index.json",
+		PageURL: "https://faryne.dev/data/tw-stats/" + escaped, SourceURL: rawBaseURL + "/" + escaped + "/index.json",
 	}
 }
 

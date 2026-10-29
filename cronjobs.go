@@ -15,6 +15,7 @@ import (
 	storytellerOAuthService "faryne.dev/service/storytelleroauth"
 	"faryne.dev/service/taipower"
 	"faryne.dev/service/twse"
+	"faryne.dev/service/twstats"
 	vtuberService "faryne.dev/service/vtuber"
 )
 
@@ -356,6 +357,22 @@ var cronJobs = map[string]cronGroup{
 		},
 	},
 	// 台電相關 job 手動執行
+	"tw-stats": {
+		Enabled: true,
+		Jobs: []cronJobConfig{
+			{
+				// 每小時檢查一次：尚未載入（啟動時抓失敗）或超過 24 小時才真的重抓，兼做每日刷新與失敗重試
+				Name:     "tw-stats-refresh",
+				Schedule: "5 * * * *",
+				Enabled:  true,
+				Handler: func() {
+					if err := twstats.Default.EnsureFresh(context.Background()); err != nil {
+						log.Logger().Error("tw-stats refresh failed: " + err.Error())
+					}
+				},
+			},
+		},
+	},
 	"taipower": {
 		Enabled: true,
 		Jobs: []cronJobConfig{
