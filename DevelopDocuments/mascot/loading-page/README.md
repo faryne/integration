@@ -6,9 +6,9 @@
 | --- | --- | --- | --- |
 | faryne.dev | 大姐抱著無貼紙 MBP，優雅地換腳步行 | 1.12 秒 | [faryne-walk-draft.gif](exports/faryne-walk-draft.gif) |
 | neko.maid.tw | 二姐抱穩文件，貓咪般的小碎步與輕微彈跳 | 0.60 秒 | [nekomaid-trot-draft.gif](exports/nekomaid-trot-draft.gif) |
-| galgame.tv | 三姐擺臂奔跑，側馬尾與圍裙隨動作飄起 | 0.48 秒 | [galgame-run-draft.gif](exports/galgame-run-draft.gif) |
+| galgame.tv | 三姐跨步、抬膝與騰空，側馬尾與圍裙隨動作飄起 | 0.48 秒 | [galgame-run-draft.gif](exports/galgame-run-draft.gif) |
 | steamloom.works | 梭梭沿用現有 Loading GIF，這次不重新繪製 | 既有設定 | `suosuo-loading-thinking-v1-256.gif` |
 
-`masters/` 保留生成的 2 × 2 四格原稿，`exports/` 放 GIF 與各自的靜態首幀。靜態首幀可用於使用者偏好減少動態效果的情境。三姐的襪口以上保留大腿自然膚色，條紋只出現在膝上襪。
+`masters/` 保留生成的 2 × 2 四格原稿，以及三姐重畫的抬膝與騰空關鍵影格；`exports/` 放 GIF 與各自的靜態首幀。靜態首幀可用於使用者偏好減少動態效果的情境。三姐的襪口以上保留大腿自然膚色，條紋只出現在膝上襪。
 
 目前僅供確認動作、節奏與版面；尚未修改 `LoadingFallback` 或上傳新圖到 S3。
