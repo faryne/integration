@@ -67,9 +67,10 @@ type CountyMover struct {
 }
 
 type MoversResult struct {
-	Year     int             `json:"year"`
-	National []NationalMover `json:"national"`
-	Counties []CountyMover   `json:"counties"`
+	Year       int             `json:"year"`
+	LatestYear int             `json:"latest_year"` // 多數指標的最新年份，給前端年份選單當上限
+	National   []NationalMover `json:"national"`
+	Counties   []CountyMover   `json:"counties"`
 }
 
 type RankEntry struct {

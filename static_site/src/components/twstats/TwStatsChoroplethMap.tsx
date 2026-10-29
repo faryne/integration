@@ -14,6 +14,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import PauseIcon from "@mui/icons-material/Pause";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { FeatureCollection, Geometry } from "geojson";
 import type { TwStatsByYear } from "@/apis/opendata/twstats.ts";
 import {
@@ -24,6 +25,7 @@ import {
   normalizeAreaName,
   topologyFeatures,
 } from "@/components/common/taiwanMapGeo.ts";
+import { areaProfileLink } from "@/components/twstats/twStatsFormat.ts";
 import { parseStatValue } from "@/components/twstats/twStatsValue.ts";
 import { type TWArea, TWAreaMappings } from "@/types/twstats.ts";
 
@@ -55,6 +57,7 @@ export function TwStatsChoroplethMap({
   onYearChange,
 }: Props) {
   const theme = useTheme();
+  const navigate = useNavigate();
   const [counties, setCounties] =
     useState<FeatureCollection<Geometry, CountyProperties>>();
   const [loadError, setLoadError] = useState("");
@@ -138,7 +141,7 @@ export function TwStatsChoroplethMap({
     setPlaying((current) => !current);
   };
 
-  // 本島與離島小框共用的縣市繪製，hover 時與右側排名互相連動
+  // 本島與離島小框共用的縣市繪製，hover 時與右側排名互相連動，點擊進入該縣市健檢
   const renderCounty = (countyName: string, path: string) => {
     const area = areaByCountyName.get(normalizeAreaName(countyName));
     const value = area ? parseStatValue(row?.[area]) : null;
@@ -154,6 +157,7 @@ export function TwStatsChoroplethMap({
         }
         onMouseEnter={() => setHovered(area)}
         onMouseLeave={() => setHovered(undefined)}
+        onClick={() => area && navigate(areaProfileLink(area))}
       >
         <title>{`${countyName}：${area ? (row?.[area] ?? "-") : "-"}`}</title>
       </path>
@@ -236,6 +240,7 @@ export function TwStatsChoroplethMap({
                 width: "100%",
                 height: "auto",
                 "& path": {
+                  cursor: "pointer",
                   stroke: theme.palette.background.paper,
                   strokeWidth: 1.2,
                   transition: "fill 300ms ease",
@@ -317,7 +322,9 @@ export function TwStatsChoroplethMap({
                   alignItems={"center"}
                   onMouseEnter={() => setHovered(area)}
                   onMouseLeave={() => setHovered(undefined)}
+                  onClick={() => navigate(areaProfileLink(area))}
                   sx={{
+                    cursor: "pointer",
                     px: 0.75,
                     py: 0.25,
                     borderRadius: 1,

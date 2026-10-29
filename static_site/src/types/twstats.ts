@@ -56,3 +56,54 @@ export type TwStatRawData = {
   ByYear: number;
   Total: string;
 } & { [key in TWArea]: string };
+
+// 以下對應後端 /opendata/tw-stats 分析 API（model/entity/opendata/twstats）
+export type TwStatsArea = { code: TWArea; name: string };
+
+// per_capita：數量類指標，排名時以每萬人換算值比較
+export type TwStatsIndicatorRef = {
+  key: string;
+  name: string;
+  unit: string;
+  category: string;
+  per_capita: boolean;
+};
+
+export type TwStatsAreaIndicator = TwStatsIndicatorRef & {
+  year: number;
+  value: number;
+  per_capita_value?: number;
+  rank: number;
+  rank_total: number;
+  change_rate?: number;
+};
+
+export type TwStatsAreaProfile = {
+  area: TwStatsArea;
+  loaded_at: string;
+  indicators: TwStatsAreaIndicator[];
+};
+
+export type TwStatsNationalMover = TwStatsIndicatorRef & {
+  value: number;
+  previous_value: number;
+  change_rate: number;
+};
+
+// rank_change 正數＝名次往前
+export type TwStatsCountyMover = TwStatsIndicatorRef & {
+  area: TwStatsArea;
+  value: number;
+  per_capita_value?: number;
+  rank: number;
+  previous_rank: number;
+  rank_change: number;
+  change_rate?: number;
+};
+
+export type TwStatsMovers = {
+  year: number;
+  latest_year: number;
+  national: TwStatsNationalMover[];
+  counties: TwStatsCountyMover[];
+};

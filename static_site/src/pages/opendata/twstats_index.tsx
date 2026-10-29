@@ -2,7 +2,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   CircularProgress,
   InputAdornment,
   Paper,
@@ -29,8 +28,9 @@ import { useUpdateSearchParams } from "@/helpers/useUpdateSearchParams.ts";
 import {
   categoryOf,
   isTwStatsCategory,
-  twStatsCategories,
 } from "@/components/twstats/twStatsCategories.ts";
+import { TwStatsCategoryChips } from "@/components/twstats/TwStatsCategoryChips.tsx";
+import { TwStatsEntrances } from "@/components/twstats/TwStatsEntrances.tsx";
 
 const twStatsDocsBaseUri =
   "https://raw.githubusercontent.com/faryne/tw-stats/master/docs";
@@ -100,6 +100,8 @@ export function TwStatsIndex() {
         </Typography>
       </Stack>
 
+      <TwStatsEntrances />
+
       <TextField
         type={"search"}
         label={"搜尋指標"}
@@ -133,24 +135,12 @@ export function TwStatsIndex() {
 
       {statsQuery.isSuccess && (
         <Stack spacing={2}>
-          <Stack direction={"row"} spacing={0.75} flexWrap={"wrap"} useFlexGap>
-            <Chip
-              label={`全部 ${keywordStats.length}`}
-              color={category ? "default" : "primary"}
-              variant={category ? "outlined" : "filled"}
-              onClick={() => updateParams({ cat: null })}
-            />
-            {twStatsCategories.map(({ id, label }) => (
-              <Chip
-                key={id}
-                label={`${label} ${categoryCounts.get(id) ?? 0}`}
-                color={category === id ? "primary" : "default"}
-                variant={category === id ? "filled" : "outlined"}
-                disabled={!categoryCounts.get(id)}
-                onClick={() => updateParams({ cat: id })}
-              />
-            ))}
-          </Stack>
+          <TwStatsCategoryChips
+            value={category}
+            onChange={(cat) => updateParams({ cat })}
+            total={keywordStats.length}
+            counts={categoryCounts}
+          />
 
           <Typography variant={"subtitle2"} color={"text.secondary"}>
             目前共有 {filteredStats.length.toLocaleString("zh-TW")}{" "}

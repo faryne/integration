@@ -49,7 +49,7 @@ func (s *Service) Movers(_ context.Context, req model.MoversRequest) (*model.Mov
 		year = cube.latestYear
 	}
 
-	result := &model.MoversResult{Year: year, National: []model.NationalMover{}, Counties: []model.CountyMover{}}
+	result := &model.MoversResult{Year: year, LatestYear: cube.latestYear, National: []model.NationalMover{}, Counties: []model.CountyMover{}}
 	for _, data := range cube.indicators {
 		if req.Category != "" && data.Category != req.Category {
 			continue

@@ -97,6 +97,10 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
         href: "/data/tw-stats",
         description:
           "收集主計總處所每年定期發布的台灣各類相關指標，包含且不限於：人口、土地面積等",
+        subPages: [
+          { title: "縣市健檢", href: "/data/tw-stats/area" },
+          { title: "年度變化榜", href: "/data/tw-stats/trends" },
+        ],
       },
     ],
   },

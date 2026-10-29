@@ -109,6 +109,7 @@ func TestMoversRanksCountiesByRankChange(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, 2024, result.Year)
+	require.Equal(t, 2024, result.LatestYear)
 	require.Equal(t, "竊盜案發生數", result.National[0].Name)
 	require.InDelta(t, -10.0, result.National[0].ChangeRate, 0.001)
 	// 每萬人：2023 台北 20、新北 15；2024 台北 12、新北 15 → 兩者名次互換，同幅度時年增率大的（台北 -40%）在前
