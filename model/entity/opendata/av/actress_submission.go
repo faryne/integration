@@ -71,7 +71,7 @@ type ActressSubmitResult struct {
 	Duplicates    []ActressCandidate `json:"duplicates"`
 }
 
-// ActressCandidate 可能重複的女優；ExactName 為 true 表示姓名完全相同（核准時只能合併）
+// ActressCandidate 可能重複的女優；ExactName 為 true 表示姓名完全相同（核准時要選合併或新增為另一位）
 type ActressCandidate struct {
 	Domain    string        `json:"domain"`
 	AID       int           `json:"aid"`
@@ -117,7 +117,10 @@ type ActressSubmissionDetail struct {
 	Duplicates []ActressCandidate `json:"duplicates"`
 }
 
-// ActressSubmissionApproveRequest 核准；新增單有同名女優時必須指定合併到哪一位（domain-aid）
+// ActressMergeTargetNew 新增單遇到同名時，核准成另一位女優（不合併）
+const ActressMergeTargetNew = "new"
+
+// ActressSubmissionApproveRequest 核准；新增單有同名女優時必須指定合併到哪一位（domain-aid），或 new 新增為另一位
 type ActressSubmissionApproveRequest struct {
 	MergeTarget string `json:"merge_target"`
 }

@@ -1,28 +1,34 @@
 import { ActressDetail } from "@/components/av/actress_detail.tsx";
-import { useAVActressSearch } from "@/apis/av/actress_search.ts";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useAVVideoSearch } from "@/apis/av/video_search.ts";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
+import { actressRefOf, useRoutedActress } from "@/helpers/avActressRef.ts";
 
 export function AVActressDetail() {
-  const { name } = useParams<{ name: string }>();
+  const { name = "" } = useParams<{ name: string }>();
   // 出演影片的頁碼存在網址（?page=N），分頁可以直接分享、上一頁也回得去；換女優時網址不帶 page，自然回到第 1 頁
   const [searchParams, setSearchParams] = useSearchParams();
   const parsedPage = Number(searchParams.get("page"));
   const videoPage =
     Number.isInteger(parsedPage) && parsedPage > 1 ? parsedPage : 1;
+  // 只動 page，網址上指定女優的 xcity_id／manual_id／dmm_id 要留著
   const setVideoPage = (page: number) =>
-    setSearchParams(page > 1 ? { page: String(page) } : {});
-  const s = useAVActressSearch({ name, page: 1 }, !!name);
-  // 姓名搜尋是部分比對（「みずき」也會找到「志田みずき」），詳細頁只認完全相符的那位
-  const actress = s.data?.data?.data?.find((a) => a.name === name);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (page > 1) next.set("page", String(page));
+      else next.delete("page");
+      return next;
+    });
+  // 網址帶 xcity_id／manual_id／dmm_id 時指定那一位，沒帶就照名字找同名排第一的
+  const { actress, sameNames, notFound } = useRoutedActress(name);
+  // 一律用這位自己的 ID 查出演影片，同名的人才分得開（舊網址也一樣）
   const videoQuery = useAVVideoSearch(
-    { page: videoPage, actress: name },
-    !!name && !!actress,
+    { page: videoPage, actress: name, ...(actress && actressRefOf(actress)) },
+    !!actress,
   );
 
-  if (!name || (s.isSuccess && !actress)) {
+  if (!name || notFound) {
     return (
       <ErrorPage
         backUrl="/av/actress"
@@ -45,6 +51,7 @@ export function AVActressDetail() {
       <ActressDetail
         actress={actress}
         onVideoPageChange={setVideoPage}
+        sameNames={sameNames}
         videoPage={videoPage}
         videos={videoQuery}
       />

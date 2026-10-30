@@ -9,6 +9,8 @@ export interface Video {
   directors: string[];
   series: string[];
   actresses: string[];
+  // DMM 女優 ID，順序與 actresses 一致（空字串＝明細沒給）；2026-10-30 之前同步的舊影片是空陣列
+  actress_ids?: string[];
   maker_no?: string;
   // 發售日（廠商發行日）；vod_date 是配信日，兩者常常不同
   publish_date?: string;

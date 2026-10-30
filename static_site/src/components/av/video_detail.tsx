@@ -46,7 +46,13 @@ export function VideoDetail(props: IVideoDetail) {
 
   const chipClick = (s: string, keyPrefix: string) => {
     if (keyPrefix === "actress") {
-      navigate("/av/actress?name=" + encodeURIComponent(s));
+      // 新影片有 DMM 女優 ID：直接到女優頁，由對照表找出是同名中的哪一位；舊影片沒有 ID，維持到女優搜尋頁
+      const dmmID = video?.actress_ids?.[video.actresses.indexOf(s)];
+      navigate(
+        dmmID
+          ? `/av/actress/${encodeURIComponent(s)}?dmm_id=${encodeURIComponent(dmmID)}`
+          : "/av/actress?name=" + encodeURIComponent(s),
+      );
       return;
     }
     // keyPrefix 與搜尋頁的精確篩選參數同名（見 data/avVideoFilters.ts）

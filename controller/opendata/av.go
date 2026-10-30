@@ -31,6 +31,9 @@ import (
 // @Param keyword query string false "Keyword"
 // @Param tag query []string false "Tag (repeatable, AND)" collectionFormat(multi)
 // @Param actress query string false "Actress name"
+// @Param xcity_id query int false "Actress page: xcity actress id; splits same-name actresses by DMM actress ID (overrides actress)"
+// @Param manual_id query int false "Actress page: manual actress id"
+// @Param dmm_id query string false "Actress page: DMM actress id, resolved via dmm_actress_maps"
 // @Param no query string false "Video number"
 // @Param page query int false "Page number"
 // @Success 200 {object} output.CommonOutput
@@ -92,6 +95,9 @@ func AvVideoFacets(ctx fiber.Ctx) error {
 // @Param birth_month query int false "Birth month"
 // @Param birth_day query int false "Birth day"
 // @Param blood_type query string false "Blood type"
+// @Param xcity_id query int false "Exact xcity actress id"
+// @Param manual_id query int false "Exact manual actress id"
+// @Param dmm_id query string false "DMM actress id, resolved via dmm_actress_maps"
 // @Param page query int false "Page number"
 // @Success 200 {object} output.CommonOutput
 // @Failure 400 {object} output.CommonOutput

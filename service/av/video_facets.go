@@ -24,7 +24,9 @@ func VideoFacets(input av.VideoQueryRequest) (av.VideoFacets, error) {
 			"actresses": termsAgg("actresses.keyword", facetOtherSize),
 		},
 	}
-	applyVideoConditions(input, q)
+	if err := applyVideoConditions(input, q); err != nil {
+		return av.VideoFacets{}, err
+	}
 
 	r, _, err := search.Search[av.RawVideo, av.CleanVideo](config.EnvConfig().DMMVideoIndex, q)
 	if err != nil {

@@ -15,6 +15,11 @@ type VideoQueryRequest struct {
 	// Tag 可複選（?tag=A&tag=B），結果需同時符合
 	Tag     []string `query:"tag"`
 	Actress string   `query:"actress"`
+	// 女優頁指定是哪一位（同 ActressQueryRequest）：同名女優的新影片依對照表裡的 DMM 女優 ID 分開，
+	// 對不到時退回 Actress（名字）；規則見 service/av/actress_videos.go
+	XCityID  int    `query:"xcity_id"`
+	ManualID int    `query:"manual_id"`
+	DMMID    string `query:"dmm_id"`
 	// 以下為詳細頁 chip 用的精確篩選（對 .keyword 下 term）
 	Maker    string `query:"maker"`
 	Label    string `query:"label"`
@@ -47,6 +52,7 @@ type RawVideo struct {
 	Directors   []interface{} `json:"directors"`
 	Series      []interface{} `json:"series"`
 	Actresses   []string      `json:"actresses"`
+	ActressIDs  []string      `json:"actress_ids"`
 	Timestamp   time.Time     `json:"@timestamp"`
 	MakerNo     string        `json:"maker_no"`
 	IsOrphan    bool          `json:"is_orphan"`
@@ -70,7 +76,9 @@ type CleanVideo struct {
 	Directors   []interface{} `json:"directors"`
 	Series      []interface{} `json:"series"`
 	Actresses   []string      `json:"actresses"`
-	MakerNo     string        `json:"maker_no"`
+	// ActressIDs DMM 女優 ID，順序與 Actresses 一致；舊資料沒有（空陣列）
+	ActressIDs []string `json:"actress_ids"`
+	MakerNo    string   `json:"maker_no"`
 	// IsOrphan 同步資料確定失敗，前端不顯示同步按鈕
 	IsOrphan bool `json:"is_orphan,omitempty"`
 }
