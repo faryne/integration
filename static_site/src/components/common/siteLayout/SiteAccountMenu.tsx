@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Avatar,
+  Badge,
   Box,
   Button,
   Divider,
@@ -13,6 +14,7 @@ import {
 import GoogleIcon from "@mui/icons-material/Google";
 
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { useAccountLinkBadges } from "@/helpers/accountLinkBadges.ts";
 import type { LayoutMenuItem } from "@/types/layout.ts";
 
 import { headerMenuPaperSx } from "./headerStyles.ts";
@@ -20,9 +22,15 @@ import { siteInk } from "./siteTheme.ts";
 
 /** 需要登入的功能才掛上：未登入顯示「登入」，登入後是頭像＋帳號選單（links 只放站內連結） */
 export function SiteAccountMenu({ links = [] }: { links?: LayoutMenuItem[] }) {
-  const { user, loading, submitting, login, logout } = useAuth();
+  const { user, session, loading, submitting, login, logout } = useAuth();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const close = () => setAnchorEl(null);
+  // 管理頁入口只給管理者；待處理數量顯示在連結旁，有待處理時頭像加提示點
+  const visibleLinks = links.filter(
+    (l) => !l.adminOnly || session?.user.is_admin,
+  );
+  const badges = useAccountLinkBadges(visibleLinks);
+  const hasPending = visibleLinks.some((l) => l.badge && badges[l.badge]);
 
   if (loading) return null;
 
@@ -62,15 +70,22 @@ export function SiteAccountMenu({ links = [] }: { links?: LayoutMenuItem[] }) {
         onClick={(e) => setAnchorEl(e.currentTarget)}
         sx={{ p: 0 }}
       >
-        <Avatar
-          src={user.photoURL ?? undefined}
-          alt={name}
-          sx={{
-            width: 34,
-            height: 34,
-            border: "2px solid rgba(114, 255, 240, 0.5)",
-          }}
-        />
+        <Badge
+          color="warning"
+          invisible={!hasPending}
+          overlap="circular"
+          variant="dot"
+        >
+          <Avatar
+            src={user.photoURL ?? undefined}
+            alt={name}
+            sx={{
+              width: 34,
+              height: 34,
+              border: "2px solid rgba(114, 255, 240, 0.5)",
+            }}
+          />
+        </Badge>
       </IconButton>
       <Menu
         anchorEl={anchorEl}
@@ -104,14 +119,22 @@ export function SiteAccountMenu({ links = [] }: { links?: LayoutMenuItem[] }) {
           </Box>
         </Box>
         <Divider />
-        {links.map((link) => (
+        {visibleLinks.map((link) => (
           <MenuItem
             key={link.href}
             component={Link}
             to={link.href}
             onClick={close}
+            sx={{ justifyContent: "space-between", gap: 2 }}
           >
             {link.title}
+            {link.badge && Boolean(badges[link.badge]) && (
+              <Badge
+                badgeContent={badges[link.badge]}
+                color="warning"
+                sx={{ mr: 1 }}
+              />
+            )}
           </MenuItem>
         ))}
         <MenuItem

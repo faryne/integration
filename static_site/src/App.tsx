@@ -60,6 +60,26 @@ const AVActressDetail = lazy(() =>
     default: module.AVActressDetail,
   })),
 );
+const AVActressSubmit = lazy(() =>
+  import("@/pages/av/actress_submit.tsx").then((module) => ({
+    default: module.AVActressSubmit,
+  })),
+);
+const AVActressEdit = lazy(() =>
+  import("@/pages/av/actress_submit.tsx").then((module) => ({
+    default: module.AVActressEdit,
+  })),
+);
+const AVActressSubmissions = lazy(() =>
+  import("@/pages/av/actress_submissions.tsx").then((module) => ({
+    default: module.AVActressSubmissions,
+  })),
+);
+const AVActressSubmissionReview = lazy(() =>
+  import("@/pages/av/actress_submission_review.tsx").then((module) => ({
+    default: module.AVActressSubmissionReview,
+  })),
+);
 const AVVideoDetail = lazy(() =>
   import("@/pages/av/video_detail.tsx").then((module) => ({
     default: module.AVVideoDetail,
@@ -648,6 +668,23 @@ function App() {
                 <Route path={""} element={<DefaultLayout />}>
                   <Route path={"/av/video/:no"} element={<AVVideoDetail />} />
                   <Route path={"/av/video"} element={<AVVideo />} />
+                  {/* 上稿與審核要排在 :name 前面（靜態路徑本來就優先，排前面讀起來比較清楚） */}
+                  <Route
+                    path={"/av/actress/submit"}
+                    element={<AVActressSubmit />}
+                  />
+                  <Route
+                    path={"/av/actress/submissions"}
+                    element={<AVActressSubmissions />}
+                  />
+                  <Route
+                    path={"/av/actress/submissions/:id"}
+                    element={<AVActressSubmissionReview />}
+                  />
+                  <Route
+                    path={"/av/actress/:name/edit"}
+                    element={<AVActressEdit />}
+                  />
                   <Route
                     path={"/av/actress/:name"}
                     element={<AVActressDetail />}

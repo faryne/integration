@@ -1,67 +1,31 @@
 package av
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
 
 	avEntity "faryne.dev/model/entity/opendata/av"
-	"faryne.dev/model/enum"
 	avRepo "faryne.dev/repository/av"
-	"faryne.dev/service/client"
 	"faryne.dev/service/log"
 	"faryne.dev/service/xcity"
 	"go.uber.org/zap"
 )
 
-const actressIndexName = "dmmactresses"
 const actressDomainXCity = "xcity"
 const actressPersistWorkers = 4
 const actressPersistQueueSize = 100
 const actressMaxPagesPerSyllabus = 100
 const actressSyncTimeout = 24 * time.Hour
 
+// actressIndexDocument ES 文件：domain＋aid 再攤平女優欄位（與 dmm_actresses.info 同格式）
 type actressIndexDocument struct {
-	Domain     string   `json:"domain"`
-	AID        int      `json:"aid"`
-	Name       string   `json:"name"`
-	Kana       string   `json:"kana"`
-	Photo      string   `json:"photo,omitempty"`
-	Height     int      `json:"height"`
-	Bust       int      `json:"bust"`
-	Waist      int      `json:"waist"`
-	Hips       int      `json:"hips"`
-	Cup        string   `json:"cup,omitempty"`
-	Horoscope  string   `json:"horoscope,omitempty"`
-	Blood      string   `json:"blood,omitempty"`
-	BornCity   string   `json:"born_city,omitempty"`
-	BirthYear  int      `json:"birth_year"`
-	BirthMonth int      `json:"birth_month"`
-	BirthDay   int      `json:"birth_day"`
-	Interests  []string `json:"interests,omitempty"`
-}
-
-type actressInfoDocument struct {
-	Name       string   `json:"name"`
-	Kana       string   `json:"kana"`
-	Photo      string   `json:"photo,omitempty"`
-	Height     int      `json:"height"`
-	Bust       int      `json:"bust"`
-	Waist      int      `json:"waist"`
-	Hips       int      `json:"hips"`
-	Cup        string   `json:"cup,omitempty"`
-	Horoscope  string   `json:"horoscope,omitempty"`
-	Blood      string   `json:"blood,omitempty"`
-	BornCity   string   `json:"born_city,omitempty"`
-	BirthYear  int      `json:"birth_year"`
-	BirthMonth int      `json:"birth_month"`
-	BirthDay   int      `json:"birth_day"`
-	Interests  []string `json:"interests,omitempty"`
+	Domain string `json:"domain"`
+	AID    int    `json:"aid"`
+	avEntity.ActressFields
 }
 
 type ActressSyncResult struct {
@@ -74,6 +38,11 @@ type ActressSyncResult struct {
 func SyncXCityActresses(ctx context.Context) (*ActressSyncResult, error) {
 	result := &ActressSyncResult{}
 	repo := avRepo.NewDMMActress()
+	// 上稿核准過的手動修改：寫入前蓋回去，不然每次同步都會被 xcity 的值洗掉
+	overrides, err := repo.OverridesByDomain(actressDomainXCity)
+	if err != nil {
+		return result, err
+	}
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -169,6 +138,9 @@ func SyncXCityActresses(ctx context.Context) (*ActressSyncResult, error) {
 			newDocs := 0
 			for _, actress := range actresses {
 				doc, ok := buildActressIndexDocument(actress)
+				if raw, has := overrides[doc.AID]; ok && has {
+					doc.ActressFields = withActressOverrides(doc.ActressFields, decodeActressOverrides(&raw))
+				}
 				if !ok {
 					addResult(func() {
 						result.Skipped++
@@ -210,43 +182,30 @@ func buildActressIndexDocument(actress xcity.Actress) (actressIndexDocument, boo
 	}
 
 	return actressIndexDocument{
-		Domain:     actressDomainXCity,
-		AID:        actress.ID,
-		Name:       name,
-		Kana:       strings.TrimSpace(actress.Kana),
-		Photo:      strings.TrimSpace(actress.Image),
-		Height:     actress.Height,
-		Bust:       actress.B,
-		Waist:      actress.W,
-		Hips:       actress.H,
-		Cup:        strings.TrimSpace(actress.Cup),
-		Blood:      strings.TrimSpace(actress.BloodType),
-		BornCity:   strings.TrimSpace(actress.City),
-		BirthYear:  actress.BirthYear,
-		BirthMonth: actress.BirthMonth,
-		BirthDay:   actress.BirthDay,
-		Interests:  actress.Interests,
+		Domain: actressDomainXCity,
+		AID:    actress.ID,
+		ActressFields: avEntity.ActressFields{
+			Name:       name,
+			Kana:       strings.TrimSpace(actress.Kana),
+			Photo:      strings.TrimSpace(actress.Image),
+			Height:     actress.Height,
+			Bust:       actress.B,
+			Waist:      actress.W,
+			Hips:       actress.H,
+			Cup:        strings.TrimSpace(actress.Cup),
+			Blood:      strings.TrimSpace(actress.BloodType),
+			BornCity:   strings.TrimSpace(actress.City),
+			BirthYear:  actress.BirthYear,
+			BirthMonth: actress.BirthMonth,
+			BirthDay:   actress.BirthDay,
+			Interests:  nonNil(actress.Interests),
+			Links:      []avEntity.ActressLink{},
+		},
 	}, true
 }
 
 func saveActress(repo *avRepo.RepositoryDMMActress, doc actressIndexDocument) error {
-	info, err := json.Marshal(actressInfoDocument{
-		Name:       doc.Name,
-		Kana:       doc.Kana,
-		Photo:      doc.Photo,
-		Height:     doc.Height,
-		Bust:       doc.Bust,
-		Waist:      doc.Waist,
-		Hips:       doc.Hips,
-		Cup:        doc.Cup,
-		Horoscope:  doc.Horoscope,
-		Blood:      doc.Blood,
-		BornCity:   doc.BornCity,
-		BirthYear:  doc.BirthYear,
-		BirthMonth: doc.BirthMonth,
-		BirthDay:   doc.BirthDay,
-		Interests:  doc.Interests,
-	})
+	info, err := json.Marshal(doc.ActressFields)
 	if err != nil {
 		return err
 	}
@@ -262,33 +221,12 @@ func saveActress(repo *avRepo.RepositoryDMMActress, doc actressIndexDocument) er
 	})
 }
 
+// indexActress 本機（非 production 且用正式索引名）不寫 ES，避免動到 prod 共用的索引
 func indexActress(ctx context.Context, doc actressIndexDocument) error {
-	es := client.GetElasticSearch(enum.ESDefault)
-	if es == nil {
-		return fmt.Errorf("elasticsearch client is not initialized")
+	if !actressWritesAllowed() {
+		return nil
 	}
-
-	body, err := json.Marshal(doc)
-	if err != nil {
-		return err
-	}
-
-	resp, err := es.Index(
-		actressIndexName,
-		bytes.NewReader(body),
-		es.Index.WithContext(ctx),
-		es.Index.WithDocumentID(fmt.Sprintf("%s-%d", doc.Domain, doc.AID)),
-		es.Index.WithRefresh("true"),
-	)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return fmt.Errorf("index av actress failed: status=%s aid=%d name=%s", resp.Status(), doc.AID, doc.Name)
-	}
-
-	return nil
+	return putActressDocument(ctx, doc, "true")
 }
 
 func SyncXCityActressesCron() {

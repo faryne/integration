@@ -82,6 +82,8 @@ type envConfig struct {
 
 	// DMMVideoIndex 與 storyteller 一樣，本機跟正式環境共用 ES cluster，本機測試要蓋成別的名字
 	DMMVideoIndex string `env:"DMM_VIDEO_INDEX,default=dmmvideos"`
+	// DMMActressIndex 女優索引，理由同上：本機要測核准寫入時蓋成別的名字
+	DMMActressIndex string `env:"DMM_ACTRESS_INDEX,default=dmmactresses"`
 
 	StorytellerAgentAPIKeyActiveKeyID string `env:"STORYTELLER_AGENT_API_KEY_ACTIVE_KEY_ID"`
 	StorytellerAgentAPIKeyMasterKeys  string `env:"STORYTELLER_AGENT_API_KEY_MASTER_KEYS"`

@@ -11,7 +11,13 @@ export interface LayoutMenuItem {
   subPages?: Pick<LayoutMenuItem, "title" | "href">[];
   /** 登入後帳號選單額外列出的連結（例如該功能的「我的最愛」） */
   accountLinks?: LayoutMenuItem[];
+  /** 只有管理者（users.is_admin）看得到，用在帳號選單的管理頁入口 */
+  adminOnly?: boolean;
+  /** 帳號選單上顯示的待處理數量（見 helpers/accountLinkBadges.ts） */
+  badge?: AccountLinkBadge;
 }
+
+export type AccountLinkBadge = "avActressSubmissions";
 
 export interface LayoutDropMenu {
   title: string;

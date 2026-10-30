@@ -12,8 +12,8 @@ import (
 
 	erogeModel "faryne.dev/model/entity/eroge"
 	"faryne.dev/model/enum"
-	authRepo "faryne.dev/repository/auth"
 	erogeRepo "faryne.dev/repository/eroge"
+	authService "faryne.dev/service/auth"
 	"faryne.dev/service/client"
 )
 
@@ -495,15 +495,9 @@ func (s *CatalogService) DeleteVideoTitleKeyword(userID uint64, id uint64) error
 	return s.repo.DeleteVideoTitleKeyword(id)
 }
 
+// requireGalgameAdmin 管理者判斷與 AV 女優上稿審核共用 authService.RequireAdmin
 func requireGalgameAdmin(userID uint64) error {
-	user, err := authRepo.NewUserRepository().UserByID(userID)
-	if err != nil {
-		return err
-	}
-	if user.IsAdmin {
-		return nil
-	}
-	return fmt.Errorf("galgame admin permission is required")
+	return authService.RequireAdmin(userID)
 }
 
 func validateVideoReactionAction(current string, action erogeModel.VideoReactionAction) error {

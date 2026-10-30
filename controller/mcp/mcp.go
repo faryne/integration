@@ -14,7 +14,8 @@ const requestTimeout = 30 * time.Second
 var server = serviceMCP.NewServer("faryne.dev", "http")
 
 func Handle(ctx fiber.Ctx) error {
-	requestCtx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	// 帶上呼叫端 IP：女優上稿等工具要依 IP 限流
+	requestCtx, cancel := context.WithTimeout(serviceMCP.WithClientIP(context.Background(), ctx.IP()), requestTimeout)
 	defer cancel()
 
 	resp, shouldReply, err := server.HandleJSONRPC(requestCtx, ctx.Body())
