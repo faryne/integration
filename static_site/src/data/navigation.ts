@@ -38,6 +38,20 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
         title: "AV 女優搜尋",
         href: "/av/actress",
         description: "定時索引 AV 女優資訊",
+        // 上稿不擋登入，但有登入會記錄提交者；管理者從帳號選單進審核頁
+        requiresAuth: true,
+        subPages: [
+          { title: "新增女優", href: "/av/actress/submit" },
+          { title: "上稿審核", href: "/av/actress/submissions" },
+        ],
+        accountLinks: [
+          {
+            title: "AV 女優上稿審核",
+            href: "/av/actress/submissions",
+            adminOnly: true,
+            badge: "avActressSubmissions",
+          },
+        ],
       },
       {
         title: "SteamLoom",

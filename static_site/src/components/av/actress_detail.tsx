@@ -1,6 +1,7 @@
 import type { Actress, Video } from "@/types/av.ts";
 import {
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
@@ -11,7 +12,9 @@ import {
 } from "@mui/material";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { VideoSearchResponse } from "@/apis/av/video_search.ts";
-import { useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import { ActressLinksCard } from "@/components/av/actress_links_card.tsx";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
 import {
   VideoResultCard,
@@ -190,9 +193,20 @@ export function ActressDetail(props: IActressDetail) {
                   </Typography>
                 )}
               </Stack>
+              {/* 資料有誤或缺漏時送修改單，管理者核准後才更新 */}
+              <Button
+                component={RouterLink}
+                size="small"
+                startIcon={<EditOutlinedIcon />}
+                to={`/av/actress/${encodeURIComponent(actress.name)}/edit`}
+                variant="outlined"
+              >
+                修改資料
+              </Button>
             </Stack>
           </CardContent>
         </Card>
+        <ActressLinksCard links={actress.links} />
         <Card>
           <CardContent>
             <Stack spacing={1.25}>

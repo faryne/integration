@@ -7,6 +7,7 @@ import {
 import {
   Alert,
   Box,
+  Button,
   Chip,
   Grid,
   Pagination,
@@ -14,7 +15,11 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Link as RouterLink,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import { ActressSearch } from "@/components/av/actress_search";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import type { ListByPaginationRequest } from "@/apis/interfaces.ts";
@@ -23,6 +28,7 @@ import { formatSizeRange } from "@/helpers/avSizeRange.ts";
 import { selectedCups, withCups } from "@/helpers/avActressCups.ts";
 import FaceRetouchingNaturalIcon from "@mui/icons-material/FaceRetouchingNatural";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
+import AddIcon from "@mui/icons-material/Add";
 
 type ActressRangeKey = "height" | "b" | "w" | "h";
 
@@ -228,6 +234,16 @@ export function AVActress() {
                 依姓名、罩杯、出生年份與身形條件篩選女優資料。
               </Typography>
             </Box>
+            {/* 名冊裡找不到的女優可以自己上稿，管理者核准後進入搜尋 */}
+            <Button
+              component={RouterLink}
+              startIcon={<AddIcon />}
+              sx={{ flexShrink: 0, ml: "auto !important" }}
+              to="/av/actress/submit"
+              variant="outlined"
+            >
+              新增女優
+            </Button>
           </Stack>
         </Box>
 

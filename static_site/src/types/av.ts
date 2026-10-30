@@ -23,7 +23,18 @@ export interface Video {
   }[];
 }
 
+/** 女優頁「連結」區塊的一筆參考連結；title 沒填時顯示網域 */
+export interface ActressLink {
+  title: string;
+  url: string;
+}
+
 export interface Actress {
+  // domain＋aid 指向資料庫那一筆，修改資料時用來指定要改哪位
+  domain: string;
+  aid: number;
+  // 舊資料（xcity 同步）沒有這個欄位
+  links?: ActressLink[] | null;
   blood: string;
   height: number;
   kana: string;

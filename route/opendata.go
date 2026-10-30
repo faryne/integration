@@ -37,6 +37,16 @@ func OpenData(app *fiber.App) {
 	g4.Get("/search/actress", opendata.AvActressSearch)
 	// 詳細頁「同步資料」：用 DMM 內部番號重抓單一作品（IP＋作品冷卻限流）
 	g4.Post("/video/:no/sync", opendata.AvVideoSync)
+	// 女優上稿：不擋登入（有登入就記錄提交者），IP 限流
+	g4.Post("/actress/submissions", authsession.Optional(authService.BrandMain), opendata.AvActressSubmit)
+	g4.Get("/actress/submissions/:id", opendata.AvActressSubmissionStatus)
+
+	// 女優上稿審核：主站登入且 users.is_admin
+	gAvAdmin := app.Group("/admin/av", authsession.New(authService.BrandMain))
+	gAvAdmin.Get("/actress-submissions", opendata.AdminActressSubmissions)
+	gAvAdmin.Get("/actress-submissions/:id", opendata.AdminActressSubmission)
+	gAvAdmin.Put("/actress-submissions/:id/approve", opendata.AdminApproveActressSubmission)
+	gAvAdmin.Put("/actress-submissions/:id/reject", opendata.AdminRejectActressSubmission)
 
 	gVtuber := g.Group("/vtubers")
 	gVtuber.Get("/channels", opendata.VtuberChannels)

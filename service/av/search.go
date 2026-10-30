@@ -222,7 +222,7 @@ func actressNameQuery(name string) map[string]any {
 // wildcard 查詢的特殊字元要跳脫，使用者輸入的 * ? 才會被當成一般字元
 var wildcardEscaper = strings.NewReplacer(`\`, `\\`, `*`, `\*`, `?`, `\?`)
 
-func buildActressSearchQuery(input av.ActressQueryRequest, domain string) map[string]any {
+func buildActressSearchQuery(input av.ActressQueryRequest, domains []string) map[string]any {
 	page := input.Page
 	if page <= 0 {
 		page = 1
@@ -232,8 +232,8 @@ func buildActressSearchQuery(input av.ActressQueryRequest, domain string) map[st
 		"from": (page - 1) * 30,
 		"sort": actressBirthdaySort(),
 	}
-	if domain != "" {
-		search.SetQuery(exactStringQuery("domain", domain), true, q)
+	if len(domains) > 0 {
+		search.SetQuery(actressDomainQuery(domains), true, q)
 	}
 	if name := strings.TrimSpace(input.Name); name != "" {
 		search.SetQuery(actressNameQuery(name), true, q)
@@ -318,13 +318,25 @@ func actressSizeQuery(field string, values []int) map[string]any {
 	return nil
 }
 
+// actressSearchDomains 搜尋與上稿查重複時看的女優來源
+var actressSearchDomains = []string{actressDomainXCity, av.ActressDomainManual}
+
+// actressDomainQuery 女優來源屬於其中之一
+func actressDomainQuery(domains []string) map[string]any {
+	should := make([]map[string]any, 0, len(domains))
+	for _, d := range domains {
+		should = append(should, exactStringQuery("domain", d))
+	}
+	return map[string]any{"bool": map[string]any{"should": should, "minimum_should_match": 1}}
+}
+
 func xcityActressIndexReady() (bool, error) {
 	q := map[string]any{
 		"size": 0,
 	}
 	search.SetQuery(exactStringQuery("domain", actressDomainXCity), true, q)
 
-	r, _, err := search.Search[av.Actress, av.Actress]("dmmactresses", q, fActress)
+	r, _, err := search.Search[av.Actress, av.Actress](actressIndexName(), q, fActress)
 	if err != nil {
 		return false, err
 	}
@@ -332,13 +344,14 @@ func xcityActressIndexReady() (bool, error) {
 }
 
 func ActressSearch(input av.ActressQueryRequest) (*entity.ElasticSearchResponse[av.Actress], []av.Actress, error) {
-	domain := actressDomainXCity
+	// xcity 資料夠多時只搜 xcity 與手動上稿的女優（排除舊的 dmm 來源）；不夠時不限來源
+	domains := actressSearchDomains
 	if ready, err := xcityActressIndexReady(); err != nil {
 		return nil, nil, err
 	} else if !ready {
-		domain = ""
+		domains = nil
 	}
-	q := buildActressSearchQuery(input, domain)
+	q := buildActressSearchQuery(input, domains)
 
-	return search.Search[av.Actress, av.Actress]("dmmactresses", q, fActress)
+	return search.Search[av.Actress, av.Actress](actressIndexName(), q, fActress)
 }
