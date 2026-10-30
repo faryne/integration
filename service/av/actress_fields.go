@@ -44,8 +44,7 @@ func invalidActress(format string, args ...any) error {
 func normalizeActressFields(f avEntity.ActressFields) (avEntity.ActressFields, error) {
 	f.Name, f.Kana, f.Photo = strings.TrimSpace(f.Name), strings.TrimSpace(f.Kana), strings.TrimSpace(f.Photo)
 	f.Cup, f.Blood = strings.ToUpper(strings.TrimSpace(f.Cup)), strings.ToUpper(strings.TrimSpace(f.Blood))
-	// 星座不開放填、DMM 女優 ID 只給內部爬蟲寫入，提交內容一律清空
-	f.BornCity, f.Horoscope, f.DMMID = strings.TrimSpace(f.BornCity), "", ""
+	f.BornCity, f.Horoscope = strings.TrimSpace(f.BornCity), ""
 
 	if f.Name == "" {
 		return f, invalidActress("姓名必填")

@@ -25,9 +25,6 @@ type ActressFields struct {
 	BirthDay   int           `json:"birth_day"`
 	Interests  []string      `json:"interests"`
 	Links      []ActressLink `json:"links"`
-	// DMMID DMM 女優 ID：用來把同名不同人的新影片分開；空字串代表未對應。
-	// 只給內部爬蟲寫入，不開放上稿（不在 ActressEditableFields 裡，提交內容一律清空）
-	DMMID string `json:"dmm_id"`
 }
 
 // ActressEditableFields 開放上稿修改的欄位（json key），diff 與覆寫都照這個順序；星座不開放填

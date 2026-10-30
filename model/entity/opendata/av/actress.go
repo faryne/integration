@@ -18,9 +18,12 @@ type ActressQueryRequest struct {
 	BirthMonth int    `query:"birth_month"`
 	BirthDay   int    `query:"birth_day"`
 	BloodType  string `query:"blood_type"`
-	// Key「{domain}-{aid}」精確指定一位（女優頁網址的 ?id=，改名後用來找回同一位）
-	Key  string `query:"key"`
-	Page int    `query:"page"`
+	// 女優頁網址的參數，精確指定一位：xcity_id／manual_id 直接查，dmm_id 先查對照表 dmm_actress_maps；
+	// 同時帶多個時依 xcity_id → manual_id → dmm_id 的順序，都對不到就當成沒帶
+	XCityID  int    `query:"xcity_id"`
+	ManualID int    `query:"manual_id"`
+	DMMID    string `query:"dmm_id"`
+	Page     int    `query:"page"`
 }
 
 type Actress struct {
@@ -43,5 +46,4 @@ type Actress struct {
 	BirthDay   int           `json:"birth_day"`
 	Hips       any           `json:"hips"`
 	Interests  []any         `json:"interests"`
-	DMMID      string        `json:"dmm_id"`
 }

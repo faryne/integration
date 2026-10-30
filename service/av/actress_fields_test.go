@@ -10,14 +10,14 @@ import (
 
 func TestNormalizeActressFields(t *testing.T) {
 	f, err := normalizeActressFields(avEntity.ActressFields{
-		Name: " 水城ひなの ", Cup: "k", DMMID: "1075832",
+		Name: " 水城ひなの ", Cup: "k",
 		Interests: []string{"ゲーム", " ゲーム ", ""},
 		Links:     []avEntity.ActressLink{{URL: "https://x.com/a"}, {Title: "dup", URL: "https://x.com/a"}, {URL: ""}},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if f.Name != "水城ひなの" || f.Cup != "K" || len(f.Interests) != 1 || len(f.Links) != 1 || f.DMMID != "" {
+	if f.Name != "水城ひなの" || f.Cup != "K" || len(f.Interests) != 1 || len(f.Links) != 1 {
 		t.Fatalf("unexpected normalize result: %+v", f)
 	}
 

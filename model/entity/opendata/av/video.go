@@ -15,8 +15,11 @@ type VideoQueryRequest struct {
 	// Tag 可複選（?tag=A&tag=B），結果需同時符合
 	Tag     []string `query:"tag"`
 	Actress string   `query:"actress"`
-	// ActressKey 女優頁用「{domain}-{aid}」指定是哪一位，同名女優的新影片依 DMM 女優 ID 分開（規則見 service/av/actress_videos.go）
-	ActressKey string `query:"actress_key"`
+	// 女優頁指定是哪一位（同 ActressQueryRequest）：同名女優的新影片依對照表裡的 DMM 女優 ID 分開，
+	// 對不到時退回 Actress（名字）；規則見 service/av/actress_videos.go
+	XCityID  int    `query:"xcity_id"`
+	ManualID int    `query:"manual_id"`
+	DMMID    string `query:"dmm_id"`
 	// 以下為詳細頁 chip 用的精確篩選（對 .keyword 下 term）
 	Maker    string `query:"maker"`
 	Label    string `query:"label"`

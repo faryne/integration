@@ -137,16 +137,14 @@ func applyVideoConditions(input av.VideoQueryRequest, q map[string]any) error {
 			search.SetQuery(map[string]any{"term": map[string]any{"tags.keyword": tag}}, true, q)
 		}
 	}
-	// 女優頁帶 actress_key 時改用 DMM 女優 ID 區分同名；key 對不到女優就退回 actress（名字）
-	if key := strings.TrimSpace(input.ActressKey); key != "" {
-		cond, err := actressVideoQuery(key)
+	// 女優頁指定是哪一位時改用 DMM 女優 ID 區分同名；對不到女優就退回 actress（名字）
+	if row := resolveActress(input.XCityID, input.ManualID, input.DMMID); row != nil {
+		cond, err := actressVideoQuery(*row)
 		if err != nil {
 			return err
 		}
-		if cond != nil {
-			search.SetQuery(cond, true, q)
-			input.Actress = ""
-		}
+		search.SetQuery(cond, true, q)
+		input.Actress = ""
 	}
 	for field, value := range map[string]string{
 		"actresses": input.Actress,
@@ -248,10 +246,6 @@ func buildActressSearchQuery(input av.ActressQueryRequest, domains []string) map
 	}
 	if len(domains) > 0 {
 		search.SetQuery(actressDomainQuery(domains), true, q)
-	}
-	if domain, aid, ok := parseActressKey(strings.TrimSpace(input.Key)); ok {
-		search.SetQuery(exactStringQuery("domain", domain), true, q)
-		search.SetQuery(map[string]any{"term": map[string]any{"aid": aid}}, true, q)
 	}
 	if name := strings.TrimSpace(input.Name); name != "" {
 		search.SetQuery(actressNameQuery(name), true, q)
@@ -370,6 +364,11 @@ func ActressSearch(input av.ActressQueryRequest) (*entity.ElasticSearchResponse[
 		domains = nil
 	}
 	q := buildActressSearchQuery(input, domains)
+	// 女優頁指定是哪一位（改名後也找得回來）；對不到就當成沒帶
+	if row := resolveActress(input.XCityID, input.ManualID, input.DMMID); row != nil {
+		search.SetQuery(exactStringQuery("domain", row.Domain), true, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"aid": row.ID}}, true, q)
+	}
 
 	return search.Search[av.Actress, av.Actress](actressIndexName(), q, fActress)
 }
