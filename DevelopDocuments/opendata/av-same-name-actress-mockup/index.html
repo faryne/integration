@@ -163,7 +163,7 @@
   function detail() {
     const a = KURUMI[state.who];
     const url = state.viaOld ? "/av/actress/七瀬くるみ" : state.viaDmm ? "/av/actress/七瀬くるみ?dmm_id=1075832" : `/av/actress/七瀬くるみ?xcity_id=${a.key.split("-")[1]}`;
-    const switcher = `<div class="samename"><b>同名女優</b>${KURUMI.map((x, i) =>
+    const switcher = `<div class="samename"><b>可能同名的女優</b>${KURUMI.map((x, i) =>
       `<a class="sn ${i === state.who ? "on" : ""}" onclick="Object.assign(state,{who:${i},viaOld:false,viaDmm:false});render()"><div class="thumb"></div><div>七瀬くるみ<small>${summary(x)}</small></div></a>`).join("")}</div>`;
     const videos = (state.who === 1
       ? [["2026/10/28 新作","mine"],["2026/10/15 新作","mine"],["2019 舊作","legacy"],["1998 舊作","legacy"]]

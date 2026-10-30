@@ -35,6 +35,7 @@ import {
 import { apiErrorMessage } from "@/helpers/apiError.ts";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { useTitle } from "@/helpers/title.tsx";
+import { actressPagePath } from "@/helpers/avActressRef.ts";
 import { AdminGuard } from "@/components/common/AdminGuard.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ActressPhoto } from "@/components/av/actress_photo.tsx";
@@ -89,12 +90,12 @@ function ReviewContent({ d }: { d: ActressSubmissionDetail }) {
   const isEdit = d.kind === "edit";
   const sameNames = isEdit ? [] : d.duplicates.filter((c) => c.exact_name);
   const kanaOnly = isEdit ? [] : d.duplicates.filter((c) => !c.exact_name);
-  const [mergeTarget, setMergeTarget] = useState(
-    sameNames[0] ? `${sameNames[0].domain}-${sameNames[0].aid}` : "",
-  );
-  const mergeCandidate = sameNames.find(
-    (c) => `${c.domain}-${c.aid}` === mergeTarget,
-  );
+  // 核准對話框的選擇（合併到哪一位，或新增為另一位），沒有預設值
+  const [mergeTarget, setMergeTarget] = useState("");
+  // 比對表拿選中的那位；還沒選或選了新增時，拿第一位同名的來比
+  const mergeCandidate =
+    sameNames.find((c) => `${c.domain}-${c.aid}` === mergeTarget) ??
+    sameNames[0];
   // 修改單：提交後被改過的欄位；新增單有同名時，拿選中的那位來比對
   const drifted =
     d.base && d.current ? changedActressFields(d.base, d.current) : [];
@@ -121,7 +122,11 @@ function ReviewContent({ d }: { d: ActressSubmissionDetail }) {
       message: apiErrorMessage(error, "操作失敗，請稍後再試"),
       error: true,
     });
-  const actressPage = `/av/actress/${encodeURIComponent(d.payload.name)}`;
+  // 核准後實際寫入的那一位（新增、修改、合併都有記錄）
+  const actressPage = actressPagePath(d.payload.name, {
+    domain: d.merged_domain,
+    aid: d.merged_aid,
+  });
 
   return (
     <Stack spacing={2} sx={{ textAlign: "left" }}>
@@ -188,7 +193,7 @@ function ReviewContent({ d }: { d: ActressSubmissionDetail }) {
             )}
             {d.status !== "approved" && sameNames.length > 0 && (
               <Alert severity="warning">
-                已有同名女優，核准時只能合併到既有女優。下表為合併後與該女優的差異。
+                已有同名女優，核准時可以合併到既有女優，或新增為另一位。下表為合併後與該女優的差異。
               </Alert>
             )}
             <Stack
@@ -267,7 +272,7 @@ function ReviewContent({ d }: { d: ActressSubmissionDetail }) {
                   <Link
                     component={RouterLink}
                     target="_blank"
-                    to={`/av/actress/${encodeURIComponent(c.fields.name)}`}
+                    to={actressPagePath(c.fields.name, c)}
                   >
                     {c.fields.name}
                   </Link>

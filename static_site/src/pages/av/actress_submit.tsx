@@ -1,10 +1,10 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { actressPagePath, useRoutedActress } from "@/helpers/avActressRef.ts";
 import { Skeleton, Stack, Typography } from "@mui/material";
 import type { ActressFields } from "@/types/avActressSubmission.ts";
 import { useSubmitActress } from "@/apis/av/actress_submission.ts";
-import { useAVActressSearch } from "@/apis/av/actress_search.ts";
 import { EMPTY_ACTRESS_FIELDS } from "@/data/avActressFields.ts";
 import { actressToFields } from "@/helpers/avActressFields.ts";
 import { apiErrorMessage } from "@/helpers/apiError.ts";
@@ -44,17 +44,16 @@ export function AVActressSubmit() {
   );
 }
 
-/** 修改女優資料：/av/actress/:name/edit，預填女優頁顯示的那一筆 */
+/** 修改女優資料：/av/actress/:name/edit，預填女優頁顯示的那一筆（網址參數規則同女優頁） */
 export function AVActressEdit() {
   const { name = "" } = useParams<{ name: string }>();
   useTitle(`修改女優資料：${name}`);
   useBreadcrumbTail(`${name}・修改資料`);
   const navigate = useNavigate();
-  const search = useAVActressSearch({ name, page: 1 }, name !== "");
-  const actress = search.data?.data?.data?.find((a) => a.name === name);
-  const backTo = `/av/actress/${encodeURIComponent(name)}`;
+  const { actress, notFound } = useRoutedActress(name, "/edit");
+  const backTo = actressPagePath(name, actress);
 
-  if (search.isSuccess && !actress) {
+  if (notFound) {
     return (
       <ErrorPage
         backUrl="/av/actress"

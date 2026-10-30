@@ -364,10 +364,14 @@ func ActressSearch(input av.ActressQueryRequest) (*entity.ElasticSearchResponse[
 		domains = nil
 	}
 	q := buildActressSearchQuery(input, domains)
-	// 女優頁指定是哪一位（改名後也找得回來）；對不到就當成沒帶
-	if row := resolveActress(input.XCityID, input.ManualID, input.DMMID); row != nil {
-		search.SetQuery(exactStringQuery("domain", row.Domain), true, q)
-		search.SetQuery(map[string]any{"term": map[string]any{"aid": row.ID}}, true, q)
+	// 女優頁指定是哪一位（改名後也找得回來）；指定了卻對不到就回空結果，讓頁面自己決定怎麼退回用名字查
+	if input.XCityID > 0 || input.ManualID > 0 || strings.TrimSpace(input.DMMID) != "" {
+		if row := resolveActress(input.XCityID, input.ManualID, input.DMMID); row != nil {
+			search.SetQuery(exactStringQuery("domain", row.Domain), true, q)
+			search.SetQuery(map[string]any{"term": map[string]any{"aid": row.ID}}, true, q)
+		} else {
+			search.SetQuery(map[string]any{"match_none": map[string]any{}}, true, q)
+		}
 	}
 
 	return search.Search[av.Actress, av.Actress](actressIndexName(), q, fActress)

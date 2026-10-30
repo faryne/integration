@@ -22,6 +22,7 @@ import {
   formatActressField,
 } from "@/helpers/avActressFields.ts";
 import { useDebouncedValue } from "@/helpers/useDebouncedValue.ts";
+import { actressPagePath } from "@/helpers/avActressRef.ts";
 import { useAVActressSearch } from "@/apis/av/actress_search.ts";
 import { ActressPhoto } from "@/components/av/actress_photo.tsx";
 import { ActressLinksEditor } from "@/components/av/actress_links_editor.tsx";
@@ -60,7 +61,7 @@ export function ActressSubmissionForm({
   const changed = base ? changedActressFields(base, fields) : [];
   const cupInvalid = fields.cup !== "" && !ACTRESS_CUP_PATTERN.test(fields.cup);
 
-  // 新增時查同名女優：同名只能合併到既有女優，先提醒提交者改用「修改資料」
+  // 新增時查同名女優：如果是同一位，先提醒提交者改用「修改資料」
   const debouncedName = useDebouncedValue(fields.name.trim(), 400);
   const sameName = useAVActressSearch(
     { name: debouncedName, page: 1 },
@@ -145,7 +146,7 @@ export function ActressSubmissionForm({
           已有同名女優：
           <Link
             component={RouterLink}
-            to={`/av/actress/${encodeURIComponent(existing.name)}`}
+            to={actressPagePath(existing.name, existing)}
           >
             {existing.name}
           </Link>

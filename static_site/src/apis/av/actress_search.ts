@@ -4,10 +4,12 @@ import type {
   Pagination,
 } from "@/apis/interfaces.ts";
 import type { Actress } from "@/types/av.ts";
+import type { ActressRef } from "@/helpers/avActressRef.ts";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
-export interface ActressSearchRequest {
+// ActressRef：指定是哪一位（女優頁網址的參數），指定了卻對不到時回空結果
+export interface ActressSearchRequest extends ActressRef {
   page: number;
   b?: number[];
   w?: number[];

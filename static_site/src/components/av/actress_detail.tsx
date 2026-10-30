@@ -16,6 +16,8 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import { ActressLinksCard } from "@/components/av/actress_links_card.tsx";
 import { ActressPhoto } from "@/components/av/actress_photo.tsx";
+import { ActressSameNames } from "@/components/av/actress_same_names.tsx";
+import { actressPagePath } from "@/helpers/avActressRef.ts";
 import {
   formatActressBirth,
   formatActressMeasurements,
@@ -75,6 +77,8 @@ const topTagSx = (index: number) => {
 export interface IActressDetail {
   actress?: Actress;
   onVideoPageChange?: (page: number) => void;
+  // 名字完全相同的所有人（含這位），兩位以上時顯示「可能同名的女優」切換
+  sameNames?: Actress[];
   videoPage?: number;
   videos?: UseQueryResult<VideoSearchResponse, Error>;
 }
@@ -151,6 +155,7 @@ export function ActressDetail(props: IActressDetail) {
     const birth = formatActressBirth(actress);
     return (
       <Stack spacing={2}>
+        <ActressSameNames actresses={props.sameNames ?? []} current={actress} />
         <Card>
           <CardContent>
             <Stack alignItems="center" direction="column" spacing={2}>
@@ -188,7 +193,7 @@ export function ActressDetail(props: IActressDetail) {
                 component={RouterLink}
                 size="small"
                 startIcon={<EditOutlinedIcon />}
-                to={`/av/actress/${encodeURIComponent(actress.name)}/edit`}
+                to={actressPagePath(actress.name, actress, "/edit")}
                 variant="outlined"
               >
                 修改資料

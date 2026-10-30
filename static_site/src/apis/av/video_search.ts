@@ -4,10 +4,12 @@ import type {
   Pagination,
 } from "@/apis/interfaces";
 import type { Video } from "@/types/av";
+import type { ActressRef } from "@/helpers/avActressRef.ts";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
-export interface VideoSearchRequest {
+// ActressRef：女優頁指定是哪一位，同名女優的新影片依 DMM 女優 ID 分開；對不到時退回 actress（名字）
+export interface VideoSearchRequest extends ActressRef {
   page: number;
   year?: number;
   month?: number;

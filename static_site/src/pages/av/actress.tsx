@@ -30,6 +30,7 @@ import {
 } from "@/helpers/avActressDisplay.ts";
 import { ActressPhoto } from "@/components/av/actress_photo.tsx";
 import { selectedCups, withCups } from "@/helpers/avActressCups.ts";
+import { actressPagePath } from "@/helpers/avActressRef.ts";
 import FaceRetouchingNaturalIcon from "@mui/icons-material/FaceRetouchingNatural";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
 import AddIcon from "@mui/icons-material/Add";
@@ -380,11 +381,9 @@ export function AVActress() {
                       return (
                         <Box
                           component="button"
-                          key={actress.name}
+                          key={`${actress.domain}-${actress.aid}`}
                           onClick={() =>
-                            navigate(
-                              `/av/actress/${encodeURIComponent(actress.name)}`,
-                            )
+                            navigate(actressPagePath(actress.name, actress))
                           }
                           sx={{
                             appearance: "none",
