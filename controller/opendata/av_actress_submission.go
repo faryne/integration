@@ -131,7 +131,7 @@ func actressSubmissionError(err error) error {
 		return output.New(http.StatusForbidden, "", nil, "需要管理者權限")
 	case errors.Is(err, av.ErrActressTargetNotFound):
 		return output.New(http.StatusNotFound, "", nil, err.Error())
-	case errors.Is(err, av.ErrSubmissionNotReviewable):
+	case errors.Is(err, av.ErrSubmissionNotReviewable), errors.Is(err, av.ErrDMMActressIDInUse):
 		return output.New(http.StatusConflict, "", nil, err.Error())
 	case errors.Is(err, av.ErrActressWritesDisabled):
 		return output.New(http.StatusServiceUnavailable, "", nil, err.Error())

@@ -40,6 +40,7 @@ var fVideo = func(i av.RawVideo) av.CleanVideo {
 	if i.Actresses != nil {
 		o.Actresses = i.Actresses
 	}
+	o.ActressIDs = nonNil(i.ActressIDs)
 	return o
 }
 
@@ -81,7 +82,9 @@ func VideoSearch(input av.VideoQueryRequest) (*entity.ElasticSearchResponse[av.R
 		"from": (page - 1) * 30,
 		"sort": map[string]any{"pulish_date": map[string]any{"order": "desc"}, "vod_date": map[string]any{"order": "desc"}},
 	}
-	applyVideoConditions(input, q)
+	if err := applyVideoConditions(input, q); err != nil {
+		return nil, nil, err
+	}
 	if input.Shuffle {
 		randomizeQuery(q)
 	}
@@ -89,7 +92,7 @@ func VideoSearch(input av.VideoQueryRequest) (*entity.ElasticSearchResponse[av.R
 }
 
 // applyVideoConditions 把搜尋條件（日期、關鍵字、精確篩選、番號）寫進 q；搜尋與篩選統計（facets）共用，兩邊結果才會一致
-func applyVideoConditions(input av.VideoQueryRequest, q map[string]any) {
+func applyVideoConditions(input av.VideoQueryRequest, q map[string]any) error {
 	if input.Year > 0 && input.Month > 0 && input.Day > 0 {
 		d := time.Date(input.Year, time.Month(input.Month), input.Day, 0, 0, 0, 0, time.Local)
 		search.SetQuery(map[string]any{"range": map[string]any{"vod_date": map[string]any{"gte": d.Format("2006/01/02")}}}, true, q)
@@ -134,6 +137,17 @@ func applyVideoConditions(input av.VideoQueryRequest, q map[string]any) {
 			search.SetQuery(map[string]any{"term": map[string]any{"tags.keyword": tag}}, true, q)
 		}
 	}
+	// 女優頁帶 actress_key 時改用 DMM 女優 ID 區分同名；key 對不到女優就退回 actress（名字）
+	if key := strings.TrimSpace(input.ActressKey); key != "" {
+		cond, err := actressVideoQuery(key)
+		if err != nil {
+			return err
+		}
+		if cond != nil {
+			search.SetQuery(cond, true, q)
+			input.Actress = ""
+		}
+	}
 	for field, value := range map[string]string{
 		"actresses": input.Actress,
 		"makers":    input.Maker,
@@ -148,7 +162,7 @@ func applyVideoConditions(input av.VideoQueryRequest, q map[string]any) {
 	if no := strings.TrimSpace(input.No); no != "" {
 		search.SetQuery(videoNoQuery(no), true, q)
 	}
-
+	return nil
 }
 
 // randomizeQuery 把既有條件包進 function_score＋random_score 改成隨機排序；
@@ -234,6 +248,10 @@ func buildActressSearchQuery(input av.ActressQueryRequest, domains []string) map
 	}
 	if len(domains) > 0 {
 		search.SetQuery(actressDomainQuery(domains), true, q)
+	}
+	if domain, aid, ok := parseActressKey(strings.TrimSpace(input.Key)); ok {
+		search.SetQuery(exactStringQuery("domain", domain), true, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"aid": aid}}, true, q)
 	}
 	if name := strings.TrimSpace(input.Name); name != "" {
 		search.SetQuery(actressNameQuery(name), true, q)

@@ -75,6 +75,13 @@ func (r *RepositoryDMMActress) FindDuplicates(domains []string, name, kana strin
 	return rows, err
 }
 
+// FindByDMMID 登記了這個 DMM 女優 ID 的女優（核准時檢查一個 ID 只對到一位）；有登記的筆數很少，直接用 JSON_EXTRACT 掃
+func (r *RepositoryDMMActress) FindByDMMID(tx *gorm.DB, domains []string, dmmID string) ([]av.DMMActress, error) {
+	var rows []av.DMMActress
+	err := r.db(tx).Clauses(dbresolver.Write).Where("domain IN ? AND JSON_UNQUOTE(JSON_EXTRACT(info, '$.dmm_id')) = ?", domains, dmmID).Order("domain, id").Find(&rows).Error
+	return rows, err
+}
+
 // OverridesByDomain 某個 domain 所有手動覆寫（xcity 同步開始前一次載入）
 func (r *RepositoryDMMActress) OverridesByDomain(domain string) (map[int]string, error) {
 	var rows []av.DMMActress

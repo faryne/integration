@@ -71,7 +71,7 @@ type ActressSubmitResult struct {
 	Duplicates    []ActressCandidate `json:"duplicates"`
 }
 
-// ActressCandidate 可能重複的女優；ExactName 為 true 表示姓名完全相同（核准時只能合併）
+// ActressCandidate 可能重複的女優；ExactName 為 true 表示姓名完全相同（核准時要選合併或新增為另一位）
 type ActressCandidate struct {
 	Domain    string        `json:"domain"`
 	AID       int           `json:"aid"`
@@ -115,9 +115,24 @@ type ActressSubmissionDetail struct {
 	Base       *ActressFields     `json:"base"`
 	Current    *ActressFields     `json:"current"`
 	Duplicates []ActressCandidate `json:"duplicates"`
+	// DMMIDUsage 提交內容有 DMM 女優 ID 時，給管理者確認沒填錯
+	DMMIDUsage *DMMActressIDUsage `json:"dmm_id_usage"`
 }
 
-// ActressSubmissionApproveRequest 核准；新增單有同名女優時必須指定合併到哪一位（domain-aid）
+// DMMActressIDUsage 一個 DMM 女優 ID 的使用狀況
+type DMMActressIDUsage struct {
+	DMMID      string `json:"dmm_id"`
+	VideoCount int    `json:"video_count"`
+	// Names 這個 ID 的影片裡最常出現的出演名字（含共演，本人通常排第一）
+	Names []VideoFacetBucket `json:"names"`
+	// UsedBy 已經登記這個 ID 的其他女優；不是空的就不能核准
+	UsedBy []ActressCandidate `json:"used_by"`
+}
+
+// ActressMergeTargetNew 新增單遇到同名時，核准成另一位女優（不合併）
+const ActressMergeTargetNew = "new"
+
+// ActressSubmissionApproveRequest 核准；新增單有同名女優時必須指定合併到哪一位（domain-aid），或 new 新增為另一位
 type ActressSubmissionApproveRequest struct {
 	MergeTarget string `json:"merge_target"`
 }

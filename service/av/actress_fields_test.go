@@ -29,6 +29,8 @@ func TestNormalizeActressFields(t *testing.T) {
 		{Name: "a", Links: []avEntity.ActressLink{{URL: "ftp://x"}}},
 		{Name: "a", Height: 300},
 		{Name: "a", BirthMonth: 13},
+		{Name: "a", DMMID: "abc"},
+		{Name: "a", DMMID: "https://video.dmm.co.jp/av/list/?maker=1"},
 	} {
 		if _, err := normalizeActressFields(bad); !errors.Is(err, ErrActressInvalid) {
 			t.Errorf("expected invalid for %+v, got %v", bad, err)
@@ -81,5 +83,18 @@ func TestActressOverrides(t *testing.T) {
 	got := withActressOverrides(synced, decodeActressOverrides(raw))
 	if got.Cup != "B" || got.Height != 159 || len(got.Links) != 1 {
 		t.Fatalf("override result = %+v", got)
+	}
+}
+
+func TestNormalizeDMMActressID(t *testing.T) {
+	for raw, want := range map[string]string{
+		" 1075832 ": "1075832",
+		"https://video.dmm.co.jp/av/list/?actress=1075832":                        "1075832",
+		"https://www.dmm.co.jp/digital/videoa/-/list/=/article=actress/id=22375/": "22375",
+		"": "",
+	} {
+		if got := normalizeDMMActressID(raw); got != want {
+			t.Errorf("normalizeDMMActressID(%q) = %q, want %q", raw, got, want)
+		}
 	}
 }

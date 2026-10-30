@@ -18,7 +18,9 @@ type ActressQueryRequest struct {
 	BirthMonth int    `query:"birth_month"`
 	BirthDay   int    `query:"birth_day"`
 	BloodType  string `query:"blood_type"`
-	Page       int    `query:"page"`
+	// Key「{domain}-{aid}」精確指定一位（女優頁網址的 ?id=，改名後用來找回同一位）
+	Key  string `query:"key"`
+	Page int    `query:"page"`
 }
 
 type Actress struct {
@@ -41,4 +43,5 @@ type Actress struct {
 	BirthDay   int           `json:"birth_day"`
 	Hips       any           `json:"hips"`
 	Interests  []any         `json:"interests"`
+	DMMID      string        `json:"dmm_id"`
 }

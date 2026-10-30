@@ -120,7 +120,7 @@ func resolveActressTarget(repo *avRepo.RepositoryDMMActress, req avEntity.Actres
 	return row, nil
 }
 
-// actressDuplicates 姓名或假名相同的女優；ExactName 表示姓名完全相同（核准時只能合併）
+// actressDuplicates 姓名或假名相同的女優；ExactName 表示姓名完全相同（核准時要選合併或新增為另一位）
 func actressDuplicates(repo *avRepo.RepositoryDMMActress, f avEntity.ActressFields) ([]avEntity.ActressCandidate, error) {
 	rows, err := repo.FindDuplicates(actressSearchDomains, f.Name, f.Kana)
 	if err != nil {
@@ -217,6 +217,15 @@ func GetActressSubmission(userID, id uint64) (*avEntity.ActressSubmissionDetail,
 	}
 	repo := avRepo.NewDMMActress()
 	detail := &avEntity.ActressSubmissionDetail{ActressSubmissionSummary: submissionSummary(*sub), Payload: submissionPayload(*sub), Duplicates: []avEntity.ActressCandidate{}}
+	if detail.Payload.DMMID != "" {
+		var self *avRepo.ActressKey
+		if sub.Kind == avEntity.SubmissionKindEdit {
+			self = &avRepo.ActressKey{Domain: sub.TargetDomain, ID: sub.TargetAID}
+		}
+		if detail.DMMIDUsage, err = dmmActressIDUsage(repo, detail.Payload.DMMID, self); err != nil {
+			return nil, err
+		}
+	}
 	if sub.Kind == avEntity.SubmissionKindEdit {
 		base := submissionBase(*sub)
 		detail.Base = &base

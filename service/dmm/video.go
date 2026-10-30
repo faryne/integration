@@ -882,16 +882,18 @@ type DmmVideoHeader struct {
 }
 
 type DmmVideoBody struct {
-	VodDate     string          `json:"vod_date"`
-	PublishDate string          `json:"publish_date,omitempty"`
-	Duration    int             `json:"duration"`
-	Directors   []string        `json:"directors"`
-	Series      []string        `json:"series"`
-	Makers      []string        `json:"makers"`
-	Labels      []string        `json:"labels"`
-	Tags        []string        `json:"tags"`
-	Actresses   []string        `json:"actresses"`
-	Images      []DmmVideoImage `json:"images"`
+	VodDate     string   `json:"vod_date"`
+	PublishDate string   `json:"publish_date,omitempty"`
+	Duration    int      `json:"duration"`
+	Directors   []string `json:"directors"`
+	Series      []string `json:"series"`
+	Makers      []string `json:"makers"`
+	Labels      []string `json:"labels"`
+	Tags        []string `json:"tags"`
+	Actresses   []string `json:"actresses"`
+	// ActressIDs DMM 女優 ID，順序與 Actresses 一致（明細沒給 id 的那格是空字串）；2026-10-30 之前同步的影片沒有這個欄位
+	ActressIDs []string        `json:"actress_ids"`
+	Images     []DmmVideoImage `json:"images"`
 }
 
 type DmmVideoImage struct {
@@ -1033,9 +1035,9 @@ func (i *DMM) getDMMVideoDetail(no string, tmp *DmmVideo) error {
 
 	tmp.VodDate = formatDMMDate(finalResponse.Data.PpvContent.DeliveryStartDate, tz)
 	tmp.PublishDate = formatDMMDate(finalResponse.Data.PpvContent.MakerReleasedAt, tz)
-	tmp.Actresses = make([]string, 0)
+	tmp.Actresses, tmp.ActressIDs = make([]string, 0), make([]string, 0)
 	for _, act := range finalResponse.Data.PpvContent.Actresses {
-		tmp.Actresses = append(tmp.Actresses, act.Name)
+		tmp.Actresses, tmp.ActressIDs = append(tmp.Actresses, act.Name), append(tmp.ActressIDs, act.Id)
 	}
 	tmp.Makers = []string{finalResponse.Data.PpvContent.Maker.Name}
 	tmp.Labels = []string{finalResponse.Data.PpvContent.Label.Name}
