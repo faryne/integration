@@ -32,15 +32,24 @@ import {
 } from "@/helpers/avActressSubmission.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { AdminGuard } from "@/components/common/AdminGuard.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { useFlashMessage } from "@/helpers/flashMessage.ts";
 
 const STATUSES: ActressSubmissionStatus[] = ["pending", "approved", "rejected"];
 
 /** 女優上稿審核列表：/av/actress/submissions?status=&page=（狀態與頁碼存在網址） */
 export function AVActressSubmissions() {
   useTitle("AV 女優上稿審核");
+  const flash = useFlashMessage();
   return (
     <AdminGuard>
       <SubmissionList />
+      {/* 審核完最後一張回到列表時的結果提示 */}
+      <CustomSnackbar
+        message={flash.message ?? ""}
+        onClose={flash.close}
+        open={flash.message !== null}
+      />
     </AdminGuard>
   );
 }
