@@ -147,14 +147,14 @@
     { id:1039, kind:"edit", name:"春咲あずみ", changed:1, channel:"web", who:"匿名（IP 4c5e…）", at:"10/29 22:05", status:"pending" },
     { id:1031, kind:"create", name:"七瀬いおり", changed:11, channel:"web", who:"匿名（IP 77d0…）", at:"10/28 09:30", status:"approved", reviewer:"faryne" },
     { id:1028, kind:"create", name:"美谷朱里", changed:9, channel:"web", who:"匿名（IP 2e8a…）", at:"10/27 20:11", status:"approved", reviewer:"faryne", merged:"合併到既有女優" },
-    { id:1027, kind:"edit", name:"美谷朱里", changed:2, channel:"mcp", who:"MCP（IP 9f3c…）", at:"10/27 18:02", status:"rejected", reviewer:"faryne", reason:"資料來源不可信" },
+    { id:1027, kind:"edit", name:"あおいれな", changed:6, channel:"mcp", who:"MCP（IP 9f3c…）", at:"10/27 18:02", status:"rejected", reviewer:"faryne", reason:"資料來源不可信" },
   ];
   const PENDING = SUBMISSIONS.filter((s) => s.status === "pending").length;
 
   const state = { screen:"search", mobile:false, admin:true, menu:false, adminTab:"pending", onlyChanged:true, dialog:null, rejectReason:"", dupChoice:"merge" };
   const SCREENS = [
     ["search","入口：女優搜尋"],["detail","入口：女優頁"],["create","新增女優"],["edit","修改資料"],["done","送出完成"],
-    ["list","管理列表"],["review-edit","審核：修改單"],["review-create","審核：新增單（重複）"],
+    ["list","管理列表"],["review-edit","審核：修改單"],["review-create","審核：新增單（重複）"],["review-rejected","已否決單"],
   ];
 
   const isLinks = (k) => k === "links";
@@ -175,9 +175,9 @@
   function set(k, v) { state[k] = v; render(); }
 
   function toolbar() {
-    return `<b>女優上稿審核 mockup</b><span class="sep"></span>` +
+    return `<b>女優上稿審核 mockup</b><span style="color:#9ca3af">（管理者＝users.is_admin）</span><span class="sep"></span>` +
       SCREENS.map(([k, t]) => `<button class="${state.screen === k ? "on" : ""}" onclick="go('${k}')">${t}</button>`).join("") +
-      `<span class="sep"></span><button class="${state.admin ? "on" : ""}" onclick="set('admin',${!state.admin})">${state.admin ? "以管理者（id=1）檢視" : "以訪客檢視"}</button>` +
+      `<span class="sep"></span><button class="${state.admin ? "on" : ""}" onclick="set('admin',${!state.admin})">${state.admin ? "以管理者檢視" : "以訪客檢視"}</button>` +
       `<button class="${state.mobile ? "" : "on"}" onclick="set('mobile',false)">桌機</button><button class="${state.mobile ? "on" : ""}" onclick="set('mobile',true)">手機</button>`;
   }
 
@@ -295,7 +295,7 @@
        <div class="paper">
          <div class="tabs">${tab("pending","待審核")}${tab("approved","已核准")}${tab("rejected","已否決")}</div>
          <table><thead><tr><th>#</th><th>類型</th><th>女優</th><th class="hide-m">變更欄位</th><th class="hide-m">提交者</th><th>時間</th>${state.adminTab === "pending" ? "" : '<th class="hide-m">審核</th>'}</tr></thead>
-         <tbody>${rows.map((s) => `<tr class="row" onclick="go('${s.kind === "edit" ? "review-edit" : "review-create"}')">
+         <tbody>${rows.map((s) => `<tr class="row" onclick="go('${s.status === "rejected" ? "review-rejected" : s.kind === "edit" ? "review-edit" : "review-create"}')">
            <td>${s.id}</td><td><span class="badge ${s.kind}">${s.kind === "edit" ? "修改" : "新增"}</span></td>
            <td>${s.name}${s.conflict ? ' <span class="badge pending">資料已變更</span>' : ""}${s.dup ? ' <span class="badge pending">同名女優</span>' : ""}</td>
            <td class="hide-m">${s.changed} 個</td>
@@ -332,15 +332,16 @@
   }
 
   // ===== 審核詳情 =====
-  function review(kind) {
+  function review(kind, rejected) {
     const isEdit = kind === "edit";
-    const s = SUBMISSIONS.find((x) => x.kind === kind && x.status === "pending");
+    const s = rejected ? SUBMISSIONS.find((x) => x.status === "rejected") : SUBMISSIONS.find((x) => x.kind === kind && x.status === "pending");
     // 新增單：與同名女優比對，讓管理者直接看到「合併的話會改什麼」
     const table = isEdit ? diffTable(CURRENT, PROPOSED, NOW) : diffTable(DUP_EXISTING, NEW_ONE);
     return shell("首頁 / 大人的喜好 / AV 女優上稿審核 / #" + s.id, guard(
-      `<h2>#${s.id} <span class="badge ${kind}">${isEdit ? "修改" : "新增"}</span> ${s.name}</h2><p class="sub">${s.at} 由 ${s.who} 提交</p>
+      `<h2>#${s.id} <span class="badge ${kind}">${isEdit ? "修改" : "新增"}</span> ${s.name}${rejected ? ' <span class="badge rejected">已否決</span>' : ""}</h2><p class="sub">${s.at} 由 ${s.who} 提交</p>
        <div class="reviewlayout">
          <div class="paper">
+           ${rejected ? `<div class="alert info">10/27 18:30 由 faryne 否決：${s.reason}。改為核准時，會以「現在的資料」重新比對。</div>` : ""}
            ${isEdit ? `<div class="alert warn"><b>提交後資料已變更：</b>身高在 10/30 03:50 被 xcity 同步更新為 159cm。核准會以提交的新值 157cm 覆寫。</div>`
                     : `<div class="alert warn"><b>已有同名女優：</b>水城ひなの（xcity）。下表為與該女優比對的結果，核准時可選擇合併或否決。</div>`}
            <div class="diffhead"><b>${isEdit ? "變更內容" : "與同名女優比對"}</b>
@@ -356,8 +357,8 @@
            ${isEdit ? "" : `<div class="paper"><b style="font-size:13px">同名女優</b>
              <div class="dup"><div class="thumb"></div><div>水城ひなの<br><small style="color:var(--muted)">xcity・みずきひなの・生日未登錄</small></div></div></div>`}
            <div class="paper" style="display:flex;gap:8px">
-             <button class="btn danger" style="flex:1" onclick="set('dialog','reject')">否決</button>
-             <button class="btn" style="flex:1" onclick="set('dialog','${isEdit ? "approve" : "approve-dup"}')">核准</button>
+             ${rejected ? "" : `<button class="btn danger" style="flex:1" onclick="set('dialog','reject')">否決</button>`}
+             <button class="btn" style="flex:1" onclick="set('dialog','${isEdit ? "approve" : "approve-dup"}')">${rejected ? "改為核准" : "核准"}</button>
            </div>
          </div>
        </div>`));
@@ -392,7 +393,7 @@
     const frame = document.getElementById("frame");
     frame.className = "frame" + (state.mobile ? " mobile" : "");
     const views = { search, detail, create: () => form(false), edit: () => form(true), done, list,
-      "review-edit": () => review("edit"), "review-create": () => review("create") };
+      "review-edit": () => review("edit"), "review-create": () => review("create"), "review-rejected": () => review("edit", true) };
     frame.innerHTML = views[state.screen]() + dialog();
   }
   render();
