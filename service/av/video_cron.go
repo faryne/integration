@@ -2,6 +2,7 @@ package av
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"html"
 	"strings"
@@ -13,10 +14,19 @@ import (
 	"go.uber.org/zap"
 )
 
-const videoNotifyTopN = 10
+const (
+	videoNotifyTopN = 10
+	// videoSyncMaxFailStreak 連續幾天失敗就中止整段回補：多半是被 DMM 擋了，繼續打只會被擋更久
+	videoSyncMaxFailStreak = 3
+	// videoSyncAlertMaxRunes TG 單則上限 4096 字，失敗日期太多時截斷，避免連告警都發不出去
+	videoSyncAlertMaxRunes = 3500
+)
+
+// errVideoDetailsMostlyFailed 清單抓得到、明細卻過半失敗，視同被擋；不然整段日期會顯示成功但其實是空的
+var errVideoDetailsMostlyFailed = errors.New("over half of video details failed, possibly blocked by DMM")
 
 // RunDMMVideoSync 排程每天同步前一天的配信作品；手動執行可用 -dayFrom／-dayTo（含）回補區間。
-// 單日失敗不中斷其他日期，最後有失敗的日期就發 TG 告警。
+// 單日失敗不中斷其他日期，但連續失敗 videoSyncMaxFailStreak 天就中止；最後有失敗的日期就發 TG 告警。
 func RunDMMVideoSync(dayFrom, dayTo string) {
 	from, to, err := videoSyncRange(dayFrom, dayTo)
 	if err != nil {
@@ -25,10 +35,14 @@ func RunDMMVideoSync(dayFrom, dayTo string) {
 	}
 
 	var failedDays []string
+	abortNote, streak := "", 0
 	for d := from; !d.After(to); d = d.AddDate(0, 0, 1) {
 		date := d.Format(time.DateOnly)
 		startedAt := time.Now()
 		result, err := SyncDMMVideosByDate(context.Background(), date)
+		if err == nil && result.Failed*2 > result.Fetched {
+			err = errVideoDetailsMostlyFailed
+		}
 		fields := []zap.Field{
 			zap.String("date", date),
 			zap.Int("fetched", result.Fetched),
@@ -37,16 +51,30 @@ func RunDMMVideoSync(dayFrom, dayTo string) {
 			zap.Int("skipped", result.Skipped),
 			zap.Duration("elapsed", time.Since(startedAt)),
 		}
-		if err != nil {
-			failedDays = append(failedDays, fmt.Sprintf("%s：%s", date, err.Error()))
-			log.Logger().Error("DMM video sync failed: "+err.Error(), fields...)
+		if err == nil {
+			streak = 0
+			log.Logger().Info("DMM video sync finished", fields...)
 			continue
 		}
-		log.Logger().Info("DMM video sync finished", fields...)
+		failedDays = append(failedDays, fmt.Sprintf("%s：%s", date, err.Error()))
+		log.Logger().Error("DMM video sync failed: "+err.Error(), fields...)
+		if streak++; streak >= videoSyncMaxFailStreak && d.Before(to) {
+			// 連續失敗的那幾天也要重跑，所以從這段失敗的第一天算起
+			abortNote = fmt.Sprintf("連續 %d 天失敗，已中止；排除問題後用 -dayFrom %s 重跑", streak, d.AddDate(0, 0, 1-streak).Format(time.DateOnly))
+			log.Logger().Error("DMM video sync aborted: " + abortNote)
+			break
+		}
 	}
 
 	if len(failedDays) > 0 {
-		msg := "<b>DMM 影片同步失敗</b>\n\n" + html.EscapeString(strings.Join(failedDays, "\n"))
+		body := strings.Join(failedDays, "\n")
+		if abortNote != "" {
+			body = abortNote + "\n\n" + body
+		}
+		if t := truncateRunes(body, videoSyncAlertMaxRunes); t != body {
+			body = t + "\n…（太長已截斷，完整清單見 log）"
+		}
+		msg := "<b>DMM 影片同步失敗</b>\n\n" + html.EscapeString(body)
 		if err := telegram.SendMessage(context.Background(), msg); err != nil {
 			log.Logger().Error("DMM video sync alert failed: " + err.Error())
 		}

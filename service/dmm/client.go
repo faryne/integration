@@ -1,14 +1,19 @@
 package dmm
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
+	"time"
 
 	"faryne.dev/service/helper"
 )
+
+// requestTimeout 單次 GraphQL 請求（含讀完 body）的上限
+const requestTimeout = 30 * time.Second
 
 // graphQLErrorResponse 只取 GraphQL 回應中的 errors，用來判斷查詢是否失敗
 type graphQLErrorResponse struct {
@@ -29,7 +34,10 @@ func (i *DMM) send(query string, variables map[string]interface{}, out any) erro
 	jsonPayload, _ := json.Marshal(payload)
 	postBody := strings.NewReader(string(jsonPayload))
 
-	req, _ := http.NewRequest(http.MethodPost, "https://api.video.dmm.co.jp/graphql", postBody)
+	// helper 用的是沒有逾時的 http.DefaultClient；對方卡住連線時長時間回補會永遠停在這裡，所以每個請求自帶逾時
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.video.dmm.co.jp/graphql", postBody)
 	req.Header.Set("Content-Type", "application/json")
 
 	content, status, err := helper.DoRawWithStatus(req)
