@@ -23,8 +23,12 @@ import {
 import { ActressSearch } from "@/components/av/actress_search";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import type { ListByPaginationRequest } from "@/apis/interfaces.ts";
-import type { Actress } from "@/types/av.ts";
 import { formatSizeRange } from "@/helpers/avSizeRange.ts";
+import {
+  formatActressBirth,
+  formatActressBodyInfo,
+} from "@/helpers/avActressDisplay.ts";
+import { ActressPhoto } from "@/components/av/actress_photo.tsx";
 import { selectedCups, withCups } from "@/helpers/avActressCups.ts";
 import FaceRetouchingNaturalIcon from "@mui/icons-material/FaceRetouchingNatural";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
@@ -143,40 +147,6 @@ export function AVActress() {
   const total = s.data?.data?.total ?? 0;
   const perPage = s.data?.data?.per_page ?? 0;
   const pageCount = perPage > 0 ? Math.ceil(total / perPage) : 0;
-
-  const renderBodyInfo = (actress: Actress): string => {
-    const body: string[] = [];
-    if (actress.cup !== "") {
-      body.push(actress.cup + " Cup");
-    }
-    if (actress.bust > 0) {
-      body.push("B" + actress.bust);
-    }
-    if (actress.waist > 0) {
-      body.push("W" + actress.waist);
-    }
-    if (actress.hips > 0) {
-      body.push("H" + actress.hips);
-    }
-    if (actress.height > 0) {
-      body.push("身高 " + actress.height + "cm");
-    }
-    return body.join(" / ");
-  };
-
-  const renderBirth = (actress: Actress) => {
-    if (actress.birth_year <= 0) {
-      return "";
-    }
-
-    return [
-      actress.birth_year,
-      actress.birth_month > 0 ? actress.birth_month : undefined,
-      actress.birth_day > 0 ? actress.birth_day : undefined,
-    ]
-      .filter(Boolean)
-      .join("/");
-  };
 
   const hasActiveFilter = Boolean(
     search.name ||
@@ -404,8 +374,8 @@ export function AVActress() {
                     }}
                   >
                     {actresses.map((actress) => {
-                      const bodyInfo = renderBodyInfo(actress);
-                      const birth = renderBirth(actress);
+                      const bodyInfo = formatActressBodyInfo(actress);
+                      const birth = formatActressBirth(actress);
 
                       return (
                         <Box
@@ -451,17 +421,11 @@ export function AVActress() {
                               width: "100%",
                             }}
                           >
-                            <Box
-                              component="img"
-                              src={actress.photo}
+                            <ActressPhoto
                               alt={actress.name}
                               loading="lazy"
-                              sx={{
-                                display: "block",
-                                height: "100%",
-                                objectFit: "cover",
-                                width: "100%",
-                              }}
+                              src={actress.photo}
+                              sx={{ height: "100%", width: "100%" }}
                             />
                           </Box>
                           <Stack spacing={0.75} sx={{ p: 1.5 }}>

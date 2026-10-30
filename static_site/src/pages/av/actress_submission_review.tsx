@@ -35,6 +35,7 @@ import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { AdminGuard } from "@/components/common/AdminGuard.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { ActressPhoto } from "@/components/av/actress_photo.tsx";
 import { ActressSubmissionDiff } from "@/components/av/actress_submission_diff.tsx";
 import {
   ApproveDialog,
@@ -213,19 +214,10 @@ function ReviewContent({ d }: { d: ActressSubmissionDetail }) {
 
         <Stack spacing={2}>
           <Paper sx={{ p: 2 }} variant="outlined">
-            <Box
+            <ActressPhoto
               alt={d.payload.name}
-              component={d.payload.photo ? "img" : "div"}
-              src={d.payload.photo || undefined}
-              sx={{
-                aspectRatio: "3 / 4",
-                bgcolor: "grey.200",
-                borderRadius: 2,
-                display: "block",
-                mx: "auto",
-                objectFit: "cover",
-                width: 160,
-              }}
+              src={d.payload.photo}
+              sx={{ borderRadius: 2, mx: "auto", width: 160 }}
             />
             {isEdit && (
               <Typography

@@ -23,6 +23,7 @@ import {
 } from "@/helpers/avActressFields.ts";
 import { useDebouncedValue } from "@/helpers/useDebouncedValue.ts";
 import { useAVActressSearch } from "@/apis/av/actress_search.ts";
+import { ActressPhoto } from "@/components/av/actress_photo.tsx";
 import { ActressLinksEditor } from "@/components/av/actress_links_editor.tsx";
 import { ActressInterestsInput } from "@/components/av/actress_interests_input.tsx";
 
@@ -161,17 +162,10 @@ export function ActressSubmissionForm({
         }}
       >
         <Stack spacing={1.5} sx={{ alignItems: "center" }}>
-          <Box
+          <ActressPhoto
             alt={fields.name}
-            component={fields.photo ? "img" : "div"}
-            src={fields.photo || undefined}
-            sx={{
-              aspectRatio: "3 / 4",
-              bgcolor: "grey.200",
-              borderRadius: 2,
-              objectFit: "cover",
-              width: { xs: 140, md: "100%" },
-            }}
+            src={fields.photo}
+            sx={{ borderRadius: 2, width: { xs: 140, md: "100%" } }}
           />
           {text("photo", "照片網址", { placeholder: "https://" })}
         </Stack>

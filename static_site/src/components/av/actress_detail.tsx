@@ -15,6 +15,11 @@ import type { VideoSearchResponse } from "@/apis/av/video_search.ts";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import { ActressLinksCard } from "@/components/av/actress_links_card.tsx";
+import { ActressPhoto } from "@/components/av/actress_photo.tsx";
+import {
+  formatActressBirth,
+  formatActressMeasurements,
+} from "@/helpers/avActressDisplay.ts";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
 import {
   VideoResultCard,
@@ -142,22 +147,17 @@ export function ActressDetail(props: IActressDetail) {
       return null;
     }
 
+    const measurements = formatActressMeasurements(actress);
+    const birth = formatActressBirth(actress);
     return (
       <Stack spacing={2}>
         <Card>
           <CardContent>
             <Stack alignItems="center" direction="column" spacing={2}>
-              <Box
-                component="img"
-                src={actress.photo}
+              <ActressPhoto
                 alt={actress.name}
-                title={actress.name}
-                sx={{
-                  borderRadius: 2,
-                  display: "block",
-                  maxWidth: "100%",
-                  width: 200,
-                }}
+                src={actress.photo}
+                sx={{ borderRadius: 2, maxWidth: "100%", width: 200 }}
               />
               <Box sx={{ textAlign: "center", width: "100%" }}>
                 <Typography fontWeight={900} variant="h6">
@@ -170,23 +170,13 @@ export function ActressDetail(props: IActressDetail) {
                 )}
               </Box>
               <Stack spacing={1} sx={{ textAlign: "left", width: "100%" }}>
-                <Typography variant="body1">
-                  三圍：
-                  {actress.bust +
-                    (actress.cup ?? "") +
-                    " / " +
-                    actress.waist +
-                    " / " +
-                    actress.hips}
-                </Typography>
-                <Typography variant="body1">
-                  生日：
-                  {actress.birth_year +
-                    "/" +
-                    actress.birth_month +
-                    "/" +
-                    actress.birth_day}
-                </Typography>
+                {/* 手動上稿的女優常常只有部分資料，沒填的整行不顯示 */}
+                {measurements && (
+                  <Typography variant="body1">三圍：{measurements}</Typography>
+                )}
+                {birth && (
+                  <Typography variant="body1">生日：{birth}</Typography>
+                )}
                 {actress.height > 0 && (
                   <Typography variant="body1">
                     身高：{actress.height + " cm"}
