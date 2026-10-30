@@ -2,6 +2,8 @@ package opendata
 
 import (
 	"errors"
+	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 
@@ -119,7 +121,12 @@ func submissionIDParam(ctx fiber.Ctx) uint64 {
 func actressSubmissionError(err error) error {
 	switch {
 	case errors.Is(err, av.ErrActressSubmitLimited):
-		return output.New(http.StatusTooManyRequests, customCodeAvActressSubmitLimited, nil, "上稿次數已達上限，請一小時後再試")
+		var limit av.ActressSubmitLimitError
+		minutes := 60
+		if errors.As(err, &limit) {
+			minutes = max(int(math.Ceil(limit.RetryAfter.Minutes())), 1)
+		}
+		return output.New(http.StatusTooManyRequests, customCodeAvActressSubmitLimited, nil, fmt.Sprintf("上稿次數已達上限，請 %d 分鐘後再試", minutes))
 	case errors.Is(err, authService.ErrAdminRequired):
 		return output.New(http.StatusForbidden, "", nil, "需要管理者權限")
 	case errors.Is(err, av.ErrActressTargetNotFound):
