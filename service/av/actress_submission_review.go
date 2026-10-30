@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -20,8 +19,6 @@ var (
 	ErrSubmissionNotReviewable = errors.New("這張提交單目前不能進行這個操作")
 	// ErrMergeTargetRequired 新增單有同名女優，核准時必須指定合併到哪一位或新增為另一位
 	ErrMergeTargetRequired = errors.New("已有同名女優，請選擇要合併到哪一位，或新增為另一位")
-	// ErrDMMActressIDInUse 一個 DMM 女優 ID 只能對到一位女優
-	ErrDMMActressIDInUse = errors.New("這個 DMM 女優 ID 已經登記在其他女優")
 )
 
 const actressReviewNoteMaxLen = 500
@@ -50,9 +47,6 @@ func ApproveActressSubmission(ctx context.Context, userID, id uint64, mergeTarge
 		}
 		row, resolution, err := approvedActressRow(tx, repo, *sub, mergeTarget)
 		if err != nil {
-			return err
-		}
-		if err := ensureDMMActressIDFree(tx, repo, *row); err != nil {
 			return err
 		}
 		now := time.Now()
@@ -102,24 +96,6 @@ func approvedActressRow(tx *gorm.DB, repo *avRepo.RepositoryDMMActress, sub avEn
 		}
 	}
 	return nil, "", ErrMergeTargetRequired
-}
-
-// ensureDMMActressIDFree 核准後的資料有 DMM 女優 ID 時，確認沒有其他女優已經登記同一個 ID
-func ensureDMMActressIDFree(tx *gorm.DB, repo *avRepo.RepositoryDMMActress, row avEntity.DMMActress) error {
-	dmmID := actressRowFields(row).DMMID
-	if dmmID == "" {
-		return nil
-	}
-	rows, err := repo.FindByDMMID(tx, actressSearchDomains, dmmID)
-	if err != nil {
-		return err
-	}
-	for _, other := range rows {
-		if other.Domain != row.Domain || other.ID != row.ID {
-			return fmt.Errorf("%w：%s（%s）", ErrDMMActressIDInUse, other.Name, actressKey(other.Domain, other.ID))
-		}
-	}
-	return nil
 }
 
 // withActressChanges 寫回新的資料；xcity 女優把改過的欄位記進覆寫，之後同步不會被洗掉

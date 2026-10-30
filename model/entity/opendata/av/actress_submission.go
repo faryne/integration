@@ -115,18 +115,6 @@ type ActressSubmissionDetail struct {
 	Base       *ActressFields     `json:"base"`
 	Current    *ActressFields     `json:"current"`
 	Duplicates []ActressCandidate `json:"duplicates"`
-	// DMMIDUsage 提交內容有 DMM 女優 ID 時，給管理者確認沒填錯
-	DMMIDUsage *DMMActressIDUsage `json:"dmm_id_usage"`
-}
-
-// DMMActressIDUsage 一個 DMM 女優 ID 的使用狀況
-type DMMActressIDUsage struct {
-	DMMID      string `json:"dmm_id"`
-	VideoCount int    `json:"video_count"`
-	// Names 這個 ID 的影片裡最常出現的出演名字（含共演，本人通常排第一）
-	Names []VideoFacetBucket `json:"names"`
-	// UsedBy 已經登記這個 ID 的其他女優；不是空的就不能核准
-	UsedBy []ActressCandidate `json:"used_by"`
 }
 
 // ActressMergeTargetNew 新增單遇到同名時，核准成另一位女優（不合併）

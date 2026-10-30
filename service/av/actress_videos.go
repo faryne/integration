@@ -3,14 +3,8 @@ package av
 import (
 	"slices"
 
-	"faryne.dev/config"
-	avEntity "faryne.dev/model/entity/opendata/av"
 	avRepo "faryne.dev/repository/av"
-	"faryne.dev/service/search"
 )
-
-// 審核頁檢查 DMM 女優 ID 時列出幾個最常一起出現的名字
-const dmmActressIDNameSize = 3
 
 // parseActressKey 解析「{domain}-{aid}」；格式不對回傳 false
 func parseActressKey(key string) (string, int, bool) {
@@ -67,32 +61,4 @@ func actressVideoQuery(key string) (map[string]any, error) {
 		"must":     byName,
 		"must_not": map[string]any{"terms": map[string]any{"actress_ids": claimed}},
 	}}, nil
-}
-
-// dmmActressIDUsage 審核頁確認 DMM 女優 ID 沒填錯：這個 ID 出現在幾部影片、最常一起出現的名字（本人通常排第一），
-// 以及已經登記這個 ID 的其他女優（核准時會被擋下）
-func dmmActressIDUsage(repo *avRepo.RepositoryDMMActress, dmmID string, self *avRepo.ActressKey) (*avEntity.DMMActressIDUsage, error) {
-	q := map[string]any{
-		"size":  0,
-		"query": map[string]any{"term": map[string]any{"actress_ids": dmmID}},
-		"aggs":  map[string]any{"names": termsAgg("actresses.keyword", dmmActressIDNameSize)},
-	}
-	r, _, err := search.Search[avEntity.RawVideo, avEntity.CleanVideo](config.EnvConfig().DMMVideoIndex, q)
-	if err != nil {
-		return nil, err
-	}
-	usage := &avEntity.DMMActressIDUsage{DMMID: dmmID, VideoCount: int(r.Hits.Total.Value), Names: []avEntity.VideoFacetBucket{}, UsedBy: []avEntity.ActressCandidate{}}
-	for _, b := range r.Aggregations["names"].Buckets {
-		usage.Names = append(usage.Names, avEntity.VideoFacetBucket{Value: b.Key, Count: b.DocCount})
-	}
-	rows, err := repo.FindByDMMID(nil, actressSearchDomains, dmmID)
-	if err != nil {
-		return nil, err
-	}
-	for _, row := range rows {
-		if self == nil || row.Domain != self.Domain || row.ID != self.ID {
-			usage.UsedBy = append(usage.UsedBy, avEntity.ActressCandidate{Domain: row.Domain, AID: row.ID, Fields: actressRowFields(row)})
-		}
-	}
-	return usage, nil
 }

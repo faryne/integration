@@ -217,15 +217,6 @@ func GetActressSubmission(userID, id uint64) (*avEntity.ActressSubmissionDetail,
 	}
 	repo := avRepo.NewDMMActress()
 	detail := &avEntity.ActressSubmissionDetail{ActressSubmissionSummary: submissionSummary(*sub), Payload: submissionPayload(*sub), Duplicates: []avEntity.ActressCandidate{}}
-	if detail.Payload.DMMID != "" {
-		var self *avRepo.ActressKey
-		if sub.Kind == avEntity.SubmissionKindEdit {
-			self = &avRepo.ActressKey{Domain: sub.TargetDomain, ID: sub.TargetAID}
-		}
-		if detail.DMMIDUsage, err = dmmActressIDUsage(repo, detail.Payload.DMMID, self); err != nil {
-			return nil, err
-		}
-	}
 	if sub.Kind == avEntity.SubmissionKindEdit {
 		base := submissionBase(*sub)
 		detail.Base = &base

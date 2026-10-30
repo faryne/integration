@@ -27,28 +27,6 @@ const (
 // 罩杯只收 AAA、AA、A～Z（xcity 現有資料最大到 U）
 var actressCupPattern = regexp.MustCompile(`^(A{1,3}|[B-Z])$`)
 
-// DMM 女優 ID 是數字（目前最大 7 位）
-var dmmActressIDPattern = regexp.MustCompile(`^[0-9]{1,10}$`)
-
-// 舊版 DMM 網址把 ID 放在路徑裡：/digital/videoa/-/list/=/article=actress/id=1234/
-var dmmActressIDPathPattern = regexp.MustCompile(`article=actress/id=([0-9]+)`)
-
-// normalizeDMMActressID 接受純數字或 DMM 女優頁網址（新版 ?actress=1234、舊版 .../article=actress/id=1234/），取出 ID；
-// 取不出來就原樣回傳交給格式檢查擋下
-func normalizeDMMActressID(raw string) string {
-	raw = strings.TrimSpace(raw)
-	if !isHTTPURL(raw) {
-		return raw
-	}
-	if m := dmmActressIDPathPattern.FindStringSubmatch(raw); m != nil {
-		return m[1]
-	}
-	if u, err := url.Parse(raw); err == nil && u.Query().Get("actress") != "" {
-		return u.Query().Get("actress")
-	}
-	return raw
-}
-
 // ErrActressInvalid 欄位驗證失敗，controller 回 400；Error() 只有中文原因，直接顯示給使用者
 var ErrActressInvalid = errors.New("invalid actress fields")
 
@@ -66,8 +44,8 @@ func invalidActress(format string, args ...any) error {
 func normalizeActressFields(f avEntity.ActressFields) (avEntity.ActressFields, error) {
 	f.Name, f.Kana, f.Photo = strings.TrimSpace(f.Name), strings.TrimSpace(f.Kana), strings.TrimSpace(f.Photo)
 	f.Cup, f.Blood = strings.ToUpper(strings.TrimSpace(f.Cup)), strings.ToUpper(strings.TrimSpace(f.Blood))
-	f.BornCity, f.Horoscope = strings.TrimSpace(f.BornCity), ""
-	f.DMMID = normalizeDMMActressID(f.DMMID)
+	// 星座不開放填、DMM 女優 ID 只給內部爬蟲寫入，提交內容一律清空
+	f.BornCity, f.Horoscope, f.DMMID = strings.TrimSpace(f.BornCity), "", ""
 
 	if f.Name == "" {
 		return f, invalidActress("姓名必填")
@@ -76,9 +54,6 @@ func normalizeActressFields(f avEntity.ActressFields) (avEntity.ActressFields, e
 		if utf8.RuneCountInString(v) > actressMaxTextLen {
 			return f, invalidActress("%s太長", label)
 		}
-	}
-	if f.DMMID != "" && !dmmActressIDPattern.MatchString(f.DMMID) {
-		return f, invalidActress("DMM 女優 ID 格式不正確（數字，或 DMM 女優頁網址）")
 	}
 	if f.Cup != "" && !actressCupPattern.MatchString(f.Cup) {
 		return f, invalidActress("罩杯格式不正確（AAA、AA、A～Z）")
