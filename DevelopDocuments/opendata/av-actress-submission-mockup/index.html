@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AV 女優上稿審核 mockup</title>
+<style>
+  :root { --bg:#f3f4f6; --paper:#fff; --line:#e5e7eb; --muted:#6b7280; --text:#111827; --primary:#2e7d6b; --primary-soft:#e6f2ef;
+          --add:#e7f6ec; --addt:#166534; --del:#fdecec; --delt:#991b1b; --warn:#fef3c7; --warnb:#f59e0b; --warnt:#92400e; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; background:#d1d5db; color:var(--text); }
+  .toolbar { position:sticky; top:0; z-index:20; background:#111827; color:#fff; padding:10px 16px; font-size:13px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .toolbar button { background:#374151; color:#fff; border:0; border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; }
+  .toolbar button.on { background:var(--primary); }
+  .toolbar .sep { width:1px; height:20px; background:#4b5563; margin:0 4px; }
+  .stage { padding:24px; display:flex; justify-content:center; }
+  .frame { background:var(--bg); border-radius:10px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.2); width:1100px; position:relative; min-height:640px; }
+  .frame.mobile { width:375px; }
+  .nav { background:#161b22; color:#fff; height:44px; display:flex; align-items:center; padding:0 16px; font-weight:700; font-size:14px; gap:16px; }
+  .nav small { font-weight:400; color:#9ca3af; }
+  .crumb { background:var(--paper); border-bottom:1px solid var(--line); padding:8px 16px; font-size:12px; color:var(--muted); }
+  .page { padding:20px 16px 32px; }
+  h2 { margin:0 0 4px; font-size:22px; } .sub { margin:0 0 16px; color:var(--muted); font-size:13px; }
+  .paper { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .grid2 { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+  .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .mobile .grid2, .mobile .grid4 { grid-template-columns:1fr 1fr; }
+  .formlayout { display:grid; grid-template-columns:200px 1fr; gap:20px; }
+  .mobile .formlayout { grid-template-columns:1fr; }
+  .mobile .formlayout .photo { max-width:140px; margin:0 auto; }
+  .photo { aspect-ratio:3/4; border-radius:8px; background:repeating-linear-gradient(45deg,#cbd5e1 0 10px,#d8dee8 10px 20px); display:flex; align-items:flex-end; justify-content:center; font-size:12px; color:#475569; padding:8px; }
+  .section { font-size:13px; font-weight:700; color:var(--muted); margin:16px 0 8px; }
+  label.f { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); min-width:0; }
+  label.f input, label.f textarea { width:100%; }
+  .stage { overflow-x:auto; }
+  label.f input, label.f textarea, label.f select { border:1px solid #cbd5e1; border-radius:6px; padding:9px 10px; font-size:14px; color:var(--text); background:#fff; font-family:inherit; }
+  label.f.changed input, label.f.changed select { border-color:var(--primary); background:var(--primary-soft); }
+  label.f.changed > span:first-child::after { content:"・已修改"; color:var(--primary); font-weight:700; }
+  label.f .was { font-size:11px; color:var(--muted); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:3px 8px; background:#fff; }
+  .chip.on { background:var(--primary); border-color:var(--primary); color:#fff; }
+  .chip.add { background:var(--add); border-color:#86efac; color:var(--addt); }
+  .chip.del { background:var(--del); border-color:#fca5a5; color:var(--delt); text-decoration:line-through; }
+  .btns { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; flex-wrap:wrap; }
+  .btn { border:0; border-radius:6px; padding:9px 16px; font-weight:700; font-size:14px; cursor:pointer; background:var(--primary); color:#fff; }
+  .btn.ghost { background:transparent; color:var(--text); border:1px solid #cbd5e1; }
+  .btn.danger { background:#b91c1c; }
+  .btn:disabled { opacity:.4; cursor:not-allowed; }
+  .alert { font-size:13px; border-radius:8px; padding:10px 12px; margin-bottom:12px; line-height:1.6; }
+  .alert.warn { background:var(--warn); border:1px solid var(--warnb); color:var(--warnt); }
+  .alert.info { background:#eff6ff; border:1px solid #93c5fd; color:#1e3a8a; }
+  .alert a { color:inherit; font-weight:700; }
+  .tabs { display:flex; border-bottom:1px solid var(--line); margin-bottom:12px; gap:4px; }
+  .tabs a { padding:10px 14px; font-size:14px; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; }
+  .tabs a.on { color:var(--primary); border-color:var(--primary); font-weight:700; }
+  .badge { display:inline-block; white-space:nowrap; font-size:11px; border-radius:4px; padding:1px 6px; font-weight:700; }
+  .badge.create { background:#dbeafe; color:#1d4ed8; } .badge.edit { background:#ede9fe; color:#6d28d9; }
+  .badge.pending { background:var(--warn); color:var(--warnt); } .badge.approved { background:var(--add); color:var(--addt); } .badge.rejected { background:var(--del); color:var(--delt); }
+  .badge.mcp { background:#e5e7eb; color:#374151; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:12px; color:var(--muted); font-weight:700; background:#f9fafb; }
+  tr.row { cursor:pointer; } tr.row:hover { background:#f9fafb; }
+  td.old { background:var(--del); color:var(--delt); } td.new { background:var(--add); color:var(--addt); font-weight:700; }
+  td.same { color:var(--muted); }
+  td.now { background:var(--warn); color:var(--warnt); }
+  .diffhead { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+  .toggle { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .meta { display:grid; grid-template-columns:auto 1fr; gap:6px 14px; font-size:13px; }
+  .meta dt { color:var(--muted); } .meta dd { margin:0; word-break:break-all; }
+  .reviewlayout { display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start; }
+  .mobile .reviewlayout { grid-template-columns:1fr; }
+  .mobile .hide-m { display:none; }
+  .dup { display:flex; gap:10px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; margin-top:8px; font-size:13px; }
+  .dup .thumb { width:40px; height:52px; border-radius:4px; background:#cbd5e1; flex:0 0 auto; }
+  .mask { position:absolute; inset:0; background:rgba(17,24,39,.45); display:flex; align-items:center; justify-content:center; z-index:10; padding:16px; }
+  .dialog { background:#fff; border-radius:12px; padding:20px; width:440px; max-width:100%; box-shadow:0 20px 40px rgba(0,0,0,.25); }
+  .dialog h3 { margin:0 0 8px; font-size:18px; }
+  .dialog p { font-size:14px; color:#374151; line-height:1.6; margin:0 0 12px; }
+  .done { text-align:center; padding:40px 16px; }
+  .done .icon { font-size:44px; }
+  .note { font-size:12px; color:#92400e; background:#fef3c7; border:1px dashed #f59e0b; border-radius:6px; padding:6px 10px; margin-top:12px; }
+</style>
+</head>
+<body>
+<div class="toolbar" id="toolbar"></div>
+<div class="stage"><div class="frame" id="frame"></div></div>
+
+<script>
+  // ===== 假資料 =====
+  const CURRENT = { name:"あおいれな", kana:"あおいれな", photo:"https://img.xcity.jp/actress/xxxx.jpg", height:158, bust:80, waist:58, hips:85, cup:"A",
+    blood:"", born_city:"", birth_year:1996, birth_month:3, birth_day:19, interests:["カラオケ"] };
+  const PROPOSED = { ...CURRENT, height:157, cup:"B", blood:"O", born_city:"東京都", interests:["カラオケ","ゲーム"] };
+  // 提交後 xcity 同步把身高改成 159（用來示範「資料已變更」警告）
+  const NOW = { ...CURRENT, height:159 };
+  const NEW_ONE = { name:"水城ひなの", kana:"みずきひなの", photo:"https://pics.dmm.co.jp/mono/actjpgs/xxxx.jpg", height:152, bust:83, waist:56, hips:82, cup:"C",
+    blood:"A", born_city:"千葉県", birth_year:2004, birth_month:7, birth_day:2, interests:["お菓子作り"] };
+  const FIELDS = [
+    ["name","姓名"],["kana","假名"],["photo","照片網址"],["height","身高"],["bust","胸圍（B）"],["waist","腰圍（W）"],["hips","臀圍（H）"],
+    ["cup","罩杯"],["blood","血型"],["born_city","出生地"],["birthday","生日"],["interests","興趣"],
+  ];
+  const SUBMISSIONS = [
+    { id:1043, kind:"edit", name:"あおいれな", changed:5, channel:"web", who:"匿名（IP 1a2b…）", at:"10/30 14:12", status:"pending", conflict:true },
+    { id:1042, kind:"create", name:"水城ひなの", changed:12, channel:"mcp", who:"MCP（IP 9f3c…）", at:"10/30 11:40", status:"pending", dup:true },
+    { id:1039, kind:"edit", name:"春咲あずみ", changed:1, channel:"web", who:"faryne", at:"10/29 22:05", status:"pending" },
+    { id:1031, kind:"create", name:"七瀬いおり", changed:11, channel:"web", who:"匿名（IP 77d0…）", at:"10/28 09:30", status:"approved", reviewer:"faryne" },
+    { id:1027, kind:"edit", name:"美谷朱里", changed:2, channel:"mcp", who:"MCP（IP 9f3c…）", at:"10/27 18:02", status:"rejected", reviewer:"faryne", reason:"資料來源不可信" },
+  ];
+
+  const state = { screen:"create", mobile:false, adminTab:"pending", onlyChanged:true, dialog:null, rejectReason:"" };
+  const SCREENS = [
+    ["create","① 新增女優"],["edit","② 修改資料"],["done","③ 送出完成"],["list","④ 管理列表"],["review-edit","⑤ 審核：修改單"],["review-create","⑥ 審核：新增單"],
+  ];
+
+  const fmt = (o, k) => {
+    if (k === "birthday") return o.birth_year ? `${o.birth_year}/${o.birth_month}/${o.birth_day}` : "";
+    const v = o[k];
+    if (Array.isArray(v)) return v.join("、");
+    if (k === "height" || k === "bust" || k === "waist" || k === "hips") return v ? `${v}cm` : "";
+    return v ?? "";
+  };
+  const same = (a, b, k) => fmt(a, k) === fmt(b, k);
+  const empty = (s) => s === "" ? `<span style="color:#9ca3af">（未填）</span>` : s;
+
+  function go(screen) { state.screen = screen; state.dialog = null; render(); }
+  function set(k, v) { state[k] = v; render(); }
+
+  function toolbar() {
+    return `<b>AV 女優上稿審核 mockup</b><span class="sep"></span>` +
+      SCREENS.map(([k, t]) => `<button class="${state.screen === k ? "on" : ""}" onclick="go('${k}')">${t}</button>`).join("") +
+      `<span class="sep"></span><button class="${state.mobile ? "" : "on"}" onclick="set('mobile',false)">桌機</button><button class="${state.mobile ? "on" : ""}" onclick="set('mobile',true)">手機</button>`;
+  }
+
+  const shell = (crumb, body, admin) =>
+    `<div class="nav">Faryne 的實驗室 <small>大人的喜好</small>${admin ? '<small style="margin-left:auto;color:#fbbf24">管理者</small>' : ""}</div>
+     <div class="crumb">${crumb}</div><div class="page">${body}</div>`;
+
+  // ===== ①② 上稿表單（新增／修改共用）=====
+  function form(isEdit) {
+    const v = isEdit ? PROPOSED : { interests:[] };
+    const base = isEdit ? CURRENT : null;
+    const f = (k, label, type = "text", extra = "") => {
+      const changed = isEdit && !same(base, v, k);
+      return `<label class="f ${changed ? "changed" : ""}"><span>${label}</span><input type="${type}" value="${v[k] ?? ""}" ${extra}>${changed ? `<span class="was">原本：${empty(fmt(base, k))}</span>` : ""}</label>`;
+    };
+    const changedCount = isEdit ? FIELDS.filter(([k]) => !same(base, v, k)).length : 0;
+    const cups = ["AAA","AA","A","B","C","D","E","F","G","H","I","J"];
+    const interestChips = isEdit
+      ? [...new Set([...base.interests, ...v.interests])].map((x) => `<span class="chip ${base.interests.includes(x) ? "" : "add"}">${x} ×</span>`).join("")
+      : "";
+    return shell(
+      isEdit ? "首頁 / 大人的喜好 / AV 女優搜尋 / あおいれな / 修改資料" : "首頁 / 大人的喜好 / AV 女優搜尋 / 新增女優",
+      `<h2>${isEdit ? "修改女優資料：あおいれな" : "新增女優"}</h2>
+       ${isEdit
+         ? `<div class="alert info">已修改 <b>${changedCount}</b> 個欄位</div>`
+         : `<div class="alert warn">已有名稱相近的女優：<a>水城ひなの（xcity）</a>。如果是同一位，請改用該女優頁的「修改資料」。</div>`}
+       <div class="paper formlayout">
+         <div>
+           <div class="photo">${isEdit ? "目前照片" : "照片預覽"}</div>
+           <label class="f" style="margin-top:10px"><span>照片網址</span><input value="${v.photo ?? ""}" placeholder="https://"></label>
+         </div>
+         <div>
+           <div class="section" style="margin-top:0">基本資料</div>
+           <div class="grid2">${f("name","姓名 *")}${f("kana","假名")}</div>
+           <div class="section">身形</div>
+           <div class="grid4">${f("height","身高（cm）","number")}${f("bust","B（cm）","number")}${f("waist","W（cm）","number")}${f("hips","H（cm）","number")}</div>
+           <div class="section">罩杯${isEdit && !same(base, v, "cup") ? `<span style="color:var(--primary)">・已修改（原本：${base.cup}）</span>` : ""}</div>
+           <div class="chips">${cups.map((c) => `<span class="chip ${v.cup === c ? "on" : ""}">${c}</span>`).join("")}</div>
+           <div class="section">其他</div>
+           <div class="grid4">
+             <label class="f"><span>生日・年</span><input type="number" value="${v.birth_year ?? ""}"></label>
+             <label class="f"><span>月</span><input type="number" value="${v.birth_month ?? ""}"></label>
+             <label class="f"><span>日</span><input type="number" value="${v.birth_day ?? ""}"></label>
+             ${f("blood","血型")}
+           </div>
+           <div class="grid2" style="margin-top:12px">${f("born_city","出生地")}
+             <label class="f ${isEdit ? "changed" : ""}"><span>興趣（Enter 新增）</span><input placeholder="輸入後按 Enter">
+               <div class="chips">${interestChips}</div></label>
+           </div>
+           <div class="section">審核用資訊</div>
+           <div class="grid2">
+             <label class="f"><span>資料來源網址</span><input value="${isEdit ? "https://twitter.com/xxxx" : ""}" placeholder="官方 X、事務所頁面等"></label>
+             <label class="f"><span>補充說明</span><input value="${isEdit ? "官方 X 公開的最新資料" : ""}"></label>
+           </div>
+           <div class="btns"><button class="btn ghost">取消</button><button class="btn" onclick="go('done')">送出審核</button></div>
+         </div>
+       </div>
+       <div class="note">mockup 說明：修改模式預填現值，改過的欄位標色並顯示原本的值；新增模式在姓名／假名輸入後即時查重。</div>`,
+    );
+  }
+
+  // ===== ③ 送出完成 =====
+  const done = () => shell("首頁 / 大人的喜好 / AV 女優搜尋 / 新增女優",
+    `<div class="paper done"><div class="icon">📨</div><h2>已送出審核</h2>
+     <p class="sub">提交單編號 <b>#1044</b>，管理者核准後會出現在搜尋結果。</p>
+     <div class="btns" style="justify-content:center"><button class="btn ghost" onclick="go('create')">再新增一位</button><button class="btn">回到女優搜尋</button></div></div>`);
+
+  // ===== ④ 管理列表 =====
+  function list() {
+    const rows = SUBMISSIONS.filter((s) => s.status === state.adminTab);
+    const count = (st) => SUBMISSIONS.filter((s) => s.status === st).length;
+    const tab = (k, t) => `<a class="${state.adminTab === k ? "on" : ""}" onclick="set('adminTab','${k}')">${t}${k === "pending" ? `（${count(k)}）` : ""}</a>`;
+    return shell("首頁 / 大人的喜好 / AV 女優上稿審核",
+      `<h2 style="margin-bottom:16px">AV 女優上稿審核</h2>
+       <div class="paper">
+         <div class="tabs">${tab("pending","待審核")}${tab("approved","已核准")}${tab("rejected","已否決")}</div>
+         <table><thead><tr><th>#</th><th>類型</th><th>女優</th><th class="hide-m">變更欄位</th><th class="hide-m">提交者</th><th>時間</th>${state.adminTab === "pending" ? "" : '<th class="hide-m">審核</th>'}</tr></thead>
+         <tbody>${rows.map((s) => `<tr class="row" onclick="go('${s.kind === "edit" ? "review-edit" : "review-create"}')">
+           <td>${s.id}</td>
+           <td><span class="badge ${s.kind}">${s.kind === "edit" ? "修改" : "新增"}</span></td>
+           <td>${s.name}${s.conflict ? ' <span class="badge pending">資料已變更</span>' : ""}${s.dup ? ' <span class="badge pending">可能重複</span>' : ""}</td>
+           <td class="hide-m">${s.changed} 個</td>
+           <td class="hide-m">${s.who}${s.channel === "mcp" ? ' <span class="badge mcp">MCP</span>' : ""}</td>
+           <td>${s.at}</td>
+           ${state.adminTab === "pending" ? "" : `<td class="hide-m">${s.reviewer}${s.reason ? `<br><small style="color:var(--muted)">${s.reason}</small>` : ""}</td>`}
+         </tr>`).join("")}</tbody></table>
+       </div>`, true);
+  }
+
+  // ===== ⑤⑥ 審核詳情＋diff =====
+  function review(kind) {
+    const isEdit = kind === "edit";
+    const base = isEdit ? CURRENT : {};
+    const prop = isEdit ? PROPOSED : NEW_ONE;
+    const fields = FIELDS.filter(([k]) => !state.onlyChanged || !same(base, prop, k) || (isEdit && !same(base, NOW, k)));
+    const conflictFields = isEdit ? FIELDS.filter(([k]) => !same(CURRENT, NOW, k)) : [];
+    const rows = fields.map(([k, label]) => {
+      const changed = !same(base, prop, k);
+      const conflict = conflictFields.some(([c]) => c === k);
+      if (!isEdit) return `<tr><th style="width:120px">${label}</th><td class="${fmt(prop, k) ? "new" : "same"}">${empty(fmt(prop, k))}</td></tr>`;
+      let newCell = empty(fmt(prop, k));
+      if (k === "interests") newCell = `<div class="chips">${[...new Set([...base.interests, ...prop.interests])].map((x) =>
+        `<span class="chip ${!prop.interests.includes(x) ? "del" : !base.interests.includes(x) ? "add" : ""}">${x}</span>`).join("")}</div>`;
+      return `<tr><th style="width:110px">${label}</th>
+        <td class="${changed ? "old" : "same"}">${empty(fmt(base, k))}</td>
+        ${conflictFields.length ? `<td class="${conflict ? "now" : "same"}">${empty(fmt(NOW, k))}</td>` : ""}
+        <td class="${changed ? "new" : "same"}">${changed ? newCell : "—"}</td></tr>`;
+    }).join("");
+    const head = isEdit
+      ? `<tr><th>欄位</th><th>提交時的值</th>${conflictFields.length ? "<th>現在的值</th>" : ""}<th>提交的新值</th></tr>`
+      : `<tr><th>欄位</th><th>提交的值</th></tr>`;
+    const s = SUBMISSIONS.find((x) => x.kind === kind);
+    return shell("首頁 / 大人的喜好 / AV 女優上稿審核 / #" + s.id,
+      `<h2>#${s.id} <span class="badge ${kind}">${isEdit ? "修改" : "新增"}</span> ${s.name}</h2><p class="sub">${s.at} 由 ${s.who} 提交</p>
+       <div class="reviewlayout">
+         <div class="paper">
+           ${isEdit ? `<div class="alert warn"><b>提交後資料已變更：</b>身高在 10/30 03:50 被 xcity 同步更新（158 → 159cm），提交者看到的是舊值。核准會以提交的新值 157cm 覆寫。</div>` : ""}
+           <div class="diffhead"><b>${isEdit ? "變更內容" : "提交內容"}</b>
+             ${isEdit ? `<label class="toggle"><input type="checkbox" ${state.onlyChanged ? "checked" : ""} onchange="set('onlyChanged',this.checked)">只顯示有變更的欄位</label>` : ""}</div>
+           <div style="overflow-x:auto"><table><thead>${head}</thead><tbody>${rows}</tbody></table></div>
+         </div>
+         <div style="display:flex;flex-direction:column;gap:12px">
+           <div class="paper">
+             <div class="photo" style="aspect-ratio:3/4;max-width:180px;margin:0 auto 12px">${isEdit ? "目前照片" : "提交的照片"}</div>
+             <dl class="meta">
+               <dt>來源</dt><dd>${isEdit ? '<a href="#">https://twitter.com/xxxx</a>' : '<a href="#">https://www.dmm.co.jp/…</a>'}</dd>
+               <dt>說明</dt><dd>${isEdit ? "官方 X 公開的最新資料" : "新人，xcity 尚未收錄"}</dd>
+               <dt>管道</dt><dd>${s.channel === "mcp" ? "MCP" : "網頁"}</dd>
+               ${isEdit ? `<dt>寫入方式</dt><dd>xcity 女優 → 存成覆寫欄位，之後同步不會蓋掉</dd>` : `<dt>寫入方式</dt><dd>新增為手動女優（manual-${s.id}）</dd>`}
+             </dl>
+           </div>
+           ${isEdit ? "" : `<div class="paper"><b style="font-size:13px">可能重複</b>
+             <div class="dup"><div class="thumb"></div><div>水城ひなの<br><small style="color:var(--muted)">xcity・みずきひなの・1999/5/8</small></div></div></div>`}
+           <div class="paper" style="display:flex;gap:8px">
+             <button class="btn danger" style="flex:1" onclick="set('dialog','reject')">否決</button>
+             <button class="btn" style="flex:1" onclick="set('dialog','approve')">核准</button>
+           </div>
+         </div>
+       </div>`, true);
+  }
+
+  function dialog() {
+    if (state.dialog === "approve") {
+      const isEdit = state.screen === "review-edit";
+      return `<div class="mask"><div class="dialog"><h3>核准這張提交單？</h3>
+        <p>${isEdit ? "會更新「あおいれな」的 5 個欄位，並立即反映到搜尋結果。" : "會新增女優「水城ひなの」，並立即出現在搜尋結果。"}</p>
+        <div class="btns"><button class="btn ghost" onclick="set('dialog',null)">取消</button><button class="btn" onclick="go('list')">核准</button></div></div></div>`;
+    }
+    if (state.dialog === "reject") {
+      const reasons = ["資料來源不可信","與現有女優重複","資料有誤","沒有實質變更"];
+      return `<div class="mask"><div class="dialog"><h3>否決這張提交單？</h3>
+        <p>現有資料不會變動。原因會顯示給查詢這張提交單的人。</p>
+        <div class="chips" style="margin-bottom:8px">${reasons.map((r) => `<span class="chip ${state.rejectReason === r ? "on" : ""}" style="cursor:pointer" onclick="set('rejectReason','${r}')">${r}</span>`).join("")}</div>
+        <label class="f"><span>否決原因（選填）</span><textarea rows="3">${state.rejectReason}</textarea></label>
+        <div class="btns"><button class="btn ghost" onclick="set('dialog',null)">取消</button><button class="btn danger" onclick="go('list')">否決</button></div></div></div>`;
+    }
+    return "";
+  }
+
+  function render() {
+    document.getElementById("toolbar").innerHTML = toolbar();
+    const frame = document.getElementById("frame");
+    frame.className = "frame" + (state.mobile ? " mobile" : "");
+    const views = { create: () => form(false), edit: () => form(true), done, list, "review-edit": () => review("edit"), "review-create": () => review("create") };
+    frame.innerHTML = views[state.screen]() + dialog();
+  }
+  render();
+</script>
+</body>
+</html>
