@@ -22,8 +22,12 @@ import (
 	"go.uber.org/zap"
 )
 
-// 正常一天 5~15 頁，設上限只是防 DMM 分頁異常時無窮迴圈
-const videoSyncMaxPages = 100
+const (
+	// 正常一天 5~15 頁，設上限只是防 DMM 分頁異常時無窮迴圈
+	videoSyncMaxPages = 100
+	// videoSyncPageDelay 每頁之間喘口氣：每日排程只多十幾秒，長區間回補則把請求頻率壓低，降低被擋的機率
+	videoSyncPageDelay = time.Second
+)
 
 // videoIndexDocument 寫進 ES dmmvideos 的文件：作品明細＋vid（dmm.id，同時是 document id，沿用 logstash 時代的規則）
 type videoIndexDocument struct {
@@ -66,6 +70,7 @@ func SyncDMMVideosByDate(ctx context.Context, date string) (VideoSyncResult, err
 		if err != nil {
 			return result, fmt.Errorf("persist page %d: %w", page, err)
 		}
+		time.Sleep(videoSyncPageDelay)
 	}
 	return result, nil
 }
