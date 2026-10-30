@@ -121,3 +121,23 @@ export function useReviewActressSubmission(id: number) {
   });
   return { approve, reject };
 }
+
+/**
+ * 審核完要接著審的下一張：照列表順序（新的在前）往下找比目前舊的待審單，
+ * 已經是最舊的就從最新的待審單開始；沒有待審單回傳 null
+ */
+export function useFindNextPendingSubmission() {
+  const { headers } = useAdminSession();
+  return async (currentId: number) => {
+    const response = await axios.get<
+      CommonResponse<Pagination<ActressSubmissionSummary[]>>
+    >(adminBase, {
+      params: { status: "pending", page: 1, per_page: 100 },
+      headers,
+    });
+    const ids = response.data.data.data
+      .map((s) => s.id)
+      .filter((id) => id !== currentId);
+    return ids.find((id) => id < currentId) ?? ids[0] ?? null;
+  };
+}

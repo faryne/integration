@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link as RouterLink, useParams } from "react-router-dom";
+import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -16,8 +16,10 @@ import {
 import type { ActressSubmissionDetail } from "@/types/avActressSubmission.ts";
 import {
   useActressSubmission,
+  useFindNextPendingSubmission,
   useReviewActressSubmission,
 } from "@/apis/av/actress_submission.ts";
+import { useFlashMessage } from "@/helpers/flashMessage.ts";
 import { ACTRESS_FIELD_LABELS } from "@/data/avActressFields.ts";
 import {
   changedActressFields,
@@ -48,9 +50,15 @@ export function AVActressSubmissionReview() {
   const id = Number(useParams<{ id: string }>().id) || 0;
   useTitle(`女優上稿審核 #${id}`);
   useBreadcrumbTail(`#${id}`);
+  const flash = useFlashMessage();
   return (
     <AdminGuard>
       <Review id={id} />
+      <CustomSnackbar
+        message={flash.message ?? ""}
+        onClose={flash.close}
+        open={flash.message !== null}
+      />
     </AdminGuard>
   );
 }
@@ -66,7 +74,8 @@ function Review({ id }: { id: number }) {
       />
     );
   if (!detail.data) return <Skeleton height={480} variant="rounded" />;
-  return <ReviewContent d={detail.data} />;
+  // 換到下一張時用 key 重置對話框、合併對象等狀態
+  return <ReviewContent d={detail.data} key={detail.data.id} />;
 }
 
 function ReviewContent({ d }: { d: ActressSubmissionDetail }) {
@@ -90,9 +99,22 @@ function ReviewContent({ d }: { d: ActressSubmissionDetail }) {
   const drifted =
     d.base && d.current ? changedActressFields(d.base, d.current) : [];
   const left = isEdit ? d.base : (mergeCandidate?.fields ?? null);
-  const done = (message: string) => () => {
+  const navigate = useNavigate();
+  const findNext = useFindNextPendingSubmission();
+  // 核准／否決後直接接著審下一張待審單；沒有了就回列表，結果用 flash 帶到下一頁顯示
+  const done = (message: string) => async () => {
     setDialog(null);
-    setSnack({ message });
+    const next = await findNext(d.id).catch(() => null);
+    navigate(
+      next ? `/av/actress/submissions/${next}` : "/av/actress/submissions",
+      {
+        state: {
+          flash: next
+            ? `${message}，接著審核 #${next}`
+            : `${message}，沒有待審核的單了`,
+        },
+      },
+    );
   };
   const failed = (error: unknown) =>
     setSnack({
