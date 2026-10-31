@@ -130,24 +130,25 @@ func applyVideoConditions(input av.VideoQueryRequest, q map[string]any) error {
 	if keyword := strings.TrimSpace(input.Keyword); keyword != "" {
 		search.SetQuery(videoKeywordQuery(keyword), true, q)
 	}
-	// 標籤、演員與詳細頁 chip 的篩選一律精確比對；match 會被斷詞，點「中出し」也會撈到不相干的標籤。
+	// 標籤與詳細頁 chip 的篩選一律精確比對（演員另外多認「名字（別名…）」）；match 會被斷詞，點「中出し」也會撈到不相干的標籤。
 	// 標籤可以複選，每個各一個 term 放在 must，也就是交集
 	for _, tag := range input.Tag {
 		if tag = strings.TrimSpace(tag); tag != "" {
 			search.SetQuery(map[string]any{"term": map[string]any{"tags.keyword": tag}}, true, q)
 		}
 	}
-	// 女優頁指定是哪一位時改用 DMM 女優 ID 區分同名；對不到女優就退回 actress（名字）
+	// 女優頁指定是哪一位時改用 DMM 女優 ID 區分同名，actress 是網址上的名字（本名或別名）；
+	// 對不到女優就退回照 actress 名字找，「名字（別名…）」的寫法也算
 	if row := resolveActress(input.XCityID, input.ManualID, input.DMMID); row != nil {
-		cond, err := actressVideoQuery(*row)
+		cond, err := actressVideoQuery(*row, actressPageName(*row, input.Actress))
 		if err != nil {
 			return err
 		}
 		search.SetQuery(cond, true, q)
-		input.Actress = ""
+	} else if actress := strings.TrimSpace(input.Actress); actress != "" {
+		search.SetQuery(actressNameVideoQuery(actress), true, q)
 	}
 	for field, value := range map[string]string{
-		"actresses": input.Actress,
 		"makers":    input.Maker,
 		"labels":    input.Label,
 		"series":    input.Series,
@@ -215,7 +216,8 @@ func exactStringQuery(field string, value string) map[string]any {
 	}
 }
 
-// actressNameQuery 姓名可部分比對（「春咲」找得到「春咲あずみ」），也比對假名；完全相符的加權排前面。
+// actressNameQuery 姓名可部分比對（「春咲」找得到「春咲あずみ」），也比對假名與別名；
+// 本名完全相符排最前面，其次是別名完全相符（別名另有一位同名的本名女優時，開的是那一位）。
 // 女優 index 約 1.6 萬筆，keyword 前後萬用字元的成本可以接受
 func actressNameQuery(name string) map[string]any {
 	pattern := "*" + wildcardEscaper.Replace(name) + "*"
@@ -223,8 +225,10 @@ func actressNameQuery(name string) map[string]any {
 		"bool": map[string]any{
 			"should": []map[string]any{
 				{"term": map[string]any{"name.keyword": map[string]any{"value": name, "boost": 10}}},
+				{"term": map[string]any{"aliases.keyword": map[string]any{"value": name, "boost": 5}}},
 				{"wildcard": map[string]any{"name.keyword": map[string]any{"value": pattern}}},
 				{"wildcard": map[string]any{"kana.keyword": map[string]any{"value": pattern}}},
+				{"wildcard": map[string]any{"aliases.keyword": map[string]any{"value": pattern}}},
 			},
 			"minimum_should_match": 1,
 		},

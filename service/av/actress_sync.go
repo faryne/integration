@@ -43,6 +43,11 @@ func SyncXCityActresses(ctx context.Context) (*ActressSyncResult, error) {
 	if err != nil {
 		return result, err
 	}
+	// 已存的別名（含每週從 DMM 名字補進來的）：跟 xcity 這次給的取聯集，不然每次同步都會被洗掉
+	aliases, err := repo.AliasesByDomain(actressDomainXCity)
+	if err != nil {
+		return result, err
+	}
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -138,6 +143,7 @@ func SyncXCityActresses(ctx context.Context) (*ActressSyncResult, error) {
 			newDocs := 0
 			for _, actress := range actresses {
 				doc, ok := buildActressIndexDocument(actress)
+				doc.Aliases = mergeActressAliases(doc.Name, doc.Aliases, aliases[doc.AID])
 				if raw, has := overrides[doc.AID]; ok && has {
 					doc.ActressFields = withActressOverrides(doc.ActressFields, decodeActressOverrides(&raw))
 				}
@@ -186,6 +192,7 @@ func buildActressIndexDocument(actress xcity.Actress) (actressIndexDocument, boo
 		AID:    actress.ID,
 		ActressFields: avEntity.ActressFields{
 			Name:       name,
+			Aliases:    mergeActressAliases(name, actress.AliasName),
 			Kana:       strings.TrimSpace(actress.Kana),
 			Photo:      strings.TrimSpace(actress.Image),
 			Height:     actress.Height,

@@ -19,6 +19,7 @@ import { VideoSyncButton } from "@/components/av/video_sync_button.tsx";
 import { ImageViewer } from "@/components/common/ImageViewer.tsx";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
+import { actressBaseName } from "@/helpers/avActressName.ts";
 
 export interface IVideoDetail {
   video?: Video;
@@ -46,12 +47,14 @@ export function VideoDetail(props: IVideoDetail) {
 
   const chipClick = (s: string, keyPrefix: string) => {
     if (keyPrefix === "actress") {
-      // 新影片有 DMM 女優 ID：直接到女優頁，由對照表找出是同名中的哪一位；舊影片沒有 ID，維持到女優搜尋頁
+      // 新影片有 DMM 女優 ID：直接到女優頁，由對照表找出是同名中的哪一位；舊影片沒有 ID，維持到女優搜尋頁。
+      // chip 照 DMM 原文顯示，連結去掉括號裡的別名，女優頁才查得到人
       const dmmID = video?.actress_ids?.[video.actresses.indexOf(s)];
+      const name = encodeURIComponent(actressBaseName(s));
       navigate(
         dmmID
-          ? `/av/actress/${encodeURIComponent(s)}?dmm_id=${encodeURIComponent(dmmID)}`
-          : "/av/actress?name=" + encodeURIComponent(s),
+          ? `/av/actress/${name}?dmm_id=${encodeURIComponent(dmmID)}`
+          : "/av/actress?name=" + name,
       );
       return;
     }

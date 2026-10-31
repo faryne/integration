@@ -50,6 +50,7 @@ export function AVActressDetail() {
     >
       <ActressDetail
         actress={actress}
+        pageName={name}
         onVideoPageChange={setVideoPage}
         sameNames={sameNames}
         videoPage={videoPage}

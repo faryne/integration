@@ -17,6 +17,8 @@ export interface ActressFields {
   birth_day: number;
   interests: string[];
   links: ActressLink[];
+  // 別名（不含本名）
+  aliases: string[];
 }
 
 export type ActressFieldKey = keyof ActressFields;

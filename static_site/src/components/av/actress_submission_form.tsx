@@ -173,7 +173,18 @@ export function ActressSubmissionForm({
         <Stack spacing={2.5}>
           {section(
             "基本資料",
-            row(text("name", "姓名", { required: true }), text("kana", "假名")),
+            <>
+              {row(
+                text("name", "姓名", { required: true }),
+                text("kana", "假名"),
+              )}
+              <ActressInterestsInput
+                baseItems={base?.aliases}
+                items={fields.aliases}
+                label="別名（Enter 新增）"
+                onChange={(v) => set("aliases", v)}
+              />
+            </>,
           )}
           {section(
             "身形",

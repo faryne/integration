@@ -216,6 +216,13 @@ var cronJobs = map[string]cronGroup{
 				},
 			},
 			{
+				// 從 DMM 名字「本名（別名、別名）」補女優別名；排在 xcity 每週同步之後
+				Name:     "av-sync-dmm-aliases",
+				Schedule: "20 4 * * 6",
+				Enabled:  true,
+				Handler:  avService.SyncDMMActressAliasesCron,
+			},
+			{
 				// 前一天配信作品寫入 MySQL dmm＋ES dmmvideos；回補用 -dayFrom／-dayTo（含）
 				Name:     "av-dmm-video-sync",
 				Schedule: "50 3 * * *",

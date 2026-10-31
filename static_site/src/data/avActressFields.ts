@@ -6,6 +6,7 @@ import type {
 /** 上稿欄位的中文名稱，diff 表格依這個順序列出 */
 export const ACTRESS_FIELD_LABELS: Record<ActressFieldKey, string> = {
   name: "姓名",
+  aliases: "別名",
   kana: "假名",
   photo: "照片網址",
   height: "身高",
@@ -45,4 +46,5 @@ export const EMPTY_ACTRESS_FIELDS: ActressFields = {
   birth_day: 0,
   interests: [],
   links: [],
+  aliases: [],
 };

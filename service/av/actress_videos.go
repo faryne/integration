@@ -37,18 +37,28 @@ func resolveActress(xcityID, manualID int, dmmID string) *avEntity.DMMActress {
 	return nil
 }
 
-// actressVideoQuery 女優頁出演影片的條件。同名女優靠對照表裡的 DMM 女優 ID 分開，但 2026-10-30 之前的影片沒有 actress_ids，只能照名字：
-//   - 這位在對照表有 DMM ID：ID 相符的影片，加上名字相符但沒有 actress_ids 的舊影片
+// actressPageName 女優頁要列哪個名義的作品：網址上的名字是本名或她的別名就用網址的，否則用本名
+func actressPageName(row avEntity.DMMActress, name string) string {
+	if name = strings.TrimSpace(name); name != "" && slices.Contains(actressRowFields(row).Aliases, name) {
+		return name
+	}
+	return row.Name
+}
+
+// actressVideoQuery 女優頁出演影片的條件，只列 name 這個名義（本名或其中一個別名）的作品，
+// 「name（別名…）」的寫法也算（見 actressNameVideoQuery）。
+// 同名女優靠對照表裡的 DMM 女優 ID 分開，但 2026-10-30 之前的影片沒有 actress_ids，只能照名字：
+//   - 這位在對照表有 DMM ID：名字相符，而且 ID 相符或是沒有 actress_ids 的舊影片
 //   - 這位沒有：名字相符，但排除同名其他女優在對照表裡的 ID
-func actressVideoQuery(row avEntity.DMMActress) (map[string]any, error) {
-	siblings, err := avRepo.NewDMMActress().FindByNames(actressSearchDomains, []string{row.Name})
+func actressVideoQuery(row avEntity.DMMActress, name string) (map[string]any, error) {
+	siblings, err := avRepo.NewDMMActress().FindByNames(actressSearchDomains, []string{name})
 	if err != nil {
 		return nil, err
 	}
 	// MySQL collation 不分平假名／片假名（アイラ＝あいら），這裡再比一次完全相同的名字
 	keys := []avRepo.ActressKey{{Domain: row.Domain, ID: row.ID}}
 	for _, s := range siblings {
-		if s.Name == row.Name && (s.Domain != row.Domain || s.ID != row.ID) {
+		if s.Name == name && (s.Domain != row.Domain || s.ID != row.ID) {
 			keys = append(keys, avRepo.ActressKey{Domain: s.Domain, ID: s.ID})
 		}
 	}
@@ -65,15 +75,15 @@ func actressVideoQuery(row avEntity.DMMActress) (map[string]any, error) {
 		}
 	}
 
-	byName := map[string]any{"term": map[string]any{"actresses.keyword": row.Name}}
+	byName := actressNameVideoQuery(name)
 	if len(own) > 0 {
-		legacy := map[string]any{"bool": map[string]any{
-			"must":     byName,
-			"must_not": map[string]any{"exists": map[string]any{"field": "actress_ids"}},
-		}}
+		// 名字也要相符：同一個 DMM ID 用別名發的作品歸到別名那一頁
+		legacy := map[string]any{"bool": map[string]any{"must_not": map[string]any{"exists": map[string]any{"field": "actress_ids"}}}}
 		return map[string]any{"bool": map[string]any{
-			"should":               []map[string]any{{"terms": map[string]any{"actress_ids": own}}, legacy},
-			"minimum_should_match": 1,
+			"must": []map[string]any{byName, {"bool": map[string]any{
+				"should":               []map[string]any{{"terms": map[string]any{"actress_ids": own}}, legacy},
+				"minimum_should_match": 1,
+			}}},
 		}}, nil
 	}
 	if len(claimed) == 0 {
