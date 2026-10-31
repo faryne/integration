@@ -12,10 +12,11 @@ const TOPIC_STALE_TIME = 30 * 60 * 1000;
 const topicsBase = () =>
   `${String(import.meta.env.VITE_CDN_BASE ?? "").replace(/\/+$/, "")}/opendata/av/actress-topics`;
 
-/** index.json：總覽頁、主題頁（slug 對檔名）、女優頁的主題 chip 共用同一份快取 */
-export function useActressTopicIndex() {
+/** index.json：總覽頁、主題頁（slug 對檔名）、女優頁的主題 chip 共用同一份快取；女優頁只在網址帶 ?topic= 時才讀 */
+export function useActressTopicIndex(enabled = true) {
   return useQuery({
     queryKey: ["av-actress-topic-index"],
+    enabled,
     queryFn: async () =>
       (await axios.get<ActressTopicIndex>(`${topicsBase()}/index.json`)).data,
     staleTime: TOPIC_STALE_TIME,

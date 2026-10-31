@@ -45,6 +45,8 @@ type ActressTopicSummary struct {
 	File  string `json:"file"`
 	// Summary 自訂主題的條件摘要（例如「F cup 以上・臀 90 以上」），內建主題留空
 	Summary string `json:"summary,omitempty"`
+	// GenreTag 同主題檔的 genre_tag；女優頁從這個主題點進來時，用它多開一個「該類型作品」的 tab
+	GenreTag string `json:"genre_tag,omitempty"`
 }
 
 // ActressTopicFile 單一主題的檔案；排序與分頁都由前端處理

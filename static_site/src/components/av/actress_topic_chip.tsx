@@ -13,7 +13,7 @@ import {
 export function ActressTopicChip() {
   const [params] = useSearchParams();
   const slug = params.get("topic") ?? "";
-  const index = useActressTopicIndex();
+  const index = useActressTopicIndex(!!slug);
   const hit = slug ? findActressTopic(index.data, slug) : undefined;
   if (!hit) return null;
 

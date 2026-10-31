@@ -8,6 +8,8 @@ import {
   Grid,
   Pagination,
   Stack,
+  Tab,
+  Tabs,
   Typography,
 } from "@mui/material";
 import type { UseQueryResult } from "@tanstack/react-query";
@@ -76,7 +78,10 @@ const topTagSx = (index: number) => {
   }
 };
 
-export interface IActressDetail {
+export /** 出演影片的 tab：genre＝從類型主題點進來時的「該類型作品」、all＝全部作品 */
+type ActressVideoTab = "genre" | "all";
+
+interface IActressDetail {
   actress?: Actress;
   // 網址上的名字：本名或其中一個別名，出演影片只列這個名義的作品
   pageName?: string;
@@ -85,6 +90,12 @@ export interface IActressDetail {
   sameNames?: Actress[];
   videoPage?: number;
   videos?: UseQueryResult<VideoSearchResponse, Error>;
+  // 從有類型條件的主題點進來才有：tag 是類型名稱，value／onChange 控制目前的 tab
+  videoTabs?: {
+    tag: string;
+    value: ActressVideoTab;
+    onChange: (tab: ActressVideoTab) => void;
+  };
 }
 
 export function ActressDetail(props: IActressDetail) {
@@ -252,6 +263,17 @@ export function ActressDetail(props: IActressDetail) {
                 : "讀取中"}
             </Typography>
           </Box>
+
+          {props.videoTabs && (
+            <Tabs
+              onChange={(_, v: ActressVideoTab) => props.videoTabs?.onChange(v)}
+              sx={{ borderBottom: 1, borderColor: "divider" }}
+              value={props.videoTabs.value}
+            >
+              <Tab label={`${props.videoTabs.tag}作品`} value="genre" />
+              <Tab label="全部作品" value="all" />
+            </Tabs>
+          )}
 
           {(props.videos?.isLoading || props.videos?.isPending) && (
             <Box

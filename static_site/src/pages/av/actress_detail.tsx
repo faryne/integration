@@ -4,6 +4,9 @@ import { useAVVideoSearch } from "@/apis/av/video_search.ts";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { actressRefOf, useRoutedActress } from "@/helpers/avActressRef.ts";
+import { useActressTopicIndex } from "@/apis/av/actress_topic.ts";
+import { findActressTopic } from "@/helpers/avActressTopic.ts";
+import type { ActressVideoTab } from "@/components/av/actress_detail.tsx";
 
 export function AVActressDetail() {
   const { name = "" } = useParams<{ name: string }>();
@@ -22,10 +25,32 @@ export function AVActressDetail() {
     });
   // 網址帶 xcity_id／manual_id／dmm_id 時指定那一位，沒帶就照名字找同名排第一的
   const { actress, sameNames, notFound } = useRoutedActress(name);
+  // 從有類型條件的主題點進來（?topic=）時，出演影片多一個「該類型作品」tab 並預設選它；?tab=all 是全部作品。
+  // 主題資料還沒讀到前先不查影片，避免先查全部、再換成類型查第二次
+  const topicSlug = searchParams.get("topic") ?? "";
+  const topicIndex = useActressTopicIndex(!!topicSlug);
+  const genreTag = findActressTopic(topicIndex.data, topicSlug)?.topic
+    .genre_tag;
+  const videoTab: ActressVideoTab =
+    genreTag && searchParams.get("tab") !== "all" ? "genre" : "all";
+  // 換 tab 時回到第 1 頁
+  const setVideoTab = (tab: ActressVideoTab) =>
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("page");
+      if (tab === "all") next.set("tab", "all");
+      else next.delete("tab");
+      return next;
+    });
   // 一律用這位自己的 ID 查出演影片，同名的人才分得開（舊網址也一樣）
   const videoQuery = useAVVideoSearch(
-    { page: videoPage, actress: name, ...(actress && actressRefOf(actress)) },
-    !!actress,
+    {
+      page: videoPage,
+      actress: name,
+      ...(actress && actressRefOf(actress)),
+      ...(videoTab === "genre" && genreTag && { tag: [genreTag] }),
+    },
+    !!actress && (!topicSlug || !topicIndex.isPending),
   );
 
   if (!name || notFound) {
@@ -53,6 +78,11 @@ export function AVActressDetail() {
         pageName={name}
         onVideoPageChange={setVideoPage}
         sameNames={sameNames}
+        videoTabs={
+          genreTag
+            ? { tag: genreTag, value: videoTab, onChange: setVideoTab }
+            : undefined
+        }
         videoPage={videoPage}
         videos={videoQuery}
       />
