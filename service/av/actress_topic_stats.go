@@ -148,6 +148,11 @@ func minDate(a, b string) string {
 
 // esVideoSearch 對 dmmvideos 送一個查詢，整包回應解到 out
 func esVideoSearch(ctx context.Context, body map[string]any, out any) error {
+	return esSearch(ctx, config.EnvConfig().DMMVideoIndex, body, out)
+}
+
+// esSearch 對指定索引送一個查詢（主題排程與管理頁的聚合用），整包回應解到 out
+func esSearch(ctx context.Context, index string, body map[string]any, out any) error {
 	es := client.GetElasticSearch(enum.ESDefault)
 	if es == nil {
 		return fmt.Errorf("elasticsearch client is not initialized")
@@ -156,7 +161,7 @@ func esVideoSearch(ctx context.Context, body map[string]any, out any) error {
 	if err != nil {
 		return err
 	}
-	resp, err := es.Search(es.Search.WithContext(ctx), es.Search.WithIndex(config.EnvConfig().DMMVideoIndex), es.Search.WithBody(bytes.NewReader(buf)))
+	resp, err := es.Search(es.Search.WithContext(ctx), es.Search.WithIndex(index), es.Search.WithBody(bytes.NewReader(buf)))
 	if err != nil {
 		return err
 	}
@@ -166,7 +171,7 @@ func esVideoSearch(ctx context.Context, body map[string]any, out any) error {
 		return err
 	}
 	if resp.IsError() {
-		return fmt.Errorf("search dmmvideos failed: status=%s body=%.300s", resp.Status(), raw)
+		return fmt.Errorf("search %s failed: status=%s body=%.300s", index, resp.Status(), raw)
 	}
 	return json.Unmarshal(raw, out)
 }

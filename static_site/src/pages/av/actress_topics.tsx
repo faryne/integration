@@ -1,4 +1,12 @@
-import { Box, Chip, Paper, Skeleton, Stack, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Chip,
+  Paper,
+  Skeleton,
+  Stack,
+  Typography,
+} from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import { useActressTopicIndex } from "@/apis/av/actress_topic.ts";
 import { actressTopicPath } from "@/helpers/avActressTopic.ts";
@@ -6,6 +14,7 @@ import { useTitle } from "@/helpers/title.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { useState } from "react";
+import { useAuth } from "@/components/auth/AuthContext.ts";
 
 // 主題多的分組占整列寬，其他兩兩並排
 const WIDE_GROUPS = ["special", "body", "pref", "hot", "cold"];
@@ -14,6 +23,7 @@ const WIDE_GROUPS = ["special", "body", "pref", "hot", "cold"];
 export function AVActressTopics() {
   useTitle("AV 女優主題");
   const index = useActressTopicIndex();
+  const { session } = useAuth();
   const [errorClosed, setErrorClosed] = useState(false);
 
   return (
@@ -23,16 +33,32 @@ export function AVActressTopics() {
       panelTitle="AV 女優主題需要年齡確認"
     >
       <Stack spacing={2} sx={{ textAlign: "left" }}>
-        <Box>
-          <Typography component="h1" fontWeight={900} variant="h5">
-            女優主題
-          </Typography>
-          {index.data && (
-            <Typography color="text.secondary" variant="body2">
-              更新於 {index.data.generated_at.slice(0, 10).replaceAll("-", "/")}
+        <Stack
+          direction="row"
+          sx={{ alignItems: "flex-start", justifyContent: "space-between" }}
+        >
+          <Box>
+            <Typography component="h1" fontWeight={900} variant="h5">
+              女優主題
             </Typography>
+            {index.data && (
+              <Typography color="text.secondary" variant="body2">
+                更新於{" "}
+                {index.data.generated_at.slice(0, 10).replaceAll("-", "/")}
+              </Typography>
+            )}
+          </Box>
+          {/* 管理員才看得到 */}
+          {session?.user.is_admin && (
+            <Button
+              component={RouterLink}
+              to="/av/actress/topics/manage"
+              variant="outlined"
+            >
+              管理主題
+            </Button>
           )}
-        </Box>
+        </Stack>
         {index.isPending ? (
           <Skeleton height={480} variant="rounded" />
         ) : (

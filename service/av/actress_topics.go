@@ -1,7 +1,5 @@
 package av
 
-import avEntity "faryne.dev/model/entity/opendata/av"
-
 // 主題分組：總覽頁依 actressTopicGroups 的順序分區
 const (
 	topicGroupSpecial   = "special"
@@ -84,26 +82,4 @@ var prefectures = map[string]string{
 	"奈良県": "nara", "和歌山県": "wakayama", "鳥取県": "tottori", "島根県": "shimane", "岡山県": "okayama", "広島県": "hiroshima", "山口県": "yamaguchi",
 	"徳島県": "tokushima", "香川県": "kagawa", "愛媛県": "ehime", "高知県": "kochi", "福岡県": "fukuoka", "佐賀県": "saga", "長崎県": "nagasaki",
 	"熊本県": "kumamoto", "大分県": "oita", "宮崎県": "miyazaki", "鹿児島県": "kagoshima", "沖縄県": "okinawa",
-}
-
-// actressTopicDef 自訂主題（身材、特輯）。第 1、2 階段寫在程式裡，第 3 階段改從 DB 讀，條件結構相同
-type actressTopicDef struct {
-	Slug, Label, Group, DefaultSort string
-	Conditions                      avEntity.ActressTopicConditions
-}
-
-// bodyTopicDefs 身材形容詞主題；門檻是 2026-10-31 用 prod 資料試算後抓的，第 3 階段可以在管理介面調整
-var bodyTopicDefs = []actressTopicDef{
-	{"petite", "嬌小", topicGroupBody, topicSortVideos, avEntity.ActressTopicConditions{Height: [2]int{0, 150}}},
-	{"tall", "高挑", topicGroupBody, topicSortVideos, avEntity.ActressTopicConditions{Height: [2]int{168, 0}}},
-	{"small-breasts", "微乳", topicGroupBody, topicSortVideos, avEntity.ActressTopicConditions{Cup: [2]string{"A", "B"}}},
-	{"shapely-breasts", "美乳", topicGroupBody, topicSortVideos, avEntity.ActressTopicConditions{Cup: [2]string{"C", "D"}, Waist: [2]int{0, 58}}},
-	{"big-breasts", "巨乳", topicGroupBody, topicSortVideos, avEntity.ActressTopicConditions{Cup: [2]string{"E", "G"}}},
-	{"huge-breasts", "爆乳", topicGroupBody, topicSortVideos, avEntity.ActressTopicConditions{Cup: [2]string{"H", "I"}}},
-	{"giant-breasts", "超乳", topicGroupBody, topicSortVideos, avEntity.ActressTopicConditions{Cup: [2]string{"J", ""}}},
-	{"marshmallow", "棉花糖", topicGroupBody, topicSortVideos, avEntity.ActressTopicConditions{Cup: [2]string{"F", ""}, Hips: [2]int{90, 0}}},
-	{"petite-busty", "嬌小巨乳", topicGroupBody, topicSortVideos, avEntity.ActressTopicConditions{Height: [2]int{0, 152}, Cup: [2]string{"F", ""}}},
-	{"model-figure", "模特兒身材", topicGroupBody, topicSortVideos, avEntity.ActressTopicConditions{Height: [2]int{165, 0}, Waist: [2]int{0, 58}}},
-	{"peach-hips", "蜜桃臀", topicGroupBody, topicSortVideos, avEntity.ActressTopicConditions{Hips: [2]int{92, 0}, Waist: [2]int{0, 60}}},
-	{"slim-waist", "細腰", topicGroupBody, topicSortVideos, avEntity.ActressTopicConditions{HipWaistDiff: [2]int{32, 0}}},
 }

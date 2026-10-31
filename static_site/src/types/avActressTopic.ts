@@ -44,3 +44,59 @@ export interface ActressTopicFile {
   genre_tag?: string;
   actresses: ActressTopicMember[];
 }
+
+// ===== 管理員自訂主題（/admin/av/actress-topics），格式對應後端 actress_topic_admin.go =====
+
+export type ActressTopicGroupKey = "special" | "body";
+
+export interface ActressTopicGenreCondition {
+  tag: string;
+  min: number;
+}
+
+/** 條件：同一欄位多個值是 OR、不同欄位是 AND；區間 [min, max]，0（罩杯是空字串）代表不限 */
+export interface ActressTopicConditions {
+  horoscope?: string[];
+  blood?: string[];
+  birth_year?: [number, number];
+  height?: [number, number];
+  cup?: [string, string];
+  bust?: [number, number];
+  waist?: [number, number];
+  hips?: [number, number];
+  hip_waist_diff?: [number, number];
+  born_city?: string[];
+  genres?: ActressTopicGenreCondition[];
+  debut_within_months?: number;
+  active_within_months?: number;
+  min_videos?: number;
+}
+
+export interface ActressTopicSaveRequest {
+  slug: string;
+  title: string;
+  group_key: ActressTopicGroupKey;
+  default_sort: Exclude<ActressTopicSort, "name">;
+  conditions: ActressTopicConditions;
+}
+
+export interface ActressTopicAdminItem extends ActressTopicSaveRequest {
+  id: number;
+  sort_order: number;
+  summary: string;
+  is_enabled: boolean;
+  /** null＝儲存後還沒跑過每週排程 */
+  last_count: number | null;
+  last_generated_at: string | null;
+  updated_at: string;
+}
+
+export interface ActressTopicOption {
+  value: string;
+  count: number;
+}
+
+export interface ActressTopicOptions {
+  born_cities: ActressTopicOption[];
+  tags: ActressTopicOption[];
+}

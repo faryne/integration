@@ -1,6 +1,8 @@
 package av
 
 import (
+	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -125,5 +127,53 @@ func TestPickGenreTopics(t *testing.T) {
 func TestGenreTopicFile(t *testing.T) {
 	if a, b := genreTopicFile("熟女"), genreTopicFile("人妻・主婦"); a == b || len(a) != len("genre-12345678.json") {
 		t.Fatalf("genreTopicFile = %q, %q", a, b)
+	}
+}
+
+func TestNormalizeActressTopic(t *testing.T) {
+	ok := avEntity.ActressTopicSaveRequest{
+		Slug: " Tokyo-Chijo ", Title: " 東京痴女 ", GroupKey: "special", DefaultSort: "genre",
+		Conditions: avEntity.ActressTopicConditions{
+			BornCity: []string{"東京都", " 東京都 ", ""},
+			Genres:   []avEntity.ActressTopicGenreCondition{{Tag: "痴女", Min: 5}, {Tag: "痴女"}, {Tag: " "}},
+			Blood:    []string{"O", "A", "A"},
+			Cup:      [2]string{"f", ""},
+		},
+	}
+	got, err := normalizeActressTopic(ok)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := got.Conditions
+	if got.Slug != "tokyo-chijo" || got.Title != "東京痴女" || len(c.BornCity) != 1 || len(c.Genres) != 1 || c.Genres[0].Min != 5 ||
+		len(c.Blood) != 2 || c.Blood[0] != "A" || c.Cup[0] != "F" {
+		t.Fatalf("unexpected normalize result: %+v", got)
+	}
+
+	bad := func(mut func(r *avEntity.ActressTopicSaveRequest)) avEntity.ActressTopicSaveRequest {
+		r := ok
+		r.Conditions.Genres = slices.Clone(ok.Conditions.Genres)
+		mut(&r)
+		return r
+	}
+	for name, r := range map[string]avEntity.ActressTopicSaveRequest{
+		"沒有標題":       bad(func(r *avEntity.ActressTopicSaveRequest) { r.Title = " " }),
+		"slug 有中文":   bad(func(r *avEntity.ActressTopicSaveRequest) { r.Slug = "東京" }),
+		"撞到內建前綴":     bad(func(r *avEntity.ActressTopicSaveRequest) { r.Slug = "genre-x" }),
+		"撞到管理頁":      bad(func(r *avEntity.ActressTopicSaveRequest) { r.Slug = "manage" }),
+		"分組不合法":      bad(func(r *avEntity.ActressTopicSaveRequest) { r.GroupKey = "horoscope" }),
+		"類型排序沒有類型條件": bad(func(r *avEntity.ActressTopicSaveRequest) { r.Conditions.Genres = nil }),
+		"沒有任何條件": bad(func(r *avEntity.ActressTopicSaveRequest) {
+			r.DefaultSort, r.Conditions = "videos", avEntity.ActressTopicConditions{}
+		}),
+		"區間顛倒":  bad(func(r *avEntity.ActressTopicSaveRequest) { r.Conditions.Height = [2]int{170, 150} }),
+		"罩杯顛倒":  bad(func(r *avEntity.ActressTopicSaveRequest) { r.Conditions.Cup = [2]string{"H", "C"} }),
+		"罩杯不合法": bad(func(r *avEntity.ActressTopicSaveRequest) { r.Conditions.Cup = [2]string{"B1", ""} }),
+		"星座不合法": bad(func(r *avEntity.ActressTopicSaveRequest) { r.Conditions.Horoscope = []string{"ophiuchus"} }),
+		"血型不合法": bad(func(r *avEntity.ActressTopicSaveRequest) { r.Conditions.Blood = []string{"C"} }),
+	} {
+		if _, err := normalizeActressTopic(r); !errors.Is(err, ErrActressTopicInvalid) {
+			t.Errorf("%s: expected invalid, got %v", name, err)
+		}
 	}
 }
