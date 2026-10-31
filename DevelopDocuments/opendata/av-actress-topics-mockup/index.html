@@ -70,6 +70,34 @@
   .mobile .searchlayout { grid-template-columns:1fr; }
   .field { height:36px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; margin-bottom:10px; }
   .hl { outline:3px solid #f59e0b; outline-offset:2px; border-radius:6px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:10px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  th { font-size:12px; color:var(--muted); font-weight:700; background:#f9fafb; white-space:nowrap; }
+  tr.row { cursor:pointer; } tr.row:hover { background:#f9fafb; }
+  .mobile .hide-m { display:none; }
+  .badge { font-size:11px; border-radius:4px; padding:2px 6px; font-weight:700; background:var(--warn); color:var(--warnt); white-space:nowrap; }
+  .sw { display:inline-block; width:34px; height:20px; border-radius:10px; background:#cbd5e1; position:relative; cursor:pointer; }
+  .sw::after { content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; }
+  .sw.on { background:var(--primary); } .sw.on::after { left:16px; }
+  .editlayout { display:grid; grid-template-columns:1fr 2fr; gap:16px; align-items:start; }
+  .mobile .editlayout { grid-template-columns:1fr; }
+  .section { font-size:13px; font-weight:700; color:var(--muted); margin:0 0 10px; }
+  .fgrid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:12px; }
+  .fgrid.one, .mobile .fgrid { grid-template-columns:1fr; }
+  label.f { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); min-width:0; }
+  label.f input, label.f select, .genrerow input, .ac { border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; font-size:14px; color:var(--text); background:#fff; font-family:inherit; min-width:0; }
+  .range { display:flex; gap:6px; align-items:center; } .range input, .range select { flex:1; width:0; }
+  .cond { display:grid; grid-template-columns:72px 1fr; gap:8px; align-items:start; margin-bottom:12px; font-size:13px; }
+  .cond > span { color:var(--muted); font-size:12px; padding-top:6px; }
+  .mobile .cond { grid-template-columns:1fr; }
+  .ac { padding:4px 10px; font-size:13px; }
+  .genrerow { display:flex; gap:6px; align-items:center; margin-bottom:8px; font-size:13px; }
+  .genrerow input:first-child { flex:1; }
+  .iconbtn { width:32px; height:34px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer; color:var(--muted); }
+  .textbtn { border:1px dashed #94a3b8; background:#fff; border-radius:6px; padding:6px 12px; font-size:13px; color:var(--primary); cursor:pointer; font-weight:700; }
+  .btns { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; }
+  .btn.ghost { background:transparent; color:var(--text); border:1px solid #cbd5e1; }
+  .btn.danger { background:#b91c1c; }
   .note { font-size:12px; color:#1e3a8a; background:#eff6ff; border:1px dashed #93c5fd; border-radius:8px; padding:8px 10px; margin-top:16px; line-height:1.7; }
 </style>
 </head>
@@ -78,19 +106,23 @@
 <div class="stage"><div class="frame" id="frame"></div></div>
 <script>
   // ===== 人數與名字取自 prod ES（2026-10-31 唯讀）；出演數、日期為假資料 =====
-  const D = {"horoscope": [["aries", "牡羊座", "3/21～4/19", 417], ["taurus", "金牛座", "4/20～5/20", 398], ["gemini", "雙子座", "5/21～6/21", 425], ["cancer", "巨蟹座", "6/22～7/22", 495], ["leo", "獅子座", "7/23～8/22", 442], ["virgo", "處女座", "8/23～9/22", 447], ["libra", "天秤座", "9/23～10/23", 489], ["scorpio", "天蠍座", "10/24～11/22", 448], ["sagittarius", "射手座", "11/23～12/21", 877], ["capricorn", "摩羯座", "12/22～1/19", 443], ["aquarius", "水瓶座", "1/20～2/18", 456], ["pisces", "雙魚座", "2/19～3/20", 511]], "decade": [[1960, 158], [1970, 852], [1980, 2133], [1990, 2265], [2000, 440]], "blood": [["A", 1393], ["O", 1050], ["B", 513], ["AB", 248]], "cup": [["A", 39], ["B", 297], ["C", 805], ["D", 886], ["E", 730], ["F", 569], ["G", 450], ["H", 218], ["I", 90], ["J", 44]], "city": [["東京都", 1640], ["神奈川県", 589], ["千葉県", 198], ["埼玉県", 148], ["北海道", 144], ["大阪府", 108], ["静岡県", 105], ["京都府", 90], ["兵庫県", 81], ["福岡県", 74], ["愛知県", 67], ["秋田県", 57], ["長野県", 51], ["群馬県", 50], ["新潟県", 43], ["宮城県", 42], ["茨城県", 33], ["青森県", 33], ["福島県", 31]], "height": [["150-under", 560], ["150-159", 4260], ["160-169", 3600], ["170-over", 454]], "hot": [["中出し", 160763, 4505], ["巨乳", 139992, 5000], ["人妻・主婦", 105687, 3883], ["熟女", 98358, 4495], ["素人", 72976, 544], ["美少女", 57073, 2585], ["フェラ", 53748, 2608], ["騎乗位", 51680, 2733], ["3P・4P", 50385, 2921], ["痴女", 43455, 2643], ["女子校生", 37838, 1934], ["潮吹き", 30330, 1545], ["スレンダー", 28076, 1255], ["美乳", 27909, 1234], ["盗撮・のぞき", 27851, 285], ["パイズリ", 27538, 1493], ["近親相姦", 27117, 1802], ["ナンパ", 25618, 111], ["淫乱・ハード系", 25485, 1264], ["企画", 25085, 1118]], "cold": [["女戦士", 1674, 117], ["ヘルス・ソープ", 1656, 64], ["母乳", 1623, 98], ["カーセックス", 1606, 13], ["アクション・格闘", 1537, 96], ["スポーツ", 1486, 26], ["女医", 1460, 37], ["異物挿入", 1389, 11], ["飲尿", 1358, 65], ["秘書", 1313, 20], ["お嬢様・令嬢", 1290, 9], ["処女", 1278, 1], ["スチュワーデス", 1259, 12], ["女上司", 1222, 55], ["ディルド", 1211, 32], ["逆ナン", 1199, 39], ["女捜査官", 1112, 55], ["日焼け", 1100, 32], ["お風呂", 1063, 21], ["孕ませ", 1005, 49]], "genre_samples": {"熟女": [["風間ゆみ", 1248], ["翔田千里", 1125], ["澤村レイコ", 840], ["川上ゆう", 805], ["北条麻妃", 655], ["村上涼子", 602], ["波多野結衣", 570], ["結城みさ", 565], ["友田真希", 541], ["小早川怜子", 506], ["円城ひとみ", 414], ["艶堂しほり", 355], ["森沢かな", 337], ["加山なつこ", 319], ["浅倉彩音", 319], ["紫彩乃", 319]], "女捜査官": [["波多野結衣", 27], ["蓮実クレア", 14], ["倉多まお", 11], ["春原未来", 11], ["森沢かな", 11], ["卯水咲流", 10], ["大槻ひびき", 10], ["八乃つばさ", 9], ["澤村レイコ", 9], ["君島みお", 8], ["小早川怜子", 8], ["桜井あゆ", 8], ["水野朝陽", 8], ["真木今日子", 8], ["弥生みづき", 7], ["浜崎真緒", 7]]}, "aries_samples": [{"birth_day": 24, "birth_month": 3, "name": "麻美ゆま", "birth_year": 1987, "height": 158, "cup": "H"}, {"birth_day": 15, "birth_month": 4, "name": "有村千佳", "birth_year": 1990, "height": 158, "cup": "C"}, {"birth_day": 15, "birth_month": 4, "name": "尾上若葉", "birth_year": 1992, "height": 152, "cup": "H"}, {"birth_day": 9, "birth_month": 4, "name": "大浦真奈美", "birth_year": 1997, "height": 159, "cup": "F"}, {"birth_day": 10, "birth_month": 4, "name": "一条綺美香", "birth_year": 1964, "height": 160, "cup": "G"}, {"birth_day": 21, "birth_month": 3, "name": "今井麻衣", "birth_year": 1997, "height": 153, "cup": "A"}, {"birth_day": 28, "birth_month": 3, "name": "天海麗", "birth_year": 1984, "height": 150, "cup": "D"}, {"birth_day": 30, "birth_month": 3, "name": "雨宮琴音", "birth_year": 1988, "height": 170}, {"birth_day": 10, "birth_month": 4, "name": "丘咲エミリ", "birth_year": 1991, "height": 165}, {"birth_day": 29, "birth_month": 3, "name": "朝田ひまり", "birth_year": 2002, "height": 147, "cup": "G"}, {"birth_day": 18, "birth_month": 4, "name": "あいださくら", "birth_year": 1991, "height": 162}, {"birth_day": 6, "birth_month": 4, "name": "浅乃ハルミ", "birth_year": 1986, "height": 158, "cup": "H"}, {"birth_day": 29, "birth_month": 3, "name": "一之瀬すず", "birth_year": 1995, "height": 148, "cup": "C"}, {"birth_day": 3, "birth_month": 4, "name": "飯山香織", "birth_year": 1987, "height": 160, "cup": "D"}, {"birth_day": 2, "birth_month": 4, "name": "内山まい", "birth_year": 1989, "height": 158, "cup": "J"}, {"birth_day": 10, "birth_month": 4, "name": "小那海あや", "birth_year": 1997, "height": 150, "cup": "E"}, {"birth_day": 31, "birth_month": 3, "name": "絢森いちか", "birth_year": 1996, "height": 155, "cup": "D"}, {"birth_day": 1, "birth_month": 4, "name": "綾波優", "birth_year": 1989, "height": 167, "cup": "C"}, {"birth_day": 11, "birth_month": 4, "name": "小川あさ美", "birth_year": 1985, "height": 167, "cup": "E"}, {"birth_day": 30, "birth_month": 3, "name": "尾崎えりか", "birth_year": 1997, "height": 160, "cup": "C"}, {"birth_day": 28, "birth_month": 3, "name": "葵みのり", "birth_year": 1980, "height": 157, "cup": "B"}, {"birth_day": 31, "birth_month": 3, "name": "明里つむぎ", "birth_year": 1998, "height": 158}, {"birth_day": 30, "birth_month": 3, "name": "泉ののか", "birth_year": 1994, "height": 158, "cup": "F"}, {"birth_day": 30, "birth_month": 3, "name": "秋元さちか", "birth_year": 1997, "height": 155, "cup": "D"}]};
+  const D = {"horoscope": [["aries", "牡羊座", "3/21～4/19", 417], ["taurus", "金牛座", "4/20～5/20", 398], ["gemini", "雙子座", "5/21～6/21", 425], ["cancer", "巨蟹座", "6/22～7/22", 495], ["leo", "獅子座", "7/23～8/22", 442], ["virgo", "處女座", "8/23～9/22", 447], ["libra", "天秤座", "9/23～10/23", 489], ["scorpio", "天蠍座", "10/24～11/22", 448], ["sagittarius", "射手座", "11/23～12/21", 535], ["capricorn", "摩羯座", "12/22～1/19", 443], ["aquarius", "水瓶座", "1/20～2/18", 456], ["pisces", "雙魚座", "2/19～3/20", 511]], "decade": [[1960, 158], [1970, 852], [1980, 2133], [1990, 2265], [2000, 440]], "blood": [["A", 1393], ["O", 1050], ["B", 513], ["AB", 248]], "cup": [["A", 39], ["B", 297], ["C", 805], ["D", 886], ["E", 730], ["F", 569], ["G", 450], ["H", 218], ["I", 90], ["J", 44]], "city": [["東京都", 1640], ["神奈川県", 589], ["千葉県", 198], ["埼玉県", 148], ["北海道", 144], ["大阪府", 108], ["静岡県", 105], ["京都府", 90], ["兵庫県", 81], ["福岡県", 74], ["愛知県", 67], ["秋田県", 57], ["長野県", 51], ["群馬県", 50], ["新潟県", 43], ["宮城県", 42], ["茨城県", 33], ["青森県", 33], ["福島県", 31]], "height": [["150-under", 560], ["150-159", 4260], ["160-169", 3600], ["170-over", 454]], "hot": [["中出し", 160763, 4505], ["巨乳", 139992, 5000], ["人妻・主婦", 105687, 3883], ["熟女", 98358, 4495], ["素人", 72976, 544], ["美少女", 57073, 2585], ["フェラ", 53748, 2608], ["騎乗位", 51680, 2733], ["3P・4P", 50385, 2921], ["痴女", 43455, 2643], ["女子校生", 37838, 1934], ["潮吹き", 30330, 1545], ["スレンダー", 28076, 1255], ["美乳", 27909, 1234], ["盗撮・のぞき", 27851, 285], ["パイズリ", 27538, 1493], ["近親相姦", 27117, 1802], ["ナンパ", 25618, 111], ["淫乱・ハード系", 25485, 1264], ["企画", 25085, 1118]], "cold": [["女戦士", 1674, 117], ["ヘルス・ソープ", 1656, 64], ["母乳", 1623, 98], ["カーセックス", 1606, 13], ["アクション・格闘", 1537, 96], ["スポーツ", 1486, 26], ["女医", 1460, 37], ["異物挿入", 1389, 11], ["飲尿", 1358, 65], ["秘書", 1313, 20], ["お嬢様・令嬢", 1290, 9], ["処女", 1278, 1], ["スチュワーデス", 1259, 12], ["女上司", 1222, 55], ["ディルド", 1211, 32], ["逆ナン", 1199, 39], ["女捜査官", 1112, 55], ["日焼け", 1100, 32], ["お風呂", 1063, 21], ["孕ませ", 1005, 49]], "genre_samples": {"熟女": [["風間ゆみ", 1248], ["翔田千里", 1125], ["澤村レイコ", 840], ["川上ゆう", 805], ["北条麻妃", 655], ["村上涼子", 602], ["波多野結衣", 570], ["結城みさ", 565], ["友田真希", 541], ["小早川怜子", 506], ["円城ひとみ", 414], ["艶堂しほり", 355], ["森沢かな", 337], ["加山なつこ", 319], ["浅倉彩音", 319], ["紫彩乃", 319]], "女捜査官": [["波多野結衣", 27], ["蓮実クレア", 14], ["倉多まお", 11], ["春原未来", 11], ["森沢かな", 11], ["卯水咲流", 10], ["大槻ひびき", 10], ["八乃つばさ", 9], ["澤村レイコ", 9], ["君島みお", 8], ["小早川怜子", 8], ["桜井あゆ", 8], ["水野朝陽", 8], ["真木今日子", 8], ["弥生みづき", 7], ["浜崎真緒", 7]]}, "aries_samples": [{"birth_day": 24, "birth_month": 3, "name": "麻美ゆま", "birth_year": 1987, "height": 158, "cup": "H"}, {"birth_day": 15, "birth_month": 4, "name": "有村千佳", "birth_year": 1990, "height": 158, "cup": "C"}, {"birth_day": 15, "birth_month": 4, "name": "尾上若葉", "birth_year": 1992, "height": 152, "cup": "H"}, {"birth_day": 9, "birth_month": 4, "name": "大浦真奈美", "birth_year": 1997, "height": 159, "cup": "F"}, {"birth_day": 10, "birth_month": 4, "name": "一条綺美香", "birth_year": 1964, "height": 160, "cup": "G"}, {"birth_day": 21, "birth_month": 3, "name": "今井麻衣", "birth_year": 1997, "height": 153, "cup": "A"}, {"birth_day": 28, "birth_month": 3, "name": "天海麗", "birth_year": 1984, "height": 150, "cup": "D"}, {"birth_day": 30, "birth_month": 3, "name": "雨宮琴音", "birth_year": 1988, "height": 170}, {"birth_day": 10, "birth_month": 4, "name": "丘咲エミリ", "birth_year": 1991, "height": 165}, {"birth_day": 29, "birth_month": 3, "name": "朝田ひまり", "birth_year": 2002, "height": 147, "cup": "G"}, {"birth_day": 18, "birth_month": 4, "name": "あいださくら", "birth_year": 1991, "height": 162}, {"birth_day": 6, "birth_month": 4, "name": "浅乃ハルミ", "birth_year": 1986, "height": 158, "cup": "H"}, {"birth_day": 29, "birth_month": 3, "name": "一之瀬すず", "birth_year": 1995, "height": 148, "cup": "C"}, {"birth_day": 3, "birth_month": 4, "name": "飯山香織", "birth_year": 1987, "height": 160, "cup": "D"}, {"birth_day": 2, "birth_month": 4, "name": "内山まい", "birth_year": 1989, "height": 158, "cup": "J"}, {"birth_day": 10, "birth_month": 4, "name": "小那海あや", "birth_year": 1997, "height": 150, "cup": "E"}, {"birth_day": 31, "birth_month": 3, "name": "絢森いちか", "birth_year": 1996, "height": 155, "cup": "D"}, {"birth_day": 1, "birth_month": 4, "name": "綾波優", "birth_year": 1989, "height": 167, "cup": "C"}, {"birth_day": 11, "birth_month": 4, "name": "小川あさ美", "birth_year": 1985, "height": 167, "cup": "E"}, {"birth_day": 30, "birth_month": 3, "name": "尾崎えりか", "birth_year": 1997, "height": 160, "cup": "C"}, {"birth_day": 28, "birth_month": 3, "name": "葵みのり", "birth_year": 1980, "height": 157, "cup": "B"}, {"birth_day": 31, "birth_month": 3, "name": "明里つむぎ", "birth_year": 1998, "height": 158}, {"birth_day": 30, "birth_month": 3, "name": "泉ののか", "birth_year": 1994, "height": 158, "cup": "F"}, {"birth_day": 30, "birth_month": 3, "name": "秋元さちか", "birth_year": 1997, "height": 155, "cup": "D"}]};
+  D.genre_samples["tokyo-chijo"] = [["蓮実クレア",405],["川上ゆう",326],["篠田ゆう",264],["風間ゆみ",259],["澤村レイコ",231],["木下ひまり",230],["小早川怜子",216],["本真ゆり",203],["北川エリカ",190],["渚みつき",173],["辻井ほのか",170],["有村千佳",165]];
   const PREF = { "東京都":"tokyo","神奈川県":"kanagawa","千葉県":"chiba","埼玉県":"saitama","北海道":"hokkaido","大阪府":"osaka","静岡県":"shizuoka","京都府":"kyoto","兵庫県":"hyogo","福岡県":"fukuoka","愛知県":"aichi","秋田県":"akita","長野県":"nagano","群馬県":"gunma","新潟県":"niigata","宮城県":"miyagi","茨城県":"ibaraki","青森県":"aomori","福島県":"fukushima" };
-  const HEIGHT = { "150-under":"150cm 以下","150-159":"150～159cm","160-169":"160～169cm","170-over":"170cm 以上" };
   const fmt = (n) => n.toLocaleString();
   const t = (slug, label, count) => ({ slug, label, count });
   // 總覽頁的分組，順序即顯示順序；類型主題的 slug 用標籤原文
+  // 自訂主題（特輯、身材）多帶條件摘要 summary；有類型條件的帶 genre
+  const c = (slug, label, count, summary, genre) => ({ slug, label, count, summary, genre });
   const GROUPS = [
-    { key:"special", label:"新人與活躍", topics:[t("newcomer","新人",612), t("active","近期活躍",1873)] },
+    { key:"special", label:"特輯", wide:true, topics:[c("tokyo-chijo","東京痴女",467,"東京都・痴女 5 部以上","痴女"), c("virgo-a-schemer","A 型處女座的心機女",31,"A 型・處女座・痴女 3 部以上","痴女")] },
+    { key:"body", label:"身材", wide:true, topics:[c("petite","嬌小",823,"身高 150cm 以下"), c("tall","高挑",711,"身高 168cm 以上"), c("small-breasts","微乳",336,"A～B cup"),
+      c("shapely-breasts","美乳",929,"C～D cup・腰 58 以下"), c("big-breasts","巨乳",1749,"E～G cup"), c("huge-breasts","爆乳",308,"H～I cup"), c("giant-breasts","超乳",88,"J cup 以上"),
+      c("marshmallow","棉花糖",497,"F cup 以上・臀 90 以上"), c("petite-busty","嬌小巨乳",159,"身高 152cm 以下・F cup 以上"), c("model-figure","模特兒身材",429,"身高 165cm 以上・腰 58 以下"),
+      c("peach-hips","蜜桃臀",219,"臀 92 以上・腰 60 以下"), c("slim-waist","細腰",781,"臀腰差 32 以上")] },
+    { key:"active", label:"新人與活躍", topics:[t("newcomer","新人",612), t("active","近期活躍",1873)] },
     { key:"horoscope", label:"星座", topics:D.horoscope.map(([s,l,,c]) => t(`horoscope-${s}`, l, c)) },
     { key:"born", label:"出生年代", topics:D.decade.map(([y,c]) => t(`born-${y}s`, `${String(y).slice(2)} 年代`, c)) },
-    { key:"blood", label:"血型", topics:D.blood.map(([b,c]) => t(`blood-${b.toLowerCase()}`, `${b} 型`, c)) },
-    { key:"cup", label:"罩杯", topics:D.cup.map(([b,c]) => t(`cup-${b.toLowerCase()}`, `${b} cup`, c)) },
-    { key:"height", label:"身高", topics:D.height.map(([k,c]) => t(`height-${k}`, HEIGHT[k], c)) },
     { key:"pref", label:"出身地", wide:true, topics:D.city.map(([p,c]) => t(`pref-${PREF[p]}`, p, c)) },
     { key:"hot", label:"熱門類型", wide:true, topics:D.hot.map(([g,,c]) => t(`genre-${g}`, g, c)) },
     { key:"cold", label:"冷門類型", wide:true, topics:D.cold.filter(([,,c]) => c >= 20).map(([g,,c]) => t(`genre-${g}`, g, c)) },
@@ -98,11 +130,12 @@
   const find = (slug) => { for (const g of GROUPS) { const x = g.topics.find((x) => x.slug === slug); if (x) return { group:g, topic:x }; } };
 
   const state = { screen:"index", mobile:false, slug:"horoscope-aries", sort:"", page:1 };
-  const SCREENS = [["index","主題總覽"],["attr","屬性主題（牡羊座）"],["genre","類型主題（熟女）"],["newcomer","新人"],["detail","入口：女優頁"],["search","入口：女優搜尋頁"]];
-  const SCREEN_SLUG = { attr:"horoscope-aries", genre:"genre-熟女", newcomer:"newcomer" };
+  const SCREENS = [["index","主題總覽"],["body","身材（棉花糖）"],["special","特輯（東京痴女）"],["attr","星座（牡羊座）"],["genre","類型（熟女）"],["newcomer","新人"],["detail","入口：女優頁"],["search","入口：女優搜尋頁"],["manage","管理：列表"],["edit","管理：編輯"]];
+  const SCREEN_SLUG = { body:"marshmallow", special:"tokyo-chijo", attr:"horoscope-aries", genre:"genre-熟女", newcomer:"newcomer" };
   function go(screen) { Object.assign(state, { screen, sort:"", page:1 }); if (SCREEN_SLUG[screen]) state.slug = SCREEN_SLUG[screen]; render(); }
   function open(slug) {
-    const scr = slug.startsWith("genre-") ? "genre" : slug === "newcomer" ? "newcomer" : "attr";
+    const { group } = find(slug);
+    const scr = slug.startsWith("genre-") ? "genre" : slug === "newcomer" ? "newcomer" : group.key === "special" ? "special" : group.key === "body" ? "body" : "attr";
     Object.assign(state, { screen:scr, slug, sort:"", page:1 }); render(); window.scrollTo(0, 0);
   }
   function set(k, v) { state[k] = v; render(); }
@@ -121,14 +154,15 @@
     const groups = GROUPS.map((g) => `<div class="paper group ${g.wide ? "wide" : ""}"><h3>${g.label}</h3><div class="chips">${
       g.topics.map((x) => `<a class="chip" onclick="open('${x.slug}')">${x.label}<small>${fmt(x.count)}</small></a>`).join("")}</div></div>`).join("");
     return shell(crumbTopics(""), "/av/actress/topics", `
-      <div class="pagehead"><div><h2>女優主題</h2><div class="meta">更新於 2026/11/05</div></div></div>
+      <div class="pagehead"><div><h2>女優主題</h2><div class="meta">更新於 2026/11/05</div></div><button class="btn outline hl" onclick="go('manage')">管理主題</button></div>
       <div class="groups">${groups}</div>`);
   }
 
   // ===== 主題頁：標題、同類別切換、排序、卡片格線、分頁 =====
   function topicPage(kind) {
     const { group, topic } = find(state.slug) ?? find("horoscope-aries");
-    const sorts = kind === "genre" ? [["genre",`${topic.label}出演數`],["videos","總出演數"],["recent","最近出演"],["name","名字"]]
+    if (topic.genre) kind = "genre";
+    const sorts = kind === "genre" ? [["genre",`${topic.genre ?? topic.label}出演數`],["videos","總出演數"],["recent","最近出演"],["name","名字"]]
       : kind === "newcomer" ? [["debut","出道日"],["videos","出演數"],["name","名字"]]
       : topic.slug === "active" ? [["recent","最近出演"],["videos","出演數"],["name","名字"]]
       : [["videos","出演數"],["recent","最近出演"],["name","名字"]];
@@ -147,10 +181,10 @@
     const pager = `<div class="pager">${[1, 2, 3].filter((p) => p <= pages).map((p) =>
       `<a class="${p === state.page ? "on" : ""}" onclick="set('page',${p})">${p}</a>`).join("")}${pages > 4 ? `<a>…</a><a onclick="set('page',${pages})">${pages}</a>` : ""}</div>`;
     return shell(crumbTopics(topic.label), url, `
-      <div class="pagehead"><div><h2>${topic.label}</h2><div class="meta">${group.label}${range ? `・${range}` : ""}・${fmt(topic.count)} 位</div></div>${toggle}</div>
+      <div class="pagehead"><div><h2>${topic.label}</h2><div class="meta">${group.label}${range ? `・${range}` : ""}${topic.summary ? `・${topic.summary}` : ""}・${fmt(topic.count)} 位</div></div>${toggle}</div>
       ${siblings}
       <div class="results">${cards}</div>${pager}
-      ${kind === "genre" ? `<div class="note">mockup 說明：排行只算「含這個標籤、且不是總集編」的影片，${fmt(5)} 部以上才列入；女優名字已去掉 DMM 名字裡的（別名）。</div>` : ""}
+      ${kind === "genre" && !topic.genre ? `<div class="note">mockup 說明：排行只算「含這個標籤、且不是總集編」的影片，${fmt(5)} 部以上才列入；女優名字已去掉 DMM 名字裡的（別名）。</div>` : ""}
       ${kind === "attr" && group.key === "horoscope" ? `<div class="note">mockup 說明：xcity 有約 300 位女優的生日是 11/30（疑似預設值），星座主題排除 11/30，出生年代照算。</div>` : ""}`);
   }
 
@@ -158,12 +192,13 @@
   function cardsFor(kind, topic, sort) {
     const n = state.mobile ? 8 : 12;
     if (kind === "genre") {
-      const src = D.genre_samples[topic.label] ?? D.genre_samples["熟女"];
+      const g = topic.genre ?? topic.label;
+      const src = D.genre_samples[topic.slug] ?? D.genre_samples[g] ?? D.genre_samples["熟女"];
       let list = src.slice(0, n).map(([name, g], i) => ({ name, g, all:Math.round(g * (1.6 + (i % 4) * .4)), last:`2026/${String(10 - (i % 9)).padStart(2, "0")}` }));
       if (sort === "videos") list.sort((a, b) => b.all - a.all);
       if (sort === "recent") list.sort((a, b) => b.last.localeCompare(a.last));
       if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name, "ja"));
-      return list.map((x) => ({ name:x.name, stat:`<em>${topic.label} ${fmt(x.g)} 部</em><br>共 ${fmt(x.all)} 部<br>最近 ${x.last}` }));
+      return list.map((x) => ({ name:x.name, stat:`<em>${g} ${fmt(x.g)} 部</em><br>共 ${fmt(x.all)} 部<br>最近 ${x.last}` }));
     }
     const base = D.aries_samples.slice(0, n).map((a, i) => ({ name:a.name, videos:[312, 268, 241, 198, 176, 150, 133, 120, 96, 81, 64, 52][i], last:`20${["26/10","25/12","26/09","19/04","26/10","24/07","26/08","15/02","26/10","22/11","26/06","18/03"][i]}`, debut:`2026/${String(10 - i % 10).padStart(2, "0")}` }));
     if (kind === "newcomer") {
@@ -190,15 +225,15 @@
           <dl class="facts">
             <dt>生日</dt><dd>${a.birth_year}/${a.birth_month}/${a.birth_day}（${link("horoscope-aries", "牡羊座")}）</dd>
             <dt>出生年代</dt><dd>${link("born-1980s", "80 年代")}</dd>
-            <dt>身高</dt><dd>${link("height-150-159", `${a.height} cm`)}</dd>
-            <dt>罩杯</dt><dd>${link(`cup-${a.cup.toLowerCase()}`, `${a.cup} cup`)}</dd>
-            <dt>血型</dt><dd>${link("blood-a", "A 型")}</dd>
+            <dt>身高</dt><dd>${a.height} cm</dd>
+            <dt>罩杯</dt><dd>${a.cup} cup</dd>
+            <dt>血型</dt><dd>A 型</dd>
             <dt>出身地</dt><dd>${link("pref-kanagawa", "神奈川県")}</dd>
           </dl>
         </div>
         <div class="card"><b>出演影片</b><div class="vgrid" style="margin-top:12px">${"<div class='cover'></div>".repeat(6)}</div></div>
       </div>
-      <div class="note">mockup 說明：只有 index.json 裡存在的主題才變成連結（例如人數不足 30 的罩杯、出身地維持純文字）。星座從生日推算後顯示在生日後面。</div>`);
+      <div class="note">mockup 說明：只有星座、出生年代、出身地會變成連結，而且要 index.json 裡有這個主題（人數不足 30 的出身地維持純文字）。身材主題要看條件才知道符不符合，女優頁不顯示。</div>`);
   }
 
   // ===== 入口：女優搜尋頁標題列加「女優主題」按鈕（黃框為新增） =====
@@ -211,11 +246,69 @@
       </div>`);
   }
 
+  // ===== 管理：主題列表（只列自訂主題；內建主題不能編輯） =====
+  function manage() {
+    const rows = [...GROUPS[0].topics.map((x) => ({ ...x, g:"特輯" })), ...GROUPS[1].topics.map((x) => ({ ...x, g:"身材" })),
+      { label:"高挑痴女", slug:"tall-chijo", summary:"身高 168cm 以上・痴女 5 部以上", g:"特輯", count:null },
+      { label:"昭和熟女", slug:"showa-jukujo", summary:"1989 年以前出生・熟女 5 部以上", g:"特輯", count:122, off:true }];
+    const row = (x) => `<tr class="row" onclick="go('edit')" style="${x.off ? "color:var(--muted)" : ""}">
+      <td style="white-space:nowrap"><span style="color:var(--muted);cursor:grab">⋮⋮</span></td>
+      <td><b>${x.label}</b><div style="color:var(--muted);font-size:12px">${x.slug}</div></td>
+      <td style="white-space:nowrap">${x.g}</td><td class="hide-m">${x.summary}</td>
+      <td style="white-space:nowrap">${x.count == null ? `<span class="badge">尚未產生</span>` : `${fmt(x.count)} 位<div style="color:var(--muted);font-size:12px">2026/11/05</div>`}</td>
+      <td><span class="sw ${x.off ? "" : "on"}" onclick="event.stopPropagation()"></span></td></tr>`;
+    return shell(`首頁 / <a onclick="go('search')">AV 女優搜尋</a> / <a onclick="go('index')">女優主題</a> / 管理主題`, "/av/actress/topics/manage", `
+      <div class="pagehead"><h2>管理主題</h2><button class="btn" onclick="go('edit')">新增主題</button></div>
+      <div class="paper" style="padding:0;overflow-x:auto"><table>
+        <thead><tr><th></th><th>主題</th><th>分組</th><th class="hide-m">條件</th><th>上次產生</th><th>啟用</th></tr></thead>
+        <tbody>${rows.map(row).join("")}</tbody></table></div>
+      <div class="note">mockup 說明：拖曳 ⋮⋮ 調整總覽頁順序。新增或修改後要等下一次每週排程（週四 04:30）才會產生，之前顯示「尚未產生」或上次的結果。</div>`);
+  }
+
+  // ===== 管理：編輯主題（以「東京痴女」為例） =====
+  function edit() {
+    const HORO = D.horoscope.map(([, l]) => l), BLOOD = ["A","B","O","AB"];
+    const chips = (list, on) => `<div class="chips">${list.map((x) => `<span class="chip ${on.includes(x) ? "on" : ""}">${x}</span>`).join("")}</div>`;
+    const range = (label, unit = "") => `<label class="f"><span>${label}</span><div class="range"><input placeholder="最小"><span>～</span><input placeholder="最大">${unit ? `<span>${unit}</span>` : ""}</div></label>`;
+    return shell(`首頁 / <a onclick="go('search')">AV 女優搜尋</a> / <a onclick="go('index')">女優主題</a> / <a onclick="go('manage')">管理主題</a> / 東京痴女`, "/av/actress/topics/manage/12", `
+      <div class="pagehead"><h2>編輯主題</h2></div>
+      <div class="editlayout">
+        <div class="paper"><div class="section">基本資料</div>
+          <div class="fgrid one">
+            <label class="f"><span>標題</span><input value="東京痴女"></label>
+            <label class="f"><span>slug</span><input value="tokyo-chijo"></label>
+            <label class="f"><span>分組</span><select><option selected>特輯</option><option>身材</option></select></label>
+            <label class="f"><span>預設排序</span><select><option>出演數</option><option>最近出演</option><option selected>類型出演數</option><option>出道日</option></select></label>
+          </div>
+        </div>
+        <div class="paper"><div class="section">條件</div>
+          <div class="cond"><span>星座</span>${chips(HORO, [])}</div>
+          <div class="cond"><span>血型</span>${chips(BLOOD, [])}</div>
+          <div class="fgrid">
+            ${range("出生年")}${range("身高", "cm")}
+            <label class="f"><span>罩杯</span><div class="range"><select><option>不限</option></select><span>～</span><select><option>不限</option></select></div></label>
+            ${range("臀腰差")}${range("胸圍")}${range("腰圍")}${range("臀圍")}
+          </div>
+          <div class="cond"><span>出身地</span><div class="chips"><span class="chip on">東京都 ✕</span><input class="ac" placeholder="輸入都道府県"></div></div>
+          <div class="cond"><span>類型</span><div>
+            <div class="genrerow"><input value="痴女"><span>至少</span><input value="5" style="width:56px"><span>部</span><button class="iconbtn">✕</button></div>
+            <button class="textbtn">＋ 類型條件</button></div></div>
+          <div class="fgrid">
+            <label class="f"><span>出道在幾個月內</span><input placeholder="不限"></label>
+            <label class="f"><span>最後出演在幾個月內</span><input placeholder="不限"></label>
+            <label class="f"><span>總出演數至少</span><input placeholder="不限"></label>
+          </div>
+        </div>
+      </div>
+      <div class="btns"><button class="btn danger" onclick="alert('mockup：會先跳 confirm「確定要刪除「東京痴女」？」')">刪除</button><span style="flex:1"></span><button class="btn ghost" onclick="go('manage')">取消</button><button class="btn" onclick="go('manage')">儲存</button></div>
+      <div class="note">mockup 說明：同一個欄位內多選是 OR，不同欄位之間是 AND；空白代表不限。不做即時預覽人數，儲存後等下一次排程產生。</div>`);
+  }
+
   function render() {
     document.getElementById("toolbar").innerHTML = toolbar();
     const f = document.getElementById("frame");
     f.className = "frame" + (state.mobile ? " mobile" : "");
-    f.innerHTML = { index, attr:() => topicPage("attr"), genre:() => topicPage("genre"), newcomer:() => topicPage("newcomer"), detail, search }[state.screen]();
+    f.innerHTML = { index, manage, edit, body:() => topicPage("attr"), special:() => topicPage("attr"), attr:() => topicPage("attr"), genre:() => topicPage("genre"), newcomer:() => topicPage("newcomer"), detail, search }[state.screen]();
   }
   render();
 </script>
