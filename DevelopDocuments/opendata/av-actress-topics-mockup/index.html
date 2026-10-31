@@ -98,6 +98,7 @@
   .btns { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; }
   .btn.ghost { background:transparent; color:var(--text); border:1px solid #cbd5e1; }
   .btn.danger { background:#b91c1c; }
+  .topicrow { display:flex; gap:8px; align-items:center; justify-content:center; margin-top:8px; font-size:12px; color:var(--muted); }
   .note { font-size:12px; color:#1e3a8a; background:#eff6ff; border:1px dashed #93c5fd; border-radius:8px; padding:8px 10px; margin-top:16px; line-height:1.7; }
 </style>
 </head>
@@ -130,9 +131,16 @@
   const find = (slug) => { for (const g of GROUPS) { const x = g.topics.find((x) => x.slug === slug); if (x) return { group:g, topic:x }; } };
 
   const state = { screen:"index", mobile:false, slug:"horoscope-aries", sort:"", page:1 };
-  const SCREENS = [["index","主題總覽"],["body","身材（棉花糖）"],["special","特輯（東京痴女）"],["attr","星座（牡羊座）"],["genre","類型（熟女）"],["newcomer","新人"],["detail","入口：女優頁"],["search","入口：女優搜尋頁"],["manage","管理：列表"],["edit","管理：編輯"]];
+  const SCREENS = [["index","主題總覽"],["body","身材（棉花糖）"],["special","特輯（東京痴女）"],["attr","星座（牡羊座）"],["genre","類型（熟女）"],["newcomer","新人"],["detail","女優頁（帶 topic）"],["detail-plain","女優頁（沒帶）"],["search","入口：女優搜尋頁"],["manage","管理：列表"],["edit","管理：編輯"]];
   const SCREEN_SLUG = { body:"marshmallow", special:"tokyo-chijo", attr:"horoscope-aries", genre:"genre-熟女", newcomer:"newcomer" };
-  function go(screen) { Object.assign(state, { screen, sort:"", page:1 }); if (SCREEN_SLUG[screen]) state.slug = SCREEN_SLUG[screen]; render(); }
+  function go(screen) {
+    // 工具列進女優頁：「帶 topic」固定用牡羊座，「沒帶」清掉
+    if (screen === "detail") state.from = "horoscope-aries";
+    if (screen === "detail-plain") { screen = "detail"; state.from = ""; state.plain = true; } else state.plain = false;
+    Object.assign(state, { screen, sort:"", page:1 }); if (SCREEN_SLUG[screen]) state.slug = SCREEN_SLUG[screen]; render();
+  }
+  // 主題頁卡片點進女優頁：網址帶 ?topic=目前的主題
+  function openActress() { Object.assign(state, { screen:"detail", from:state.slug, plain:false }); render(); window.scrollTo(0, 0); }
   function open(slug) {
     const { group } = find(slug);
     const scr = slug.startsWith("genre-") ? "genre" : slug === "newcomer" ? "newcomer" : group.key === "special" ? "special" : group.key === "body" ? "body" : "attr";
@@ -145,7 +153,7 @@
 
   function toolbar() {
     return `<b>女優主題頁 mockup</b><span class="sep"></span>` +
-      SCREENS.map(([k, s]) => `<button class="${state.screen === k ? "on" : ""}" onclick="go('${k}')">${s}</button>`).join("") +
+      SCREENS.map(([k, s]) => `<button class="${(state.plain ? "detail-plain" : state.screen) === k ? "on" : ""}" onclick="go('${k}')">${s}</button>`).join("") +
       `<span class="sep"></span><button class="${state.mobile ? "" : "on"}" onclick="set('mobile',false)">桌機</button><button class="${state.mobile ? "on" : ""}" onclick="set('mobile',true)">手機</button>`;
   }
 
@@ -175,7 +183,7 @@
     const siblings = `<div class="siblings"><div class="chips">${group.topics.map((x) =>
       `<a class="chip ${x.slug === topic.slug ? "on" : ""}" ${x.slug === topic.slug ? "" : `onclick="open('${x.slug}')"`}>${x.label}<small>${fmt(x.count)}</small></a>`).join("")}</div></div>`;
     const toggle = `<div class="toggle">${sorts.map(([k, l]) => `<a class="${k === sort ? "on" : ""}" onclick="Object.assign(state,{sort:'${k}',page:1});render()">${l}</a>`).join("")}</div>`;
-    const cards = cardsFor(kind, topic, sort).map((c, i) => `<div class="acard" onclick="go('detail')">
+    const cards = cardsFor(kind, topic, sort).map((c, i) => `<div class="acard" onclick="openActress()">
         ${sort === sorts[0][0] && kind !== "newcomer" && sort !== "name" ? `<span class="rank">${(state.page - 1) * perPage + i + 1}</span>` : ""}
         <div class="photo">照片</div><div class="body"><b>${c.name}</b><div class="stat">${c.stat}</div></div></div>`).join("");
     const pager = `<div class="pager">${[1, 2, 3].filter((p) => p <= pages).map((p) =>
@@ -216,24 +224,27 @@
   // ===== 入口：女優頁資料卡的星座、血型、出身地等改成主題連結（黃框為新增） =====
   function detail() {
     const a = D.aries_samples[0];
-    const link = (slug, label) => `<a class="hl" onclick="open('${slug}')">${label}</a>`;
-    return shell(`首頁 / <a onclick="go('search')">AV 女優搜尋</a> / ${a.name}`, `/av/actress/${a.name}`, `
+    const hit = state.from ? find(state.from) : null;
+    const url = `/av/actress/${a.name}${state.from ? `?topic=${state.from}` : ""}`;
+    // 帶 topic 而且 index.json 查得到時，個人檔案多一行主題 chip（黃框為新增）；查不到就不顯示
+    const topicRow = hit ? `<div class="topicrow"><span>主題</span><a class="chip hl" onclick="open('${hit.topic.slug}')">${hit.topic.label}</a></div>` : "";
+    return shell(`首頁 / <a onclick="go('search')">AV 女優搜尋</a> / ${a.name}`, url, `
       <div class="detail">
         <div class="card" style="text-align:center">
           <div class="photo" style="max-width:200px;margin:0 auto 12px">照片</div>
           <b style="font-size:18px">${a.name}</b>
+          ${topicRow}
           <dl class="facts">
-            <dt>生日</dt><dd>${a.birth_year}/${a.birth_month}/${a.birth_day}（${link("horoscope-aries", "牡羊座")}）</dd>
-            <dt>出生年代</dt><dd>${link("born-1980s", "80 年代")}</dd>
+            <dt>生日</dt><dd>${a.birth_year}/${a.birth_month}/${a.birth_day}</dd>
             <dt>身高</dt><dd>${a.height} cm</dd>
             <dt>罩杯</dt><dd>${a.cup} cup</dd>
             <dt>血型</dt><dd>A 型</dd>
-            <dt>出身地</dt><dd>${link("pref-kanagawa", "神奈川県")}</dd>
+            <dt>出身地</dt><dd>神奈川県</dd>
           </dl>
         </div>
         <div class="card"><b>出演影片</b><div class="vgrid" style="margin-top:12px">${"<div class='cover'></div>".repeat(6)}</div></div>
       </div>
-      <div class="note">mockup 說明：只有星座、出生年代、出身地會變成連結，而且要 index.json 裡有這個主題（人數不足 30 的出身地維持純文字）。身材主題要看條件才知道符不符合，女優頁不顯示。</div>`);
+      <div class="note">mockup 說明：資料欄位維持原樣。從主題頁的卡片點進來時網址帶 <code>?topic=</code>，個人檔案多一行該主題的 chip，點下去回主題頁；沒帶、亂填或主題已下架就不顯示。可以從任一主題頁點卡片試試。</div>`);
   }
 
   // ===== 入口：女優搜尋頁標題列加「女優主題」按鈕（黃框為新增） =====
