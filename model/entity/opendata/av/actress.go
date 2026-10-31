@@ -46,4 +46,6 @@ type Actress struct {
 	BirthDay   int           `json:"birth_day"`
 	Hips       any           `json:"hips"`
 	Interests  []any         `json:"interests"`
+	// Aliases 別名；舊文件沒有這個欄位時是 nil
+	Aliases []string `json:"aliases"`
 }

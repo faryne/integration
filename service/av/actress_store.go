@@ -59,6 +59,6 @@ func putActressDocument(ctx context.Context, doc actressIndexDocument, refresh s
 func actressRowFields(row avEntity.DMMActress) avEntity.ActressFields {
 	var f avEntity.ActressFields
 	_ = json.Unmarshal([]byte(row.Info), &f)
-	f.Interests, f.Links = nonNil(f.Interests), nonNil(f.Links)
+	f.Aliases, f.Interests, f.Links = nonNil(f.Aliases), nonNil(f.Interests), nonNil(f.Links)
 	return f
 }

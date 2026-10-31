@@ -40,7 +40,7 @@ func invalidActress(format string, args ...any) error {
 }
 
 // normalizeActressFields 去頭尾空白、罩杯轉大寫、清單去重複，並檢查欄位範圍；
-// 回傳的 Interests／Links 一定不是 nil，diff 時空陣列與 nil 才不會被當成不同
+// 回傳的 Aliases／Interests／Links 一定不是 nil，diff 時空陣列與 nil 才不會被當成不同
 func normalizeActressFields(f avEntity.ActressFields) (avEntity.ActressFields, error) {
 	f.Name, f.Kana, f.Photo = strings.TrimSpace(f.Name), strings.TrimSpace(f.Kana), strings.TrimSpace(f.Photo)
 	f.Cup, f.Blood = strings.ToUpper(strings.TrimSpace(f.Cup)), strings.ToUpper(strings.TrimSpace(f.Blood))
@@ -96,7 +96,15 @@ func normalizeActressFields(f avEntity.ActressFields) (avEntity.ActressFields, e
 	if len(interests) > actressMaxListItems || len(links) > actressMaxListItems {
 		return f, invalidActress("興趣或參考連結最多 %d 筆", actressMaxListItems)
 	}
-	f.Interests, f.Links = interests, links
+	f.Interests, f.Links, f.Aliases = interests, links, mergeActressAliases(f.Name, f.Aliases)
+	if len(f.Aliases) > actressMaxListItems {
+		return f, invalidActress("別名最多 %d 個", actressMaxListItems)
+	}
+	for _, a := range f.Aliases {
+		if utf8.RuneCountInString(a) > actressMaxTextLen {
+			return f, invalidActress("別名太長：%s", a)
+		}
+	}
 	return f, nil
 }
 
@@ -107,7 +115,7 @@ func isHTTPURL(raw string) bool {
 
 // actressFieldMap 轉成 json key → 值，diff 與覆寫都以 key 為單位處理
 func actressFieldMap(f avEntity.ActressFields) map[string]any {
-	f.Interests, f.Links = nonNil(f.Interests), nonNil(f.Links)
+	f.Aliases, f.Interests, f.Links = nonNil(f.Aliases), nonNil(f.Interests), nonNil(f.Links)
 	raw, _ := json.Marshal(f)
 	m := map[string]any{}
 	_ = json.Unmarshal(raw, &m)
@@ -118,7 +126,7 @@ func actressFieldsFromMap(m map[string]any) avEntity.ActressFields {
 	raw, _ := json.Marshal(m)
 	var f avEntity.ActressFields
 	_ = json.Unmarshal(raw, &f)
-	f.Interests, f.Links = nonNil(f.Interests), nonNil(f.Links)
+	f.Aliases, f.Interests, f.Links = nonNil(f.Aliases), nonNil(f.Interests), nonNil(f.Links)
 	return f
 }
 
@@ -150,16 +158,17 @@ func applyActressFields(dst, src avEntity.ActressFields, keys []string) avEntity
 	return actressFieldsFromMap(dm)
 }
 
-// mergeActressFields 新增單合併到同名女優：提交有填的欄位覆寫、沒填的保留；興趣與參考連結取聯集。
+// mergeActressFields 新增單合併到同名女優：提交有填的欄位覆寫、沒填的保留；別名、興趣與參考連結取聯集。
 // 回傳合併結果與實際變動的欄位
 func mergeActressFields(current, submitted avEntity.ActressFields) (avEntity.ActressFields, []string) {
 	cm, sm := actressFieldMap(current), actressFieldMap(submitted)
 	for _, k := range avEntity.ActressEditableFields {
-		if v := sm[k]; v != nil && !reflect.ValueOf(v).IsZero() && k != "interests" && k != "links" {
+		if v := sm[k]; v != nil && !reflect.ValueOf(v).IsZero() && !slices.Contains([]string{"aliases", "interests", "links"}, k) {
 			cm[k] = v
 		}
 	}
 	merged := actressFieldsFromMap(cm)
+	merged.Aliases = mergeActressAliases(merged.Name, current.Aliases, submitted.Aliases)
 	for _, v := range submitted.Interests {
 		if !slices.Contains(merged.Interests, v) {
 			merged.Interests = append(merged.Interests, v)
