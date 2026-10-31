@@ -1,6 +1,8 @@
 package av
 
 import (
+	"encoding/json"
+
 	"faryne.dev/model/entity/opendata/av"
 	"faryne.dev/model/enum"
 	"faryne.dev/repository"
@@ -84,6 +86,29 @@ func (r *RepositoryDMMActress) OverridesByDomain(domain string) (map[int]string,
 	out := make(map[int]string, len(rows))
 	for _, row := range rows {
 		out[row.ID] = *row.Overrides
+	}
+	return out, nil
+}
+
+// AliasesByDomain 某個 domain 已存的別名（xcity 同步開始前一次載入，同步時保留 DMM 補進來的別名）
+func (r *RepositoryDMMActress) AliasesByDomain(domain string) (map[int][]string, error) {
+	var rows []struct {
+		ID      int
+		Aliases string
+	}
+	err := r.GetDB().Model(&av.DMMActress{}).
+		Select("id, JSON_EXTRACT(info, '$.aliases') AS aliases").
+		Where("domain = ? AND JSON_LENGTH(info, '$.aliases') > 0", domain).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[int][]string, len(rows))
+	for _, row := range rows {
+		var aliases []string
+		if json.Unmarshal([]byte(row.Aliases), &aliases) == nil {
+			out[row.ID] = aliases
+		}
 	}
 	return out, nil
 }

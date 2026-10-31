@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AV 女優別名 mockup</title>
+<style>
+  :root { --bg:#f3f4f6; --paper:#fff; --line:#e5e7eb; --muted:#6b7280; --text:#111827; --primary:#2e7d6b; --primary-soft:#e6f2ef;
+          --add:#e7f6ec; --addt:#166534; --del:#fdecec; --delt:#991b1b; --warn:#fef3c7; --warnb:#f59e0b; --warnt:#92400e; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; background:#d1d5db; color:var(--text); }
+  .toolbar { position:sticky; top:0; z-index:20; background:#111827; color:#fff; padding:10px 16px; font-size:13px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .toolbar button { background:#374151; color:#fff; border:0; border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; }
+  .toolbar button.on { background:var(--primary); }
+  .toolbar .sep { width:1px; height:20px; background:#4b5563; margin:0 4px; }
+  .stage { padding:24px; display:flex; overflow-x:auto; }
+  .stage > .frame { margin:0 auto; }
+  .frame { background:var(--bg); border-radius:10px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.2); width:1100px; flex:0 0 auto; position:relative; min-height:640px; }
+  .frame.mobile { width:375px; }
+  .nav { background:#161b22; color:#fff; height:44px; display:flex; align-items:center; padding:0 16px; font-weight:700; font-size:14px; gap:16px; position:relative; }
+  .nav small { font-weight:400; color:#9ca3af; }
+  .avatar { margin-left:auto; width:28px; height:28px; border-radius:50%; background:#4b5563; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer; position:relative; }
+  .avatar .dot { position:absolute; top:-2px; right:-2px; width:10px; height:10px; border-radius:50%; background:#f59e0b; border:2px solid #161b22; }
+  .login { margin-left:auto; font-size:12px; font-weight:400; color:#d1d5db; }
+  .menu { position:absolute; right:12px; top:42px; background:#fff; color:var(--text); border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,.2); width:220px; z-index:9; font-weight:400; font-size:14px; overflow:hidden; }
+  .menu div { padding:10px 14px; border-bottom:1px solid var(--line); cursor:pointer; display:flex; justify-content:space-between; }
+  .menu div:hover { background:#f9fafb; }
+  .menu .count { background:var(--warn); color:var(--warnt); border-radius:10px; padding:0 7px; font-size:12px; font-weight:700; }
+  .crumb { background:var(--paper); border-bottom:1px solid var(--line); padding:8px 16px; font-size:12px; color:var(--muted); }
+  .page { padding:20px 16px 32px; }
+  h2 { margin:0 0 4px; font-size:22px; } .sub { margin:0 0 16px; color:var(--muted); font-size:13px; }
+  .pagehead { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+  .paper { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .grid2 { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+  .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .mobile .grid2, .mobile .grid4 { grid-template-columns:1fr 1fr; }
+  .formlayout { display:grid; grid-template-columns:200px 1fr; gap:20px; }
+  .mobile .formlayout { grid-template-columns:1fr; }
+  .mobile .formlayout .photo { max-width:140px; margin:0 auto; }
+  .photo { aspect-ratio:3/4; border-radius:8px; background:repeating-linear-gradient(45deg,#cbd5e1 0 10px,#d8dee8 10px 20px); display:flex; align-items:flex-end; justify-content:center; font-size:12px; color:#475569; padding:8px; }
+  .section { font-size:13px; font-weight:700; color:var(--muted); margin:16px 0 8px; display:flex; justify-content:space-between; align-items:center; }
+  label.f { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); min-width:0; }
+  label.f input, label.f textarea, label.f select { width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:9px 10px; font-size:14px; color:var(--text); background:#fff; font-family:inherit; }
+  label.f.changed input { border-color:var(--primary); background:var(--primary-soft); }
+  label.f.changed > span:first-child::after { content:"・已修改"; color:var(--primary); font-weight:700; }
+  label.f.error input { border-color:#dc2626; }
+  label.f .was { font-size:11px; color:var(--muted); }
+  label.f .err { font-size:11px; color:#dc2626; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:3px 8px; background:#fff; }
+  .chip.on { background:var(--primary); border-color:var(--primary); color:#fff; }
+  .chip.add { background:var(--add); border-color:#86efac; color:var(--addt); }
+  .chip.del { background:var(--del); border-color:#fca5a5; color:var(--delt); text-decoration:line-through; }
+  .linkrow { display:grid; grid-template-columns:180px 1fr 32px; gap:8px; align-items:center; margin-bottom:8px; }
+  .mobile .linkrow { grid-template-columns:1fr 32px; }
+  .mobile .linkrow label:first-child { grid-column:1 / -1; }
+  .linkrow.added input { border-color:var(--primary); background:var(--primary-soft); }
+  .linkrow.removed input { text-decoration:line-through; color:var(--delt); background:var(--del); border-color:#fca5a5; }
+  .iconbtn { width:32px; height:36px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer; color:var(--muted); }
+  .textbtn { border:1px dashed #94a3b8; background:#fff; border-radius:6px; padding:7px 12px; font-size:13px; color:var(--primary); cursor:pointer; font-weight:700; }
+  .btns { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; flex-wrap:wrap; }
+  .btn { border:0; border-radius:6px; padding:9px 16px; font-weight:700; font-size:14px; cursor:pointer; background:var(--primary); color:#fff; white-space:nowrap; }
+  .btn.ghost { background:transparent; color:var(--text); border:1px solid #cbd5e1; }
+  .btn.outline { background:#fff; color:var(--primary); border:1px solid var(--primary); }
+  .btn.danger { background:#b91c1c; }
+  .btn.sm { padding:6px 12px; font-size:13px; }
+  .btn:disabled { opacity:.4; cursor:not-allowed; }
+  .alert { font-size:13px; border-radius:8px; padding:10px 12px; margin-bottom:12px; line-height:1.6; }
+  .alert.warn { background:var(--warn); border:1px solid var(--warnb); color:var(--warnt); }
+  .alert.info { background:#eff6ff; border:1px solid #93c5fd; color:#1e3a8a; }
+  .alert a { color:inherit; font-weight:700; }
+  .tabs { display:flex; border-bottom:1px solid var(--line); margin-bottom:12px; gap:4px; }
+  .tabs a { padding:10px 14px; font-size:14px; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; }
+  .tabs a.on { color:var(--primary); border-color:var(--primary); font-weight:700; }
+  .badge { display:inline-block; white-space:nowrap; font-size:11px; border-radius:4px; padding:1px 6px; font-weight:700; }
+  .badge.create { background:#dbeafe; color:#1d4ed8; } .badge.edit { background:#ede9fe; color:#6d28d9; }
+  .badge.pending { background:var(--warn); color:var(--warnt); } .badge.approved { background:var(--add); color:var(--addt); } .badge.rejected { background:var(--del); color:var(--delt); }
+  .badge.mcp { background:#e5e7eb; color:#374151; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:12px; color:var(--muted); font-weight:700; background:#f9fafb; }
+  tr.row { cursor:pointer; } tr.row:hover { background:#f9fafb; }
+  td.old { background:var(--del); color:var(--delt); } td.new { background:var(--add); color:var(--addt); font-weight:700; }
+  td.same { color:var(--muted); } td.now { background:var(--warn); color:var(--warnt); }
+  .linklist { display:flex; flex-direction:column; gap:4px; }
+  .linklist span { font-size:12px; padding:2px 6px; border-radius:4px; word-break:break-all; }
+  .linklist .add { background:var(--add); color:var(--addt); } .linklist .del { background:var(--del); color:var(--delt); text-decoration:line-through; }
+  .diffhead { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+  .toggle { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .meta { display:grid; grid-template-columns:auto 1fr; gap:6px 14px; font-size:13px; margin:0; }
+  .meta dt { color:var(--muted); } .meta dd { margin:0; word-break:break-all; }
+  .reviewlayout { display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start; }
+  .mobile .reviewlayout { grid-template-columns:1fr; }
+  .mobile .hide-m { display:none; }
+  .dup { display:flex; gap:10px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; margin-top:8px; font-size:13px; }
+  .dup .thumb { width:40px; height:52px; border-radius:4px; background:#cbd5e1; flex:0 0 auto; }
+  .mask { position:absolute; inset:0; background:rgba(17,24,39,.45); display:flex; align-items:center; justify-content:center; z-index:10; padding:16px; }
+  .dialog { background:#fff; border-radius:12px; padding:20px; width:520px; max-width:100%; box-shadow:0 20px 40px rgba(0,0,0,.25); max-height:90%; overflow:auto; }
+  .dialog h3 { margin:0 0 8px; font-size:18px; }
+  .dialog p { font-size:14px; color:#374151; line-height:1.6; margin:0 0 12px; }
+  .opt { border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:8px; display:flex; gap:10px; cursor:pointer; font-size:14px; }
+  .opt.on { border-color:var(--primary); background:var(--primary-soft); }
+  .opt.disabled { opacity:.5; cursor:not-allowed; }
+  .opt small { display:block; color:var(--muted); font-size:12px; margin-top:2px; }
+  .done { text-align:center; padding:40px 16px; } .done .icon { font-size:44px; }
+  .detail { display:grid; grid-template-columns:280px 1fr; gap:16px; align-items:start; }
+  .mobile .detail { grid-template-columns:1fr; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .card h4 { margin:0 0 10px; font-size:15px; display:flex; justify-content:space-between; align-items:center; }
+  .reflinks a { display:flex; align-items:center; gap:8px; padding:6px 0; font-size:14px; color:#1d4ed8; text-decoration:none; border-bottom:1px solid var(--line); word-break:break-all; }
+  .reflinks a:last-child { border-bottom:0; }
+  .reflinks a small { color:var(--muted); margin-left:auto; font-size:11px; white-space:nowrap; }
+  .results { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .mobile .results { grid-template-columns:repeat(2,1fr); }
+  .acard { background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:12px; }
+  .acard .photo { border-radius:0; } .acard p { margin:6px 8px 8px; }
+  .hl { outline:3px solid #f59e0b; outline-offset:2px; border-radius:6px; }
+</style>
+<style>
+  .names { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-top:10px; }
+  .names .chip { cursor:pointer; }
+  .url { font-family:ui-monospace,monospace; font-size:12px; background:#fff; border:1px solid var(--line); border-radius:6px; padding:6px 10px; margin-bottom:12px; color:#374151; word-break:break-all; }
+  .vgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .mobile .vgrid { grid-template-columns:repeat(2,1fr); }
+  .vcard { background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:12px; }
+  .vcard .cover { aspect-ratio:16/10; background:repeating-linear-gradient(45deg,#cbd5e1 0 10px,#d8dee8 10px 20px); }
+  .vcard p { margin:6px 8px 8px; line-height:1.5; }
+  .vcard .who { color:var(--muted); }
+  .note { font-size:12px; color:#1e3a8a; background:#eff6ff; border:1px dashed #93c5fd; border-radius:8px; padding:8px 10px; margin-top:16px; line-height:1.7; }
+  .tagin { display:flex; flex-wrap:wrap; gap:6px; align-items:center; border:1px solid #cbd5e1; border-radius:6px; padding:6px 8px; background:#fff; min-height:40px; }
+  .tagin.changed { border-color:var(--primary); background:var(--primary-soft); }
+  .tagin .chip b { margin-left:6px; cursor:pointer; color:var(--muted); }
+  .tagin input { border:0; outline:0; flex:1; min-width:120px; font-size:14px; background:transparent; }
+  .chiprow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:14px; }
+  .chiprow > span:first-child { color:var(--muted); width:48px; }
+  .mchip { border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px; background:#fff; font-weight:700; font-size:13px; }
+</style>
+</head>
+<body>
+<div class="toolbar" id="toolbar"></div>
+<div class="stage"><div class="frame" id="frame"></div></div>
+<script>
+  // ===== 假資料：xcity-5521 澤村レイコ，別名 高坂保奈美、高坂ますみ =====
+  const A = { id:5521, name:"澤村レイコ", kana:"さわむられいこ", aliases:["高坂保奈美","高坂ますみ"] };
+  // 各名義的出演作品（DMM 上的寫法）
+  const VIDEOS = {
+    "澤村レイコ": [["2026/10 新作","澤村レイコ（高坂保奈美、高坂ますみ）"],["2024 舊作","澤村レイコ（高坂保奈美、高坂ますみ）"],["2011 舊作","澤村レイコ"]],
+    "高坂保奈美": [["2008 舊作","高坂保奈美"],["2007 舊作","高坂保奈美"]],
+    "高坂ますみ": [["2006 舊作","高坂ますみ"]],
+  };
+  const COUNTS = { "澤村レイコ":2241, "高坂保奈美":96, "高坂ますみ":12 };
+  const state = { screen:"detail", mobile:false, as:"澤村レイコ" };
+  const SCREENS = [["detail","女優頁"],["form","修改資料：別名欄位"],["video","影片頁出演 chip"]];
+
+  function go(screen) { state.screen = screen; render(); }
+  function set(k, v) { state[k] = v; render(); }
+  const nav = () => `<div class="nav">Faryne 的實驗室 <small>大人的喜好</small><div class="avatar">F</div></div>`;
+  const shell = (crumb, body) => `${nav()}<div class="crumb">${crumb}</div><div class="page">${body}</div>`;
+
+  function toolbar() {
+    return `<b>女優別名 mockup</b><span class="sep"></span>` +
+      SCREENS.map(([k, t]) => `<button class="${state.screen === k ? "on" : ""}" onclick="go('${k}')">${t}</button>`).join("") +
+      `<span class="sep"></span><button class="${state.mobile ? "" : "on"}" onclick="set('mobile',false)">桌機</button><button class="${state.mobile ? "on" : ""}" onclick="set('mobile',true)">手機</button>`;
+  }
+
+  // ===== 女優頁：本名與別名都是入口，資料卡一樣，出演影片照網址上的名義分開 =====
+  function detail() {
+    const all = [A.name, ...A.aliases];
+    const names = all.map((n) =>
+      `<span class="chip ${n === state.as ? "on" : ""}" onclick="set('as','${n}')">${n}</span>`).join("");
+    const videos = VIDEOS[state.as];
+    const alias = state.as !== A.name;
+    return shell(`首頁 / AV 女優搜尋 / ${state.as}`, `
+      <div class="url">/av/actress/${state.as}?xcity_id=${A.id}</div>
+      <div class="detail">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="card" style="text-align:center">
+            <div class="photo" style="max-width:200px;margin:0 auto 12px">照片</div>
+            <b style="font-size:18px">${A.name}</b><div style="color:var(--muted);font-size:13px">${A.kana}</div>
+            <div class="names">${names}</div>
+            <div style="text-align:left;font-size:14px;line-height:1.9;margin-top:10px">三圍：B88（E）W58 H86<br>生日：1981/1/24<br>身高：160 cm</div>
+            <button class="btn outline sm" style="margin-top:10px">✎ 修改資料</button>
+          </div>
+        </div>
+        <div>
+          <b style="font-size:18px">出演影片</b>
+          <div style="color:var(--muted);font-size:13px;margin-bottom:12px">${alias ? `${state.as} 名義・` : ""}共 ${COUNTS[state.as].toLocaleString()} 筆資料</div>
+          <div class="vgrid">${videos.map(([t, w]) => `<div class="vcard"><div class="cover"></div><p>${t}<br><span class="who">${w}</span></p></div>`).join("")}</div>
+        </div>
+      </div>
+      <div class="note">
+        mockup 說明（實作不顯示）：<br>
+        ・資料卡名字下面的 chip 是「名義」：本名＋別名，目前這頁的那個反白；點了換到 <code>/av/actress/別名?xcity_id=</code>，資料卡不變、出演影片換成那個名義。沒有別名的女優不顯示這排。<br>
+        ・「澤村レイコ（高坂保奈美、高坂ますみ）」這種 DMM 寫法算在本名底下，不重複出現在別名頁。<br>
+        ・別名頁的麵包屑、網頁標題用網址上的名字（高坂保奈美）。<br>
+        ・影片卡下方灰字只是讓你看出 DMM 寫法，實作沿用現在的影片卡。
+      </div>`);
+  }
+
+  // ===== 修改資料表單：別名欄位放在姓名／假名下面，沿用興趣那種輸入 =====
+  function form() {
+    return shell("首頁 / AV 女優搜尋 / 澤村レイコ / 修改資料", `
+      <div class="pagehead"><div><h2>修改資料：澤村レイコ</h2></div></div>
+      <div class="paper"><div class="formlayout">
+        <div class="photo">照片</div>
+        <div>
+          <div class="grid2">
+            <label class="f"><span>姓名</span><input value="澤村レイコ"></label>
+            <label class="f"><span>假名</span><input value="さわむられいこ"></label>
+          </div>
+          <label class="f" style="margin-top:12px"><span>別名</span>
+            <div class="tagin changed">${["高坂保奈美","高坂ますみ","澤村玲子"].map((a, i) => `<span class="chip ${i === 2 ? "add" : ""}">${a}<b>×</b></span>`).join("")}<input placeholder="輸入後按 Enter"></div>
+          </label>
+          <div class="section">三圍・身高</div>
+          <div class="grid4">
+            <label class="f"><span>胸圍</span><input value="88"></label><label class="f"><span>腰圍</span><input value="58"></label>
+            <label class="f"><span>臀圍</span><input value="86"></label><label class="f"><span>罩杯</span><input value="E"></label>
+          </div>
+          <div class="btns"><button class="btn ghost">取消</button><button class="btn">送出</button></div>
+        </div>
+      </div></div>
+      <div class="note">
+        mockup 說明（實作不顯示）：<br>
+        ・別名欄位的輸入方式跟現在的「興趣」一樣（輸入後按 Enter 變 chip、× 刪除）；placeholder 照興趣欄位現有的寫法。<br>
+        ・審核頁的差異表多一列「別名」，新增／刪除的別名用綠／紅 chip 標示，跟興趣一樣。<br>
+        ・手動改過別名之後，每週從 DMM 補別名的 job 就不會再動這位的別名。
+      </div>`);
+  }
+
+  // ===== 影片頁：chip 文字照 DMM 原文，連結改成本名 =====
+  function video() {
+    return shell("首頁 / AV 影片搜尋 / ABC-123", `
+      <div class="paper">
+        <div class="chiprow"><span>出演</span><span class="mchip">澤村レイコ（高坂保奈美、高坂ますみ）</span><span class="mchip">川上ゆう（森野雫）</span></div>
+      </div>
+      <div class="note">
+        mockup 說明（實作不顯示）：畫面不變。只改連結：<br>
+        ・有 DMM 女優 ID：<code>/av/actress/澤村レイコ?dmm_id=…</code>（原本是整串含括號的名字）<br>
+        ・沒有 ID 的舊影片：<code>/av/actress?name=澤村レイコ</code>，女優搜尋找得到人（原本找不到）
+      </div>`);
+  }
+
+  function render() {
+    document.getElementById("toolbar").innerHTML = toolbar();
+    const frame = document.getElementById("frame");
+    frame.className = "frame" + (state.mobile ? " mobile" : "");
+    frame.innerHTML = { detail, form, video }[state.screen]();
+  }
+  render();
+</script>
+</body>
+</html>

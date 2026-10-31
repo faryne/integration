@@ -28,6 +28,7 @@ func (s *Server) registerAVActressSubmissionTools() {
 			"kind":        stringEnumSchema("create a new actress, or edit an existing one.", avEntity.SubmissionKindCreate, avEntity.SubmissionKindEdit),
 			"target":      stringSchema("Required for edit: the actress name, or \"domain-aid\" (e.g. \"xcity-1234\", \"manual-56\") when several actresses share the name."),
 			"name":        stringSchema("Actress name. Required for create."),
+			"aliases":     stringArraySchema("Other stage names (not including name). DMM credits like \"Name（Alias、Alias）\" list them in brackets."),
 			"kana":        stringSchema("Name in kana."),
 			"photo":       stringSchema("Photo URL (http/https)."),
 			"height":      integerSchema("Height in cm, 0 = unknown."),

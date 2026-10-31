@@ -27,6 +27,7 @@ export function actressToFields(actress: Actress): ActressFields {
     birth_day: actress.birth_day || 0,
     interests: (actress.interests ?? []).map(String),
     links: actress.links ?? [],
+    aliases: actress.aliases ?? [],
   };
 }
 
@@ -72,7 +73,7 @@ export function linkLabel(link: ActressLink) {
 
 /**
  * 新增單合併到同名女優後的結果（與後端 mergeActressFields 相同規則）：
- * 提交有填的欄位覆寫、沒填的保留；興趣與參考連結取聯集。審核頁用來預覽合併後的差異
+ * 提交有填的欄位覆寫、沒填的保留；別名、興趣與參考連結取聯集。審核頁用來預覽合併後的差異
  */
 export function mergeActressFields(
   current: ActressFields,
@@ -81,13 +82,17 @@ export function mergeActressFields(
   const merged = { ...current };
   for (const key of ACTRESS_FIELD_KEYS) {
     const v = submitted[key];
-    if (key !== "interests" && key !== "links" && v)
+    if (!["aliases", "interests", "links"].includes(key) && v)
       (merged as Record<string, unknown>)[key] = v;
   }
   merged.interests = [
     ...current.interests,
     ...submitted.interests.filter((i) => !current.interests.includes(i)),
   ];
+  // 別名不含本名（合併後的本名可能是提交的新名字）
+  merged.aliases = [
+    ...new Set([...current.aliases, ...submitted.aliases]),
+  ].filter((a) => a !== merged.name);
   merged.links = [
     ...current.links,
     ...submitted.links.filter(

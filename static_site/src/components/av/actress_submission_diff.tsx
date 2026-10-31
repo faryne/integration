@@ -111,7 +111,10 @@ export function ActressSubmissionDiff({
                 >
                   {!isChanged
                     ? "—"
-                    : left && (key === "links" || key === "interests")
+                    : left &&
+                        (key === "links" ||
+                          key === "interests" ||
+                          key === "aliases")
                       ? listDiff(left, right, key)
                       : value(right, key)}
                 </TableCell>
@@ -142,11 +145,11 @@ function value(f: ActressFields, key: ActressFieldKey): ReactNode {
   );
 }
 
-/** 興趣／參考連結：保留的照常顯示、新增的綠色、移除的紅色刪除線 */
+/** 別名／興趣／參考連結：保留的照常顯示、新增的綠色、移除的紅色刪除線 */
 function listDiff(
   left: ActressFields,
   right: ActressFields,
-  key: "links" | "interests",
+  key: "links" | "interests" | "aliases",
 ) {
   const id = (x: string | { url: string }) =>
     typeof x === "string" ? x : x.url;

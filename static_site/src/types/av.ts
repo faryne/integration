@@ -52,4 +52,6 @@ export interface Actress {
   birth_day: number;
   hips: number;
   interests: string[];
+  // 別名（不含本名）；舊文件沒有這個欄位
+  aliases?: string[] | null;
 }

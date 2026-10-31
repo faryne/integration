@@ -52,8 +52,13 @@ export const readActressRef = (
  * - 有參數：照參數查（改名後也找得回來），名字跟網址不同就換成新名字的網址；
  *   對不到就退回照名字，網址拿掉參數；從 dmm_id 進來而名字也查不到時，轉到女優搜尋頁
  * - 沒參數（舊網址）：照名字查，同名排第一的那位
- * sameNames 是名字完全相同的所有人，給「可能同名的女優」切換用
+ * sameNames 是名字完全相同的所有人，給「可能同名的女優」切換用。
+ * 網址上的名字也可以是別名（/av/actress/高坂保奈美）：本名沒人時開別名相符的那位，有參數時也不換成本名網址
  */
+/** 名字是這位的本名或別名 */
+export const isActressName = (a: Actress, name: string) =>
+  a.name === name || !!a.aliases?.includes(name);
+
 export function useRoutedActress(name: string, suffix = "") {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -61,24 +66,25 @@ export function useRoutedActress(name: string, suffix = "") {
   const byName = useAVActressSearch({ name, page: 1 }, name !== "");
   const byRef = useAVActressSearch({ ...ref, page: 1 }, !!ref);
   // 姓名搜尋是部分比對（「みずき」也會找到「志田みずき」），只留完全相符的
-  const sameNames: Actress[] = (byName.data?.data?.data ?? []).filter(
-    (a) => a.name === name,
-  );
+  const found = byName.data?.data?.data ?? [];
+  const sameNames: Actress[] = found.filter((a) => a.name === name);
+  const byNameActress =
+    sameNames[0] ?? found.find((a) => isActressName(a, name));
   const refActress = byRef.data?.data?.data?.[0];
   const settled = byName.isSuccess && (!ref || byRef.isSuccess);
   const actress = ref
     ? byRef.isSuccess
-      ? (refActress ?? sameNames[0])
+      ? (refActress ?? byNameActress)
       : undefined
-    : sameNames[0];
+    : byNameActress;
 
   useEffect(() => {
     if (!ref || !settled) return;
-    if (refActress && refActress.name !== name) {
+    if (refActress && !isActressName(refActress, name)) {
       navigate(actressPagePath(refActress.name, refActress, suffix), {
         replace: true,
       });
-    } else if (!refActress && sameNames.length > 0) {
+    } else if (!refActress && byNameActress) {
       navigate(actressPagePath(name, undefined, suffix), { replace: true });
     } else if (!refActress && ref.dmm_id) {
       navigate(`/av/actress?name=${encodeURIComponent(name)}`, {

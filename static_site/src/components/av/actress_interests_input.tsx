@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { Chip, Stack, TextField } from "@mui/material";
 
-/** 興趣：輸入後按 Enter 加入，點 × 移除；baseItems 有給時（修改模式）新加的標色 */
+/** 興趣、別名這類多值欄位：輸入後按 Enter 加入，點 × 移除；baseItems 有給時（修改模式）新加的標色 */
 export function ActressInterestsInput({
   items,
   baseItems,
+  label = "興趣（Enter 新增）",
   onChange,
 }: {
   items: string[];
   baseItems?: string[];
+  label?: string;
   onChange: (items: string[]) => void;
 }) {
   const [draft, setDraft] = useState("");
@@ -21,9 +23,9 @@ export function ActressInterestsInput({
   return (
     <Stack spacing={1}>
       <TextField
-        label="興趣（Enter 新增）"
+        label={label}
         onChange={(e) => setDraft(e.target.value)}
-        // Enter 只加入興趣，不送出整張表單
+        // Enter 只加入這一筆，不送出整張表單
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.nativeEvent.isComposing) {
             e.preventDefault();

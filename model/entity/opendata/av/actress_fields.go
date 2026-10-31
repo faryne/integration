@@ -25,10 +25,12 @@ type ActressFields struct {
 	BirthDay   int           `json:"birth_day"`
 	Interests  []string      `json:"interests"`
 	Links      []ActressLink `json:"links"`
+	// Aliases 別名（不含本名）：xcity 個人頁、DMM 名字括號裡的別名、手動上稿三者的聯集
+	Aliases []string `json:"aliases"`
 }
 
 // ActressEditableFields 開放上稿修改的欄位（json key），diff 與覆寫都照這個順序；星座不開放填
 var ActressEditableFields = []string{
-	"name", "kana", "photo", "height", "bust", "waist", "hips", "cup",
+	"name", "aliases", "kana", "photo", "height", "bust", "waist", "hips", "cup",
 	"blood", "born_city", "birth_year", "birth_month", "birth_day", "interests", "links",
 }
