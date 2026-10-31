@@ -137,6 +137,10 @@ func applyVideoConditions(input av.VideoQueryRequest, q map[string]any) error {
 			search.SetQuery(map[string]any{"term": map[string]any{"tags.keyword": tag}}, true, q)
 		}
 	}
+	// any_tag 是聯集：全部放進一個 terms，整個條件仍在 must
+	if tags := slices.DeleteFunc(slices.Clone(input.AnyTag), func(t string) bool { return strings.TrimSpace(t) == "" }); len(tags) > 0 {
+		search.SetQuery(map[string]any{"terms": map[string]any{"tags.keyword": tags}}, true, q)
+	}
 	// 女優頁指定是哪一位時改用 DMM 女優 ID 區分同名，actress 是網址上的名字（本名或別名）；
 	// 對不到女優就退回照 actress 名字找，「名字（別名…）」的寫法也算
 	if row := resolveActress(input.XCityID, input.ManualID, input.DMMID); row != nil {

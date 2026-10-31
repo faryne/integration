@@ -19,6 +19,8 @@ export interface VideoSearchRequest extends ActressRef {
   actress?: string;
   // 詳細頁 chip 的精確篩選；標籤可複選（交集）
   tag?: string[];
+  // 標籤聯集（符合其中一個就算）：女優頁從有類型條件的主題點進來時用
+  any_tag?: string[];
   maker?: string;
   label?: string;
   series?: string;

@@ -13,7 +13,9 @@ type VideoQueryRequest struct {
 	EndDate   *entity.OnlyDateFormat `query:"end_date"`
 	Keyword   string                 `query:"keyword"`
 	// Tag 可複選（?tag=A&tag=B），結果需同時符合
-	Tag     []string `query:"tag"`
+	Tag []string `query:"tag"`
+	// AnyTag 可複選（?any_tag=A&any_tag=B），符合其中一個就算；女優頁從有多個類型條件的主題點進來時用
+	AnyTag  []string `query:"any_tag"`
 	Actress string   `query:"actress"`
 	// 女優頁指定是哪一位（同 ActressQueryRequest）：同名女優的新影片依對照表裡的 DMM 女優 ID 分開，
 	// 對不到時退回 Actress（名字）；規則見 service/av/actress_videos.go
