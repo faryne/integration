@@ -25,27 +25,21 @@ export function AVActressDetail() {
     });
   // 網址帶 xcity_id／manual_id／dmm_id 時指定那一位，沒帶就照名字找同名排第一的
   const { actress, sameNames, notFound } = useRoutedActress(name);
-  // 從有類型條件的主題點進來（?topic=）時，出演影片每個類型條件各多一個「該類型作品」tab，預設選第一個；
-  // ?tab=<類型> 選其他類型、?tab=all 是全部作品，亂填的值當成第一個類型。
-  // 主題資料還沒讀到前先不查影片，避免先查全部、再換成類型查第二次
+  // 從有類型條件的主題點進來（?topic=）時，出演影片多一個「該主題作品」tab 並預設選它，列出符合任一類型條件的作品（聯集）；
+  // ?tab=all 是全部作品。主題資料還沒讀到前先不查影片，避免先查全部、再換成主題查第二次
   const topicSlug = searchParams.get("topic") ?? "";
   const topicIndex = useActressTopicIndex(!!topicSlug);
-  const genreTags =
-    findActressTopic(topicIndex.data, topicSlug)?.topic.genre_tags ?? [];
-  const tabParam = searchParams.get("tab") ?? "";
+  const topic = findActressTopic(topicIndex.data, topicSlug)?.topic;
+  const genreTags = topic?.genre_tags ?? [];
   const videoTab: ActressVideoTab =
-    !genreTags.length || tabParam === "all"
-      ? "all"
-      : genreTags.includes(tabParam)
-        ? tabParam
-        : genreTags[0];
-  // 換 tab 時回到第 1 頁；第一個類型是預設值，網址不用帶
+    genreTags.length && searchParams.get("tab") !== "all" ? "topic" : "all";
+  // 換 tab 時回到第 1 頁
   const setVideoTab = (tab: ActressVideoTab) =>
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.delete("page");
-      if (tab === genreTags[0]) next.delete("tab");
-      else next.set("tab", tab);
+      if (tab === "all") next.set("tab", "all");
+      else next.delete("tab");
       return next;
     });
   // 一律用這位自己的 ID 查出演影片，同名的人才分得開（舊網址也一樣）
@@ -54,7 +48,7 @@ export function AVActressDetail() {
       page: videoPage,
       actress: name,
       ...(actress && actressRefOf(actress)),
-      ...(videoTab !== "all" && { tag: [videoTab] }),
+      ...(videoTab === "topic" && { any_tag: genreTags }),
     },
     !!actress && (!topicSlug || !topicIndex.isPending),
   );
@@ -85,8 +79,8 @@ export function AVActressDetail() {
         onVideoPageChange={setVideoPage}
         sameNames={sameNames}
         videoTabs={
-          genreTags.length
-            ? { tags: genreTags, value: videoTab, onChange: setVideoTab }
+          topic && genreTags.length
+            ? { label: topic.label, value: videoTab, onChange: setVideoTab }
             : undefined
         }
         videoPage={videoPage}
