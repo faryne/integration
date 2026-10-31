@@ -37,3 +37,14 @@ export function formatActressMeasurements(actress: Actress) {
   const [b, w, h] = sizes.map((v) => (v > 0 ? String(v) : "-"));
   return `${b}${actress.cup ?? ""} / ${w} / ${h}`;
 }
+
+/** 女優卡片的格線：手機 2 欄起跳；女優搜尋頁右側較窄，傳 lg 調整寬螢幕的欄數 */
+export const actressCardGridSx = (lg = 4) => ({
+  display: "grid",
+  gap: 2,
+  gridTemplateColumns: {
+    xs: "repeat(2, minmax(0, 1fr))",
+    sm: "repeat(3, minmax(0, 1fr))",
+    lg: `repeat(${lg}, minmax(0, 1fr))`,
+  },
+});

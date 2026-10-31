@@ -240,6 +240,13 @@ var cronJobs = map[string]cronGroup{
 					avService.RunDMMVideoSyncAndNotify(commandParams.Value("dayFrom"))
 				},
 			},
+			{
+				// 每週產生女優主題 JSON 上傳 S3（排在週三 xcity 同步之後）；非 production 只寫本機 tmp/actress-topics/
+				Name:     "av-actress-topics",
+				Schedule: "30 4 * * 4",
+				Enabled:  true,
+				Handler:  avService.RunActressTopicsCron,
+			},
 		},
 	},
 	"nccc": {

@@ -41,6 +41,7 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
         // 上稿不擋登入，但有登入會記錄提交者；管理者從帳號選單進審核頁
         requiresAuth: true,
         subPages: [
+          { title: "女優主題", href: "/av/actress/topics" },
           { title: "新增女優", href: "/av/actress/submit" },
           { title: "上稿審核", href: "/av/actress/submissions" },
         ],

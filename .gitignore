@@ -25,3 +25,6 @@ logstash
 .claude/launch.json
 
 .backup/
+
+# 女優主題排程在非 production 的輸出（service/av/actress_topic_publish.go）
+tmp/actress-topics/

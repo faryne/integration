@@ -64,6 +64,13 @@ func (r *RepositoryDMMActress) FindByNames(domains []string, names []string) ([]
 	return rows, err
 }
 
+// FindByDomains 指定 domain 的全部女優（女優主題排程用，約 1.6 萬筆）；排程一律走 primary
+func (r *RepositoryDMMActress) FindByDomains(domains []string) ([]av.DMMActress, error) {
+	var rows []av.DMMActress
+	err := r.GetDB().Clauses(dbresolver.Write).Where("domain IN ?", domains).Order("domain, id").Find(&rows).Error
+	return rows, err
+}
+
 // FindDuplicates 姓名或假名相同的女優；假名存在 info JSON 裡，筆數不多直接用 JSON_EXTRACT 掃
 func (r *RepositoryDMMActress) FindDuplicates(domains []string, name, kana string) ([]av.DMMActress, error) {
 	q := r.GetDB().Clauses(dbresolver.Write).Where("domain IN ?", domains)
