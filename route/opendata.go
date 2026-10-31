@@ -47,6 +47,15 @@ func OpenData(app *fiber.App) {
 	gAvAdmin.Get("/actress-submissions/:id", opendata.AdminActressSubmission)
 	gAvAdmin.Put("/actress-submissions/:id/approve", opendata.AdminApproveActressSubmission)
 	gAvAdmin.Put("/actress-submissions/:id/reject", opendata.AdminRejectActressSubmission)
+	// 女優主題的自訂主題（特輯、身材）；儲存後等下一次每週排程才產生
+	gAvAdmin.Get("/actress-topics", opendata.AdminActressTopics)
+	gAvAdmin.Get("/actress-topics/options", opendata.AdminActressTopicOptions)
+	gAvAdmin.Put("/actress-topics/sort", opendata.AdminSortActressTopics)
+	gAvAdmin.Post("/actress-topics", opendata.AdminCreateActressTopic)
+	gAvAdmin.Get("/actress-topics/:id", opendata.AdminActressTopic)
+	gAvAdmin.Put("/actress-topics/:id", opendata.AdminUpdateActressTopic)
+	gAvAdmin.Put("/actress-topics/:id/enabled", opendata.AdminSetActressTopicEnabled)
+	gAvAdmin.Delete("/actress-topics/:id", opendata.AdminDeleteActressTopic)
 
 	gVtuber := g.Group("/vtubers")
 	gVtuber.Get("/channels", opendata.VtuberChannels)

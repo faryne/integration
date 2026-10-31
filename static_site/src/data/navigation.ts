@@ -52,6 +52,11 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
             adminOnly: true,
             badge: "avActressSubmissions",
           },
+          {
+            title: "AV 女優主題管理",
+            href: "/av/actress/topics/manage",
+            adminOnly: true,
+          },
         ],
       },
       {

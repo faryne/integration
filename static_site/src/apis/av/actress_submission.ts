@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CommonResponse, Pagination } from "@/apis/interfaces.ts";
 import { sessionHeaders } from "@/apis/storyteller/shared.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { useAdminSession } from "@/apis/av/adminSession.ts";
 import type {
   ActressSubmissionDetail,
   ActressSubmissionStatus,
@@ -28,15 +29,6 @@ export function useSubmitActress() {
       return response.data.data;
     },
   });
-}
-
-/** 管理者才查得到；不是管理者時 enabled 為 false，不會打 API */
-function useAdminSession() {
-  const { session } = useAuth();
-  return {
-    enabled: Boolean(session?.encrypt_key && session.user.is_admin),
-    headers: session ? sessionHeaders(session.encrypt_key) : undefined,
-  };
 }
 
 /** 管理列表 */

@@ -8,9 +8,11 @@ import (
 	"html"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"faryne.dev/config"
+	avRepo "faryne.dev/repository/av"
 	"faryne.dev/service/client"
 	"faryne.dev/service/log"
 	"faryne.dev/service/telegram"
@@ -45,6 +47,22 @@ func RunActressTopicsCron() {
 		return
 	}
 	log.Logger().Info("AV actress topics finished", zap.Int("topics", len(set.Files)), zap.Duration("elapsed", time.Since(startedAt)))
+
+	// 管理列表顯示的「上次人數／產生時間」；回寫失敗不影響已上傳的檔案，只記 log 並告警
+	var notes []string
+	if err := avRepo.NewActressTopic().SaveResults(set.CustomCounts, startedAt); err != nil {
+		notes = append(notes, "回寫自訂主題人數失敗："+err.Error())
+	}
+	if len(set.Warnings) > 0 {
+		notes = append(notes, "略過的自訂主題：\n"+strings.Join(set.Warnings, "\n"))
+	}
+	if len(notes) > 0 {
+		msg := strings.Join(notes, "\n\n")
+		log.Logger().Warn("AV actress topics finished with warnings: " + msg)
+		if err := telegram.SendMessage(context.Background(), "<b>AV 女優主題產生完成，但有問題</b>\n\n"+html.EscapeString(msg)); err != nil {
+			log.Logger().Error("AV actress topics alert failed: " + err.Error())
+		}
+	}
 }
 
 // publishActressTopics production 上傳 S3，其他環境寫本機目錄（本機也會跑排程，不能蓋掉正式的檔案）。

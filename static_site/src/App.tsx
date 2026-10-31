@@ -90,6 +90,16 @@ const AVActressTopic = lazy(() =>
     default: module.AVActressTopic,
   })),
 );
+const AVActressTopicManage = lazy(() =>
+  import("@/pages/av/actress_topic_manage.tsx").then((module) => ({
+    default: module.AVActressTopicManage,
+  })),
+);
+const AVActressTopicEdit = lazy(() =>
+  import("@/pages/av/actress_topic_edit.tsx").then((module) => ({
+    default: module.AVActressTopicEdit,
+  })),
+);
 const AVVideoDetail = lazy(() =>
   import("@/pages/av/video_detail.tsx").then((module) => ({
     default: module.AVVideoDetail,
@@ -694,6 +704,15 @@ function App() {
                   <Route
                     path={"/av/actress/topics"}
                     element={<AVActressTopics />}
+                  />
+                  <Route
+                    path={"/av/actress/topics/manage"}
+                    element={<AVActressTopicManage />}
+                  />
+                  {/* :id 為 new 時是新增 */}
+                  <Route
+                    path={"/av/actress/topics/manage/:id"}
+                    element={<AVActressTopicEdit />}
                   />
                   <Route
                     path={"/av/actress/topics/:slug"}
