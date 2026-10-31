@@ -29,14 +29,12 @@ import {
 import { apiErrorMessage } from "@/helpers/apiError.ts";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { useTitle } from "@/helpers/title.tsx";
-import { AdminGuard } from "@/components/common/AdminGuard.tsx";
+import { avAdminTopicsPath } from "@/helpers/avActressAdmin.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ActressTopicConditionForm } from "@/components/av/actress_topic_condition_form.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 
-const MANAGE_PATH = "/av/actress/topics/manage";
-
-/** 新增／編輯自訂主題：/av/actress/topics/manage/new、/av/actress/topics/manage/:id */
+/** 新增／編輯自訂主題：/av/actress/admin/topics/new、/av/actress/admin/topics/:id；權限由後台 layout 檢查 */
 export function AVActressTopicEdit() {
   const id = Number(useParams<{ id: string }>().id) || 0;
   const detail = useAdminActressTopic(id);
@@ -44,16 +42,20 @@ export function AVActressTopicEdit() {
   useBreadcrumbTail(id ? (detail.data?.title ?? "編輯主題") : "新增主題");
 
   return (
-    <AdminGuard>
+    <>
       {id > 0 && detail.isError ? (
-        <ErrorPage backUrl={MANAGE_PATH} code={404} message="找不到這個主題" />
+        <ErrorPage
+          backUrl={avAdminTopicsPath}
+          code={404}
+          message="找不到這個主題"
+        />
       ) : id > 0 && !detail.data ? (
         <Skeleton height={480} variant="rounded" />
       ) : (
         // 換主題時用 key 重設表單
         <TopicForm initial={detail.data ?? EMPTY_TOPIC} id={id} key={id} />
       )}
-    </AdminGuard>
+    </>
   );
 }
 
@@ -84,7 +86,7 @@ function TopicForm({
     setError(apiErrorMessage(e, "操作失敗，請稍後再試"));
   // 儲存不會即時發佈，提示下一次排程的時間
   const done = (message: string) =>
-    navigate(MANAGE_PATH, { state: { flash: message } });
+    navigate(avAdminTopicsPath, { state: { flash: message } });
 
   const submit = () => {
     // 沒選標籤的類型列直接丟掉
@@ -115,7 +117,8 @@ function TopicForm({
           alignItems: "start",
           display: "grid",
           gap: 2,
-          gridTemplateColumns: { xs: "1fr", md: "280px minmax(0, 1fr)" },
+          // 後台有左側導覽，內容區比較窄，夠寬才分兩欄
+          gridTemplateColumns: { xs: "1fr", lg: "280px minmax(0, 1fr)" },
         }}
       >
         <Paper sx={{ p: 2 }} variant="outlined">
@@ -201,7 +204,7 @@ function TopicForm({
           </Button>
         )}
         <Box sx={{ flex: 1 }} />
-        <Button onClick={() => navigate(MANAGE_PATH)}>取消</Button>
+        <Button onClick={() => navigate(avAdminTopicsPath)}>取消</Button>
         <Button
           disabled={save.isPending}
           onClick={submit}

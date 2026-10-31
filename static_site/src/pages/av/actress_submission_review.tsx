@@ -36,7 +36,10 @@ import { apiErrorMessage } from "@/helpers/apiError.ts";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { actressPagePath } from "@/helpers/avActressRef.ts";
-import { AdminGuard } from "@/components/common/AdminGuard.tsx";
+import {
+  avAdminSubmissionPath,
+  avAdminSubmissionsPath,
+} from "@/helpers/avActressAdmin.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ActressPhoto } from "@/components/av/actress_photo.tsx";
 import { ActressSubmissionDiff } from "@/components/av/actress_submission_diff.tsx";
@@ -46,21 +49,21 @@ import {
 } from "@/components/av/actress_review_dialogs.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 
-/** 審核頁：/av/actress/submissions/:id */
+/** 審核頁：/av/actress/admin/submissions/:id；權限由後台 layout 檢查 */
 export function AVActressSubmissionReview() {
   const id = Number(useParams<{ id: string }>().id) || 0;
   useTitle(`女優上稿審核 #${id}`);
   useBreadcrumbTail(`#${id}`);
   const flash = useFlashMessage();
   return (
-    <AdminGuard>
+    <>
       <Review id={id} />
       <CustomSnackbar
         message={flash.message ?? ""}
         onClose={flash.close}
         open={flash.message !== null}
       />
-    </AdminGuard>
+    </>
   );
 }
 
@@ -69,7 +72,7 @@ function Review({ id }: { id: number }) {
   if (detail.isError)
     return (
       <ErrorPage
-        backUrl="/av/actress/submissions"
+        backUrl={avAdminSubmissionsPath}
         code={404}
         message="找不到這張提交單"
       />
@@ -106,16 +109,13 @@ function ReviewContent({ d }: { d: ActressSubmissionDetail }) {
   const done = (message: string) => async () => {
     setDialog(null);
     const next = await findNext(d.id).catch(() => null);
-    navigate(
-      next ? `/av/actress/submissions/${next}` : "/av/actress/submissions",
-      {
-        state: {
-          flash: next
-            ? `${message}，接著審核 #${next}`
-            : `${message}，沒有待審核的單了`,
-        },
+    navigate(next ? avAdminSubmissionPath(next) : avAdminSubmissionsPath, {
+      state: {
+        flash: next
+          ? `${message}，接著審核 #${next}`
+          : `${message}，沒有待審核的單了`,
       },
-    );
+    });
   };
   const failed = (error: unknown) =>
     setSnack({

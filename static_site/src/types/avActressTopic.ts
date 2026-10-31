@@ -10,6 +10,8 @@ export interface ActressTopicSummary {
   file: string;
   /** 自訂主題（身材、特輯）的條件摘要 */
   summary?: string;
+  /** 有類型條件的主題才有；女優頁從這個主題點進來時多一個「該類型作品」tab */
+  genre_tag?: string;
 }
 
 export interface ActressTopicGroup {

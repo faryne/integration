@@ -30,25 +30,23 @@ import { apiErrorMessage } from "@/helpers/apiError.ts";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { useFlashMessage } from "@/helpers/flashMessage.ts";
 import { useTitle } from "@/helpers/title.tsx";
-import { AdminGuard } from "@/components/common/AdminGuard.tsx";
+import { avAdminTopicPath } from "@/helpers/avActressAdmin.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 
-const editPath = (id: number | "new") => `/av/actress/topics/manage/${id}`;
-
-/** 女優主題管理：/av/actress/topics/manage，只列自訂主題（特輯、身材），內建主題不能編輯 */
+/** 女優主題管理：/av/actress/admin/topics，只列自訂主題（特輯、身材），內建主題不能編輯；權限由後台 layout 檢查 */
 export function AVActressTopicManage() {
   useTitle("AV 女優主題管理");
   useBreadcrumbTail("管理主題");
   const flash = useFlashMessage();
   return (
-    <AdminGuard>
+    <>
       <TopicList />
       <CustomSnackbar
         message={flash.message ?? ""}
         onClose={flash.close}
         open={flash.message !== null}
       />
-    </AdminGuard>
+    </>
   );
 }
 
@@ -86,7 +84,7 @@ function TopicList() {
         <Button
           component={RouterLink}
           startIcon={<AddIcon />}
-          to={editPath("new")}
+          to={avAdminTopicPath("new")}
           variant="contained"
         >
           新增主題
@@ -117,7 +115,7 @@ function TopicList() {
                   <TableRow
                     hover
                     key={item.id}
-                    onClick={() => navigate(editPath(item.id))}
+                    onClick={() => navigate(avAdminTopicPath(item.id))}
                     sx={{
                       cursor: "pointer",
                       opacity: item.is_enabled ? 1 : 0.55,
@@ -149,7 +147,7 @@ function TopicList() {
                         component={RouterLink}
                         onClick={(e) => e.stopPropagation()}
                         sx={{ fontWeight: 700 }}
-                        to={editPath(item.id)}
+                        to={avAdminTopicPath(item.id)}
                       >
                         {item.title}
                       </Link>

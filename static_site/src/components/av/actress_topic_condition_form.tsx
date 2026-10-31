@@ -110,7 +110,7 @@ export function ActressTopicConditionForm({
         sx={{
           display: "grid",
           gap: 2,
-          gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
+          gridTemplateColumns: { xs: "1fr", xl: "repeat(2, minmax(0, 1fr))" },
         }}
       >
         {TOPIC_RANGE_FIELDS.map((f) => {

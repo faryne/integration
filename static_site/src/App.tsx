@@ -21,6 +21,13 @@ import { STORYTELLER_AI_ASSISTANT_ENABLED } from "@/data/storyteller.ts";
 import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
 import { useMaintenanceState } from "@/apis/maintenanceStore.ts";
 import { loadStorytellerProjectWorkspace } from "@/pages/storyteller/storytellerRoutePreload.ts";
+import { ParamRedirect } from "@/components/common/ParamRedirect.tsx";
+import {
+  AV_ACTRESS_ADMIN_PATH,
+  avAdminSubmissionPath,
+  avAdminSubmissionsPath,
+  avAdminTopicsPath,
+} from "@/helpers/avActressAdmin.ts";
 
 function formatMaintenanceRetryMessage(retryAt: string | null) {
   if (!retryAt) {
@@ -88,6 +95,11 @@ const AVActressTopics = lazy(() =>
 const AVActressTopic = lazy(() =>
   import("@/pages/av/actress_topic.tsx").then((module) => ({
     default: module.AVActressTopic,
+  })),
+);
+const AVActressAdminLayout = lazy(() =>
+  import("@/layouts/AVActressAdminLayout.tsx").then((module) => ({
+    default: module.AVActressAdminLayout,
   })),
 );
 const AVActressTopicManage = lazy(() =>
@@ -688,31 +700,65 @@ function App() {
                 <Route path={""} element={<DefaultLayout />}>
                   <Route path={"/av/video/:no"} element={<AVVideoDetail />} />
                   <Route path={"/av/video"} element={<AVVideo />} />
-                  {/* 上稿、審核、主題要排在 :name 前面（靜態路徑本來就優先，排前面讀起來比較清楚） */}
+                  {/* 上稿、後台、主題要排在 :name 前面（靜態路徑本來就優先，排前面讀起來比較清楚） */}
                   <Route
                     path={"/av/actress/submit"}
                     element={<AVActressSubmit />}
                   />
+                  {/* 女優管理後台：layout 負責權限與左側導覽，上稿審核、女優主題是子頁 */}
+                  <Route
+                    path={AV_ACTRESS_ADMIN_PATH}
+                    element={<AVActressAdminLayout />}
+                  >
+                    <Route
+                      index
+                      element={<Navigate replace to={"submissions"} />}
+                    />
+                    <Route
+                      path={"submissions"}
+                      element={<AVActressSubmissions />}
+                    />
+                    <Route
+                      path={"submissions/:id"}
+                      element={<AVActressSubmissionReview />}
+                    />
+                    <Route path={"topics"} element={<AVActressTopicManage />} />
+                    {/* :id 為 new 時是新增 */}
+                    <Route
+                      path={"topics/:id"}
+                      element={<AVActressTopicEdit />}
+                    />
+                  </Route>
+                  {/* 搬進後台前的舊網址 */}
                   <Route
                     path={"/av/actress/submissions"}
-                    element={<AVActressSubmissions />}
+                    element={
+                      <ParamRedirect to={() => avAdminSubmissionsPath} />
+                    }
                   />
                   <Route
                     path={"/av/actress/submissions/:id"}
-                    element={<AVActressSubmissionReview />}
+                    element={
+                      <ParamRedirect
+                        to={(p) => avAdminSubmissionPath(Number(p.id))}
+                      />
+                    }
+                  />
+                  <Route
+                    path={"/av/actress/topics/manage"}
+                    element={<ParamRedirect to={() => avAdminTopicsPath} />}
+                  />
+                  <Route
+                    path={"/av/actress/topics/manage/:id"}
+                    element={
+                      <ParamRedirect
+                        to={(p) => `${avAdminTopicsPath}/${p.id}`}
+                      />
+                    }
                   />
                   <Route
                     path={"/av/actress/topics"}
                     element={<AVActressTopics />}
-                  />
-                  <Route
-                    path={"/av/actress/topics/manage"}
-                    element={<AVActressTopicManage />}
-                  />
-                  {/* :id 為 new 時是新增 */}
-                  <Route
-                    path={"/av/actress/topics/manage/:id"}
-                    element={<AVActressTopicEdit />}
                   />
                   <Route
                     path={"/av/actress/topics/:slug"}

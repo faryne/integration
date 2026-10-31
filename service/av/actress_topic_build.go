@@ -35,7 +35,7 @@ func (b *topicBuilder) add(group, slug, label, file, summary, defaultSort, genre
 	if len(members) == 0 {
 		return
 	}
-	b.groups[group] = append(b.groups[group], avEntity.ActressTopicSummary{Slug: slug, Label: label, Count: len(members), File: file, Summary: summary})
+	b.groups[group] = append(b.groups[group], avEntity.ActressTopicSummary{Slug: slug, Label: label, Count: len(members), File: file, Summary: summary, GenreTag: genreTag})
 	b.files[file] = avEntity.ActressTopicFile{Slug: slug, Label: label, GeneratedAt: b.now.Format(time.RFC3339), DefaultSort: defaultSort, GenreTag: genreTag, Actresses: members}
 }
 

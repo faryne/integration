@@ -10,6 +10,7 @@ import {
 import { Link as RouterLink } from "react-router-dom";
 import { useActressTopicIndex } from "@/apis/av/actress_topic.ts";
 import { actressTopicPath } from "@/helpers/avActressTopic.ts";
+import { avAdminTopicsPath } from "@/helpers/avActressAdmin.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
@@ -52,7 +53,7 @@ export function AVActressTopics() {
           {session?.user.is_admin && (
             <Button
               component={RouterLink}
-              to="/av/actress/topics/manage"
+              to={avAdminTopicsPath}
               variant="outlined"
             >
               管理主題
