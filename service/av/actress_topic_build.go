@@ -31,11 +31,16 @@ type topicBuilder struct {
 	files  map[string]avEntity.ActressTopicFile
 }
 
-func (b *topicBuilder) add(group, slug, label, file, summary, defaultSort, genreTag string, members []avEntity.ActressTopicMember) {
+// genreTags 是主題的全部類型條件；主題檔的 genre_tag（卡片上的部數、依類型排序）只用第一個
+func (b *topicBuilder) add(group, slug, label, file, summary, defaultSort string, genreTags []string, members []avEntity.ActressTopicMember) {
 	if len(members) == 0 {
 		return
 	}
-	b.groups[group] = append(b.groups[group], avEntity.ActressTopicSummary{Slug: slug, Label: label, Count: len(members), File: file, Summary: summary, GenreTag: genreTag})
+	genreTag := ""
+	if len(genreTags) > 0 {
+		genreTag = genreTags[0]
+	}
+	b.groups[group] = append(b.groups[group], avEntity.ActressTopicSummary{Slug: slug, Label: label, Count: len(members), File: file, Summary: summary, GenreTags: genreTags})
 	b.files[file] = avEntity.ActressTopicFile{Slug: slug, Label: label, GeneratedAt: b.now.Format(time.RFC3339), DefaultSort: defaultSort, GenreTag: genreTag, Actresses: members}
 }
 
@@ -67,17 +72,17 @@ func buildActressTopics(ctx context.Context, now time.Time) (actressTopicSet, er
 	}
 
 	// 新人與活躍
-	b.add(topicGroupActive, "newcomer", "新人", "newcomer.json", "", topicSortDebut, "", filter(func(p actressTopicProfile) bool {
+	b.add(topicGroupActive, "newcomer", "新人", "newcomer.json", "", topicSortDebut, nil, filter(func(p actressTopicProfile) bool {
 		return withinMonths(p.Stats.First, topicNewcomerMonths, now)
 	}))
-	b.add(topicGroupActive, "active", "近期活躍", "active.json", "", topicSortRecent, "", filter(func(p actressTopicProfile) bool {
+	b.add(topicGroupActive, "active", "近期活躍", "active.json", "", topicSortRecent, nil, filter(func(p actressTopicProfile) bool {
 		return withinMonths(p.Stats.Last, topicActiveMonths, now)
 	}))
 
 	// 星座（horoscopeOf 已經排除 xcity 的預設生日 11/30）
 	for _, s := range horoscopeSigns {
 		slug := "horoscope-" + s.Slug
-		b.add(topicGroupHoroscope, slug, s.Label, slug+".json", "", topicSortVideos, "", filter(func(p actressTopicProfile) bool { return p.Horoscope == s.Slug }))
+		b.add(topicGroupHoroscope, slug, s.Label, slug+".json", "", topicSortVideos, nil, filter(func(p actressTopicProfile) bool { return p.Horoscope == s.Slug }))
 	}
 
 	// 出生年代、出身地：值是資料裡出現過的，人數不到門檻的不開頁
@@ -94,7 +99,7 @@ func buildActressTopics(ctx context.Context, now time.Time) (actressTopicSet, er
 	for _, d := range slices.Sorted(maps.Keys(decades)) {
 		if decades[d] >= topicMinMembers {
 			slug := fmt.Sprintf("born-%ds", d)
-			b.add(topicGroupBorn, slug, fmt.Sprintf("%02d 年代", d%100), slug+".json", "", topicSortVideos, "", filter(func(p actressTopicProfile) bool {
+			b.add(topicGroupBorn, slug, fmt.Sprintf("%02d 年代", d%100), slug+".json", "", topicSortVideos, nil, filter(func(p actressTopicProfile) bool {
 				return p.Fields.BirthYear/10*10 == d
 			}))
 		}
@@ -102,7 +107,7 @@ func buildActressTopics(ctx context.Context, now time.Time) (actressTopicSet, er
 	for _, city := range slices.SortedFunc(maps.Keys(cities), func(a, c string) int { return cmp.Compare(cities[c], cities[a]) }) {
 		if cities[city] >= topicMinMembers {
 			slug := "pref-" + prefectures[city]
-			b.add(topicGroupPref, slug, city, slug+".json", "", topicSortVideos, "", filter(func(p actressTopicProfile) bool { return p.Fields.BornCity == city }))
+			b.add(topicGroupPref, slug, city, slug+".json", "", topicSortVideos, nil, filter(func(p actressTopicProfile) bool { return p.Fields.BornCity == city }))
 		}
 	}
 
@@ -130,9 +135,13 @@ func buildActressTopics(ctx context.Context, now time.Time) (actressTopicSet, er
 				return actressTopicSet{}, fmt.Errorf("genre %s: %w", g.Tag, err)
 			}
 		}
+		var genreTags []string
+		for _, g := range c.Genres {
+			genreTags = append(genreTags, g.Tag)
+		}
 		genreTag := ""
-		if len(c.Genres) > 0 {
-			genreTag = c.Genres[0].Tag
+		if len(genreTags) > 0 {
+			genreTag = genreTags[0]
 		}
 		var members []avEntity.ActressTopicMember
 		for _, p := range profiles {
@@ -141,7 +150,7 @@ func buildActressTopics(ctx context.Context, now time.Time) (actressTopicSet, er
 			}
 		}
 		// 檔名用 DB id，改 slug 不用搬檔案
-		b.add(t.GroupKey, t.Slug, t.Title, fmt.Sprintf("custom-%d.json", t.ID), topicConditionSummary(c), t.DefaultSort, genreTag, sortTopicMembers(members))
+		b.add(t.GroupKey, t.Slug, t.Title, fmt.Sprintf("custom-%d.json", t.ID), topicConditionSummary(c), t.DefaultSort, genreTags, sortTopicMembers(members))
 		customCounts[t.ID] = len(members)
 	}
 
@@ -180,7 +189,7 @@ func buildActressTopics(ctx context.Context, now time.Time) (actressTopicSet, er
 			if err != nil {
 				return actressTopicSet{}, fmt.Errorf("genre %s: %w", t.Tag, err)
 			}
-			b.add(list.group, "genre-"+t.Tag, t.Tag, genreTopicFile(t.Tag), "", topicSortGenre, t.Tag, members)
+			b.add(list.group, "genre-"+t.Tag, t.Tag, genreTopicFile(t.Tag), "", topicSortGenre, []string{t.Tag}, members)
 		}
 	}
 	set := b.result()

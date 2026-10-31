@@ -78,8 +78,8 @@ const topTagSx = (index: number) => {
   }
 };
 
-export /** 出演影片的 tab：genre＝從類型主題點進來時的「該類型作品」、all＝全部作品 */
-type ActressVideoTab = "genre" | "all";
+export /** 出演影片的 tab：類型名稱＝從類型主題點進來時的「該類型作品」、"all"＝全部作品 */
+type ActressVideoTab = string;
 
 interface IActressDetail {
   actress?: Actress;
@@ -90,9 +90,9 @@ interface IActressDetail {
   sameNames?: Actress[];
   videoPage?: number;
   videos?: UseQueryResult<VideoSearchResponse, Error>;
-  // 從有類型條件的主題點進來才有：tag 是類型名稱，value／onChange 控制目前的 tab
+  // 從有類型條件的主題點進來才有：tags 是主題的類型條件（各開一個 tab），value／onChange 控制目前的 tab
   videoTabs?: {
-    tag: string;
+    tags: string[];
     value: ActressVideoTab;
     onChange: (tab: ActressVideoTab) => void;
   };
@@ -270,7 +270,9 @@ export function ActressDetail(props: IActressDetail) {
               sx={{ borderBottom: 1, borderColor: "divider" }}
               value={props.videoTabs.value}
             >
-              <Tab label={`${props.videoTabs.tag}作品`} value="genre" />
+              {props.videoTabs.tags.map((tag) => (
+                <Tab key={tag} label={`${tag}作品`} value={tag} />
+              ))}
               <Tab label="全部作品" value="all" />
             </Tabs>
           )}
