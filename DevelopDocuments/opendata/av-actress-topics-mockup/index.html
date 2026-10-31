@@ -99,6 +99,15 @@
   .btn.ghost { background:transparent; color:var(--text); border:1px solid #cbd5e1; }
   .btn.danger { background:#b91c1c; }
   .topicrow { display:flex; gap:8px; align-items:center; justify-content:center; margin-top:8px; font-size:12px; color:var(--muted); }
+  .acwrap { position:relative; min-width:0; }
+  .acbox { display:flex; flex-wrap:wrap; gap:6px; align-items:center; border:1px solid #cbd5e1; border-radius:6px; padding:4px 6px; background:#fff; cursor:text; }
+  .acbox .ac { border:0; padding:4px; flex:1; min-width:80px; outline:none; }
+  .acmenu { position:absolute; left:0; right:0; top:calc(100% + 4px); background:#fff; border:1px solid var(--line); border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,.15); z-index:5; max-height:260px; overflow:auto; }
+  .acmenu div { display:flex; justify-content:space-between; gap:12px; padding:8px 12px; font-size:13px; cursor:pointer; }
+  .acmenu div:hover { background:#f9fafb; }
+  .acmenu div.on { background:var(--primary-soft); color:var(--primary); font-weight:700; }
+  .acmenu small { color:var(--muted); white-space:nowrap; }
+  .acmenu .empty { color:var(--muted); cursor:default; }
   .note { font-size:12px; color:#1e3a8a; background:#eff6ff; border:1px dashed #93c5fd; border-radius:8px; padding:8px 10px; margin-top:16px; line-height:1.7; }
 </style>
 </head>
@@ -276,8 +285,22 @@
       <div class="note">mockup 說明：拖曳 ⋮⋮ 調整總覽頁順序。新增或修改後要等下一次每週排程（週四 04:30）才會產生，之前顯示「尚未產生」或上次的結果。</div>`);
   }
 
+  // ===== 自動完成：選項來自 facet（出身地＝人數、類型＝部數），依數量排序，輸入時篩選，只能從選項裡選 =====
+  const acToggle = (k) => { state.ac = state.ac === k ? "" : k; state.acq = ""; render(); };
+  const acType = (q) => { state.acq = q; const el = document.querySelector(".acmenu"); if (el) el.outerHTML = acMenu(); };
+  function acMenu() {
+    const pref = state.ac === "pref";
+    const all = pref ? D.city.map(([v, n]) => [v, `${fmt(n)} 位`]) : [...D.hot, ...D.cold].map(([v, n]) => [v, `${fmt(n)} 部`]);
+    const picked = pref ? ["東京都"] : ["痴女"];
+    const list = all.filter(([v]) => v.includes(state.acq ?? "")).slice(0, 8);
+    return `<div class="acmenu">${list.map(([v, n]) => `<div class="${picked.includes(v) ? "on" : ""}"><span>${v}</span><small>${n}</small></div>`).join("") || `<div class="empty">沒有符合的選項</div>`}</div>`;
+  }
+  const acPref = () => `<div class="acwrap"><div class="acbox" onclick="acToggle('pref')"><span class="chip on">東京都 ✕</span><input class="ac" placeholder="輸入都道府県" oninput="acType(this.value)" onclick="event.stopPropagation();state.ac!=='pref'&&acToggle('pref')"></div>${state.ac === "pref" ? acMenu() : ""}</div>`;
+  const acGenre = () => `<div class="acwrap" style="flex:1"><div class="acbox" onclick="acToggle('genre')"><input class="ac" value="${state.ac === "genre" ? "" : "痴女"}" placeholder="輸入類型" oninput="acType(this.value)" onclick="event.stopPropagation();state.ac!=='genre'&&acToggle('genre')"></div>${state.ac === "genre" ? acMenu() : ""}</div>`;
+
   // ===== 管理：編輯主題（以「東京痴女」為例） =====
   function edit() {
+    if (state.ac === undefined) state.ac = "genre";
     const HORO = D.horoscope.map(([, l]) => l), BLOOD = ["A","B","O","AB"];
     const chips = (list, on) => `<div class="chips">${list.map((x) => `<span class="chip ${on.includes(x) ? "on" : ""}">${x}</span>`).join("")}</div>`;
     const range = (label, unit = "") => `<label class="f"><span>${label}</span><div class="range"><input placeholder="最小"><span>～</span><input placeholder="最大">${unit ? `<span>${unit}</span>` : ""}</div></label>`;
@@ -300,9 +323,9 @@
             <label class="f"><span>罩杯</span><div class="range"><select><option>不限</option></select><span>～</span><select><option>不限</option></select></div></label>
             ${range("臀腰差")}${range("胸圍")}${range("腰圍")}${range("臀圍")}
           </div>
-          <div class="cond"><span>出身地</span><div class="chips"><span class="chip on">東京都 ✕</span><input class="ac" placeholder="輸入都道府県"></div></div>
+          <div class="cond"><span>出身地</span>${acPref()}</div>
           <div class="cond"><span>類型</span><div>
-            <div class="genrerow"><input value="痴女"><span>至少</span><input value="5" style="width:56px"><span>部</span><button class="iconbtn">✕</button></div>
+            <div class="genrerow">${acGenre()}<span>至少</span><input value="5" style="width:56px"><span>部</span><button class="iconbtn">✕</button></div>
             <button class="textbtn">＋ 類型條件</button></div></div>
           <div class="fgrid">
             <label class="f"><span>出道在幾個月內</span><input placeholder="不限"></label>
@@ -312,7 +335,7 @@
         </div>
       </div>
       <div class="btns"><button class="btn danger" onclick="alert('mockup：會先跳 confirm「確定要刪除「東京痴女」？」')">刪除</button><span style="flex:1"></span><button class="btn ghost" onclick="go('manage')">取消</button><button class="btn" onclick="go('manage')">儲存</button></div>
-      <div class="note">mockup 說明：同一個欄位內多選是 OR，不同欄位之間是 AND；空白代表不限。不做即時預覽人數，儲存後等下一次排程產生。</div>`);
+      <div class="note">mockup 說明：同一個欄位內多選是 OR，不同欄位之間是 AND；空白代表不限。出身地、類型點輸入框會展開自動完成（選項是 facet 結果附數量，可以打字篩選）。不做即時預覽人數，儲存後等下一次排程產生。</div>`);
   }
 
   function render() {
