@@ -15,25 +15,23 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import {
-  Link as RouterLink,
-  useNavigate,
-  useSearchParams,
-} from "react-router-dom";
+import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { ActressSearch } from "@/components/av/actress_search";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import type { ListByPaginationRequest } from "@/apis/interfaces.ts";
 import { formatSizeRange } from "@/helpers/avSizeRange.ts";
 import {
+  actressCardGridSx,
   formatActressBirth,
   formatActressBodyInfo,
 } from "@/helpers/avActressDisplay.ts";
-import { ActressPhoto } from "@/components/av/actress_photo.tsx";
+import { ActressCard } from "@/components/av/actress_card.tsx";
 import { selectedCups, withCups } from "@/helpers/avActressCups.ts";
 import { actressPagePath } from "@/helpers/avActressRef.ts";
 import FaceRetouchingNaturalIcon from "@mui/icons-material/FaceRetouchingNatural";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
 import AddIcon from "@mui/icons-material/Add";
+import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 
 type ActressRangeKey = "height" | "b" | "w" | "h";
 
@@ -131,7 +129,6 @@ const actressSearchToParams = (
 };
 
 export function AVActress() {
-  const navigate = useNavigate();
   const [query, setQuery] = useSearchParams();
 
   const [search, setSearch] = useState<
@@ -186,9 +183,16 @@ export function AVActress() {
             textAlign: "left",
           }}
         >
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+          {/* 窄螢幕時按鈕換到下一行，不擠標題 */}
+          <Stack
+            direction="row"
+            flexWrap="wrap"
+            gap={1.5}
+            sx={{ alignItems: "center" }}
+            useFlexGap
+          >
             <FaceRetouchingNaturalIcon color="primary" fontSize="large" />
-            <Box>
+            <Box sx={{ flex: "1 1 220px", minWidth: 0 }}>
               <Typography
                 component="h1"
                 sx={{
@@ -205,16 +209,25 @@ export function AVActress() {
                 依姓名、罩杯、出生年份與身形條件篩選女優資料。
               </Typography>
             </Box>
-            {/* 名冊裡找不到的女優可以自己上稿，管理者核准後進入搜尋 */}
-            <Button
-              component={RouterLink}
-              startIcon={<AddIcon />}
-              sx={{ flexShrink: 0, ml: "auto !important" }}
-              to="/av/actress/submit"
-              variant="outlined"
-            >
-              新增女優
-            </Button>
+            <Stack direction="row" gap={1} sx={{ flexShrink: 0 }}>
+              <Button
+                component={RouterLink}
+                startIcon={<CategoryOutlinedIcon />}
+                to="/av/actress/topics"
+                variant="outlined"
+              >
+                女優主題
+              </Button>
+              {/* 名冊裡找不到的女優可以自己上稿，管理者核准後進入搜尋 */}
+              <Button
+                component={RouterLink}
+                startIcon={<AddIcon />}
+                to="/av/actress/submit"
+                variant="outlined"
+              >
+                新增女優
+              </Button>
+            </Stack>
           </Stack>
         </Box>
 
@@ -363,122 +376,51 @@ export function AVActress() {
 
               {!s.isLoading && s.isSuccess && actresses.length > 0 && (
                 <>
-                  <Box
-                    sx={{
-                      display: "grid",
-                      gap: 2,
-                      gridTemplateColumns: {
-                        xs: "repeat(2, minmax(0, 1fr))",
-                        sm: "repeat(3, minmax(0, 1fr))",
-                        lg: "repeat(4, minmax(0, 1fr))",
-                      },
-                    }}
-                  >
+                  <Box sx={actressCardGridSx()}>
                     {actresses.map((actress) => {
                       const bodyInfo = formatActressBodyInfo(actress);
                       const birth = formatActressBirth(actress);
 
                       return (
-                        <Box
-                          component="button"
+                        <ActressCard
                           key={`${actress.domain}-${actress.aid}`}
-                          onClick={() =>
-                            navigate(actressPagePath(actress.name, actress))
-                          }
-                          sx={{
-                            appearance: "none",
-                            bgcolor: "background.paper",
-                            border: "1px solid",
-                            borderColor: "divider",
-                            borderRadius: 2,
-                            cursor: "pointer",
-                            display: "flex",
-                            flexDirection: "column",
-                            overflow: "hidden",
-                            p: 0,
-                            textAlign: "left",
-                            transition:
-                              "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
-                            width: "100%",
-                            "&:focus-visible": {
-                              borderColor: "primary.main",
-                              boxShadow: "0 0 0 3px rgba(25, 118, 210, 0.28)",
-                              outline: 0,
-                            },
-                            "&:hover": {
-                              borderColor: "rgba(25, 118, 210, 0.42)",
-                              boxShadow: "0 14px 34px rgba(15, 23, 42, 0.13)",
-                              transform: "translateY(-2px)",
-                            },
-                          }}
+                          name={actress.name}
+                          photo={actress.photo}
+                          to={actressPagePath(actress.name, actress)}
                         >
-                          <Box
-                            sx={{
-                              aspectRatio: "3 / 4",
-                              bgcolor: "grey.100",
-                              overflow: "hidden",
-                              width: "100%",
-                            }}
-                          >
-                            <ActressPhoto
-                              alt={actress.name}
-                              loading="lazy"
-                              src={actress.photo}
-                              sx={{ height: "100%", width: "100%" }}
-                            />
-                          </Box>
-                          <Stack spacing={0.75} sx={{ p: 1.5 }}>
+                          {actress.kana && (
                             <Typography
+                              color="text.secondary"
                               sx={{
-                                color: "text.primary",
-                                fontWeight: 800,
-                                letterSpacing: 0,
-                                lineHeight: 1.3,
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                                 whiteSpace: "nowrap",
                               }}
-                              variant="body1"
+                              variant="caption"
                             >
-                              {actress.name}
+                              {actress.kana}
                             </Typography>
-                            {actress.kana && (
-                              <Typography
-                                color="text.secondary"
-                                sx={{
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                }}
-                                variant="caption"
-                              >
-                                {actress.kana}
-                              </Typography>
-                            )}
-                            <Typography
-                              color="text.secondary"
+                          )}
+                          <Typography
+                            color="text.secondary"
+                            sx={{ minHeight: "2.86em", overflow: "hidden" }}
+                            variant="body2"
+                          >
+                            {bodyInfo || "未登錄身形資訊"}
+                          </Typography>
+                          {birth && (
+                            <Chip
+                              label={`生日 ${birth}`}
+                              size="small"
                               sx={{
-                                minHeight: "2.86em",
-                                overflow: "hidden",
+                                alignSelf: "flex-start",
+                                borderRadius: 1,
+                                fontSize: "0.72rem",
                               }}
-                              variant="body2"
-                            >
-                              {bodyInfo || "未登錄身形資訊"}
-                            </Typography>
-                            {birth && (
-                              <Chip
-                                label={`生日 ${birth}`}
-                                size="small"
-                                sx={{
-                                  alignSelf: "flex-start",
-                                  borderRadius: 1,
-                                  fontSize: "0.72rem",
-                                }}
-                                variant="outlined"
-                              />
-                            )}
-                          </Stack>
-                        </Box>
+                              variant="outlined"
+                            />
+                          )}
+                        </ActressCard>
                       );
                     })}
                   </Box>

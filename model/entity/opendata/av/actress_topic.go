@@ -49,11 +49,13 @@ type ActressTopicSummary struct {
 
 // ActressTopicFile 單一主題的檔案；排序與分頁都由前端處理
 type ActressTopicFile struct {
-	Slug        string               `json:"slug"`
-	Label       string               `json:"label"`
-	GeneratedAt string               `json:"generated_at"`
-	DefaultSort string               `json:"default_sort"`
-	Actresses   []ActressTopicMember `json:"actresses"`
+	Slug        string `json:"slug"`
+	Label       string `json:"label"`
+	GeneratedAt string `json:"generated_at"`
+	DefaultSort string `json:"default_sort"`
+	// GenreTag 卡片上「熟女 88 部」的類型名稱：類型主題是標籤本身，自訂主題是第一個類型條件；沒有就省略
+	GenreTag  string               `json:"genre_tag,omitempty"`
+	Actresses []ActressTopicMember `json:"actresses"`
 }
 
 // ActressTopicMember 主題卡片需要的欄位；GenreCount 只有類型主題、或有類型條件的自訂主題才有

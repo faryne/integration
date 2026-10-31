@@ -16,6 +16,7 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import { ActressLinksCard } from "@/components/av/actress_links_card.tsx";
 import { ActressNames } from "@/components/av/actress_names.tsx";
+import { ActressTopicChip } from "@/components/av/actress_topic_chip.tsx";
 import { ActressPhoto } from "@/components/av/actress_photo.tsx";
 import { ActressSameNames } from "@/components/av/actress_same_names.tsx";
 import { actressPagePath } from "@/helpers/avActressRef.ts";
@@ -179,6 +180,7 @@ export function ActressDetail(props: IActressDetail) {
                 )}
               </Box>
               <ActressNames actress={actress} current={pageName} />
+              <ActressTopicChip />
               <Stack spacing={1} sx={{ textAlign: "left", width: "100%" }}>
                 {/* 手動上稿的女優常常只有部分資料，沒填的整行不顯示 */}
                 {measurements && (
