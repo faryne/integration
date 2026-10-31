@@ -38,24 +38,19 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
         title: "AV 女優搜尋",
         href: "/av/actress",
         description: "定時索引 AV 女優資訊",
-        // 上稿不擋登入，但有登入會記錄提交者；管理者從帳號選單進審核頁
+        // 上稿不擋登入，但有登入會記錄提交者；管理者從帳號選單進女優管理後台
         requiresAuth: true,
         subPages: [
           { title: "女優主題", href: "/av/actress/topics" },
           { title: "新增女優", href: "/av/actress/submit" },
-          { title: "上稿審核", href: "/av/actress/submissions" },
+          { title: "女優管理後台", href: "/av/actress/admin" },
         ],
         accountLinks: [
           {
-            title: "AV 女優上稿審核",
-            href: "/av/actress/submissions",
+            title: "AV 女優管理後台",
+            href: "/av/actress/admin",
             adminOnly: true,
             badge: "avActressSubmissions",
-          },
-          {
-            title: "AV 女優主題管理",
-            href: "/av/actress/topics/manage",
-            adminOnly: true,
           },
         ],
       },

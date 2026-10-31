@@ -31,18 +31,20 @@ import {
   submitterLabel,
 } from "@/helpers/avActressSubmission.ts";
 import { useTitle } from "@/helpers/title.tsx";
-import { AdminGuard } from "@/components/common/AdminGuard.tsx";
+import { avAdminSubmissionPath } from "@/helpers/avActressAdmin.ts";
+import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { useFlashMessage } from "@/helpers/flashMessage.ts";
 
 const STATUSES: ActressSubmissionStatus[] = ["pending", "approved", "rejected"];
 
-/** 女優上稿審核列表：/av/actress/submissions?status=&page=（狀態與頁碼存在網址） */
+/** 女優上稿審核列表：/av/actress/admin/submissions?status=&page=（狀態與頁碼存在網址）；權限由後台 layout 檢查 */
 export function AVActressSubmissions() {
   useTitle("AV 女優上稿審核");
+  useBreadcrumbTail("上稿審核");
   const flash = useFlashMessage();
   return (
-    <AdminGuard>
+    <>
       <SubmissionList />
       {/* 審核完最後一張回到列表時的結果提示 */}
       <CustomSnackbar
@@ -50,7 +52,7 @@ export function AVActressSubmissions() {
         onClose={flash.close}
         open={flash.message !== null}
       />
-    </AdminGuard>
+    </>
   );
 }
 
@@ -120,7 +122,7 @@ function SubmissionList() {
                 <TableRow
                   hover
                   key={s.id}
-                  onClick={() => navigate(`/av/actress/submissions/${s.id}`)}
+                  onClick={() => navigate(avAdminSubmissionPath(s.id))}
                   sx={{ cursor: "pointer" }}
                 >
                   <TableCell>{s.id}</TableCell>
@@ -142,7 +144,7 @@ function SubmissionList() {
                       <Link
                         component={RouterLink}
                         onClick={(e) => e.stopPropagation()}
-                        to={`/av/actress/submissions/${s.id}`}
+                        to={avAdminSubmissionPath(s.id)}
                       >
                         {s.name}
                       </Link>
