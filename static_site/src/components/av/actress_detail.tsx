@@ -15,6 +15,7 @@ import type { VideoSearchResponse } from "@/apis/av/video_search.ts";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import { ActressLinksCard } from "@/components/av/actress_links_card.tsx";
+import { ActressNames } from "@/components/av/actress_names.tsx";
 import { ActressPhoto } from "@/components/av/actress_photo.tsx";
 import { ActressSameNames } from "@/components/av/actress_same_names.tsx";
 import { actressPagePath } from "@/helpers/avActressRef.ts";
@@ -76,6 +77,8 @@ const topTagSx = (index: number) => {
 
 export interface IActressDetail {
   actress?: Actress;
+  // 網址上的名字：本名或其中一個別名，出演影片只列這個名義的作品
+  pageName?: string;
   onVideoPageChange?: (page: number) => void;
   // 名字完全相同的所有人（含這位），兩位以上時顯示「可能同名的女優」切換
   sameNames?: Actress[];
@@ -85,6 +88,7 @@ export interface IActressDetail {
 
 export function ActressDetail(props: IActressDetail) {
   const actress = props.actress ?? null;
+  const pageName = props.pageName || actress?.name || "";
   const navigate = useNavigate();
   const videos = props.videos?.data?.data?.data ?? [];
   const total = props.videos?.data?.data?.total ?? 0;
@@ -174,6 +178,7 @@ export function ActressDetail(props: IActressDetail) {
                   </Typography>
                 )}
               </Box>
+              <ActressNames actress={actress} current={pageName} />
               <Stack spacing={1} sx={{ textAlign: "left", width: "100%" }}>
                 {/* 手動上稿的女優常常只有部分資料，沒填的整行不顯示 */}
                 {measurements && (
@@ -241,7 +246,7 @@ export function ActressDetail(props: IActressDetail) {
             </Typography>
             <Typography color="text.secondary" variant="body2">
               {props.videos?.isSuccess
-                ? `共 ${total.toLocaleString()} 筆資料`
+                ? `${pageName !== actress.name ? `${pageName} 名義・` : ""}共 ${total.toLocaleString()} 筆資料`
                 : "讀取中"}
             </Typography>
           </Box>
