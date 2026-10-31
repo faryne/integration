@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AV 女優主題頁 mockup</title>
+<style>
+  :root { --bg:#f3f4f6; --paper:#fff; --line:#e5e7eb; --muted:#6b7280; --text:#111827; --primary:#2e7d6b; --primary-soft:#e6f2ef;
+          --warn:#fef3c7; --warnb:#f59e0b; --warnt:#92400e; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; background:#d1d5db; color:var(--text); }
+  .toolbar { position:sticky; top:0; z-index:20; background:#111827; color:#fff; padding:10px 16px; font-size:13px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .toolbar button { background:#374151; color:#fff; border:0; border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; }
+  .toolbar button.on { background:var(--primary); }
+  .toolbar .sep { width:1px; height:20px; background:#4b5563; margin:0 4px; }
+  .stage { padding:24px; display:flex; overflow-x:auto; }
+  .frame { margin:0 auto; background:var(--bg); border-radius:10px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.2); width:1100px; flex:0 0 auto; position:relative; min-height:640px; }
+  .frame.mobile { width:375px; }
+  .nav { background:#161b22; color:#fff; height:44px; display:flex; align-items:center; padding:0 16px; font-weight:700; font-size:14px; gap:16px; }
+  .nav small { font-weight:400; color:#9ca3af; }
+  .crumb { background:var(--paper); border-bottom:1px solid var(--line); padding:8px 16px; font-size:12px; color:var(--muted); }
+  .crumb a { color:var(--primary); cursor:pointer; text-decoration:none; }
+  .url { font-family:ui-monospace,monospace; font-size:12px; background:#fff; border:1px solid var(--line); border-radius:6px; padding:6px 10px; margin-bottom:12px; color:#374151; word-break:break-all; }
+  .page { padding:20px 16px 32px; }
+  h2 { margin:0; font-size:22px; }
+  .pagehead { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+  .pagehead .meta { color:var(--muted); font-size:13px; margin-top:4px; }
+  .paper { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .groups { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+  .mobile .groups { grid-template-columns:1fr; }
+  .group.wide { grid-column:1 / -1; }
+  .group h3 { margin:0 0 10px; font-size:15px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font-size:13px; border:1px solid #cbd5e1; border-radius:16px; padding:4px 10px; background:#fff; cursor:pointer; color:var(--text); white-space:nowrap; }
+  .chip:hover { border-color:var(--primary); }
+  .chip small { color:var(--muted); margin-left:4px; }
+  .chip.on { background:var(--primary); border-color:var(--primary); color:#fff; cursor:default; }
+  .chip.on small { color:#d1fae5; }
+  .toggle { display:inline-flex; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden; background:#fff; }
+  .toggle a { padding:7px 12px; font-size:13px; cursor:pointer; border-left:1px solid #cbd5e1; white-space:nowrap; }
+  .toggle a:first-child { border-left:0; }
+  .toggle a.on { background:var(--primary-soft); color:var(--primary); font-weight:700; }
+  .siblings { margin-bottom:16px; }
+  .siblings .chips { flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; }
+  .results { display:grid; grid-template-columns:repeat(6,1fr); gap:12px; }
+  .mobile .results { grid-template-columns:repeat(2,1fr); }
+  .acard { background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:12px; cursor:pointer; position:relative; }
+  .acard:hover { box-shadow:0 4px 12px rgba(0,0,0,.08); }
+  .photo { aspect-ratio:3/4; background:repeating-linear-gradient(45deg,#cbd5e1 0 10px,#d8dee8 10px 20px); display:flex; align-items:flex-end; justify-content:center; font-size:11px; color:#475569; padding:6px; }
+  .acard .body { padding:6px 8px 8px; }
+  .acard b { display:block; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .acard .stat { color:var(--muted); margin-top:2px; line-height:1.5; }
+  .acard .stat em { font-style:normal; color:var(--primary); font-weight:700; }
+  .rank { position:absolute; top:6px; left:6px; background:rgba(17,24,39,.75); color:#fff; font-size:11px; font-weight:700; border-radius:4px; padding:1px 6px; }
+  .pager { display:flex; gap:4px; justify-content:center; margin-top:20px; }
+  .pager a { min-width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:16px; font-size:13px; cursor:pointer; }
+  .pager a.on { background:var(--primary); color:#fff; }
+  .detail { display:grid; grid-template-columns:280px 1fr; gap:16px; align-items:start; }
+  .mobile .detail { grid-template-columns:1fr; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .facts { display:grid; grid-template-columns:auto 1fr; gap:6px 12px; font-size:14px; text-align:left; margin-top:10px; }
+  .facts dt { color:var(--muted); } .facts dd { margin:0; }
+  .facts a { color:var(--primary); cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+  .vgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .mobile .vgrid { grid-template-columns:repeat(2,1fr); }
+  .cover { aspect-ratio:16/10; border-radius:8px; background:repeating-linear-gradient(45deg,#cbd5e1 0 10px,#d8dee8 10px 20px); }
+  .btn { border:0; border-radius:6px; padding:8px 14px; font-weight:700; font-size:13px; cursor:pointer; background:var(--primary); color:#fff; white-space:nowrap; }
+  .btn.outline { background:#fff; color:var(--primary); border:1px solid var(--primary); }
+  .searchlayout { display:grid; grid-template-columns:1fr 2fr; gap:16px; align-items:start; }
+  .mobile .searchlayout { grid-template-columns:1fr; }
+  .field { height:36px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; margin-bottom:10px; }
+  .hl { outline:3px solid #f59e0b; outline-offset:2px; border-radius:6px; }
+  .note { font-size:12px; color:#1e3a8a; background:#eff6ff; border:1px dashed #93c5fd; border-radius:8px; padding:8px 10px; margin-top:16px; line-height:1.7; }
+</style>
+</head>
+<body>
+<div class="toolbar" id="toolbar"></div>
+<div class="stage"><div class="frame" id="frame"></div></div>
+<script>
+  // ===== 人數與名字取自 prod ES（2026-10-31 唯讀）；出演數、日期為假資料 =====
+  const D = {"horoscope": [["aries", "牡羊座", "3/21～4/19", 417], ["taurus", "金牛座", "4/20～5/20", 398], ["gemini", "雙子座", "5/21～6/21", 425], ["cancer", "巨蟹座", "6/22～7/22", 495], ["leo", "獅子座", "7/23～8/22", 442], ["virgo", "處女座", "8/23～9/22", 447], ["libra", "天秤座", "9/23～10/23", 489], ["scorpio", "天蠍座", "10/24～11/22", 448], ["sagittarius", "射手座", "11/23～12/21", 877], ["capricorn", "摩羯座", "12/22～1/19", 443], ["aquarius", "水瓶座", "1/20～2/18", 456], ["pisces", "雙魚座", "2/19～3/20", 511]], "decade": [[1960, 158], [1970, 852], [1980, 2133], [1990, 2265], [2000, 440]], "blood": [["A", 1393], ["O", 1050], ["B", 513], ["AB", 248]], "cup": [["A", 39], ["B", 297], ["C", 805], ["D", 886], ["E", 730], ["F", 569], ["G", 450], ["H", 218], ["I", 90], ["J", 44]], "city": [["東京都", 1640], ["神奈川県", 589], ["千葉県", 198], ["埼玉県", 148], ["北海道", 144], ["大阪府", 108], ["静岡県", 105], ["京都府", 90], ["兵庫県", 81], ["福岡県", 74], ["愛知県", 67], ["秋田県", 57], ["長野県", 51], ["群馬県", 50], ["新潟県", 43], ["宮城県", 42], ["茨城県", 33], ["青森県", 33], ["福島県", 31]], "height": [["150-under", 560], ["150-159", 4260], ["160-169", 3600], ["170-over", 454]], "hot": [["中出し", 160763, 4505], ["巨乳", 139992, 5000], ["人妻・主婦", 105687, 3883], ["熟女", 98358, 4495], ["素人", 72976, 544], ["美少女", 57073, 2585], ["フェラ", 53748, 2608], ["騎乗位", 51680, 2733], ["3P・4P", 50385, 2921], ["痴女", 43455, 2643], ["女子校生", 37838, 1934], ["潮吹き", 30330, 1545], ["スレンダー", 28076, 1255], ["美乳", 27909, 1234], ["盗撮・のぞき", 27851, 285], ["パイズリ", 27538, 1493], ["近親相姦", 27117, 1802], ["ナンパ", 25618, 111], ["淫乱・ハード系", 25485, 1264], ["企画", 25085, 1118]], "cold": [["女戦士", 1674, 117], ["ヘルス・ソープ", 1656, 64], ["母乳", 1623, 98], ["カーセックス", 1606, 13], ["アクション・格闘", 1537, 96], ["スポーツ", 1486, 26], ["女医", 1460, 37], ["異物挿入", 1389, 11], ["飲尿", 1358, 65], ["秘書", 1313, 20], ["お嬢様・令嬢", 1290, 9], ["処女", 1278, 1], ["スチュワーデス", 1259, 12], ["女上司", 1222, 55], ["ディルド", 1211, 32], ["逆ナン", 1199, 39], ["女捜査官", 1112, 55], ["日焼け", 1100, 32], ["お風呂", 1063, 21], ["孕ませ", 1005, 49]], "genre_samples": {"熟女": [["風間ゆみ", 1248], ["翔田千里", 1125], ["澤村レイコ", 840], ["川上ゆう", 805], ["北条麻妃", 655], ["村上涼子", 602], ["波多野結衣", 570], ["結城みさ", 565], ["友田真希", 541], ["小早川怜子", 506], ["円城ひとみ", 414], ["艶堂しほり", 355], ["森沢かな", 337], ["加山なつこ", 319], ["浅倉彩音", 319], ["紫彩乃", 319]], "女捜査官": [["波多野結衣", 27], ["蓮実クレア", 14], ["倉多まお", 11], ["春原未来", 11], ["森沢かな", 11], ["卯水咲流", 10], ["大槻ひびき", 10], ["八乃つばさ", 9], ["澤村レイコ", 9], ["君島みお", 8], ["小早川怜子", 8], ["桜井あゆ", 8], ["水野朝陽", 8], ["真木今日子", 8], ["弥生みづき", 7], ["浜崎真緒", 7]]}, "aries_samples": [{"birth_day": 24, "birth_month": 3, "name": "麻美ゆま", "birth_year": 1987, "height": 158, "cup": "H"}, {"birth_day": 15, "birth_month": 4, "name": "有村千佳", "birth_year": 1990, "height": 158, "cup": "C"}, {"birth_day": 15, "birth_month": 4, "name": "尾上若葉", "birth_year": 1992, "height": 152, "cup": "H"}, {"birth_day": 9, "birth_month": 4, "name": "大浦真奈美", "birth_year": 1997, "height": 159, "cup": "F"}, {"birth_day": 10, "birth_month": 4, "name": "一条綺美香", "birth_year": 1964, "height": 160, "cup": "G"}, {"birth_day": 21, "birth_month": 3, "name": "今井麻衣", "birth_year": 1997, "height": 153, "cup": "A"}, {"birth_day": 28, "birth_month": 3, "name": "天海麗", "birth_year": 1984, "height": 150, "cup": "D"}, {"birth_day": 30, "birth_month": 3, "name": "雨宮琴音", "birth_year": 1988, "height": 170}, {"birth_day": 10, "birth_month": 4, "name": "丘咲エミリ", "birth_year": 1991, "height": 165}, {"birth_day": 29, "birth_month": 3, "name": "朝田ひまり", "birth_year": 2002, "height": 147, "cup": "G"}, {"birth_day": 18, "birth_month": 4, "name": "あいださくら", "birth_year": 1991, "height": 162}, {"birth_day": 6, "birth_month": 4, "name": "浅乃ハルミ", "birth_year": 1986, "height": 158, "cup": "H"}, {"birth_day": 29, "birth_month": 3, "name": "一之瀬すず", "birth_year": 1995, "height": 148, "cup": "C"}, {"birth_day": 3, "birth_month": 4, "name": "飯山香織", "birth_year": 1987, "height": 160, "cup": "D"}, {"birth_day": 2, "birth_month": 4, "name": "内山まい", "birth_year": 1989, "height": 158, "cup": "J"}, {"birth_day": 10, "birth_month": 4, "name": "小那海あや", "birth_year": 1997, "height": 150, "cup": "E"}, {"birth_day": 31, "birth_month": 3, "name": "絢森いちか", "birth_year": 1996, "height": 155, "cup": "D"}, {"birth_day": 1, "birth_month": 4, "name": "綾波優", "birth_year": 1989, "height": 167, "cup": "C"}, {"birth_day": 11, "birth_month": 4, "name": "小川あさ美", "birth_year": 1985, "height": 167, "cup": "E"}, {"birth_day": 30, "birth_month": 3, "name": "尾崎えりか", "birth_year": 1997, "height": 160, "cup": "C"}, {"birth_day": 28, "birth_month": 3, "name": "葵みのり", "birth_year": 1980, "height": 157, "cup": "B"}, {"birth_day": 31, "birth_month": 3, "name": "明里つむぎ", "birth_year": 1998, "height": 158}, {"birth_day": 30, "birth_month": 3, "name": "泉ののか", "birth_year": 1994, "height": 158, "cup": "F"}, {"birth_day": 30, "birth_month": 3, "name": "秋元さちか", "birth_year": 1997, "height": 155, "cup": "D"}]};
+  const PREF = { "東京都":"tokyo","神奈川県":"kanagawa","千葉県":"chiba","埼玉県":"saitama","北海道":"hokkaido","大阪府":"osaka","静岡県":"shizuoka","京都府":"kyoto","兵庫県":"hyogo","福岡県":"fukuoka","愛知県":"aichi","秋田県":"akita","長野県":"nagano","群馬県":"gunma","新潟県":"niigata","宮城県":"miyagi","茨城県":"ibaraki","青森県":"aomori","福島県":"fukushima" };
+  const HEIGHT = { "150-under":"150cm 以下","150-159":"150～159cm","160-169":"160～169cm","170-over":"170cm 以上" };
+  const fmt = (n) => n.toLocaleString();
+  const t = (slug, label, count) => ({ slug, label, count });
+  // 總覽頁的分組，順序即顯示順序；類型主題的 slug 用標籤原文
+  const GROUPS = [
+    { key:"special", label:"新人與活躍", topics:[t("newcomer","新人",612), t("active","近期活躍",1873)] },
+    { key:"horoscope", label:"星座", topics:D.horoscope.map(([s,l,,c]) => t(`horoscope-${s}`, l, c)) },
+    { key:"born", label:"出生年代", topics:D.decade.map(([y,c]) => t(`born-${y}s`, `${String(y).slice(2)} 年代`, c)) },
+    { key:"blood", label:"血型", topics:D.blood.map(([b,c]) => t(`blood-${b.toLowerCase()}`, `${b} 型`, c)) },
+    { key:"cup", label:"罩杯", topics:D.cup.map(([b,c]) => t(`cup-${b.toLowerCase()}`, `${b} cup`, c)) },
+    { key:"height", label:"身高", topics:D.height.map(([k,c]) => t(`height-${k}`, HEIGHT[k], c)) },
+    { key:"pref", label:"出身地", wide:true, topics:D.city.map(([p,c]) => t(`pref-${PREF[p]}`, p, c)) },
+    { key:"hot", label:"熱門類型", wide:true, topics:D.hot.map(([g,,c]) => t(`genre-${g}`, g, c)) },
+    { key:"cold", label:"冷門類型", wide:true, topics:D.cold.filter(([,,c]) => c >= 20).map(([g,,c]) => t(`genre-${g}`, g, c)) },
+  ];
+  const find = (slug) => { for (const g of GROUPS) { const x = g.topics.find((x) => x.slug === slug); if (x) return { group:g, topic:x }; } };
+
+  const state = { screen:"index", mobile:false, slug:"horoscope-aries", sort:"", page:1 };
+  const SCREENS = [["index","主題總覽"],["attr","屬性主題（牡羊座）"],["genre","類型主題（熟女）"],["newcomer","新人"],["detail","入口：女優頁"],["search","入口：女優搜尋頁"]];
+  const SCREEN_SLUG = { attr:"horoscope-aries", genre:"genre-熟女", newcomer:"newcomer" };
+  function go(screen) { Object.assign(state, { screen, sort:"", page:1 }); if (SCREEN_SLUG[screen]) state.slug = SCREEN_SLUG[screen]; render(); }
+  function open(slug) {
+    const scr = slug.startsWith("genre-") ? "genre" : slug === "newcomer" ? "newcomer" : "attr";
+    Object.assign(state, { screen:scr, slug, sort:"", page:1 }); render(); window.scrollTo(0, 0);
+  }
+  function set(k, v) { state[k] = v; render(); }
+  const nav = () => `<div class="nav">Faryne 的實驗室 <small>大人的喜好</small></div>`;
+  const shell = (crumb, url, body) => `${nav()}<div class="crumb">${crumb}</div><div class="page"><div class="url">${url}</div>${body}</div>`;
+  const crumbTopics = (tail) => `首頁 / <a onclick="go('search')">AV 女優搜尋</a> / ${tail ? `<a onclick="go('index')">女優主題</a> / ${tail}` : "女優主題"}`;
+
+  function toolbar() {
+    return `<b>女優主題頁 mockup</b><span class="sep"></span>` +
+      SCREENS.map(([k, s]) => `<button class="${state.screen === k ? "on" : ""}" onclick="go('${k}')">${s}</button>`).join("") +
+      `<span class="sep"></span><button class="${state.mobile ? "" : "on"}" onclick="set('mobile',false)">桌機</button><button class="${state.mobile ? "on" : ""}" onclick="set('mobile',true)">手機</button>`;
+  }
+
+  // ===== 主題總覽：依類別分區，每個主題一個 chip，附人數 =====
+  function index() {
+    const groups = GROUPS.map((g) => `<div class="paper group ${g.wide ? "wide" : ""}"><h3>${g.label}</h3><div class="chips">${
+      g.topics.map((x) => `<a class="chip" onclick="open('${x.slug}')">${x.label}<small>${fmt(x.count)}</small></a>`).join("")}</div></div>`).join("");
+    return shell(crumbTopics(""), "/av/actress/topics", `
+      <div class="pagehead"><div><h2>女優主題</h2><div class="meta">更新於 2026/11/05</div></div></div>
+      <div class="groups">${groups}</div>`);
+  }
+
+  // ===== 主題頁：標題、同類別切換、排序、卡片格線、分頁 =====
+  function topicPage(kind) {
+    const { group, topic } = find(state.slug) ?? find("horoscope-aries");
+    const sorts = kind === "genre" ? [["genre",`${topic.label}出演數`],["videos","總出演數"],["recent","最近出演"],["name","名字"]]
+      : kind === "newcomer" ? [["debut","出道日"],["videos","出演數"],["name","名字"]]
+      : topic.slug === "active" ? [["recent","最近出演"],["videos","出演數"],["name","名字"]]
+      : [["videos","出演數"],["recent","最近出演"],["name","名字"]];
+    const sort = state.sort || sorts[0][0];
+    const range = group.key === "horoscope" ? D.horoscope.find(([s]) => `horoscope-${s}` === topic.slug)[2] : "";
+    const perPage = state.mobile ? 24 : 48, pages = Math.ceil(topic.count / perPage);
+    const qs = [sort !== sorts[0][0] && `sort=${sort}`, state.page > 1 && `page=${state.page}`].filter(Boolean).join("&");
+    const url = `/av/actress/topics/${topic.slug}${qs ? "?" + qs : ""}`;
+    // 同類別的其他主題：橫向捲動的 chip 列，目前這個高亮
+    const siblings = `<div class="siblings"><div class="chips">${group.topics.map((x) =>
+      `<a class="chip ${x.slug === topic.slug ? "on" : ""}" ${x.slug === topic.slug ? "" : `onclick="open('${x.slug}')"`}>${x.label}<small>${fmt(x.count)}</small></a>`).join("")}</div></div>`;
+    const toggle = `<div class="toggle">${sorts.map(([k, l]) => `<a class="${k === sort ? "on" : ""}" onclick="Object.assign(state,{sort:'${k}',page:1});render()">${l}</a>`).join("")}</div>`;
+    const cards = cardsFor(kind, topic, sort).map((c, i) => `<div class="acard" onclick="go('detail')">
+        ${sort === sorts[0][0] && kind !== "newcomer" && sort !== "name" ? `<span class="rank">${(state.page - 1) * perPage + i + 1}</span>` : ""}
+        <div class="photo">照片</div><div class="body"><b>${c.name}</b><div class="stat">${c.stat}</div></div></div>`).join("");
+    const pager = `<div class="pager">${[1, 2, 3].filter((p) => p <= pages).map((p) =>
+      `<a class="${p === state.page ? "on" : ""}" onclick="set('page',${p})">${p}</a>`).join("")}${pages > 4 ? `<a>…</a><a onclick="set('page',${pages})">${pages}</a>` : ""}</div>`;
+    return shell(crumbTopics(topic.label), url, `
+      <div class="pagehead"><div><h2>${topic.label}</h2><div class="meta">${group.label}${range ? `・${range}` : ""}・${fmt(topic.count)} 位</div></div>${toggle}</div>
+      ${siblings}
+      <div class="results">${cards}</div>${pager}
+      ${kind === "genre" ? `<div class="note">mockup 說明：排行只算「含這個標籤、且不是總集編」的影片，${fmt(5)} 部以上才列入；女優名字已去掉 DMM 名字裡的（別名）。</div>` : ""}
+      ${kind === "attr" && group.key === "horoscope" ? `<div class="note">mockup 說明：xcity 有約 300 位女優的生日是 11/30（疑似預設值），星座主題排除 11/30，出生年代照算。</div>` : ""}`);
+  }
+
+  // 假資料卡片：名字取自 prod，數字依排序方式產生
+  function cardsFor(kind, topic, sort) {
+    const n = state.mobile ? 8 : 12;
+    if (kind === "genre") {
+      const src = D.genre_samples[topic.label] ?? D.genre_samples["熟女"];
+      let list = src.slice(0, n).map(([name, g], i) => ({ name, g, all:Math.round(g * (1.6 + (i % 4) * .4)), last:`2026/${String(10 - (i % 9)).padStart(2, "0")}` }));
+      if (sort === "videos") list.sort((a, b) => b.all - a.all);
+      if (sort === "recent") list.sort((a, b) => b.last.localeCompare(a.last));
+      if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name, "ja"));
+      return list.map((x) => ({ name:x.name, stat:`<em>${topic.label} ${fmt(x.g)} 部</em><br>共 ${fmt(x.all)} 部<br>最近 ${x.last}` }));
+    }
+    const base = D.aries_samples.slice(0, n).map((a, i) => ({ name:a.name, videos:[312, 268, 241, 198, 176, 150, 133, 120, 96, 81, 64, 52][i], last:`20${["26/10","25/12","26/09","19/04","26/10","24/07","26/08","15/02","26/10","22/11","26/06","18/03"][i]}`, debut:`2026/${String(10 - i % 10).padStart(2, "0")}` }));
+    if (kind === "newcomer") {
+      const list = base.map((x, i) => ({ ...x, videos:[18, 12, 9, 15, 7, 11, 6, 8, 5, 4, 3, 2][i] }));
+      if (sort === "videos") list.sort((a, b) => b.videos - a.videos);
+      if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name, "ja"));
+      return list.map((x) => ({ name:x.name, stat:`<em>出道 ${x.debut}</em><br>出演 ${x.videos} 部` }));
+    }
+    const list = [...base];
+    if (sort === "recent") list.sort((a, b) => b.last.localeCompare(a.last));
+    if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name, "ja"));
+    return list.map((x) => ({ name:x.name, stat:`出演 ${x.videos} 部<br>最近 ${x.last}` }));
+  }
+
+  // ===== 入口：女優頁資料卡的星座、血型、出身地等改成主題連結（黃框為新增） =====
+  function detail() {
+    const a = D.aries_samples[0];
+    const link = (slug, label) => `<a class="hl" onclick="open('${slug}')">${label}</a>`;
+    return shell(`首頁 / <a onclick="go('search')">AV 女優搜尋</a> / ${a.name}`, `/av/actress/${a.name}`, `
+      <div class="detail">
+        <div class="card" style="text-align:center">
+          <div class="photo" style="max-width:200px;margin:0 auto 12px">照片</div>
+          <b style="font-size:18px">${a.name}</b>
+          <dl class="facts">
+            <dt>生日</dt><dd>${a.birth_year}/${a.birth_month}/${a.birth_day}（${link("horoscope-aries", "牡羊座")}）</dd>
+            <dt>出生年代</dt><dd>${link("born-1980s", "80 年代")}</dd>
+            <dt>身高</dt><dd>${link("height-150-159", `${a.height} cm`)}</dd>
+            <dt>罩杯</dt><dd>${link(`cup-${a.cup.toLowerCase()}`, `${a.cup} cup`)}</dd>
+            <dt>血型</dt><dd>${link("blood-a", "A 型")}</dd>
+            <dt>出身地</dt><dd>${link("pref-kanagawa", "神奈川県")}</dd>
+          </dl>
+        </div>
+        <div class="card"><b>出演影片</b><div class="vgrid" style="margin-top:12px">${"<div class='cover'></div>".repeat(6)}</div></div>
+      </div>
+      <div class="note">mockup 說明：只有 index.json 裡存在的主題才變成連結（例如人數不足 30 的罩杯、出身地維持純文字）。星座從生日推算後顯示在生日後面。</div>`);
+  }
+
+  // ===== 入口：女優搜尋頁標題列加「女優主題」按鈕（黃框為新增） =====
+  function search() {
+    return shell("首頁 / AV 女優搜尋", "/av/actress", `
+      <div class="pagehead"><h2>AV 女優搜尋</h2><div style="display:flex;gap:8px"><button class="btn outline hl" onclick="go('index')">女優主題</button><button class="btn outline">新增女優</button></div></div>
+      <div class="searchlayout">
+        <div class="paper"><b>搜尋條件</b><div style="margin-top:12px">${"<div class='field'></div>".repeat(5)}</div></div>
+        <div class="paper"><b>搜尋結果</b><div class="results" style="margin-top:12px;grid-template-columns:repeat(${state.mobile ? 2 : 4},1fr)">${"<div class='acard'><div class='photo'>照片</div><div class='body'><b>女優</b></div></div>".repeat(state.mobile ? 4 : 8)}</div></div>
+      </div>`);
+  }
+
+  function render() {
+    document.getElementById("toolbar").innerHTML = toolbar();
+    const f = document.getElementById("frame");
+    f.className = "frame" + (state.mobile ? " mobile" : "");
+    f.innerHTML = { index, attr:() => topicPage("attr"), genre:() => topicPage("genre"), newcomer:() => topicPage("newcomer"), detail, search }[state.screen]();
+  }
+  render();
+</script>
+</body>
+</html>
