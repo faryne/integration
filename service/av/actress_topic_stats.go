@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"regexp"
-	"strings"
 
 	"faryne.dev/config"
 	avEntity "faryne.dev/model/entity/opendata/av"
@@ -18,14 +16,6 @@ import (
 
 // topicCompositePageSize composite aggregation 每頁的桶數；prod 一次要 9,000 個桶會回 503，分頁才穩
 const topicCompositePageSize = 1000
-
-// topicAliasPattern DMM 名字後面的全形括號別名，例如「澤村レイコ（高坂保奈美、高坂ますみ）」；xcity 只存「澤村レイコ」
-var topicAliasPattern = regexp.MustCompile(`（[^）]*）`)
-
-// stripActressAlias 去掉別名，讓 DMM 的各種寫法對回同一位
-func stripActressAlias(name string) string {
-	return strings.TrimSpace(topicAliasPattern.ReplaceAllString(name, ""))
-}
 
 // loadActressTopicProfiles 從 MySQL 讀全部 xcity＋manual 女優（info 已套用過覆寫），算好星座，再補上出演統計
 func loadActressTopicProfiles(ctx context.Context) ([]actressTopicProfile, error) {
@@ -62,9 +52,9 @@ func actressStatsByName(ctx context.Context) (map[string]actressVideoStats, erro
 	return compositeByActress(ctx, nil, true)
 }
 
-// actressStatsByRow 單一位女優的統計，條件跟女優頁出演影片相同（actressVideoQuery）
+// actressStatsByRow 單一位女優的統計，條件跟女優頁（本名那一頁）的出演影片相同（actressVideoQuery）
 func actressStatsByRow(ctx context.Context, row avEntity.DMMActress) (actressVideoStats, error) {
-	query, err := actressVideoQuery(row)
+	query, err := actressVideoQuery(row, row.Name)
 	if err != nil {
 		return actressVideoStats{}, err
 	}
@@ -97,7 +87,7 @@ func topicDateAggs() map[string]any {
 	}
 }
 
-// compositeByActress 以 actresses.keyword 分組跑 composite aggregation（分頁），名字去掉別名後合併。
+// compositeByActress 以 actresses.keyword 分組跑 composite aggregation（分頁），名字用 actressBaseName 去掉別名後合併。
 // filter 為 nil 時看全部影片；withDates 才另外取最早／最晚配信日（類型統計只要部數）
 func compositeByActress(ctx context.Context, filter map[string]any, withDates bool) (map[string]actressVideoStats, error) {
 	out := map[string]actressVideoStats{}
@@ -131,7 +121,7 @@ func compositeByActress(ctx context.Context, filter map[string]any, withDates bo
 			return nil, err
 		}
 		for _, b := range res.Aggregations.A.Buckets {
-			name := stripActressAlias(b.Key.Name)
+			name := actressBaseName(b.Key.Name)
 			if name == "" {
 				continue
 			}

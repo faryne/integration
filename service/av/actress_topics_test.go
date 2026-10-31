@@ -83,18 +83,6 @@ func TestTopicConditionSummary(t *testing.T) {
 	}
 }
 
-func TestStripActressAlias(t *testing.T) {
-	for in, want := range map[string]string{
-		"澤村レイコ（高坂保奈美、高坂ますみ）": "澤村レイコ",
-		"川上ゆう（森野雫）":          "川上ゆう",
-		"風間ゆみ":               "風間ゆみ",
-	} {
-		if got := stripActressAlias(in); got != want {
-			t.Errorf("stripActressAlias(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
-
 func TestIsGenreTag(t *testing.T) {
 	for tag, want := range map[string]bool{
 		"熟女": true, "女子校生": true, "女捜査官": true,
