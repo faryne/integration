@@ -71,6 +71,29 @@ func VtuberChannelStats(ctx fiber.Ctx) error {
 	return output.Success(stats)
 }
 
+// VtuberChannelLiveHistory lists a channel's ended lives for the live statistics.
+// @Summary List VTuber channel ended lives
+// @Tags OpenData VTuber
+// @Produce json
+// @Param handle path string true "YouTube @handle"
+// @Param days query int false "Days to look back, default 90, at most 365"
+// @Success 200 {object} output.CommonOutput
+// @Failure 400 {object} output.CommonOutput
+// @Failure 404 {object} output.CommonOutput
+// @Router /opendata/vtubers/channels/{handle}/lives/history [get]
+func VtuberChannelLiveHistory(ctx fiber.Ctx) error {
+	handle := ctx.Params("handle")
+	days, _ := strconv.Atoi(ctx.Query("days"))
+	lives, err := vtuberService.ListChannelLiveHistory(handle, days)
+	if err != nil {
+		return requestError(err)
+	}
+	if lives == nil {
+		return output.NotFound(fmt.Errorf("channel %s not found", handle))
+	}
+	return output.Success(lives)
+}
+
 // VtuberChannelVideos lists a channel's uploads, including live archives.
 // @Summary List VTuber channel videos
 // @Tags OpenData VTuber

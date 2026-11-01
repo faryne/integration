@@ -29,6 +29,18 @@ type LiveItem struct {
 	UpdatedAt           time.Time  `json:"updated_at"`
 }
 
+// LiveHistoryItem 藝人頁直播統計用：已結束的直播；依週分組、熱力圖由前端算
+type LiveHistoryItem struct {
+	VideoID       string    `json:"video_id"`
+	Title         string    `json:"title"`
+	ThumbnailURL  string    `json:"thumbnail_url"`
+	ActualStartAt time.Time `json:"actual_start_at"`
+	ActualEndAt   time.Time `json:"actual_end_at"`
+	PeakViewers   *uint     `json:"peak_viewers"`
+	ViewCount     *uint64   `json:"view_count"`
+	LikeCount     *uint64   `json:"like_count"`
+}
+
 // LiveQueryResult 附上實際套用的區間，讓呼叫端（含 MCP）知道查了哪段時間
 type LiveQueryResult struct {
 	From  time.Time  `json:"from"`

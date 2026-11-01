@@ -3,6 +3,7 @@ package vtuber
 import (
 	"time"
 
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	vtuberEntity "faryne.dev/model/entity/opendata/vtuber"
@@ -26,18 +27,42 @@ func ListTrackingVideoIDs() ([]string, error) {
 	return out, err
 }
 
-// UpsertLives 以 video_id 為準批次寫入，衝突時整列更新
+// UpsertLives 以 video_id 為準批次寫入，衝突時整列更新；
+// 峰值取新舊較大的（結束後這輪沒同接也不會被清掉），觀看與按讚這輪沒值就保留舊值
 func UpsertLives(lives []vtuberEntity.Live) error {
 	if len(lives) == 0 {
 		return nil
 	}
+	updates := append(clause.AssignmentColumns([]string{
+		"channel_id", "title", "status", "scheduled_start_at", "actual_start_at", "actual_end_at",
+		"concurrent_viewers", "thumbnail_url", "checked_at", "updated_at",
+	}), clause.Assignments(map[string]any{
+		"peak_viewers": gorm.Expr("NULLIF(GREATEST(COALESCE(peak_viewers, 0), COALESCE(VALUES(peak_viewers), 0)), 0)"),
+		"view_count":   gorm.Expr("COALESCE(VALUES(view_count), view_count)"),
+		"like_count":   gorm.Expr("COALESCE(VALUES(like_count), like_count)"),
+	})...)
 	return client.GetDB(enum.DBWalolita).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "video_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{
-			"channel_id", "title", "status", "scheduled_start_at", "actual_start_at", "actual_end_at",
-			"concurrent_viewers", "thumbnail_url", "checked_at", "updated_at",
-		}),
+		Columns:   []clause.Column{{Name: "video_id"}},
+		DoUpdates: updates,
 	}).Omit("id").Create(&lives).Error
+}
+
+// ListEndedLives 某頻道在 since 之後開播、已結束的直播，依開播時間由早到晚
+func ListEndedLives(channelID string, since time.Time) ([]vtuberEntity.Live, error) {
+	var out []vtuberEntity.Live
+	err := client.GetDB(enum.DBWalolita).
+		Where("channel_id = ? AND status = ? AND actual_start_at >= ? AND actual_end_at IS NOT NULL", channelID, vtuberEntity.LiveStatusEnded, since).
+		Order("actual_start_at, id").Find(&out).Error
+	return out, err
+}
+
+// ListEndedVideoIDsSince 在 since 之後結束的直播，每日統計要更新它們的觀看與按讚數
+func ListEndedVideoIDsSince(since time.Time) ([]string, error) {
+	var out []string
+	err := client.GetDB(enum.DBWalolita).Model(&vtuberEntity.Live{}).
+		Where("status = ? AND actual_end_at >= ?", vtuberEntity.LiveStatusEnded, since).
+		Pluck("video_id", &out).Error
+	return out, err
 }
 
 // MarkLivesCancelled YouTube 查不到的直播（轉私人或刪除）標成取消

@@ -63,6 +63,7 @@ func OpenData(app *fiber.App) {
 	gVtuber.Get("/channels/search", opendata.VtuberChannelSearch)
 	gVtuber.Get("/channels/:handle", opendata.VtuberChannel)
 	gVtuber.Get("/channels/:handle/stats", opendata.VtuberChannelStats)
+	gVtuber.Get("/channels/:handle/lives/history", opendata.VtuberChannelLiveHistory)
 	gVtuber.Get("/channels/:handle/videos", opendata.VtuberChannelVideos)
 	gVtuber.Get("/channels/:handle/videos/search", opendata.VtuberChannelVideoSearch)
 	gVtuber.Get("/lives", opendata.VtuberLives)

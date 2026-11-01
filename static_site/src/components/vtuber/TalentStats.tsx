@@ -1,7 +1,6 @@
 import {
   Box,
   LinearProgress,
-  Paper,
   Stack,
   ToggleButton,
   ToggleButtonGroup,
@@ -9,8 +8,20 @@ import {
 } from "@mui/material";
 import { useEffect, useState } from "react";
 
-import { useVtuberChannelStats } from "@/apis/opendata/vtubers.ts";
+import {
+  useVtuberChannelLiveHistory,
+  useVtuberChannelStats,
+} from "@/apis/opendata/vtubers.ts";
 import { formatCount, formatSignedCount } from "@/components/vtuber/format.ts";
+import { LiveActivityCard } from "@/components/vtuber/LiveActivityCard.tsx";
+import { LiveHeatmap } from "@/components/vtuber/LiveHeatmap.tsx";
+import { trackedLives } from "@/components/vtuber/liveHistory.ts";
+import { LivePerformanceCard } from "@/components/vtuber/LivePerformanceCard.tsx";
+import {
+  StatCard,
+  StatEmpty,
+  StatToggle,
+} from "@/components/vtuber/StatCard.tsx";
 import { StatChart, type StatPoint } from "@/components/vtuber/StatChart.tsx";
 import type { VtuberStat } from "@/types/vtubers.ts";
 
@@ -37,7 +48,7 @@ interface TalentStatsProps {
   onError: (error: unknown) => void;
 }
 
-/** 藝人頁「統計」分頁：訂閱者、觀看、影片的每日變化 */
+/** 藝人頁「統計」分頁：上半是直播統計（場次時數、時段、每場表現），下半是訂閱者、觀看、影片的每日變化 */
 export function TalentStats({ handle, onError }: TalentStatsProps) {
   const [days, setDays] = useState(90);
   const [modes, setModes] = useState(
@@ -48,11 +59,16 @@ export function TalentStats({ handle, onError }: TalentStatsProps) {
       >,
   );
   const query = useVtuberChannelStats(handle, days);
+  const history = useVtuberChannelLiveHistory(handle, days);
   const stats = query.data ?? [];
+  const lives = history.data && trackedLives(history.data);
 
   useEffect(() => {
     if (query.error) onError(query.error);
   }, [query.error, onError]);
+  useEffect(() => {
+    if (history.error) onError(history.error);
+  }, [history.error, onError]);
 
   return (
     <Box>
@@ -70,9 +86,19 @@ export function TalentStats({ handle, onError }: TalentStatsProps) {
           ))}
         </ToggleButtonGroup>
       </Stack>
-      {query.isFetching && <LinearProgress sx={{ mb: 1 }} />}
+      {(query.isFetching || history.isFetching) && (
+        <LinearProgress sx={{ mb: 1 }} />
+      )}
       {query.data && (
         <Stack spacing={1.75}>
+          {/* 直播統計 API 失敗時只少這三張，下面的頻道統計照常顯示 */}
+          {lives && (
+            <>
+              <LiveActivityCard lives={lives} days={days} />
+              <LiveHeatmap lives={lives} />
+              <LivePerformanceCard lives={lives} />
+            </>
+          )}
           {METRICS.map((metric) => (
             <MetricCard
               key={metric.key}
@@ -123,64 +149,40 @@ function MetricCard({
       : stats.map((s) => ({ date: toDate(s.record_date), value: s[statKey] }));
 
   return (
-    <Paper variant={"outlined"} sx={{ px: 2, pt: 1.75, pb: 1 }}>
-      <Stack
-        direction={"row"}
-        flexWrap={"wrap"}
-        gap={1}
-        alignItems={"flex-end"}
-        justifyContent={"space-between"}
-      >
-        <Box>
-          <Typography variant={"body2"} color={"text.secondary"}>
-            {label}
-          </Typography>
-          <Stack direction={"row"} spacing={1} alignItems={"baseline"}>
-            <Typography variant={"h5"} fontWeight={800}>
-              {statKey === "video_count"
-                ? last.toLocaleString()
-                : formatCount(last)}
-            </Typography>
-            {delta != null && (
-              <Typography
-                variant={"body2"}
-                fontWeight={600}
-                sx={{ color: delta >= 0 ? "success.main" : "warning.main" }}
-              >
-                {formatSignedCount(delta)}
-              </Typography>
-            )}
-          </Stack>
-        </Box>
-        {enough && (
-          <ToggleButtonGroup
-            size={"small"}
-            exclusive
-            value={mode}
-            onChange={(_, value: StatMode | null) =>
-              value && onModeChange(value)
-            }
+    <StatCard
+      label={label}
+      value={
+        statKey === "video_count" ? last.toLocaleString() : formatCount(last)
+      }
+      delta={
+        delta != null && (
+          <Typography
+            variant={"body2"}
+            fontWeight={600}
+            sx={{ color: delta >= 0 ? "success.main" : "warning.main" }}
           >
-            <ToggleButton value={"total"} sx={{ px: 1.25 }}>
-              累計
-            </ToggleButton>
-            <ToggleButton value={"daily"} sx={{ px: 1.25 }}>
-              每日增減
-            </ToggleButton>
-          </ToggleButtonGroup>
-        )}
-      </Stack>
+            {formatSignedCount(delta)}
+          </Typography>
+        )
+      }
+      action={
+        enough && (
+          <StatToggle
+            value={mode}
+            options={[
+              ["total", "累計"],
+              ["daily", "每日增減"],
+            ]}
+            onChange={onModeChange}
+          />
+        )
+      }
+    >
       {mode == null ? null : enough ? (
         <StatChart label={label} points={points} mode={mode} />
       ) : (
-        <Typography
-          color={"text.secondary"}
-          textAlign={"center"}
-          sx={{ py: 3 }}
-        >
-          資料累積中（目前 {stats.length} 天）
-        </Typography>
+        <StatEmpty>資料累積中（目前 {stats.length} 天）</StatEmpty>
       )}
-    </Paper>
+    </StatCard>
   );
 }

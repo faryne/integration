@@ -34,16 +34,33 @@ func TestLiveFromVideo(t *testing.T) {
 	require.Equal(t, vtuberEntity.LiveStatusUpcoming, live.Status)
 	require.Equal(t, "UCxxx", live.ChannelID)
 
-	live, ok = liveFromVideo(video(&youtube.VideoLiveStreamingDetails{ScheduledStartTime: "2026-10-23T11:00:00Z", ActualStartTime: "2026-10-23T11:02:00Z", ConcurrentViewers: 1234}), now)
+	// 直播中：同接也當成這輪的峰值，觀看與按讚照記
+	v := video(&youtube.VideoLiveStreamingDetails{ScheduledStartTime: "2026-10-23T11:00:00Z", ActualStartTime: "2026-10-23T11:02:00Z", ConcurrentViewers: 1234})
+	v.Statistics = &youtube.VideoStatistics{ViewCount: 5678, LikeCount: 900}
+	live, ok = liveFromVideo(v, now)
 	require.True(t, ok)
 	require.Equal(t, vtuberEntity.LiveStatusLive, live.Status)
 	require.EqualValues(t, 1234, *live.ConcurrentViewers)
+	require.EqualValues(t, 1234, *live.PeakViewers)
+	require.EqualValues(t, 5678, *live.ViewCount)
+	require.EqualValues(t, 900, *live.LikeCount)
 
-	// 已結束：不記同接
-	live, ok = liveFromVideo(video(&youtube.VideoLiveStreamingDetails{ActualStartTime: "2026-10-23T09:00:00Z", ActualEndTime: "2026-10-23T10:30:00Z", ConcurrentViewers: 10}), now)
+	// 已結束：不記同接與峰值（峰值留 DB 舊值）；讚數 0（關閉公開讚數）當成沒有
+	v = video(&youtube.VideoLiveStreamingDetails{ActualStartTime: "2026-10-23T09:00:00Z", ActualEndTime: "2026-10-23T10:30:00Z", ConcurrentViewers: 10})
+	v.Statistics = &youtube.VideoStatistics{ViewCount: 30000}
+	live, ok = liveFromVideo(v, now)
 	require.True(t, ok)
 	require.Equal(t, vtuberEntity.LiveStatusEnded, live.Status)
 	require.Nil(t, live.ConcurrentViewers)
+	require.Nil(t, live.PeakViewers)
+	require.EqualValues(t, 30000, *live.ViewCount)
+	require.Nil(t, live.LikeCount)
+
+	// 還沒開播：不記觀看
+	v = video(&youtube.VideoLiveStreamingDetails{ScheduledStartTime: "2026-10-23T13:00:00Z"})
+	v.Statistics = &youtube.VideoStatistics{ViewCount: 3}
+	live, _ = liveFromVideo(v, now)
+	require.Nil(t, live.ViewCount)
 
 	// フリーチャット：預定在 60 天以後
 	_, ok = liveFromVideo(video(&youtube.VideoLiveStreamingDetails{ScheduledStartTime: "2030-01-01T00:00:00Z"}), now)
