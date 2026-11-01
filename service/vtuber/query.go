@@ -164,7 +164,7 @@ func GetChannelDetail(handle string) (*vtuberEntity.ChannelDetail, error) {
 		BannerURL:      ch.BannerURL, ChannelPublishedAt: utc(ch.ChannelPublishedAt),
 		YouTubeURL:      "https://www.youtube.com/channel/" + ch.ChannelID,
 		SubscriberCount: ch.SubscriberCount, ViewCount: ch.ViewCount, VideoCount: ch.VideoCount,
-		SubscriberDelta7d: subscriberDelta(stats, ch.SubscriberCount, 7), SubscriberDelta90d: subscriberDelta(stats, ch.SubscriberCount, 90),
+		SubscriberDelta90d:   subscriberDelta(stats, ch.SubscriberCount, 90),
 		Calendar:             calendarLinks(ch.Calendar()),
 		VideoSearchAvailable: VideoSearchAvailable(),
 	}

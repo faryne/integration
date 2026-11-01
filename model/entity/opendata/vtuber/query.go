@@ -87,8 +87,7 @@ type ChannelDetail struct {
 	SubscriberCount    uint64         `json:"subscriber_count"`
 	ViewCount          uint64         `json:"view_count"`
 	VideoCount         uint64         `json:"video_count"`
-	SubscriberDelta7d  *int64         `json:"subscriber_delta_7d"` // 統計資料不足時為 null
-	SubscriberDelta90d *int64         `json:"subscriber_delta_90d"`
+	SubscriberDelta90d *int64         `json:"subscriber_delta_90d"` // 統計資料不足時為 null；訂閱數只有三位有效數字，短期增減沒意義，只給 90 日
 	Calendar           *CalendarLinks `json:"calendar"`
 	// VideoSearchAvailable 影片搜尋今天還能不能用（YouTube 搜尋額度用完時為 false），藝人頁據此停用搜尋框
 	VideoSearchAvailable bool `json:"video_search_available"`

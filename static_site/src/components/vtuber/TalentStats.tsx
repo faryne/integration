@@ -17,10 +17,11 @@ import type { VtuberStat } from "@/types/vtubers.ts";
 type StatKey = "subscriber_count" | "view_count" | "video_count";
 type StatMode = "total" | "daily";
 
-// 預設顯示方式依數字特性不同：
-// 訂閱者只有三位有效數字，大頻道每日增減幾乎都是 0，看累計；觀看的累計幾乎是斜直線，看每日增減；影片看累計
-const METRICS: { key: StatKey; label: string; mode: StatMode }[] = [
-  { key: "subscriber_count", label: "訂閱者", mode: "total" },
+// 預設顯示方式依數字特性不同（mode 為 null 表示只顯示目前數字、不畫圖）：
+// 訂閱者 API 只給三位有效數字（2.04M 的頻道每 1 萬才跳一格），累計是平線、每日增減幾乎都是 0，畫圖會像沒活動；
+// 觀看的累計幾乎是斜直線，看每日增減；影片看累計
+const METRICS: { key: StatKey; label: string; mode: StatMode | null }[] = [
+  { key: "subscriber_count", label: "訂閱者", mode: null },
   { key: "view_count", label: "觀看", mode: "daily" },
   { key: "video_count", label: "影片", mode: "total" },
 ];
@@ -39,11 +40,11 @@ interface TalentStatsProps {
 /** 藝人頁「統計」分頁：訂閱者、觀看、影片的每日變化 */
 export function TalentStats({ handle, onError }: TalentStatsProps) {
   const [days, setDays] = useState(90);
-  const [modes, setModes] = useState<Record<StatKey, StatMode>>(
+  const [modes, setModes] = useState(
     () =>
       Object.fromEntries(METRICS.map((m) => [m.key, m.mode])) as Record<
         StatKey,
-        StatMode
+        StatMode | null
       >,
   );
   const query = useVtuberChannelStats(handle, days);
@@ -100,10 +101,11 @@ function MetricCard({
   label: string;
   stats: VtuberStat[];
   statKey: StatKey;
-  mode: StatMode;
+  mode: StatMode | null;
   onModeChange: (mode: StatMode) => void;
 }) {
-  const enough = stats.length > 1;
+  // 不畫圖的指標也不顯示區間增減，避免出現沒意義的 +0
+  const enough = mode != null && stats.length > 1;
   const last = stats.at(-1)?.[statKey] ?? 0;
   const delta = enough ? last - stats[0][statKey] : null;
   // record_date 是台北日期字串，用本地日期建 Date，圖上的日期才不會差一天
@@ -168,7 +170,7 @@ function MetricCard({
           </ToggleButtonGroup>
         )}
       </Stack>
-      {enough ? (
+      {mode == null ? null : enough ? (
         <StatChart label={label} points={points} mode={mode} />
       ) : (
         <Typography

@@ -49,7 +49,6 @@ export interface VtuberChannelDetail extends VtuberChannelSummary {
   subscriber_count: number;
   view_count: number;
   video_count: number;
-  subscriber_delta_7d: number | null;
   subscriber_delta_90d: number | null;
   calendar: VtuberCalendarLinks | null;
   video_search_available: boolean; // YouTube 搜尋額度用完時為 false，影片搜尋框停用
