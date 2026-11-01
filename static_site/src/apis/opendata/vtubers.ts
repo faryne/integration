@@ -10,6 +10,7 @@ import type {
   VtuberChannelDetail,
   VtuberChannelList,
   VtuberChannelSearchItem,
+  VtuberLiveHistoryItem,
   VtuberLiveList,
   VtuberStat,
   VtuberVideoDetail,
@@ -66,6 +67,22 @@ export function useVtuberChannelStats(handle: string, days: number) {
 }
 
 // 「所有影片」：依分類讀上傳清單，page_token 分頁，捲到底載入下一頁
+// 統計分頁的直播統計：期間內已結束的直播，分組與熱力圖在前端算
+export function useVtuberChannelLiveHistory(handle: string, days: number) {
+  return useQuery({
+    queryKey: ["vtubers", "live-history", handle, days],
+    enabled: Boolean(handle),
+    placeholderData: keepPreviousData,
+    queryFn: async () =>
+      (
+        await axios.get<CommonResponse<VtuberLiveHistoryItem[]>>(
+          `${base}/channels/${encodeURIComponent(handle)}/lives/history`,
+          { params: { days } },
+        )
+      ).data.data,
+  });
+}
+
 export function useVtuberChannelVideos(handle: string, type: VtuberVideoType) {
   return useInfiniteQuery({
     queryKey: ["vtubers", "videos", handle, type],

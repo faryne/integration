@@ -21,6 +21,9 @@ type Live struct {
 	ActualStartAt     *time.Time `gorm:"column:actual_start_at"`
 	ActualEndAt       *time.Time `gorm:"column:actual_end_at"`
 	ConcurrentViewers *uint      `gorm:"column:concurrent_viewers"`
+	PeakViewers       *uint      `gorm:"column:peak_viewers"` // 偵測時看過的最高同接，結束後保留
+	ViewCount         *uint64    `gorm:"column:view_count"`
+	LikeCount         *uint64    `gorm:"column:like_count"` // 頻道關閉公開讚數時為 nil
 	ThumbnailURL      string     `gorm:"column:thumbnail_url"`
 	CheckedAt         time.Time  `gorm:"column:checked_at"`
 	CreatedAt         time.Time  `gorm:"column:created_at"`

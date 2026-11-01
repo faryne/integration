@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>藝人頁直播統計 Mockup</title>
+<!-- 圖表用真的 Google Charts 畫，假資料由下方 script 產生 -->
+<script src="https://www.gstatic.com/charts/loader.js"></script>
+<style>
+/* 色票沿用 vtuber-schedule-mockup */
+:root, [data-theme="light"] {
+  --bg:#f3f5f5; --surface:#fff; --surface-2:#eef2f2; --border:#dde4e4; --text:#13201f; --text-2:#5b6b6c;
+  --accent:#0f766e; --accent-soft:#e0f3f1; --up:#16a34a; --down:#c2410c; --live:#d93a3a;
+}
+[data-theme="dark"] {
+  --bg:#0b1014; --surface:#121a20; --surface-2:#18232a; --border:#23313a; --text:#e3f1f2; --text-2:#93a7ab;
+  --accent:#5eead4; --accent-soft:#123432; --up:#4ade80; --down:#fb923c; --live:#ff6b6b;
+}
+* { box-sizing:border-box; }
+body { margin:0; font-family:Roboto,"Noto Sans TC",system-ui,sans-serif; background:#cfd5d8; color:#17191c; }
+button { font:inherit; cursor:pointer; color:inherit; }
+
+/* ===== Mockup 控制列（非產品 UI） ===== */
+.bar { position:sticky; top:0; z-index:50; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; justify-content:space-between; padding:10px 16px; background:#1f2430; color:#fff; font-size:13px; }
+.bar span { color:#aab2c0; margin-left:8px; }
+.ctl { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.chip { border:1px solid #485063; background:transparent; color:#dfe3ea; padding:4px 10px; border-radius:999px; font-size:12px; }
+.chip.active { background:#fff; color:#1f2430; border-color:#fff; }
+.sep { width:1px; height:18px; background:#485063; margin:0 4px; }
+.notes { margin:12px auto 0; max-width:1280px; padding:12px 16px; border-radius:8px; background:#fffbe6; border:1px solid #f1d98a; font-size:13px; line-height:1.7; color:#4a3b00; }
+.notes[hidden] { display:none; }
+.notes ol { margin:4px 0 0; padding-left:20px; }
+.stage { padding:16px; display:flex; justify-content:center; }
+.device { width:100%; max-width:1280px; border-radius:10px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.18); background:var(--bg); color:var(--text); }
+.device.mobile { max-width:390px; }
+
+/* ===== 頁面（簡化：只畫藝人頁的主體） ===== */
+.crumbs { padding:9px 24px; font-size:13px; color:var(--text-2); background:var(--surface); border-bottom:1px solid var(--border); }
+.crumbs b { color:var(--text); }
+.container { padding:20px 24px 32px; }
+.device.mobile .container, .device.mobile .crumbs { padding-left:16px; padding-right:16px; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+.layout { display:grid; grid-template-columns:300px 1fr; gap:20px; align-items:start; }
+.device.mobile .layout { grid-template-columns:1fr; }
+
+/* 左側個人檔案：拿掉 90 天小曲線，數字與增減保留 */
+.profile { overflow:hidden; }
+.banner { height:80px; background:linear-gradient(135deg,#be123c,#7c3aed); }
+.pbody { padding:0 16px 16px; margin-top:-40px; }
+.avatar { width:80px; height:80px; border-radius:50%; border:4px solid var(--surface); background:linear-gradient(135deg,#fb7185,#e11d48); }
+.pname { font-size:18px; font-weight:800; margin-top:6px; }
+.phandle { font-size:13px; color:var(--text-2); }
+.kv { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:12px 0 8px; }
+.kv div { padding:8px 10px; border-radius:8px; background:var(--surface-2); }
+.kv small { display:block; font-size:11.5px; color:var(--text-2); }
+.kv b { font-size:15px; }
+.growth { display:flex; gap:14px; font-size:12.5px; color:var(--text-2); }
+
+/* 分頁 */
+.tabs { display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:14px; overflow-x:auto; }
+.tab { border:0; background:none; padding:9px 14px; font-size:14px; color:var(--text-2); border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; }
+.tab.on { color:var(--accent); border-color:var(--accent); font-weight:600; }
+.tab.new::after { content:"NEW"; margin-left:6px; font-size:10px; font-weight:800; color:#fff; background:var(--down); border-radius:3px; padding:0 4px; }
+
+/* 統計分頁 */
+.range { display:flex; justify-content:flex-end; margin-bottom:12px; }
+.seg { display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--surface); }
+.seg button { border:0; background:none; padding:6px 12px; font-size:13px; color:var(--text-2); }
+.seg button + button { border-left:1px solid var(--border); }
+.seg button.on { background:var(--accent-soft); color:var(--accent); font-weight:600; }
+.metric { padding:14px 16px 8px; margin-bottom:14px; }
+.mhead { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:flex-end; justify-content:space-between; }
+.mtitle small { display:block; font-size:12.5px; color:var(--text-2); }
+.mtitle b { font-size:22px; }
+.mtitle .delta { font-size:13px; font-weight:600; margin-left:8px; }
+.up { color:var(--up); } .down { color:var(--down); }
+.chart { height:220px; margin-top:6px; }
+.device.mobile .chart { height:190px; }
+.empty { padding:28px 16px; text-align:center; color:var(--text-2); font-size:14px; }
+/* grid 子元素預設 min-width:auto，圖表會把手機版撐破 */
+.layout > section { min-width:0; }
+.sub { font-size:12.5px; color:var(--text-2); margin-top:2px; }
+/* 熱力圖：7 列 × 24 欄，左邊星期、上面小時 */
+.heat { display:grid; grid-template-columns:22px repeat(24, minmax(0,1fr)); gap:2px; margin:10px 0 6px; font-size:10.5px; color:var(--text-2); }
+.heat .h { text-align:center; }
+.heat .d { display:flex; align-items:center; }
+.heat .c { aspect-ratio:1; border-radius:2px; background:var(--accent); }
+.heat .c.z { background:var(--surface-2); }
+.legend { display:flex; justify-content:flex-end; gap:4px; align-items:center; font-size:11px; color:var(--text-2); padding-bottom:6px; }
+.legend i { width:12px; height:12px; border-radius:2px; background:var(--accent); display:inline-block; }
+.section-title { font-size:13px; color:var(--text-2); margin:18px 0 8px; font-weight:600; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div><strong>藝人頁「統計」：直播統計 Mockup</strong><span>假資料・圖表由 Google Charts 繪製</span></div>
+  <div class="ctl">
+    <button class="chip active" data-view="desktop">Desktop</button>
+    <button class="chip" data-view="mobile">Mobile 390</button>
+    <span class="sep"></span>
+    <button class="chip active" data-theme-option="light">淺色</button>
+    <button class="chip" data-theme-option="dark">深色</button>
+    <span class="sep"></span>
+    <button class="chip active" data-data="full">資料：一年</button>
+    <button class="chip" data-data="fresh">資料：剛上線（峰值／觀看還沒有）</button>
+    <button class="chip" data-data="none">期間內沒直播</button>
+    <span class="sep"></span>
+    <label style="display:flex;gap:4px;align-items:center;color:#dfe3ea"><input type="checkbox" id="notesToggle" checked /> 說明</label>
+  </div>
+</header>
+
+<aside class="notes" id="notes">
+  <strong>看點</strong>
+  <ol>
+    <li><b>順序</b>：直播（場次／時數）→ 直播時段 → 每場直播（同接峰值／觀看／按讚）→ 訂閱者（只有數字）→ 觀看 → 影片。期間切換對全部卡片生效。</li>
+    <li><b>直播</b>：每週一根長條（週一起算、台北時間），可切場次／時數；上方是期間合計與平均單場長度。</li>
+    <li><b>直播時段</b>：星期 × 小時，顏色越深＝這個時段累計播越久；滑鼠移到格子上看時數與場次。</li>
+    <li><b>每場直播</b>：一場一根長條，滑上去看日期、標題、數值。觀看數是「結束後一週」的數字（7 天後就不再更新），場次之間才比得了。</li>
+    <li><b>剛上線</b>：場次、時數、時段用既有資料馬上就有；峰值和觀看數從上線後才開始累積，沒有資料時顯示「資料累積中」。</li>
+  </ol>
+</aside>
+
+<main class="stage">
+  <div class="device" id="device">
+    <div class="crumbs">首頁 / 資料 / <b>VTuber 直播行事曆</b></div>
+    <div class="container">
+      <div class="layout">
+        <aside class="card profile">
+          <div class="banner"></div>
+          <div class="pbody">
+            <div class="avatar"></div>
+            <div class="pname">Subaru Ch. 大空スバル</div>
+            <div class="phandle">@oozorasubaru・2期生</div>
+            <div class="kv"><div><small>訂閱</small><b>2.04M</b></div><div><small>觀看</small><b>7.34 億</b></div><div><small>影片</small><b>2,242</b></div></div>
+            <div class="growth"><span>90 日 <span class="delta up">+10.0K</span></span></div>
+          </div>
+        </aside>
+        <section>
+          <div class="tabs">
+            <button class="tab">即將直播</button><button class="tab">所有影片</button><button class="tab">行事曆</button><button class="tab on">統計</button>
+          </div>
+          <div id="stats"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ===== 假資料：一年份的直播 =====
+const today = new Date("2026-11-01T12:00:00+08:00");
+const TITLES = ["【雑談】おはスバ！", "【APEX】ランクいくっす！", "【マイクラ】建築するしゅば", "【歌枠】歌うっす！", "【トルネコ】初見プレイ", "【スト6】練習するっす", "【ASMR】寝かしつけ", "【コラボ】ホロ鯖運動会"];
+const LIVES = [];
+let seed = 7;
+const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+for (let i = 365; i >= 1; i--) {
+  const day = new Date(today); day.setDate(day.getDate() - i);
+  const dow = day.getDay();
+  // 週三公休；平日晚上為主，週末偶爾早上加一場「おはスバ」
+  if (dow === 3 || rand() < 0.22) continue;
+  const slots = [[20 + Math.floor(rand() * 3), 90 + rand() * 150]];
+  if ((dow === 0 || dow === 6) && rand() < 0.5) slots.push([8, 35 + rand() * 25]);
+  if (rand() < 0.04) slots[0][1] = 600 + rand() * 600; // 耐久
+  slots.forEach(([h, mins]) => {
+    const start = new Date(day); start.setHours(h, Math.floor(rand() * 60), 0, 0);
+    const end = new Date(start.getTime() + mins * 60000);
+    const morning = h < 12;
+    const peak = Math.round((morning ? 9000 : 22000) * (0.6 + rand()) * (mins > 500 ? 1.8 : 1));
+    LIVES.push({
+      title: morning ? TITLES[0] : TITLES[1 + Math.floor(rand() * (TITLES.length - 1))],
+      start, end, peak,
+      views: Math.round(peak * (5 + rand() * 4)),
+      likes: Math.round(peak * (0.6 + rand() * 0.3)),
+    });
+  });
+}
+
+const state = { range: 90, data: "full", activity: "count", perf: "peak" };
+const $ = (s) => document.querySelector(s);
+const fmt = (v) => { const a = Math.abs(v); return a >= 1e8 ? (v / 1e8).toFixed(2) + " 億" : a >= 1e6 ? (v / 1e6).toFixed(2) + "M" : a >= 1e4 ? (v / 1e3).toFixed(1) + "K" : Math.round(v).toLocaleString(); };
+const hm = (mins) => `${Math.floor(mins / 60)} 小時 ${Math.round(mins % 60)} 分`;
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
+const seg = (key, value, opts) => `<div class="seg">${opts.map(([k, l]) => `<button data-${key}="${k}" class="${value === k ? "on" : ""}">${l}</button>`).join("")}</div>`;
+
+function lives() {
+  if (state.data === "none") return [];
+  const from = new Date(today); from.setDate(from.getDate() - state.range);
+  const list = LIVES.filter((l) => l.start >= from);
+  // 剛上線：峰值和觀看數只有最近 3 場有
+  return state.data === "fresh" ? list.map((l, i) => (i < list.length - 3 ? { ...l, peak: null, views: null, likes: null } : l)) : list;
+}
+
+// 週一起算的週
+function weekStart(d) { const w = new Date(d); w.setHours(0, 0, 0, 0); w.setDate(w.getDate() - ((w.getDay() + 6) % 7)); return w; }
+function weekly(list) {
+  const map = new Map();
+  const first = weekStart(new Date(today.getTime() - state.range * 864e5));
+  for (let w = first; w <= today; w = new Date(w.getTime() + 7 * 864e5)) map.set(+w, { week: w, count: 0, mins: 0 });
+  list.forEach((l) => { const b = map.get(+weekStart(l.start)); if (b) { b.count++; b.mins += (l.end - l.start) / 6e4; } });
+  return [...map.values()];
+}
+// 每個小時格累計在播的分鐘數（耐久直播會跨好幾格）
+function heatmap(list) {
+  const grid = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => ({ mins: 0, lives: new Set() })));
+  list.forEach((l, idx) => {
+    for (let t = new Date(l.start); t < l.end; ) {
+      const next = new Date(t); next.setMinutes(0, 0, 0); next.setHours(next.getHours() + 1);
+      const cell = grid[(t.getDay() + 6) % 7][t.getHours()];
+      cell.mins += (Math.min(next, l.end) - t) / 6e4; cell.lives.add(idx);
+      t = next;
+    }
+  });
+  return grid;
+}
+
+function render() {
+  const list = lives();
+  const ranges = [[30, "30 天"], [90, "90 天"], [180, "180 天"], [365, "1 年"]];
+  const total = list.reduce((s, l) => s + (l.end - l.start) / 6e4, 0);
+  const empty = `<div class="empty">沒有直播</div>`;
+  const perfKey = { peak: "peak", views: "views", likes: "likes" }[state.perf];
+  const perfVals = list.map((l) => l[perfKey]).filter((v) => v != null);
+  const perfLabel = { peak: "同接峰值", views: "觀看", likes: "按讚" }[state.perf];
+  const grid = heatmap(list);
+  const max = Math.max(1, ...grid.flat().map((c) => c.mins));
+
+  $("#stats").innerHTML = `
+    <div class="range">${seg("range", state.range, ranges)}</div>
+
+    <div class="card metric">
+      <div class="mhead">
+        <div class="mtitle"><small>直播</small><b>${list.length} 場・${Math.round(total / 60)} 小時</b>
+          ${list.length ? `<div class="sub">平均每場 ${hm(total / list.length)}</div>` : ""}</div>
+        ${list.length ? seg("activity", state.activity, [["count", "場次"], ["hours", "時數"]]) : ""}
+      </div>
+      ${list.length ? `<div class="chart" id="chart-activity"></div>` : empty}
+    </div>
+
+    <div class="card metric">
+      <div class="mtitle"><small>直播時段（台北時間）</small></div>
+      ${list.length ? `
+        <div class="heat">
+          <div></div>${Array.from({ length: 24 }, (_, h) => `<div class="h">${h % 3 === 0 ? h : ""}</div>`).join("")}
+          ${grid.map((row, d) => `<div class="d">${WEEKDAYS[d]}</div>${row.map((c, h) =>
+            `<div class="c ${c.mins ? "" : "z"}" style="${c.mins ? `opacity:${0.15 + 0.85 * (c.mins / max)}` : ""}" title="週${WEEKDAYS[d]} ${h}:00–${h + 1}:00\n${(c.mins / 60).toFixed(1)} 小時・${c.lives.size} 場"></div>`).join("")}`).join("")}
+        </div>
+        <div class="legend">少 <i style="opacity:.2"></i><i style="opacity:.5"></i><i style="opacity:.8"></i><i></i> 多</div>` : empty}
+    </div>
+
+    <div class="card metric">
+      <div class="mhead">
+        <div class="mtitle"><small>每場直播</small>
+          ${perfVals.length ? `<b>平均 ${fmt(perfVals.reduce((a, b) => a + b, 0) / perfVals.length)}</b><div class="sub">最高 ${fmt(Math.max(...perfVals))}</div>` : ""}</div>
+        ${list.length ? seg("perf", state.perf, [["peak", "同接峰值"], ["views", "觀看"], ["likes", "按讚"]]) : ""}
+      </div>
+      ${!list.length ? empty : perfVals.length > 1 ? `<div class="chart" id="chart-perf"></div>` : `<div class="empty">資料累積中</div>`}
+    </div>
+
+    <div class="card metric"><div class="mtitle"><small>訂閱者</small><b>2.04M</b></div></div>
+    <div class="card metric"><div class="mtitle"><small>觀看</small><b>7.34 億</b><span class="delta up">+5.12M</span></div><div class="empty">（既有的觀看圖，不變）</div></div>
+    <div class="card metric"><div class="mtitle"><small>影片</small><b>2,242</b><span class="delta up">+9</span></div><div class="empty">（既有的影片圖，不變）</div></div>`;
+
+  if (!window.google?.visualization || !list.length) return;
+  const week = weekly(list);
+  drawColumns("chart-activity", "date", week.map((w) => {
+    const v = state.activity === "count" ? w.count : +(w.mins / 60).toFixed(1);
+    return [w.week, v, `${w.week.toLocaleDateString("zh-TW")} 那週\n${state.activity === "count" ? `${v} 場` : `${v} 小時`}`];
+  }));
+  if (perfVals.length > 1) drawColumns("chart-perf", "datetime", list.filter((l) => l[perfKey] != null).map((l) =>
+    [l.start, l[perfKey], `${l.start.toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}\n${l.title}\n${perfLabel}：${l[perfKey].toLocaleString()}`]));
+}
+
+function drawColumns(id, xType, rows) {
+  const table = new google.visualization.DataTable();
+  table.addColumn(xType, "時間");
+  table.addColumn("number", "值");
+  table.addColumn({ type: "string", role: "tooltip" });
+  table.addRows(rows);
+  const text = css("--text-2"), grid = css("--border");
+  new google.visualization.ColumnChart(document.getElementById(id)).draw(table, {
+    backgroundColor: "transparent", colors: [css("--accent")], legend: "none",
+    chartArea: { left: 56, right: 12, top: 12, bottom: 32 },
+    hAxis: { format: "M/d", textStyle: { color: text, fontSize: 11 }, gridlines: { color: "transparent" }, baselineColor: grid },
+    vAxis: { format: "short", textStyle: { color: text, fontSize: 11 }, gridlines: { color: grid, count: 4 }, minorGridlines: { count: 0 }, baselineColor: grid, viewWindow: { min: 0 } },
+    bar: { groupWidth: "75%" }, tooltip: { textStyle: { fontSize: 12 } },
+  });
+}
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  const d = b.dataset;
+  if (d.range) state.range = Number(d.range);
+  else if (d.activity) state.activity = d.activity;
+  else if (d.perf) state.perf = d.perf;
+  else if (d.data) { state.data = d.data; document.querySelectorAll("[data-data]").forEach((x) => x.classList.toggle("active", x === b)); }
+  else if (d.view) { document.querySelectorAll("[data-view]").forEach((x) => x.classList.toggle("active", x === b)); $("#device").classList.toggle("mobile", d.view === "mobile"); }
+  else if (d.themeOption) { document.querySelectorAll("[data-theme-option]").forEach((x) => x.classList.toggle("active", x === b)); document.documentElement.dataset.theme = d.themeOption; }
+  else return;
+  render();
+});
+$("#notesToggle").addEventListener("change", (e) => ($("#notes").hidden = !e.target.checked));
+let resizeTimer;
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 150); });
+google.charts.load("current", { packages: ["corechart"], language: "zh-TW" });
+google.charts.setOnLoadCallback(render);
+render();
+</script>
+</body>
+</html>

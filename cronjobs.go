@@ -196,6 +196,13 @@ var cronJobs = map[string]cronGroup{
 				Handler:  vtuberService.RunDailyStats,
 			},
 			{
+				// 更新結束不到 7 天的直播的觀看與按讚數（藝人頁直播統計用）
+				Name:     "vtuber-live-counts",
+				Schedule: "20 3 * * *",
+				Enabled:  true,
+				Handler:  vtuberService.RunRefreshLiveCounts,
+			},
+			{
 				// 一次性：從舊 Firebase 匯入 Apps Script 時代建好的行事曆（需要 VTUBER_LEGACY_FIREBASE_SECRET）
 				Name:     "vtuber-import-calendars",
 				Schedule: "",

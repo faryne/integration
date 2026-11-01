@@ -10,17 +10,20 @@ const CHART_COLORS = {
 export interface StatPoint {
   date: Date;
   value: number;
+  tooltip?: string; // 沒給就用「日期＋數值」
 }
 
 interface StatChartProps {
   label: string;
   points: StatPoint[];
-  // total：累計折線；daily：每日增減長條
+  // total：累計折線；daily：長條（每日增減、每週直播、每場直播）
   mode: "total" | "daily";
+  // 一個點一格（每場直播）：時間軸會把同一天的兩場擠在一起，還會出現重複的日期標籤
+  discrete?: boolean;
 }
 
 /** 統計分頁的單張圖（Google Charts）；Google Charts 不吃 MUI 主題，顏色依深淺色模式自己傳 */
-export function StatChart({ label, points, mode }: StatChartProps) {
+export function StatChart({ label, points, mode, discrete }: StatChartProps) {
   const theme = useTheme();
   const narrow = useMediaQuery(theme.breakpoints.down("sm"));
   const height = narrow ? 190 : 220;
@@ -28,10 +31,11 @@ export function StatChart({ label, points, mode }: StatChartProps) {
 
   const data = [
     ["日期", label, { type: "string", role: "tooltip" }],
-    ...points.map(({ date, value }) => [
-      date,
+    ...points.map(({ date, value, tooltip }) => [
+      discrete ? `${date.getMonth() + 1}/${date.getDate()}` : date,
       value,
-      `${date.toLocaleDateString("zh-TW")}\n${label}${suffix}：${value.toLocaleString()}`,
+      tooltip ??
+        `${date.toLocaleDateString("zh-TW")}\n${label}${suffix}：${value.toLocaleString()}`,
     ]),
   ];
   const colors = CHART_COLORS[theme.palette.mode];
@@ -51,6 +55,9 @@ export function StatChart({ label, points, mode }: StatChartProps) {
       format: "short",
       textStyle,
       gridlines: { color: colors.grid, count: 4 },
+      // 長條都是正數時從 0 起算；不然 5 跟 6 場會被縮放成差好幾倍
+      ...(mode === "daily" &&
+        points.every((p) => p.value >= 0) && { viewWindow: { min: 0 } }),
       minorGridlines: { count: 0 },
       baselineColor: colors.grid,
     },

@@ -91,11 +91,11 @@ func cancelledIDs(tracking []string, videos map[string]*youtube.Video, now time.
 	return out
 }
 
-// listVideos 50 筆一批查影片的直播資訊
+// listVideos 50 筆一批查影片的直播資訊與觀看數；videos.list 不管拿幾個 part 都是 1 unit
 func listVideos(ctx context.Context, api *youtube.Service, ids []string) (map[string]*youtube.Video, error) {
 	out := make(map[string]*youtube.Video, len(ids))
 	for start := 0; start < len(ids); start += youtubeBatch {
-		resp, err := api.Videos.List([]string{"snippet", "liveStreamingDetails"}).Id(ids[start:min(start+youtubeBatch, len(ids))]...).Context(ctx).Do()
+		resp, err := api.Videos.List([]string{"snippet", "liveStreamingDetails", "statistics"}).Id(ids[start:min(start+youtubeBatch, len(ids))]...).Context(ctx).Do()
 		if err != nil {
 			return nil, fmt.Errorf("fetch youtube videos: %w", err)
 		}
@@ -122,6 +122,10 @@ func liveFromVideo(v *youtube.Video, now time.Time) (vtuberEntity.Live, bool) {
 		ThumbnailURL:     videoThumbnail(v.Snippet.Thumbnails),
 		CheckedAt:        now,
 	}
+	// 開播後才記觀看與按讚；API 對關閉公開讚數的頻道回 0，跟真的 0 分不出來，一律當成沒有
+	if live.ActualStartAt != nil && v.Statistics != nil {
+		live.ViewCount, live.LikeCount = positive(v.Statistics.ViewCount), positive(v.Statistics.LikeCount)
+	}
 	switch {
 	case live.ActualEndAt != nil:
 		live.Status = vtuberEntity.LiveStatusEnded
@@ -129,7 +133,8 @@ func liveFromVideo(v *youtube.Video, now time.Time) (vtuberEntity.Live, bool) {
 		live.Status = vtuberEntity.LiveStatusLive
 		if d.ConcurrentViewers > 0 {
 			viewers := uint(d.ConcurrentViewers)
-			live.ConcurrentViewers = &viewers
+			// 峰值由 upsert 跟 DB 舊值取大的
+			live.ConcurrentViewers, live.PeakViewers = &viewers, &viewers
 		}
 	case live.ScheduledStartAt == nil || live.ScheduledStartAt.After(now.Add(freeChatHorizon)):
 		return vtuberEntity.Live{}, false
@@ -137,6 +142,14 @@ func liveFromVideo(v *youtube.Video, now time.Time) (vtuberEntity.Live, bool) {
 		live.Status = vtuberEntity.LiveStatusUpcoming
 	}
 	return live, true
+}
+
+// positive 0 視為沒有資料
+func positive(n uint64) *uint64 {
+	if n == 0 {
+		return nil
+	}
+	return &n
 }
 
 func parseTime(value string) *time.Time {

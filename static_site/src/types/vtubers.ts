@@ -61,6 +61,18 @@ export interface VtuberStat {
   video_count: number;
 }
 
+// 藝人頁直播統計：已結束的直播（時間是 RFC 3339 UTC）
+export interface VtuberLiveHistoryItem {
+  video_id: string;
+  title: string;
+  thumbnail_url: string;
+  actual_start_at: string;
+  actual_end_at: string;
+  peak_viewers: number | null; // 部署前結束的、會員限定、在兩輪偵測之間就結束的都沒有
+  view_count: number | null; // 結束後一週的觀看數，之後不再更新
+  like_count: number | null; // 頻道關閉公開讚數時為 null
+}
+
 export interface VtuberLive {
   video_id: string;
   channel_id: string;
