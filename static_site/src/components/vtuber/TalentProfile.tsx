@@ -130,10 +130,7 @@ export function TalentProfile({ channel, onCopied }: TalentProfileProps) {
           ))}
         </Box>
 
-        <Stack direction={"row"} spacing={2}>
-          <Delta label={"7 日"} value={channel.subscriber_delta_7d} />
-          <Delta label={"90 日"} value={channel.subscriber_delta_90d} />
-        </Stack>
+        <Delta label={"90 日"} value={channel.subscriber_delta_90d} />
 
         {since && (
           <Typography variant={"body2"} color={"text.secondary"} sx={{ mt: 1 }}>
