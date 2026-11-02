@@ -9,7 +9,11 @@ import { EMPTY_ACTRESS_FIELDS } from "@/data/avActressFields.ts";
 import { actressToFields } from "@/helpers/avActressFields.ts";
 import { apiErrorMessage } from "@/helpers/apiError.ts";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
-import { useTitle } from "@/helpers/title.tsx";
+import {
+  AV_ACTRESS_SECTION,
+  sectionTitle,
+  useTitle,
+} from "@/helpers/title.tsx";
 import { ActressSubmissionForm } from "@/components/av/actress_submission_form.tsx";
 import { ActressSubmissionDone } from "@/components/av/actress_submission_done.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
@@ -18,7 +22,7 @@ import { ErrorPage } from "@/pages/ErrorPage.tsx";
 
 /** 新增女優：/av/actress/submit */
 export function AVActressSubmit() {
-  useTitle("新增女優");
+  useTitle(sectionTitle(AV_ACTRESS_SECTION, "新增女優"));
   const navigate = useNavigate();
   // 「再新增一位」時換 key，整個重置（表單與送出狀態）
   const [round, setRound] = useState(0);
@@ -47,7 +51,7 @@ export function AVActressSubmit() {
 /** 修改女優資料：/av/actress/:name/edit，預填女優頁顯示的那一筆（網址參數規則同女優頁） */
 export function AVActressEdit() {
   const { name = "" } = useParams<{ name: string }>();
-  useTitle(`修改女優資料：${name}`);
+  useTitle(sectionTitle(AV_ACTRESS_SECTION, `修改女優資料：${name}`));
   useBreadcrumbTail(`${name}・修改資料`);
   const navigate = useNavigate();
   const { actress, notFound } = useRoutedActress(name, "/edit");

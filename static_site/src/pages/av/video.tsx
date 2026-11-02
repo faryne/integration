@@ -11,7 +11,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { useTitle } from "@/helpers/title";
+import { AV_VIDEO_SECTION, useTitle } from "@/helpers/title.tsx";
 import { useEffect, useState } from "react";
 import { VideoSearch } from "@/components/av/video_search";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
@@ -47,7 +47,7 @@ export function AVVideo() {
   const s = useAVVideoSearch(search);
   // 篩選統計跟分頁無關：page 設成 undefined，查詢 key 會忽略它，換頁時沿用快取
   const facets = useAVVideoFacets({ ...search, page: undefined });
-  useTitle("AV 影片搜尋");
+  useTitle(AV_VIDEO_SECTION);
 
   useEffect(() => {
     setSearch(parseVideoSearchParams(query));

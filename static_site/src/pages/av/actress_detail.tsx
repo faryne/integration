@@ -7,6 +7,11 @@ import { actressRefOf, useRoutedActress } from "@/helpers/avActressRef.ts";
 import { useActressTopicIndex } from "@/apis/av/actress_topic.ts";
 import { findActressTopic } from "@/helpers/avActressTopic.ts";
 import type { ActressVideoTab } from "@/components/av/actress_detail.tsx";
+import {
+  AV_ACTRESS_SECTION,
+  sectionTitle,
+  useTitle,
+} from "@/helpers/title.tsx";
 
 export function AVActressDetail() {
   const { name = "" } = useParams<{ name: string }>();
@@ -25,6 +30,11 @@ export function AVActressDetail() {
     });
   // 網址帶 xcity_id／manual_id／dmm_id 時指定那一位，沒帶就照名字找同名排第一的
   const { actress, sameNames, notFound } = useRoutedActress(name);
+  // 標題用網址上的名義（本名或別名）；描述跟後端 service/sns/av_meta.go 同一句
+  useTitle(sectionTitle(AV_ACTRESS_SECTION, name), {
+    description: `${name} 的個人資料與出演作品索引。`,
+    type: "profile",
+  });
   // 從有類型條件的主題點進來（?topic=）時，出演影片多一個「該主題作品」tab 並預設選它，列出符合任一類型條件的作品（聯集）；
   // ?tab=all 是全部作品。主題資料還沒讀到前先不查影片，避免先查全部、再換成主題查第二次
   const topicSlug = searchParams.get("topic") ?? "";

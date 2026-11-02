@@ -29,13 +29,17 @@ import { TOPIC_GROUP_LABELS } from "@/data/avActressTopicAdmin.ts";
 import { apiErrorMessage } from "@/helpers/apiError.ts";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { useFlashMessage } from "@/helpers/flashMessage.ts";
-import { useTitle } from "@/helpers/title.tsx";
+import {
+  AV_ACTRESS_SECTION,
+  sectionTitle,
+  useTitle,
+} from "@/helpers/title.tsx";
 import { avAdminTopicPath } from "@/helpers/avActressAdmin.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 
 /** 女優主題管理：/av/actress/admin/topics，只列自訂主題（特輯、身材），內建主題不能編輯；權限由後台 layout 檢查 */
 export function AVActressTopicManage() {
-  useTitle("AV 女優主題管理");
+  useTitle(sectionTitle(AV_ACTRESS_SECTION, "女優主題管理"));
   useBreadcrumbTail("管理主題");
   const flash = useFlashMessage();
   return (

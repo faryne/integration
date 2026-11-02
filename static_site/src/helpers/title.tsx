@@ -64,6 +64,13 @@ const pageDescriptions: Record<string, string> = {
   "Userscripts 列表": "整理 Faryne 維護或使用中的 userscripts 工具列表。",
 };
 
+// AV 女優／影片各頁標題都帶區塊名稱，例：「波多野結衣 - AV 女優搜尋 | 主站名稱」；
+// 後端 service/sns/av_meta.go 給爬蟲的標題是同一套
+export const AV_ACTRESS_SECTION = "AV 女優搜尋";
+export const AV_VIDEO_SECTION = "AV 影片搜尋";
+export const sectionTitle = (section: string, page?: string) =>
+  page ? `${page} - ${section}` : section;
+
 export interface SeoOptions {
   description?: string;
   image?: string;
@@ -122,8 +129,9 @@ function getDescription(page: string, description?: string) {
     return description;
   }
 
-  const matchedKey = Object.keys(pageDescriptions).find((key) =>
-    page.startsWith(key),
+  // 「X - AV 女優搜尋」這種帶區塊名稱的子頁也套用區塊的描述
+  const matchedKey = Object.keys(pageDescriptions).find(
+    (key) => page.startsWith(key) || page.endsWith(` - ${key}`),
   );
 
   return matchedKey ? pageDescriptions[matchedKey] : defaultDescription;
