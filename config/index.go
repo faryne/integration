@@ -15,7 +15,7 @@ type envConfig struct {
 	RedisDSN         string `env:"REDIS_DSN"`
 	ESDSN            string `env:"ES_DSN"`
 	ChromePath       string `env:"CHROME_PATH"`
-	FrontendPath     string `env:"FRONTEND_PATH" default:"https://beta.faryne.dev"`
+	FrontendPath     string `env:"FRONTEND_PATH" default:"https://faryne.dev"`
 
 	// AMQPURL 是 AMQP 連線字串，目前用 CloudAMQP 代管的 LavinMQ（amqps://user:pass@host/vhost）；留空代表不啟用佇列
 	AMQPURL string `env:"AMQP_URL"`
