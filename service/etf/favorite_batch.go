@@ -20,6 +20,7 @@ type FavoriteBatchItem struct {
 	Code          string                 `json:"code"`
 	Distributions []etf.Share            `json:"distributions"`
 	Transactions  etf.ProfitTransactions `json:"transactions"`
+	Splits        []etf.SplitEvent       `json:"splits"` // 分割/反分割紀錄，總覽頁換算股數用
 }
 
 func shareCacheKey(code string) string {
@@ -127,6 +128,16 @@ func ListFavoritesBatch(userID uint64) ([]FavoriteBatchItem, error) {
 		return nil, err
 	}
 
+	// 分割紀錄整張表只有幾十筆，一次 IN 查詢就好，不另外快取
+	splitRows, err := etfRepo.NewETFSplit().GetByCodes(codes)
+	if err != nil {
+		return nil, err
+	}
+	splitsByCode := make(map[string][]etf.SplitEvent, len(splitRows))
+	for _, row := range splitRows {
+		splitsByCode[row.Code] = append(splitsByCode[row.Code], row)
+	}
+
 	txRows, err := etfRepo.NewETFSavedTransaction().FindByUserAndCodes(userID, codes)
 	if err != nil && !repository.IsRecordNotFound(err) {
 		return nil, err
@@ -145,10 +156,15 @@ func ListFavoritesBatch(userID uint64) ([]FavoriteBatchItem, error) {
 		if transactions == nil {
 			transactions = etf.ProfitTransactions{}
 		}
+		splits := splitsByCode[code]
+		if splits == nil {
+			splits = []etf.SplitEvent{} // 避免 nil slice 輸出成 null
+		}
 		out[i] = FavoriteBatchItem{
 			Code:          code,
 			Distributions: sharesByCode[code],
 			Transactions:  transactions,
+			Splits:        splits,
 		}
 	}
 	return out, nil

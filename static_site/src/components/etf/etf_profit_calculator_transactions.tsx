@@ -21,6 +21,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import type { EtfDivideInfo } from "@/types/etf.ts";
 import {
   emptyTransaction,
   type Transaction,
@@ -37,6 +38,8 @@ interface TransactionRecordsEditorProps {
   // 儲存位置：account 是登入後綁定帳號存到後端（TWSE）；local 是只存在目前瀏覽器的
   // localStorage，沒有帳號概念（YieldMax），兩者的同意聲明文字不一樣
   storageScope?: "account" | "local";
+  // 分割/反分割紀錄：超賣檢查與剩餘股數要換算股數基準
+  splitEvents: EtfDivideInfo[];
 }
 
 type SortDirection = "asc" | "desc";
@@ -65,6 +68,7 @@ export function TransactionRecordsEditor({
   onChange,
   onSaveTransactions,
   storageScope = "account",
+  splitEvents,
 }: TransactionRecordsEditorProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     () => new Set(records.length <= 1 ? records.map((r) => r.id) : []),
@@ -120,7 +124,7 @@ export function TransactionRecordsEditor({
     onChange(sortByBuyDate(records, direction));
   };
 
-  const hasErrors = records.some(hasRecordError);
+  const hasErrors = records.some((r) => hasRecordError(r, splitEvents));
 
   return (
     <Accordion defaultExpanded variant="outlined">
@@ -166,6 +170,7 @@ export function TransactionRecordsEditor({
               onToggleExpanded={() => toggleExpanded(rec.id)}
               onChange={(patch) => updateRecord(index, patch)}
               onDelete={() => onChange(records.filter((r) => r.id !== rec.id))}
+              splitEvents={splitEvents}
             />
           ))}
           <Button

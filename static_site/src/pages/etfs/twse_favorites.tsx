@@ -190,7 +190,7 @@ export default function TwseEtfFavoritesPage() {
           result: calcTransactionsResult(
             item.transactions,
             item.distributions.map(toTwseDistribution),
-            [],
+            item.splits,
             currentPrice,
             0,
           ),

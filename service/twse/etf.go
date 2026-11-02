@@ -657,6 +657,11 @@ func GetHistoryDivByCode(code string) (etf.ShareWithETFAndStats, error) {
 		return out, err2
 	}
 	out.Stats = resp2
+	splits, err3 := etfRepo.NewETFSplit().GetByCodes([]string{code})
+	if err3 != nil {
+		return out, err3
+	}
+	out.Splits = splits
 	return out, nil
 }
 

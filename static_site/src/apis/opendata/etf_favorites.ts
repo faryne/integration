@@ -2,7 +2,7 @@ import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CommonResponse } from "@/apis/interfaces.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
-import type { TwseEtfShare } from "@/types/etf.ts";
+import type { EtfDivideInfo, TwseEtfShare } from "@/types/etf.ts";
 import type { Transaction } from "@/components/etf/etf_profit_calculator_types.ts";
 
 const apiBase = import.meta.env.VITE_API_BASE;
@@ -43,6 +43,7 @@ export interface TwseEtfFavoriteBatchItem {
   code: string;
   distributions: TwseEtfShare[];
   transactions: Transaction[];
+  splits: EtfDivideInfo[];
 }
 
 // 「我的最愛」總覽頁用：後端一次回傳全部收藏 ETF 的配息紀錄＋已儲存交易紀錄，
@@ -64,6 +65,7 @@ export function useTwseEtfFavoritesBatch() {
       return (response.data.data ?? []).map((item) => ({
         ...item,
         distributions: item.distributions ?? [],
+        splits: item.splits ?? [],
         transactions: (item.transactions ?? []).map((t) => ({
           ...t,
           sells: t.sells ?? [],

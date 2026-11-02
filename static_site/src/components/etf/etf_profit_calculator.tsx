@@ -214,6 +214,7 @@ export function EtfProfitCalculator({
             onChange={setRecords}
             onSaveTransactions={onSaveTransactions}
             storageScope={storageScope}
+            splitEvents={splitEvents}
           />
 
           <Divider />
