@@ -7,7 +7,7 @@ const projectRoot = path.resolve(__dirname, "..");
 const distDir = path.join(projectRoot, "dist");
 const indexPath = path.join(distDir, "index.html");
 
-const siteName = "ha2.tw / faryne.dev";
+const siteName = "Faryne 的實驗室 by faryne.dev";
 const siteOrigin = "https://beta.faryne.dev";
 const defaultImage = `${siteOrigin}/faryne-icon-1024.jpg`;
 const defaultDescription =
