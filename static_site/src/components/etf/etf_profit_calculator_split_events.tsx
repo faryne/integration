@@ -26,6 +26,9 @@ interface SplitEventsEditorProps {
   onChange: (rows: SplitEventRow[]) => void;
 }
 
+// 生效日、比率兩欄等寬；手機寬度下一起縮，不會擠出畫面
+const fieldSx = { flex: 1, minWidth: 0, maxWidth: 220 };
+
 export function SplitEventsEditor({ rows, onChange }: SplitEventsEditorProps) {
   const updateRow = (id: string, patch: Partial<SplitEventRow>) => {
     onChange(rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
@@ -51,18 +54,17 @@ export function SplitEventsEditor({ rows, onChange }: SplitEventsEditorProps) {
                 value={row.date}
                 onChange={(e) => updateRow(row.id, { date: e.target.value })}
                 InputLabelProps={{ shrink: true }}
-                sx={{ width: 180 }}
+                sx={fieldSx}
               />
               <TextField
                 type="number"
-                label="比率 (新股數 / 舊股數)"
+                label="比率"
                 size="small"
                 value={row.ratio || ""}
                 onChange={(e) =>
                   updateRow(row.id, { ratio: Number(e.target.value) })
                 }
-                helperText="例：1 股拆 2 股填 2；5 股合 1 反分割填 0.2"
-                sx={{ width: 240 }}
+                sx={fieldSx}
               />
               <IconButton
                 color="error"
@@ -73,6 +75,12 @@ export function SplitEventsEditor({ rows, onChange }: SplitEventsEditorProps) {
               </IconButton>
             </Stack>
           ),
+        )}
+        {/* 填法說明放在所有輸入列下方只出現一次；放在欄位的 helperText 會讓兩個欄位一高一低 */}
+        {rows.some((row) => !row.readOnly) && (
+          <Typography variant="caption" color="text.secondary">
+            比率 = 新股數 / 舊股數，例：1 股拆 2 股填 2；5 股合 1 反分割填 0.2
+          </Typography>
         )}
       </Stack>
       <Button
