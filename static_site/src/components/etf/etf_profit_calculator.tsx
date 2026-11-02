@@ -83,11 +83,13 @@ export function EtfProfitCalculator({
   // 台幣沒有小數交易，金額顯示取整數；美股常有零點幾美分的配息，維持 2 位小數
   const amountDecimals = defaultCurrency === "USD" ? 2 : 0;
 
-  // 分割/反分割紀錄：以 ETF 資料內建的紀錄為初始值，使用者可自行增減調整
+  // 分割/反分割紀錄：ETF 資料內建的紀錄（後端排程 / YieldMax 設定檔）唯讀，
+  // 使用者只能另外新增自己的紀錄
   const [splitEventRows, setSplitEventRows] = useState<SplitEventRow[]>(() =>
     (data.divided_info ?? []).map((event, index) => ({
       id: `seed-${index}`,
       ...event,
+      readOnly: true,
     })),
   );
   const splitEvents = useMemo<EtfDivideInfo[]>(
