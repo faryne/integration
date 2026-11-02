@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/url"
 	"strings"
-	"time"
 
 	modelAuth "faryne.dev/model/entity/auth"
 	authService "faryne.dev/service/auth"
@@ -77,21 +76,7 @@ func handleOutputError(ctx fiber.Ctx, err error) (bool, error) {
 		return false, nil
 	}
 
-	costTime := float64(-1)
-	endTime := float64(time.Now().UnixMilli())
-	if startTime := ctx.Locals("start_time"); startTime != nil {
-		if startedAt, ok := startTime.(int64); ok {
-			costTime = (endTime - float64(startedAt)) / float64(time.Microsecond)
-		}
-	}
-
-	uri := ctx.Scheme() + "://" + ctx.Hostname() + ctx.Path()
-	if ctx.Request().URI().QueryArgs().Len() > 0 {
-		uri = uri + "?" + ctx.Request().URI().QueryArgs().String()
-	}
-
-	finalOutput := response.Output(costTime, uri)
-	finalOutput.Method = ctx.Method()
+	finalOutput := output.FromContext(ctx, response)
 	body, marshalErr := json.Marshal(finalOutput)
 	if marshalErr != nil {
 		return true, marshalErr
