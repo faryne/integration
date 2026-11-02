@@ -170,6 +170,7 @@ export function EtfDetailDialog({ code, open, onClose }: EtfDetailDialogProps) {
       distributions: (queryShares.data?.data?.stats ?? []).map(
         toTwseDistribution,
       ),
+      divided_info: queryShares.data?.data?.splits ?? [],
     }),
     [code, etf, queryShares.data],
   );
@@ -188,9 +189,11 @@ export function EtfDetailDialog({ code, open, onClose }: EtfDetailDialogProps) {
     isProfitTabOpen,
   );
   const saveTransactionsMutation = useSaveTwseEtfTransactions(code);
-  // 已登入時要等已儲存的交易紀錄抓回來才 mount 試算元件，讓 initialTransactions 有正確初始值
+  // 已登入時要等已儲存的交易紀錄抓回來才 mount 試算元件，讓 initialTransactions 有正確初始值；
+  // 分割紀錄只在 mount 時當初始值帶入，所以也要等配息資料（含分割）回來
   const canRenderProfitCalculator =
     isProfitTabOpen &&
+    !queryShares.isPending &&
     (!session ||
       savedTransactionsQuery.isSuccess ||
       savedTransactionsQuery.isError);

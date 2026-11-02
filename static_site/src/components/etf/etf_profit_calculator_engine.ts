@@ -1,6 +1,10 @@
 import dayjs from "dayjs";
 
 import type { EtfDistribution, EtfDivideInfo } from "@/types/etf.ts";
+import {
+  roundShares,
+  splitFactorBetween,
+} from "@/components/etf/etf_profit_calculator_split.ts";
 import type {
   ProfitDetailRow,
   ProfitResult,
@@ -37,15 +41,6 @@ export function calcTransactionsResult(
   // 用本地日期：toISOString() 是 UTC，台灣早上 8 點前會被當成前一天，除息日當天的配息會被誤判成未實現
   const today = dayjs().format("YYYY-MM-DD");
 
-  const getCumulativeFactor = (startDate: string) => {
-    if (!startDate) return 1;
-    return splitEvents
-      .filter(
-        (event) => event.date && event.ratio > 0 && event.date > startDate,
-      )
-      .reduce((acc, event) => acc * event.ratio, 1);
-  };
-
   let realizedDividend = 0;
   let unrealizedDividend = 0;
   let realizedRefund = 0;
@@ -53,6 +48,7 @@ export function calcTransactionsResult(
   let realizedPriceGain = 0;
   let unrealizedPriceGain = 0;
   let totalCost = 0;
+  let holdingCost = 0;
   let finalShares = 0;
 
   // 配息依 ex_date 聚合（同一天多筆購入紀錄命中會合併成一列）；賣出則每筆各自一列
@@ -62,7 +58,8 @@ export function calcTransactionsResult(
   records.forEach((rec) => {
     if (!rec.buyDate || !rec.buyShares) return;
 
-    const factor = getCumulativeFactor(rec.buyDate);
+    // 買進到今天累積的分割倍數，用來把剩餘部位換算成目前的股數基準
+    const factor = splitFactorBetween(splitEvents, rec.buyDate, null);
     const buyShares = Number(rec.buyShares);
     totalCost += rec.buyPrice * buyShares; // 投入成本以原始購買金額計算，不受分割影響
 
@@ -80,7 +77,9 @@ export function calcTransactionsResult(
           (d) => d.ex_date > fromDate && (toDate ? d.ex_date <= toDate : true),
         )
         .forEach((d) => {
-          const sharesHeld = shares * factor;
+          // 除息當下實際持有的股數：只乘買進後、除息日（含）前已生效的分割
+          const sharesHeld =
+            shares * splitFactorBetween(splitEvents, rec.buyDate, d.ex_date);
           const currentAmount = d.per_share * sharesHeld;
           const netAmount = currentAmount * (1 - withholdingRate);
           const refund =
@@ -121,6 +120,8 @@ export function calcTransactionsResult(
     // 每段區間內實際持有的股數 = 原始股數扣掉「這段之前」已經賣掉的部分。
     // 例如買 4000 股分 3 次賣：(買進, 賣1] 持有 4000、(賣1, 賣2] 持有 3500...
     // 最後一段 [最後一次賣出, 現在] 持有的就是還沒賣掉的剩餘股數。
+    // 持有區間的股數一律用「買進當時」的基準記，賣出股數／價格則是賣出當天的實際數字
+    // （跟券商對帳單一致），中間有分割時要換算回買進基準。
     const sortedSells = rec.sells
       .filter((s) => s.sellDate && s.sellShares > 0)
       .sort((a, b) => a.sellDate.localeCompare(b.sellDate));
@@ -133,31 +134,42 @@ export function calcTransactionsResult(
       const sharesHeldInWindow = buyShares - cumulativeSold;
       processDistributions(sharesHeldInWindow, windowStart, sell.sellDate);
 
+      const sellFactor = splitFactorBetween(
+        splitEvents,
+        rec.buyDate,
+        sell.sellDate,
+      );
+      const costAtSell = rec.buyPrice / sellFactor;
       const sellShares = Number(sell.sellShares);
-      const gain = (Number(sell.sellPrice) - adjCost) * (sellShares * factor);
+      const gain = (Number(sell.sellPrice) - costAtSell) * sellShares;
       realizedPriceGain += gain;
       sellRows.push({
         id: `sell-${rec.id}-${sell.id}`,
         date: sell.sellDate,
         type: "sell",
-        description: `購入價 ${adjCost.toFixed(4)} → 賣出 ${sellShares.toLocaleString()} 股 @ ${Number(sell.sellPrice).toFixed(4)}`,
+        description: `購入價 ${costAtSell.toFixed(4)} → 賣出 ${sellShares.toLocaleString()} 股 @ ${Number(sell.sellPrice).toFixed(4)}`,
         grossAmount: gain,
         netAmount: null,
         refundAmount: null,
         realized: true,
       });
 
-      cumulativeSold += sellShares;
+      cumulativeSold += sellShares / sellFactor;
       windowStart = sell.sellDate;
     });
 
-    const remainingShares = buyShares - cumulativeSold;
+    const remainingShares = Math.max(
+      0,
+      roundShares(buyShares - cumulativeSold),
+    );
     processDistributions(remainingShares, windowStart, null);
 
     // 未處分（帳面）損益：買價需依分割因子換算成目前股數基準下的成本
     unrealizedPriceGain +=
       (currentPrice - adjCost) * (remainingShares * factor);
     finalShares += remainingShares * factor;
+    // 持有成本只算還沒賣掉的股數；已賣出部分的成本已經反映在已實現損益裡
+    holdingCost += rec.buyPrice * remainingShares;
   });
 
   const dividendRows: ProfitDetailRow[] = Array.from(dividendAgg.values()).map(
@@ -185,6 +197,7 @@ export function calcTransactionsResult(
 
   return {
     totalCost,
+    holdingCost,
     finalShares,
     detail,
     realizedDividend,
@@ -197,7 +210,8 @@ export function calcTransactionsResult(
     unrealizedTotal,
     grandTotal,
     realizedRate: rateOf(realizedTotal),
-    unrealizedRate: rateOf(unrealizedTotal),
+    // 未實現只跟手上還沒賣的部位有關，分母用持有成本；用累計投入成本會被已賣出的部分稀釋
+    unrealizedRate: computeRate(unrealizedTotal, holdingCost),
     grandTotalRate: rateOf(grandTotal),
   };
 }

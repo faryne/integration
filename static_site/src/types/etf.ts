@@ -57,6 +57,8 @@ export interface TwseEtfShare extends TwseEtfInfo {
 export interface TwseEtfShareDetail {
   // 用於主列表
   stats: TwseEtfShare[];
+  // 分割/反分割紀錄（後端排程從證交所抓），獲利試算換算股數用
+  splits: EtfDivideInfo[];
   win_rate: {
     total_ex_count: number;
     success_fill_count: number;

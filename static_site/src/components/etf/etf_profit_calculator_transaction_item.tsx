@@ -13,13 +13,16 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import type { EtfDivideInfo } from "@/types/etf.ts";
 import {
   emptySellEvent,
   type SellEvent,
   type Transaction,
 } from "@/components/etf/etf_profit_calculator_types.ts";
 import {
+  getRemainingShares,
   getSoldShares,
+  getSoldSharesAtBuyBasis,
   isOversold,
   isSellDateBeforeBuy,
 } from "@/components/etf/etf_profit_calculator_validation.ts";
@@ -30,18 +33,20 @@ interface TransactionAccordionItemProps {
   onToggleExpanded: () => void;
   onChange: (patch: Partial<Transaction>) => void;
   onDelete: () => void;
+  splitEvents: EtfDivideInfo[];
 }
 
-function summarize(record: Transaction) {
+// 已賣出是賣出當天的實際股數加總；剩餘則換算成目前（套用買進後所有分割）的股數
+function summarize(record: Transaction, splitEvents: EtfDivideInfo[]) {
   const buyDate = record.buyDate || "未設定日期";
   const shares = record.buyShares || 0;
   const price = record.buyPrice || 0;
   const soldShares = getSoldShares(record);
-  const remaining = shares - soldShares;
+  const remaining = getRemainingShares(record, splitEvents);
 
   let text = `${buyDate} 購入 ${shares.toLocaleString()} 股 @ ${price}`;
   if (record.sells.length > 0) {
-    text += ` · 已賣出 ${record.sells.length} 筆 (${soldShares.toLocaleString()} 股) · 剩餘 ${remaining.toLocaleString()} 股`;
+    text += ` · 已賣出 ${record.sells.length} 筆 (${soldShares.toLocaleString()} 股) · 剩餘 ${remaining.toLocaleString(undefined, { maximumFractionDigits: 4 })} 股`;
   }
   return text;
 }
@@ -53,6 +58,7 @@ export function TransactionAccordionItem({
   onToggleExpanded,
   onChange,
   onDelete,
+  splitEvents,
 }: TransactionAccordionItemProps) {
   const updateSell = (sellId: string, patch: Partial<SellEvent>) => {
     onChange({
@@ -72,8 +78,9 @@ export function TransactionAccordionItem({
     });
   };
 
-  const soldShares = getSoldShares(record);
-  const oversold = isOversold(record);
+  // 超賣比對用買進基準：賣出前有分割的話，賣出股數要先換算回購入當時的股數
+  const soldSharesAtBuyBasis = getSoldSharesAtBuyBasis(record, splitEvents);
+  const oversold = isOversold(record, splitEvents);
 
   return (
     <Accordion
@@ -97,7 +104,7 @@ export function TransactionAccordionItem({
             }}
             noWrap
           >
-            {summarize(record)}
+            {summarize(record, splitEvents)}
           </Typography>
         </AccordionSummary>
         <IconButton
@@ -218,7 +225,11 @@ export function TransactionAccordionItem({
             >
               <WarningAmberIcon fontSize="small" />
               <Typography variant="caption">
-                賣出股數總和（{soldShares.toLocaleString()}）超過購入股數（
+                賣出股數總和（
+                {soldSharesAtBuyBasis.toLocaleString(undefined, {
+                  maximumFractionDigits: 4,
+                })}
+                ）超過購入股數（
                 {record.buyShares.toLocaleString()}），請確認
               </Typography>
             </Stack>

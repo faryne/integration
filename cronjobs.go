@@ -124,6 +124,15 @@ var cronJobs = map[string]cronGroup{
 				},
 			},
 			{
+				// 證交所 ETF 分割/反分割（預告表＋已恢復買賣），回補舊資料可帶 -dayFrom/-dayTo
+				Name:     "etf-split-twse",
+				Schedule: "30 0 * * *",
+				Enabled:  true,
+				Handler: func() {
+					twse.UpdateETFSplitEvents(commandParams.Value("dayFrom"), commandParams.Value("dayTo"))
+				},
+			},
+			{
 				Name:     "etf-share-otc",
 				Schedule: "0 1 * * *",
 				Enabled:  true,

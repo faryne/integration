@@ -75,8 +75,9 @@ type Share struct {
 }
 
 type ShareWithETFAndStats struct {
-	ETF   `json:"etf"`
-	Stats []Share `json:"stats"`
+	ETF    `json:"etf"`
+	Stats  []Share      `json:"stats"`
+	Splits []SplitEvent `json:"splits"` // 分割/反分割紀錄，獲利試算換算股數用
 }
 
 func (s *Share) TableName() string {

@@ -44,7 +44,8 @@ export interface ProfitDetailRow {
 }
 
 export interface ProfitResult {
-  totalCost: number;
+  totalCost: number; // 累計投入成本：所有購入紀錄的買進金額（含已賣出部分），已實現/總盈虧報酬率的分母
+  holdingCost: number; // 持有成本：未賣出股數的買進金額，未實現報酬率的分母
   finalShares: number;
   detail: ProfitDetailRow[];
 
