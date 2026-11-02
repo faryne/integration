@@ -8,6 +8,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { VideoDetail } from "@/components/av/video_detail.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
+import { AV_VIDEO_SECTION, sectionTitle, useTitle } from "@/helpers/title.tsx";
 
 export function AVVideoDetail() {
   const { no } = useParams<{ no: string }>();
@@ -15,6 +16,15 @@ export function AVVideoDetail() {
   const video = v.data?.data?.data?.[0];
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  // 放在年齡確認外面，還沒確認也有標題；跟後端 service/sns/av_meta.go 一樣用「番號 片名」，沒有官方番號用 DMM 內部番號
+  useTitle(
+    sectionTitle(
+      AV_VIDEO_SECTION,
+      video
+        ? `${video.maker_no?.trim() || video.no.toUpperCase()} ${video.title}`
+        : "",
+    ),
+  );
 
   if (!no || (v.isSuccess && !video)) {
     return (

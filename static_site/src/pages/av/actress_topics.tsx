@@ -11,7 +11,11 @@ import { Link as RouterLink } from "react-router-dom";
 import { useActressTopicIndex } from "@/apis/av/actress_topic.ts";
 import { actressTopicPath } from "@/helpers/avActressTopic.ts";
 import { avAdminTopicsPath } from "@/helpers/avActressAdmin.ts";
-import { useTitle } from "@/helpers/title.tsx";
+import {
+  AV_ACTRESS_SECTION,
+  sectionTitle,
+  useTitle,
+} from "@/helpers/title.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { useState } from "react";
@@ -22,7 +26,7 @@ const WIDE_GROUPS = ["special", "body", "pref", "hot", "cold"];
 
 /** 女優主題總覽：/av/actress/topics，依分組列出每個主題與人數（資料來自每週產生的 index.json） */
 export function AVActressTopics() {
-  useTitle("AV 女優主題");
+  useTitle(sectionTitle(AV_ACTRESS_SECTION, "女優主題"));
   const index = useActressTopicIndex();
   const { session } = useAuth();
   const [errorClosed, setErrorClosed] = useState(false);

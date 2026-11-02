@@ -116,10 +116,12 @@ var pathCollection = []pathMeta{
 	{Pattern: vtuberWallPattern, Title: vtuberWallTitle, Description: vtuberWallDescription},
 	{Pattern: vtuberTalentPattern, Title: vtuberTitle, Description: vtuberDescription, Apply: applyVtuberTalentMeta},
 	// 影片詳細頁要排在 /av/video 的 Prefix 通用卡前面
-	{Pattern: avVideoPattern, Title: "AV 影片搜尋", Description: "以番號、標籤、演員與片名搜尋影片資料的整理工具。", Apply: applyAvVideoMeta},
+	{Pattern: avVideoPattern, Title: avVideoSection, Description: "以番號、標籤、演員與片名搜尋影片資料的整理工具。", Apply: applyAvVideoMeta},
+	// 女優頁同理，要排在 /av/actress 的 Prefix 通用卡前面
+	{Pattern: avActressPattern, Title: avActressSection, Description: "搜尋演員資料與作品索引的整理工具。", Apply: applyAvActressMeta},
 	{Path: "/", Title: siteName, Description: defaultDescription},
-	{Path: "/av/video", Title: "AV 影片搜尋", Description: "以番號、標籤、演員與片名搜尋影片資料的整理工具。", Prefix: true},
-	{Path: "/av/actress", Title: "AV 女優搜尋", Description: "搜尋演員資料與作品索引的整理工具。", Prefix: true},
+	{Path: "/av/video", Title: avVideoSection, Description: "以番號、標籤、演員與片名搜尋影片資料的整理工具。", Prefix: true},
+	{Path: "/av/actress", Title: avActressSection, Description: "搜尋演員資料與作品索引的整理工具。", Prefix: true},
 	{Path: "/data/tw-stats", Title: "台灣指標", Description: "查詢台灣公開統計指標，快速瀏覽資料趨勢與歷史紀錄。", Prefix: true},
 	{Path: "/data/vtubers", Title: vtuberTitle, Description: vtuberDescription},
 	{Path: "/data/rates", Title: "匯率", Description: "查詢主要貨幣匯率，並提供簡單的匯率換算工具。"},

@@ -36,7 +36,11 @@ import {
 } from "@/helpers/avActressTopic.ts";
 import { actressCardGridSx } from "@/helpers/avActressDisplay.ts";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
-import { useTitle } from "@/helpers/title.tsx";
+import {
+  AV_ACTRESS_SECTION,
+  sectionTitle,
+  useTitle,
+} from "@/helpers/title.tsx";
 import { ActressCard } from "@/components/av/actress_card.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
@@ -51,7 +55,12 @@ export function AVActressTopic() {
   const hit = findActressTopic(index.data, slug);
   const file = useActressTopicFile(hit?.topic.file);
   const [errorClosed, setErrorClosed] = useState(false);
-  useTitle(hit ? `${hit.topic.label} - AV 女優主題` : "AV 女優主題");
+  useTitle(
+    sectionTitle(
+      AV_ACTRESS_SECTION,
+      hit ? `${hit.topic.label} - 女優主題` : "女優主題",
+    ),
+  );
   useBreadcrumbTail(hit?.topic.label);
 
   if (index.isSuccess && !hit) {

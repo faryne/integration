@@ -28,7 +28,11 @@ import {
 } from "@/data/avActressTopicAdmin.ts";
 import { apiErrorMessage } from "@/helpers/apiError.ts";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
-import { useTitle } from "@/helpers/title.tsx";
+import {
+  AV_ACTRESS_SECTION,
+  sectionTitle,
+  useTitle,
+} from "@/helpers/title.tsx";
 import { avAdminTopicsPath } from "@/helpers/avActressAdmin.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ActressTopicConditionForm } from "@/components/av/actress_topic_condition_form.tsx";
@@ -38,7 +42,9 @@ import { ErrorPage } from "@/pages/ErrorPage.tsx";
 export function AVActressTopicEdit() {
   const id = Number(useParams<{ id: string }>().id) || 0;
   const detail = useAdminActressTopic(id);
-  useTitle(id ? "編輯女優主題" : "新增女優主題");
+  useTitle(
+    sectionTitle(AV_ACTRESS_SECTION, id ? "編輯女優主題" : "新增女優主題"),
+  );
   useBreadcrumbTail(id ? (detail.data?.title ?? "編輯主題") : "新增主題");
 
   return (

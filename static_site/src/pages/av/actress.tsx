@@ -1,4 +1,4 @@
-import { useTitle } from "@/helpers/title.tsx";
+import { AV_ACTRESS_SECTION, useTitle } from "@/helpers/title.tsx";
 import { useEffect, useState } from "react";
 import {
   type ActressSearchRequest,
@@ -135,7 +135,7 @@ export function AVActress() {
     ListByPaginationRequest<ActressSearchRequest>
   >(() => parseActressSearchParams(query));
   const s = useAVActressSearch(search);
-  useTitle("AV 女優搜尋");
+  useTitle(AV_ACTRESS_SECTION);
 
   useEffect(() => {
     setSearch(parseActressSearchParams(query));

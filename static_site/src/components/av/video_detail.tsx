@@ -8,7 +8,6 @@ import {
   Divider,
   Skeleton,
 } from "@mui/material";
-import { useTitle } from "@/helpers/title.tsx";
 import { useNavigate } from "react-router-dom";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
@@ -42,7 +41,6 @@ export function VideoDetail(props: IVideoDetail) {
   // 沒有官方番號的舊資料顯示 DMM 內部番號
   const displayCode = displayMakerNo || video?.no.toUpperCase() || "";
 
-  useTitle(video?.title ?? "");
   useBreadcrumbTail(video ? `${displayCode} ${video.title}` : undefined);
 
   const chipClick = (s: string, keyPrefix: string) => {
