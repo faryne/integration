@@ -8,7 +8,7 @@ const distDir = path.join(projectRoot, "dist");
 const indexPath = path.join(distDir, "index.html");
 
 const siteName = "Faryne 的實驗室 by faryne.dev";
-const siteOrigin = "https://beta.faryne.dev";
+const siteOrigin = "https://faryne.dev";
 const defaultImage = `${siteOrigin}/faryne-icon-1024.jpg`;
 const defaultDescription =
   "Faryne 的個人實驗室，整理開放資料、ETF 與匯率工具、爬蟲工具、Threads 截圖工具，以及一些 side project。";

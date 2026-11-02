@@ -67,7 +67,7 @@ function getTwitchParent() {
   if (typeof window !== "undefined" && window.location.hostname) {
     return window.location.hostname;
   }
-  return "beta.faryne.dev";
+  return "faryne.dev";
 }
 
 const videoEmbedProviders: VideoEmbedProvider[] = [

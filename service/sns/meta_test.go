@@ -14,7 +14,7 @@ func TestBuildMetaStaticRoute(t *testing.T) {
 	if !strings.Contains(meta.Title, "匯率") {
 		t.Fatalf("expected rates title, got %q", meta.Title)
 	}
-	if meta.Canonical != "https://beta.faryne.dev/data/rates?base=TWD" {
+	if meta.Canonical != "https://faryne.dev/data/rates?base=TWD" {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
 	}
 	if meta.RedirectURL != meta.Canonical {
@@ -28,7 +28,7 @@ func TestBuildMetaStripsTrackingQuery(t *testing.T) {
 		Query: "category=BOND&strategy=high-win-rate&fbclid=abc&utm_source=facebook&fbc_id=def&twclid=x&li_fat_id=y&ttclid=z&msclkid=m",
 	})
 
-	expectedCanonical := "https://beta.faryne.dev/data/etf/twse/0050?category=BOND&strategy=high-win-rate"
+	expectedCanonical := "https://faryne.dev/data/etf/twse/0050?category=BOND&strategy=high-win-rate"
 
 	if meta.Canonical != expectedCanonical {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
@@ -57,13 +57,13 @@ func TestBuildMetaRouteCanOverrideImage(t *testing.T) {
 
 	meta := BuildMeta(modelSNS.RenderRequest{Path: "custom-image"})
 
-	if meta.Image != "https://beta.faryne.dev/custom-og.jpg" {
+	if meta.Image != "https://faryne.dev/custom-og.jpg" {
 		t.Fatalf("unexpected image: %s", meta.Image)
 	}
 }
 
 func TestAbsoluteURLKeepsAbsoluteImageURL(t *testing.T) {
-	got := absoluteURL("https://beta.faryne.dev", "https://cdn.example.com/og.jpg")
+	got := absoluteURL("https://faryne.dev", "https://cdn.example.com/og.jpg")
 
 	if got != "https://cdn.example.com/og.jpg" {
 		t.Fatalf("unexpected absolute URL: %s", got)
@@ -73,7 +73,7 @@ func TestAbsoluteURLKeepsAbsoluteImageURL(t *testing.T) {
 func TestBuildMetaRejectsAbsolutePath(t *testing.T) {
 	meta := BuildMeta(modelSNS.RenderRequest{Path: "https://evil.example/path"})
 
-	if meta.Canonical != "https://beta.faryne.dev/" {
+	if meta.Canonical != "https://faryne.dev/" {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
 	}
 }
@@ -145,7 +145,7 @@ func TestBuildMetaNekomaidPrefixRoute(t *testing.T) {
 	if meta.Title != "難以名狀的抓圖器" {
 		t.Fatalf("unexpected title: %s", meta.Title)
 	}
-	if meta.Canonical != "https://beta.faryne.dev/nekomaid/pixiv/123/456" {
+	if meta.Canonical != "https://faryne.dev/nekomaid/pixiv/123/456" {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
 	}
 }
@@ -156,7 +156,7 @@ func TestBuildMetaLegacyNekomaidSiteRoute(t *testing.T) {
 	if meta.Title != "難以名狀的抓圖器" {
 		t.Fatalf("unexpected title: %s", meta.Title)
 	}
-	if meta.Canonical != "https://beta.faryne.dev/nekomaid/pixiv" {
+	if meta.Canonical != "https://faryne.dev/nekomaid/pixiv" {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
 	}
 	if meta.RedirectURL != meta.Canonical {
@@ -167,7 +167,7 @@ func TestBuildMetaLegacyNekomaidSiteRoute(t *testing.T) {
 func TestBuildMetaLegacyNekomaidAuthorRoute(t *testing.T) {
 	meta := BuildMeta(modelSNS.RenderRequest{Path: "pixiv/123"})
 
-	if meta.Canonical != "https://beta.faryne.dev/nekomaid/pixiv/123" {
+	if meta.Canonical != "https://faryne.dev/nekomaid/pixiv/123" {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
 	}
 }
@@ -175,7 +175,7 @@ func TestBuildMetaLegacyNekomaidAuthorRoute(t *testing.T) {
 func TestBuildMetaLegacyNekomaidArtworkRoute(t *testing.T) {
 	meta := BuildMeta(modelSNS.RenderRequest{Path: "pixiv/123/456"})
 
-	if meta.Canonical != "https://beta.faryne.dev/nekomaid/pixiv/123/456" {
+	if meta.Canonical != "https://faryne.dev/nekomaid/pixiv/123/456" {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
 	}
 }
@@ -229,7 +229,7 @@ func TestBuildMetaLegacyNekomaidArtworkRouteUsesFetchedContent(t *testing.T) {
 	if meta.Title != "Legacy Title | 難以名狀的抓圖器" {
 		t.Fatalf("unexpected title: %s", meta.Title)
 	}
-	if meta.Canonical != "https://beta.faryne.dev/nekomaid/pixiv/123/456" {
+	if meta.Canonical != "https://faryne.dev/nekomaid/pixiv/123/456" {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
 	}
 }
@@ -249,7 +249,7 @@ func TestBuildMetaNekomaidR18ArtworkKeepsDefaultImage(t *testing.T) {
 
 	meta := BuildMeta(modelSNS.RenderRequest{Path: "nekomaid/pixiv/123/456"})
 
-	if meta.Image != "https://beta.faryne.dev/faryne-icon-1024.jpg" {
+	if meta.Image != "https://faryne.dev/faryne-icon-1024.jpg" {
 		t.Fatalf("unexpected image for r18 artwork: %s", meta.Image)
 	}
 }
@@ -282,7 +282,7 @@ func TestRenderHTMLRedirectScriptUsesAbsoluteURL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(html, `location.replace("https://beta.faryne.dev/data/etf/twse/00961")`) {
+	if !strings.Contains(html, `location.replace("https://faryne.dev/data/etf/twse/00961")`) {
 		t.Fatalf("redirect script should use the canonical URL as a JS string, got: %s", html)
 	}
 	if strings.Contains(html, "%22https://") || strings.Contains(html, "&#34;https://") {
