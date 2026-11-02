@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	siteName            = "ha2.tw / faryne.dev"
+	siteName            = "Faryne 的實驗室 by faryne.dev"
 	nekomaidSiteName    = "難以名狀的抓圖器"
 	steamloomSiteName   = "SteamLoom"
 	defaultFrontendURL  = "https://faryne.dev"
