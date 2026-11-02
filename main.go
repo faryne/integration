@@ -3,10 +3,11 @@ package main
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
-	"reflect"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -89,20 +90,10 @@ func newApp() *fiber.App {
 			if fiberErr, ok := errors.AsType[*fiber.Error](err); ok {
 				err = output.FromFiberError(fiberErr)
 			}
-			if reflect.ValueOf(err).MethodByName("HttpCode").IsValid() {
-				var v output.CommonOutputInterface
-				errors.As(err, &v)
-				var costTime = float64(-1)
-				var endTime = float64(time.Now().UnixMilli())
-				if startTime := ctx.Locals("start_time"); startTime != nil {
-					costTime = (endTime - float64(startTime.(int64))) / float64(time.Microsecond)
-				}
-				uri := ctx.Scheme() + "://" + ctx.Hostname() + ctx.Path()
-				if ctx.Request().URI().QueryArgs().Len() > 0 {
-					uri = uri + "?" + ctx.Request().URI().QueryArgs().String()
-				}
-				finalOutput := v.Output(costTime, uri)
-				finalOutput.Method = ctx.Method()
+			// 用 errors.AsType 判斷是否完整實作 CommonOutputInterface，不能只看有沒有 HttpCode 方法，
+			// 否則只實作一半的型別會讓 v 留在 nil，呼叫 v.Output 時 panic
+			if v, ok := errors.AsType[output.CommonOutputInterface](err); ok {
+				finalOutput := output.FromContext(ctx, v)
 				return ctx.Status(finalOutput.Code).JSON(finalOutput)
 			}
 			return ctx.JSON(err.Error())
@@ -144,11 +135,8 @@ func main() {
 
 	logBuildEvent("start")
 
-	if reload {
-		logBuildEvent("restart")
-		if err := gracefulRestart(runtime); err != nil {
-			log.Logger().Panic("Graceful restart failed: " + err.Error())
-		}
+	// 重啟前置檢查失敗時 restart 回傳 true，此時照常進入 waitForSignal 繼續服務
+	if reload && !restart(runtime) {
 		return
 	}
 
@@ -170,9 +158,8 @@ func waitForSignal(runtime *appRuntime) {
 		case sig := <-signalChan:
 			switch sig {
 			case syscall.SIGHUP:
-				logBuildEvent("restart")
-				if err := gracefulRestart(runtime); err != nil {
-					log.Logger().Panic("Graceful restart failed: " + err.Error())
+				if restart(runtime) {
+					continue
 				}
 				return
 			default:
@@ -190,31 +177,39 @@ func logBuildEvent(event string) {
 	log.Logger().Info("App " + event + ": buildVersion=" + buildVersion)
 }
 
+// shutdownTimeout 是 HTTP 與 cron 收尾共用的等待上限；兩者並行等待，
+// 避免序列執行時最壞要 60 秒、超過部署平台常見的 30 秒 graceful shutdown 窗口而被 SIGKILL
+const shutdownTimeout = 30 * time.Second
+
 func shutdownAllSettings(runtime *appRuntime) error {
 	if runtime == nil {
 		return nil
 	}
-	var shutdownErr error
 	beginBackgroundWorkDrain()
+	var wg sync.WaitGroup
+	var appErr, cronErr error
 	if runtime.app != nil {
-		shutdownErr = errors.Join(shutdownErr, runtime.app.ShutdownWithTimeout(30*time.Second))
+		wg.Go(func() { appErr = runtime.app.ShutdownWithTimeout(shutdownTimeout) })
 	}
+	if runtime.cron != nil {
+		wg.Go(func() {
+			select {
+			case <-runtime.cron.Stop().Done():
+			case <-time.After(shutdownTimeout):
+				cronErr = errors.New("cron shutdown timeout")
+			}
+		})
+	}
+	wg.Wait()
+	shutdownErr := errors.Join(appErr, cronErr)
+	// consumer 等 HTTP 與 cron 都收完才停，讓它們最後產生的事件仍有機會被消費；
+	// 且要在 shutdownClients 關掉 AMQP 連線之前停掉
 	if runtime.auditConsumer != nil {
 		runtime.auditConsumer.Stop()
 	}
-	// 要在 shutdownClients 關掉 AMQP 連線之前停掉 consumer
 	runtime.steamloomConsumer.Stop()
-	if runtime.cron != nil {
-		ctx := runtime.cron.Stop()
-		select {
-		case <-ctx.Done():
-		case <-time.After(30 * time.Second):
-			shutdownErr = errors.Join(shutdownErr, errors.New("cron shutdown timeout"))
-		}
-	}
 	waitBackgroundWorkBeforeShutdown()
-	shutdownErr = errors.Join(shutdownErr, shutdownClients())
-	return shutdownErr
+	return errors.Join(shutdownErr, shutdownClients())
 }
 
 func beginBackgroundWorkDrain() {
@@ -236,16 +231,52 @@ func shutdownClients() error {
 	return shutdownErr
 }
 
-func gracefulRestart(runtime *appRuntime) error {
-	if err := shutdownAllSettings(runtime); err != nil {
-		return err
+// errRestartAborted 代表重啟在關閉任何資源之前就放棄了，服務仍完整可用
+var errRestartAborted = errors.New("restart aborted before shutdown")
+
+// restart 執行重啟並處理失敗：回傳 true 代表前置檢查沒過、應繼續服務；
+// 資源關閉後才失敗則已無法挽回，直接 Panic。exec 成功時不會回到這裡。
+func restart(runtime *appRuntime) (keepServing bool) {
+	logBuildEvent("restart")
+	err := gracefulRestart(runtime)
+	if errors.Is(err, errRestartAborted) {
+		log.Logger().Error("Graceful restart aborted, keep serving: " + err.Error())
+		return true
 	}
-	path, err := os.Executable()
 	if err != nil {
+		log.Logger().Panic("Graceful restart failed: " + err.Error())
+	}
+	return false
+}
+
+func gracefulRestart(runtime *appRuntime) error {
+	// 先確認執行檔可用才關資源：部署途中執行檔可能暫時不存在，若先關光 HTTP/DB 再 exec 失敗，服務就直接掛掉
+	path, err := restartExecutable()
+	if err != nil {
+		return fmt.Errorf("%w: %w", errRestartAborted, err)
+	}
+	if err := shutdownAllSettings(runtime); err != nil {
 		return err
 	}
 	// 重啟後不應再帶 -reload，否則新 process 開機完會立刻判斷 reload==true 再次重啟，造成無限迴圈
 	return syscall.Exec(path, argsWithoutReload(), os.Environ())
+}
+
+// restartExecutable 回傳目前執行檔路徑，並確認該路徑上仍是可執行的一般檔案。
+// Linux 上即使舊檔已被替換，os.Executable 也會回傳原路徑（去掉 " (deleted)" 後綴），所以這裡檢查到的是新檔。
+func restartExecutable() (string, error) {
+	path, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+	if !info.Mode().IsRegular() || info.Mode().Perm()&0o111 == 0 {
+		return "", fmt.Errorf("%s is not an executable file", path)
+	}
+	return path, nil
 }
 
 func argsWithoutReload() []string {
@@ -321,9 +352,10 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 				continue
 			}
 			jobName := job.Name
-			c.AddFunc(job.Schedule, func() {
-				runCronJob(jobName)
-			})
+			// schedule 打錯時 AddFunc 會回錯誤、job 不會註冊；只記 log 不擋開機，避免一支 job 拖垮整個服務
+			if _, err := c.AddFunc(job.Schedule, func() { runCronJob(jobName) }); err != nil {
+				log.Logger().Error("Register cron job failed", zap.String("job", jobName), zap.String("schedule", job.Schedule), zap.Error(err))
+			}
 		}
 	}
 

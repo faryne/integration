@@ -119,7 +119,9 @@ var cronJobs = map[string]cronGroup{
 				Schedule: "0 0 * * *",
 				Enabled:  true,
 				Handler: func() {
-					_, _ = twse.UpdateETFCodeList()
+					if _, err := twse.UpdateETFCodeList(); err != nil {
+						log.Logger().Error("ETF code list update failed: " + err.Error())
+					}
 					twse.UpdateETFShare(enum.StockMarketTWSE)
 				},
 			},
@@ -168,7 +170,9 @@ var cronJobs = map[string]cronGroup{
 					now := time.Now()
 					lastMonth := now.AddDate(0, -1, 0)
 					s := twse.NewETFMonthlyPriceService()
-					_ = s.UpdateMonthlyPriceByMonth(lastMonth.Year(), int(lastMonth.Month()))
+					if err := s.UpdateMonthlyPriceByMonth(lastMonth.Year(), int(lastMonth.Month())); err != nil {
+						log.Logger().Error("ETF monthly price update failed: " + err.Error())
+					}
 				},
 			},
 			{
@@ -176,7 +180,9 @@ var cronJobs = map[string]cronGroup{
 				Schedule: "0 8 * * *",
 				Enabled:  true,
 				Handler: func() {
-					_ = twse.NotifyUpcomingETFEx()
+					if err := twse.NotifyUpcomingETFEx(); err != nil {
+						log.Logger().Error("ETF upcoming ex-dividend notify failed: " + err.Error())
+					}
 				},
 			},
 		},
