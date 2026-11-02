@@ -53,6 +53,7 @@ export function calcTransactionsResult(
   let realizedPriceGain = 0;
   let unrealizedPriceGain = 0;
   let totalCost = 0;
+  let holdingCost = 0;
   let finalShares = 0;
 
   // 配息依 ex_date 聚合（同一天多筆購入紀錄命中會合併成一列）；賣出則每筆各自一列
@@ -158,6 +159,8 @@ export function calcTransactionsResult(
     unrealizedPriceGain +=
       (currentPrice - adjCost) * (remainingShares * factor);
     finalShares += remainingShares * factor;
+    // 持有成本只算還沒賣掉的股數；已賣出部分的成本已經反映在已實現損益裡
+    holdingCost += rec.buyPrice * remainingShares;
   });
 
   const dividendRows: ProfitDetailRow[] = Array.from(dividendAgg.values()).map(
@@ -185,6 +188,7 @@ export function calcTransactionsResult(
 
   return {
     totalCost,
+    holdingCost,
     finalShares,
     detail,
     realizedDividend,
@@ -197,7 +201,8 @@ export function calcTransactionsResult(
     unrealizedTotal,
     grandTotal,
     realizedRate: rateOf(realizedTotal),
-    unrealizedRate: rateOf(unrealizedTotal),
+    // 未實現只跟手上還沒賣的部位有關，分母用持有成本；用累計投入成本會被已賣出的部分稀釋
+    unrealizedRate: computeRate(unrealizedTotal, holdingCost),
     grandTotalRate: rateOf(grandTotal),
   };
 }

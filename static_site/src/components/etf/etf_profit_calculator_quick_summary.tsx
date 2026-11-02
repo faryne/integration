@@ -30,7 +30,10 @@ export function ProfitQuickSummary({
         試算結果
       </Typography>
       <Typography variant="caption" color="text.secondary" component="p">
-        總成本 {formatAmount(result.totalCost)}
+        持有成本 {formatAmount(result.holdingCost)}
+        {/* 有賣出過才補累計投入（已實現、總盈虧報酬率的分母） */}
+        {Math.round(result.totalCost) !== Math.round(result.holdingCost) &&
+          `・累計投入 ${formatAmount(result.totalCost)}`}
       </Typography>
       <Stack spacing={1.5} sx={{ mt: 1 }}>
         <Box>

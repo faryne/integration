@@ -64,6 +64,7 @@ interface FavoriteRow {
 
 const emptyTotals = {
   totalCost: 0,
+  holdingCost: 0,
   realizedTotal: 0,
   unrealizedTotal: 0,
   grandTotal: 0,
@@ -94,11 +95,32 @@ const columns = [
     align: "right" as const,
     tooltip: "已實現盈虧 ＋ 未實現盈虧",
   },
-  { label: "投入成本", align: "right" as const },
+  {
+    label: "持有成本",
+    align: "right" as const,
+    tooltip:
+      "未賣出部位的買進金額（未實現報酬率以此計算）；有賣出過時下方小字為含已賣出部分的累計投入成本（已實現、總盈虧報酬率以此計算）",
+  },
 ];
 
+// 有賣出過（累計投入 ≠ 持有成本）才在持有成本下方補一行累計投入，沒賣過就不重複顯示同一個數字
+function CumulativeCostCaption({
+  totalCost,
+  holdingCost,
+}: {
+  totalCost: number;
+  holdingCost: number;
+}) {
+  if (Math.round(totalCost) === Math.round(holdingCost)) return null;
+  return (
+    <Typography variant="caption" component="div" color="text.secondary">
+      累計投入 {formatAmount(totalCost)}
+    </Typography>
+  );
+}
+
 // 我的最愛 ETF 總覽：彙整每支已收藏 ETF 的已儲存交易紀錄，重用獲利試算的
-// 計算引擎算出目前持股數、已實現/未實現/總盈虧與投入成本，列表 + 總計列呈現。
+// 計算引擎算出目前持股數、已實現/未實現/總盈虧與持有成本，列表 + 總計列呈現。
 export default function TwseEtfFavoritesPage() {
   const navigate = useNavigate();
   const { session } = useAuth();
@@ -182,6 +204,7 @@ export default function TwseEtfFavoritesPage() {
       rows.reduce((acc, row) => {
         return {
           totalCost: acc.totalCost + row.result.totalCost,
+          holdingCost: acc.holdingCost + row.result.holdingCost,
           realizedTotal: acc.realizedTotal + row.result.realizedTotal,
           unrealizedTotal: acc.unrealizedTotal + row.result.unrealizedTotal,
           grandTotal: acc.grandTotal + row.result.grandTotal,
@@ -389,7 +412,11 @@ export default function TwseEtfFavoritesPage() {
                     </Typography>
                   </TableCell>
                   <TableCell align="right">
-                    {formatAmount(row.result.totalCost)}
+                    {formatAmount(row.result.holdingCost)}
+                    <CumulativeCostCaption
+                      totalCost={row.result.totalCost}
+                      holdingCost={row.result.holdingCost}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -438,7 +465,7 @@ export default function TwseEtfFavoritesPage() {
                     sx={{ color: "inherit", opacity: 0.85 }}
                   >
                     {formatRate(
-                      computeRate(totals.unrealizedTotal, totals.totalCost),
+                      computeRate(totals.unrealizedTotal, totals.holdingCost),
                     )}
                   </Typography>
                 </TableCell>
@@ -465,7 +492,11 @@ export default function TwseEtfFavoritesPage() {
                   align="right"
                   sx={{ fontWeight: 900, bgcolor: "background.default" }}
                 >
-                  {formatAmount(totals.totalCost)}
+                  {formatAmount(totals.holdingCost)}
+                  <CumulativeCostCaption
+                    totalCost={totals.totalCost}
+                    holdingCost={totals.holdingCost}
+                  />
                 </TableCell>
               </TableRow>
             </TableFooter>
