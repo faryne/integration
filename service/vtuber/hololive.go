@@ -34,9 +34,9 @@ const (
 )
 
 var (
-	// 官網列表頁的藝人連結曾由絕對網址改成相對路徑，兩種寫法都要吃
+	// 官網列表頁的藝人連結曾由絕對網址改成相對路徑、分組連結則在 2026-11 由相對路徑改成絕對網址，兩種寫法都要吃
 	talentLinkPattern       = regexp.MustCompile(`href="(?:https://hololive\.hololivepro\.com)?/talents/([a-z0-9-]+)/"`)
-	talentUnitLinkPattern   = regexp.MustCompile(`href="/talents\?gp=([a-zA-Z0-9_-]+)"`)
+	talentUnitLinkPattern   = regexp.MustCompile(`href="(?:https://hololive\.hololivepro\.com)?/talents\?gp=([a-zA-Z0-9_-]+)"`)
 	talentSNSBlockPattern   = regexp.MustCompile(`(?s)<ul class="t_sns[^"]*">(.*?)</ul>`)
 	youtubeChannelIDPattern = regexp.MustCompile(`youtube\.com/channel/(UC[a-zA-Z0-9_-]+)`)
 	youtubeHandlePattern    = regexp.MustCompile(`youtube\.com/(@[a-zA-Z0-9_.-]+)`)
@@ -59,7 +59,15 @@ func SyncTalentChannels(ctx context.Context) (int, error) {
 	if len(talents) == 0 {
 		return 0, fmt.Errorf("no youtube channel found from %s", hololiveTalentsURL)
 	}
-	units, graduated := scrapeTalentUnits(ctx, parseUnitSlugs(listPage))
+	unitSlugs := parseUnitSlugs(listPage)
+	units, graduated := scrapeTalentUnits(ctx, unitSlugs)
+	// 一個分組都沒抓到（官網又改版）時不覆寫期別與卒業標記，保留 DB 原本的值；
+	// 2026-11 分組連結改成絕對網址時，就是這樣把整份名冊的期別與卒業標記洗空
+	columns := vtuberRepository.ScrapedColumns
+	if len(unitSlugs) == 0 {
+		log.Logger().Warn("No hololive unit found on talents page, keep existing unit_slug and is_graduated")
+		columns = slices.DeleteFunc(slices.Clone(columns), func(c string) bool { return c == "unit_slug" || c == "is_graduated" })
+	}
 
 	api, err := newYouTubeService(ctx)
 	if err != nil {
@@ -92,7 +100,7 @@ func SyncTalentChannels(ctx context.Context) (int, error) {
 	}
 
 	// 先寫 DB（網站與行事曆都靠它），CDN 檔案寫失敗不影響名冊
-	if err := saveChannels(rows); err != nil {
+	if err := saveChannels(rows, columns); err != nil {
 		return 0, err
 	}
 	if err := writeFile(hololiveS3Key, channels); err != nil {
@@ -101,15 +109,15 @@ func SyncTalentChannels(ctx context.Context) (int, error) {
 	return len(rows), nil
 }
 
-// saveChannels 寫入名冊，官網上已經不見的 hololive 頻道 soft delete；其他事務所／個人勢的頻道不在這份名冊裡，不能動
-func saveChannels(rows []vtuberEntity.Channel) error {
+// saveChannels 以 columns 寫入名冊，官網上已經不見的 hololive 頻道 soft delete；其他事務所／個人勢的頻道不在這份名冊裡，不能動
+func saveChannels(rows []vtuberEntity.Channel, columns []string) error {
 	channels, err := vtuberRepository.ListActiveChannels()
 	if err != nil {
 		return err
 	}
 	// 畢業判斷的分母也只算 hololive，不然其他頻道一多，80% 門檻永遠過不了
 	active := slices.DeleteFunc(channels, func(c vtuberEntity.Channel) bool { return c.OrgSlug != vtuberEntity.OrgHololive })
-	if err := vtuberRepository.UpsertChannels(rows, vtuberRepository.ScrapedColumns); err != nil {
+	if err := vtuberRepository.UpsertChannels(rows, columns); err != nil {
 		return err
 	}
 	if !graduationAllowed(len(rows), len(active)) {
