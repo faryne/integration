@@ -254,6 +254,13 @@ var cronJobs = map[string]cronGroup{
 				},
 			},
 			{
+				// 一次性：全區間回補後仍是 logstash 舊文件的作品（DMM 已下架）標成 orphan
+				Name:     "av-dmm-video-mark-delisted",
+				Schedule: "",
+				Enabled:  true,
+				Handler:  avService.RunMarkDelistedVideosOrphan,
+			},
+			{
 				// 先同步當天作品，同步完再把當天上架清單前 10 筆發到 Telegram；可用 -dayFrom 指定日期
 				Name:     "av-dmm-video-notify",
 				Schedule: "0 10 * * *",
