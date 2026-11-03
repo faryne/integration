@@ -41,7 +41,7 @@ import { isMobileUserAgent } from "@/helpers/device.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import type { VtuberLive } from "@/types/vtubers.ts";
 
-/** /data/vtubers 總覽：藝人選擇列、直播中輪播、過去的直播（昨天、前天）、依日期分組的即將直播 */
+/** /data/vtubers 總覽：藝人選擇列、直播中輪播、過去的直播（前天、昨天）、依日期分組的即將直播 */
 export function VtubersIndex() {
   useTitle("VTuber 直播行事曆");
   const channels = useVtuberChannels();
@@ -72,9 +72,10 @@ export function VtubersIndex() {
     (ended.data?.lives ?? []).filter(
       (l) => taipeiTime(liveStartAt(l)).dateKey === dateKey,
     );
+  // 由舊到新排（前天、昨天），接著下面的「即將直播」從今天開始，整頁時間順序一致
   const pastDays = [
-    { name: "昨天", dateKey: yesterday, lives: endedOn(yesterday) },
     { name: "前天", dateKey: dayBefore, lives: endedOn(dayBefore) },
+    { name: "昨天", dateKey: yesterday, lives: endedOn(yesterday) },
   ];
 
   return (
