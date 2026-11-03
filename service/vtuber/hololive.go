@@ -61,13 +61,6 @@ func SyncTalentChannels(ctx context.Context) (int, error) {
 	}
 	unitSlugs := parseUnitSlugs(listPage)
 	units, graduated := scrapeTalentUnits(ctx, unitSlugs)
-	// 一個分組都沒抓到（官網又改版）時不覆寫期別與卒業標記，保留 DB 原本的值；
-	// 2026-11 分組連結改成絕對網址時，就是這樣把整份名冊的期別與卒業標記洗空
-	columns := vtuberRepository.ScrapedColumns
-	if len(unitSlugs) == 0 {
-		log.Logger().Warn("No hololive unit found on talents page, keep existing unit_slug and is_graduated")
-		columns = slices.DeleteFunc(slices.Clone(columns), func(c string) bool { return c == "unit_slug" || c == "is_graduated" })
-	}
 
 	api, err := newYouTubeService(ctx)
 	if err != nil {
@@ -100,7 +93,7 @@ func SyncTalentChannels(ctx context.Context) (int, error) {
 	}
 
 	// 先寫 DB（網站與行事曆都靠它），CDN 檔案寫失敗不影響名冊
-	if err := saveChannels(rows, columns); err != nil {
+	if err := saveChannels(ctx, rows, len(unitSlugs) > 0); err != nil {
 		return 0, err
 	}
 	if err := writeFile(hololiveS3Key, channels); err != nil {
@@ -109,19 +102,26 @@ func SyncTalentChannels(ctx context.Context) (int, error) {
 	return len(rows), nil
 }
 
-// saveChannels 以 columns 寫入名冊，官網上已經不見的 hololive 頻道 soft delete；其他事務所／個人勢的頻道不在這份名冊裡，不能動
-func saveChannels(rows []vtuberEntity.Channel, columns []string) error {
+// saveChannels 寫入名冊，官網上已經不見的 hololive 頻道 soft delete；其他事務所／個人勢的頻道不在這份名冊裡，不能動。
+// 兩道保護（期別／卒業標記的變動幅度、爬到的頻道數）擋下時都會發 TG，見 roster_guard.go
+func saveChannels(ctx context.Context, rows []vtuberEntity.Channel, unitsFound bool) error {
 	channels, err := vtuberRepository.ListActiveChannels()
 	if err != nil {
 		return err
 	}
-	// 畢業判斷的分母也只算 hololive，不然其他頻道一多，80% 門檻永遠過不了
+	// 保護的分母只算 hololive，不然其他頻道一多，80% 門檻永遠過不了
 	active := slices.DeleteFunc(channels, func(c vtuberEntity.Channel) bool { return c.OrgSlug != vtuberEntity.OrgHololive })
+	// 期別與卒業標記不可信時（2026-11 官網改版就把整份名冊洗空過）只更新其他欄位，保留 DB 原本的值
+	columns := vtuberRepository.ScrapedColumns
+	if reason := unitGuardReason(rows, active, unitsFound); reason != "" {
+		alertRosterGuard(ctx, reason, "這次不更新期別與卒業標記，保留原本的值")
+		columns = slices.DeleteFunc(slices.Clone(columns), func(c string) bool { return c == "unit_slug" || c == "is_graduated" })
+	}
 	if err := vtuberRepository.UpsertChannels(rows, columns); err != nil {
 		return err
 	}
 	if !graduationAllowed(len(rows), len(active)) {
-		log.Logger().Warn("Skip hololive roster cleanup: too few channels scraped", zap.Int("scraped", len(rows)), zap.Int("active", len(active)))
+		alertRosterGuard(ctx, fmt.Sprintf("只爬到 %d 個頻道，目前在籍 %d 個（門檻 %.0f%%）", len(rows), len(active), graduationGuardRatio*100), "這次不做名冊清理，官網上不見的頻道先不下架")
 		return nil
 	}
 	keep := make([]string, len(rows))
