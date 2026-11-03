@@ -19,6 +19,9 @@ func TestParseUnitSlugs(t *testing.T) {
 	body := `<a href="/talents?gp=gen-0">0期生</a><a href="/talents?gp=myth">Myth</a><a href="/talents?gp=alum">卒業生</a>` +
 		`<a href="/talents?gp=tag_office-staff">事務所スタッフ</a><a href="/talents?gp=myth">Myth</a>`
 	require.Equal(t, []string{"gen-0", "myth", "alum", "tag_office-staff"}, parseUnitSlugs(body))
+	// 2026-11 官網改成絕對網址
+	body = `<a href="https://hololive.hololivepro.com/talents?gp=gen-2">2期生</a><a href="/talents?gp=alum">卒業生</a>`
+	require.Equal(t, []string{"gen-2", "alum"}, parseUnitSlugs(body))
 }
 
 func TestAssignUnitPrefersEarlierUnit(t *testing.T) {
