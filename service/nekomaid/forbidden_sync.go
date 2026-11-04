@@ -95,6 +95,11 @@ func restoreIndexedArtworks(ctx context.Context, row nekomaid.ArtworkForbidden) 
 // 連 DB 沒有對應列的舊文件也一起拉掉（這類文件解除後無法回補）。索引 mapping 不在 repo 裡，author_id 若是 text 欄位，
 // 單靠 match 下 delete_by_query 可能誤刪別的畫師，所以先查出來、用 _source 精確比對後再依 _id 刪。
 func deleteIndexedArtworks(ctx context.Context, row nekomaid.ArtworkForbidden) error {
+	// 防呆：畫師與作品都空時，條件只剩站台，會把整站畫師 ID 空白的文件全拉掉；這種列不處理（正常流程不會產生）
+	if row.AuthorId == "" && row.ArtworkId == "" {
+		log.Logger().Warn("Skip nekomaid forbidden without author and artwork", zap.Uint64("id", row.Id))
+		return nil
+	}
 	es := client.GetElasticSearch(enum.ESDefault)
 	if es == nil {
 		return fmt.Errorf("elasticsearch client is not initialized")
@@ -167,9 +172,15 @@ func indexedArtworkIDs(ctx context.Context, es *elasticsearch.Client, row nekoma
 	return ids, nil
 }
 
-// isTakedownTarget 索引文件的站台、畫師（、作品）跟禁抓目標完全相等
+// isTakedownTarget 索引文件的站台、畫師（、作品）跟禁抓目標完全相等；
+// 欄位不存在或為 null 視為空字串（舊資料有畫師 ID 空白的作品，舊版單一作品禁抓的畫師也是空的）
 func isTakedownTarget(row nekomaid.ArtworkForbidden, source map[string]any) bool {
-	field := func(key string) string { return fmt.Sprint(source[key]) }
+	field := func(key string) string {
+		if v := source[key]; v != nil {
+			return fmt.Sprint(v)
+		}
+		return ""
+	}
 	return field("from") == string(row.Site) && field("author_id") == row.AuthorId &&
 		(row.ArtworkId == "" || field("artwork_id") == row.ArtworkId)
 }
@@ -192,14 +203,14 @@ func esRequest(es *elasticsearch.Client, body any, send func(io.Reader) (*esapi.
 	return resp, nil
 }
 
-// takedownQuery 縮小搜尋範圍用，欄位比對方式跟前台搜尋（service/nekomaid/search.go）一致
+// takedownQuery 縮小搜尋範圍用，欄位比對方式跟前台搜尋（service/nekomaid/search.go）一致；
+// 空字串的欄位不加條件（match 空字串查不到任何文件），最後由 isTakedownTarget 精確比對
 func takedownQuery(row nekomaid.ArtworkForbidden) map[string]any {
-	filters := []any{
-		map[string]any{"match": map[string]any{"from": row.Site}},
-		map[string]any{"match": map[string]any{"author_id": row.AuthorId}},
-	}
-	if row.ArtworkId != "" {
-		filters = append(filters, map[string]any{"match": map[string]any{"artwork_id": row.ArtworkId}})
+	filters := []any{map[string]any{"match": map[string]any{"from": row.Site}}}
+	for field, value := range map[string]string{"author_id": row.AuthorId, "artwork_id": row.ArtworkId} {
+		if value != "" {
+			filters = append(filters, map[string]any{"match": map[string]any{field: value}})
+		}
 	}
 	return map[string]any{"bool": map[string]any{"filter": filters}}
 }

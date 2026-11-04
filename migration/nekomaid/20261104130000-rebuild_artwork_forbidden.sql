@@ -1,7 +1,11 @@
 -- 禁抓名單改版：MyISAM latin1 → InnoDB utf8mb4，加 id／soft delete／來源欄位，並支援「只禁單一作品」。
--- 舊版（PHP 與 Go）都只比對 site + author_id，artwork_id 從沒被用過，
--- 所以舊資料一律轉成「整個畫師」（artwork_id = ''），同一畫師的多列合併成一列，行為跟改版前一致。
--- 舊表改名成 artwork_forbidden_legacy 保留，Down 時換回去。
+-- 舊資料的轉換規則（2026-11-04 使用者定案）：
+--   有 author_id、沒有 artwork_id → 整個畫師（artwork_id = ''）
+--   有 author_id、也有 artwork_id → 單一作品
+--   沒有 author_id、只有 artwork_id → 單一作品，畫師從 artwork_main 反查，查不到就留空
+--     （不能當成整個畫師：會變成 author_id = '' 的禁抓，把所有畫師 ID 空白的舊作品一起禁掉）
+--   兩欄都空 → 沒有意義，略過
+-- 同一目標的多列合併成一列。舊表改名成 artwork_forbidden_legacy 保留，Down 時換回去。
 
 -- +migrate Up
 CREATE TABLE `artwork_forbidden_v2` (
@@ -26,9 +30,19 @@ CREATE TABLE `artwork_forbidden_v2` (
 
 -- 舊資料 is_proceed 一律從 0 開始：改版前沒有同步 job，禁抓前就抓進來的作品還留在 ES，交給 job 拉掉（原圖與 artwork_main 不動）
 INSERT INTO `artwork_forbidden_v2` (`site`, `author_id`, `artwork_id`, `source`, `created_at`, `updated_at`)
-SELECT LOWER(TRIM(`site`)), TRIM(`author_id`), '', 'legacy', COALESCE(MIN(`insert_time`), NOW()), NOW()
-FROM `artwork_forbidden`
-GROUP BY LOWER(TRIM(`site`)), TRIM(`author_id`);
+SELECT `site`, `author_id`, `artwork_id`, 'legacy', COALESCE(MIN(`insert_time`), NOW()), NOW()
+FROM (
+  SELECT LOWER(TRIM(f.`site`)) AS `site`,
+         IF(TRIM(f.`author_id`) <> '', TRIM(f.`author_id`), COALESCE(m.`author_id`, '')) AS `author_id`,
+         TRIM(f.`artwork_id`) AS `artwork_id`,
+         f.`insert_time`
+  FROM `artwork_forbidden` f
+  -- artwork_main.artwork_id 是 unique，最多對到一列
+  LEFT JOIN `artwork_main` m
+    ON TRIM(f.`author_id`) = '' AND m.`site` = LOWER(TRIM(f.`site`)) AND m.`artwork_id` = TRIM(f.`artwork_id`)
+  WHERE TRIM(f.`author_id`) <> '' OR TRIM(f.`artwork_id`) <> ''
+) AS legacy
+GROUP BY `site`, `author_id`, `artwork_id`;
 
 RENAME TABLE `artwork_forbidden` TO `artwork_forbidden_legacy`, `artwork_forbidden_v2` TO `artwork_forbidden`;
 
