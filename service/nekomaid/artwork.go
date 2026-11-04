@@ -29,18 +29,18 @@ func GetArtworkDetail(site, authorID, artworkID string) (*nekomaid.ArtworkDetail
 		return nil, ErrArtworkNotFound
 	}
 
-	cacheKey := artworkDetailCacheKey(site, authorID, artworkID)
-	if cached := getCachedArtworkDetail(cacheKey); cached != nil {
-		return cached, nil
-	}
-
-	repository := nekomaidRepo.NewNekomaidRepository()
-	forbidden, err := repository.CheckForbidden(enum.NekomaidSite(site), authorID)
+	// 禁抓檢查放在快取之前：剛被禁的作品不用等快取（50 分鐘）過期才消失
+	forbidden, err := nekomaidRepo.NewForbiddenRepository().IsForbidden(enum.NekomaidSite(site), authorID, artworkID)
 	if err != nil {
-		return nil, fmt.Errorf("check forbidden nekomaid author: %w", err)
+		return nil, fmt.Errorf("check forbidden nekomaid artwork: %w", err)
 	}
 	if forbidden {
 		return nil, ErrArtworkNotFound
+	}
+
+	cacheKey := artworkDetailCacheKey(site, authorID, artworkID)
+	if cached := getCachedArtworkDetail(cacheKey); cached != nil {
+		return cached, nil
 	}
 
 	documentID := strings.Join([]string{site, authorID, artworkID}, "-")
@@ -64,7 +64,7 @@ func GetArtworkDetail(site, authorID, artworkID string) (*nekomaid.ArtworkDetail
 	if err != nil {
 		return nil, err
 	}
-	author, err := repository.GetAuthor(enum.NekomaidSite(site), authorID)
+	author, err := nekomaidRepo.NewNekomaidRepository().GetAuthor(enum.NekomaidSite(site), authorID)
 	if err != nil {
 		return nil, fmt.Errorf("get nekomaid author: %w", err)
 	}

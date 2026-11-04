@@ -53,6 +53,18 @@ mig-up:
 mig-down:
 	sql-migrate down -config ./migration/config.yml -env localhost
 
+# neko.maid.tw（artworks DB）：DSN 從 .env 的 NEKOMAID_DSN 讀；注意本機 .env 目前指向 prod
+NEKOMAID_DSN_FROM_ENV = $$(grep '^NEKOMAID_DSN=' .env | cut -d= -f2- | tr -d '"')
+
+mig-up-nekomaid:
+	NEKOMAID_DSN="$(NEKOMAID_DSN_FROM_ENV)" sql-migrate up -config ./migration/nekomaid.yml -env localhost
+
+mig-down-nekomaid:
+	NEKOMAID_DSN="$(NEKOMAID_DSN_FROM_ENV)" sql-migrate down -limit=1 -config ./migration/nekomaid.yml -env localhost
+
+mig-status-nekomaid:
+	NEKOMAID_DSN="$(NEKOMAID_DSN_FROM_ENV)" sql-migrate status -config ./migration/nekomaid.yml -env localhost
+
 start:
 	@if [ -f "$(PID_FILE)" ] && kill -0 "$$(cat "$(PID_FILE)")" 2>/dev/null; then \
 		echo "Already running: pid=$$(cat "$(PID_FILE)")"; \

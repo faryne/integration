@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>禁抓名單 Mockup</title>
+<style>
+  /* 色彩 token：對齊 MUI 預設主題，深色模式跟著系統或右下角切換 */
+  :root {
+    --bg: #f5f6f8; --paper: #fff; --text: #1f2328; --muted: #667085; --line: #e3e6ea;
+    --primary: #1976d2; --primary-soft: #e8f1fb; --error: #d32f2f; --warn: #ed6c02; --ok: #2e7d32;
+    --selected: rgba(25,118,210,.08); --shadow: 0 1px 2px rgba(0,0,0,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121417; --paper: #1b1e23; --text: #e6e8eb; --muted: #9aa3ae; --line: #2c3138;
+      --primary: #64a8f0; --primary-soft: #1d2b3b; --selected: rgba(100,168,240,.14); --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121417; --paper: #1b1e23; --text: #e6e8eb; --muted: #9aa3ae; --line: #2c3138;
+    --primary: #64a8f0; --primary-soft: #1d2b3b; --selected: rgba(100,168,240,.14); --shadow: none;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 "Noto Sans TC", "PingFang TC", system-ui, sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; cursor: pointer; }
+
+  /* 頂部列 */
+  .topbar { position: sticky; top: 0; z-index: 20; height: 56px; display: flex; align-items: center; gap: 8px;
+    padding: 0 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
+  .brand { font-weight: 900; font-size: 16px; }
+  .brand small { color: var(--muted); font-weight: 700; margin-left: 6px; }
+  .spacer { flex: 1; }
+  .icon-btn { border: 0; background: transparent; color: var(--text); width: 36px; height: 36px; border-radius: 50%; }
+  .icon-btn:hover { background: var(--selected); }
+  .hamburger { display: none; font-size: 20px; }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: #fff; border: 0;
+    font-weight: 800; }
+  .menu { position: absolute; right: 16px; top: 52px; background: var(--paper); border: 1px solid var(--line);
+    border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.12); min-width: 180px; padding: 6px; display: none; }
+  .menu.open { display: block; }
+  .menu .who { padding: 8px 10px; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+  .menu a, .menu button { display: block; width: 100%; text-align: left; padding: 8px 10px; border: 0; background: none;
+    color: var(--text); border-radius: 6px; }
+  .menu a:hover, .menu button:hover { background: var(--selected); }
+
+  /* 主體：側欄 + 內容 */
+  .shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: calc(100vh - 56px); }
+  .side { border-right: 1px solid var(--line); background: var(--paper); padding: 12px 8px; position: sticky; top: 56px;
+    height: calc(100vh - 56px); overflow-y: auto; }
+  .group { margin-bottom: 14px; }
+  .group-title { font-size: 12px; font-weight: 800; color: var(--muted); padding: 4px 12px; }
+  .nav-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px;
+    border-radius: 6px; font-weight: 700; }
+  .nav-item:hover { background: var(--selected); }
+  .nav-item.active { background: var(--selected); color: var(--primary); }
+  .badge { background: var(--error); color: #fff; border-radius: 10px; font-size: 12px; min-width: 20px; height: 20px;
+    padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
+  .main { padding: 20px 24px 48px; min-width: 0; }
+  .crumbs { color: var(--muted); font-size: 13px; margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .crumbs a:hover { color: var(--primary); text-decoration: underline; }
+  .crumbs .cur { color: var(--text); }
+  h1 { font-size: 22px; margin: 0 0 16px; font-weight: 900; }
+
+  .paper { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .card { padding: 16px; }
+  .card h3 { margin: 0 0 12px; font-size: 16px; font-weight: 900; }
+  .stat { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 6px; }
+  .stat:hover { background: var(--selected); }
+  .stat b { font-size: 20px; }
+  .stat b.zero { color: var(--muted); font-weight: 600; }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px; }
+  .field { border: 1px solid var(--line); background: var(--paper); color: var(--text); border-radius: 6px;
+    padding: 8px 12px; min-width: 240px; font: inherit; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; overflow-x: auto; }
+  .tab { border: 0; background: none; padding: 10px 14px; color: var(--muted); font-weight: 700; white-space: nowrap;
+    border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 640px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 12px; color: var(--muted); font-weight: 800; }
+  tr:last-child td { border-bottom: 0; }
+  .chip { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--line);
+    margin-right: 4px; white-space: nowrap; }
+  .chip.warn { border-color: var(--warn); color: var(--warn); }
+  .chip.ok { border-color: var(--ok); color: var(--ok); }
+  .chip.err { border-color: var(--error); color: var(--error); }
+  .btn { border: 1px solid var(--line); background: var(--paper); color: var(--text); padding: 5px 12px; border-radius: 6px;
+    font-weight: 700; white-space: nowrap; }
+  .btn:hover { background: var(--selected); }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .btn.danger { color: var(--error); border-color: var(--error); }
+  .btn.big { padding: 10px 20px; font-size: 15px; }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .thumb { width: 32px; height: 32px; border-radius: 50%; background: var(--primary-soft); display: inline-flex;
+    align-items: center; justify-content: center; font-weight: 800; color: var(--primary); margin-right: 8px; vertical-align: middle; }
+  .muted { color: var(--muted); }
+  .pager { display: flex; justify-content: flex-end; gap: 6px; padding: 12px; }
+
+  /* 登入卡／403：全頁置中，沒有側欄 */
+  .center { min-height: calc(100vh - 56px); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .gate { width: 100%; max-width: 380px; padding: 32px 24px; text-align: center; }
+  .gate h2 { margin: 0 0 20px; font-size: 20px; font-weight: 900; }
+  .gate .code { font-size: 40px; font-weight: 900; color: var(--error); margin-bottom: 4px; }
+  .gate .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .google { display: inline-flex; align-items: center; gap: 10px; }
+  .google i { width: 18px; height: 18px; border-radius: 50%; background: conic-gradient(#ea4335 0 25%, #fbbc05 0 50%, #34a853 0 75%, #4285f4 0); }
+
+  /* confirm 對話框與 SNACK */
+  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+  .scrim.open { display: flex; }
+  .dialog { max-width: 400px; width: 100%; padding: 20px; }
+  .dialog h3 { margin: 0 0 8px; }
+  .dialog .actions { justify-content: flex-end; margin-top: 20px; }
+  .snack { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(100px); background: #323232; color: #fff;
+    padding: 10px 18px; border-radius: 6px; transition: transform .2s; z-index: 60; }
+  .snack.show { transform: translateX(-50%) translateY(0); }
+  .snack.err { background: var(--error); }
+
+  /* Mockup 專用的狀態切換面板（實作時不會有） */
+  .switcher { position: fixed; right: 16px; bottom: 16px; z-index: 40; background: #222; color: #fff; border-radius: 10px;
+    padding: 10px; font-size: 12px; max-width: 240px; box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+  .switcher b { display: block; margin-bottom: 6px; }
+  .switcher button { background: #3a3a3a; color: #fff; border: 0; border-radius: 4px; padding: 4px 8px; margin: 2px; font-size: 12px; }
+  .switcher button.on { background: #1976d2; }
+  .switcher .min { float: right; background: none; padding: 0 4px; }
+
+  /* 手機：側欄收成 Drawer */
+  @media (max-width: 899px) {
+    .hamburger { display: inline-block; }
+    .shell { grid-template-columns: minmax(0, 1fr); }
+    .side { position: fixed; left: 0; top: 56px; bottom: 0; width: 260px; z-index: 30; transform: translateX(-100%);
+      transition: transform .2s; height: auto; box-shadow: 4px 0 24px rgba(0,0,0,.2); }
+    .side.open { transform: none; }
+    .drawer-scrim { position: fixed; inset: 56px 0 0 0; background: rgba(0,0,0,.35); z-index: 25; display: none; }
+    .drawer-scrim.open { display: block; }
+    .main { padding: 16px 16px 120px; }
+    .field { min-width: 0; width: 100%; }
+    .brand small { display: none; }
+  }
+  /* 本頁額外樣式 */
+  .form-grid { display: grid; gap: 12px; margin-top: 12px; }
+  .form-grid label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; }
+  .form-grid .field { min-width: 0; width: 100%; }
+  .dialog.wide { max-width: 480px; }
+  .id-link { color: var(--primary); }
+  .id-link:hover { text-decoration: underline; }
+  td .sub { display: block; font-size: 12px; color: var(--muted); }
+  .empty { padding: 40px 12px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <button class="icon-btn hamburger" id="hamburger" aria-label="開啟選單">☰</button>
+  <a class="brand" href="#">faryne.dev<small>後台</small></a>
+  <div class="spacer"></div>
+  <button class="avatar" aria-label="帳號選單">F</button>
+</header>
+<div class="shell">
+  <nav class="side" id="side" aria-label="後台導覽">
+    <div class="group"><a href="#" class="nav-item">總覽</a></div>
+    <div class="group"><div class="group-title">Galgame</div>
+      <a href="#" class="nav-item">頻道管理</a><a href="#" class="nav-item">影片管理</a>
+      <a href="#" class="nav-item">待審頻道</a><a href="#" class="nav-item">待審影片</a><a href="#" class="nav-item">影片關鍵字</a></div>
+    <div class="group"><div class="group-title">AV</div>
+      <a href="#" class="nav-item">女優上稿審核</a><a href="#" class="nav-item">影片修改審核</a><a href="#" class="nav-item">女優主題</a></div>
+    <!-- 新增的群組 -->
+    <div class="group"><div class="group-title">Nekomaid</div>
+      <a href="#" class="nav-item active" data-view="forbidden">禁抓名單</a>
+      <a href="#" class="nav-item" data-view="submissions"><span>版權申告</span><span class="badge">2</span></a></div>
+    <div class="group"><div class="group-title">其他後台</div><a href="#" class="nav-item">SteamLoom 檢舉後台 ↗</a></div>
+  </nav>
+  <main class="main">
+   <section id="viewForbidden">
+    <div class="crumbs"><a href="#">後台</a><span>/</span><span>Nekomaid</span><span>/</span><span class="cur">禁抓名單</span></div>
+    <h1>禁抓名單</h1>
+
+    <div class="toolbar">
+      <select class="field" id="site" style="min-width:140px">
+        <option value="">全部來源站</option><option>pixiv</option><option>nico</option><option>tinami</option>
+      </select>
+      <input class="field" id="keyword" placeholder="畫師 ID、作品 ID 或暱稱">
+      <div class="spacer"></div>
+      <button class="btn primary" data-act="openCreate">新增禁抓</button>
+    </div>
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-status="">全部</button>
+      <button class="tab" data-status="pending">待移除</button>
+      <button class="tab" data-status="done">已移除</button>
+    </div>
+    <div class="paper table-wrap" id="list"></div>
+   </section>
+
+   <!-- 版權申告審核 -->
+   <section id="viewSubmissions" hidden>
+    <div class="crumbs"><a href="#">後台</a><span>/</span><span>Nekomaid</span><span>/</span><span class="cur">版權申告</span></div>
+    <h1>版權申告</h1>
+    <div class="tabs">
+      <button class="tab sub-tab active" data-sub="pending">待審</button>
+      <button class="tab sub-tab" data-sub="approved">已核准</button>
+      <button class="tab sub-tab" data-sub="rejected">已駁回</button>
+      <button class="tab sub-tab" data-sub="">全部</button>
+    </div>
+    <div class="paper table-wrap" id="subList"></div>
+   </section>
+  </main>
+</div>
+<div class="drawer-scrim" id="drawerScrim"></div>
+
+<!-- 新增禁抓 -->
+<div class="scrim" id="createDialog">
+  <div class="paper dialog wide" role="dialog" aria-modal="true">
+    <h3>新增禁抓</h3>
+    <div class="form-grid">
+      <label>網址<input class="field" id="url" placeholder="pixiv／nico／tinami 或 neko.maid.tw 的畫師、作品網址"></label>
+      <label>來源站<select class="field" id="fSite"><option>pixiv</option><option>nico</option><option>tinami</option></select></label>
+      <label>畫師 ID<input class="field" id="fAuthor"></label>
+      <label>作品 ID（留空＝整個畫師）<input class="field" id="fArtwork"></label>
+      <label>備註<input class="field" id="fNote" maxlength="255"></label>
+    </div>
+    <div class="actions">
+      <button class="btn" data-act="close">取消</button>
+      <button class="btn primary" data-act="create">新增</button>
+    </div>
+  </div>
+</div>
+
+<!-- 不可逆操作的 confirm：新增會刪圖、解除不會回補 -->
+<div class="scrim" id="confirm">
+  <div class="paper dialog" role="dialog" aria-modal="true">
+    <h3 id="confirmTitle"></h3>
+    <div class="muted" id="confirmBody"></div>
+    <div class="actions">
+      <button class="btn" data-act="closeConfirm">取消</button>
+      <button class="btn danger" id="confirmOk"></button>
+    </div>
+  </div>
+</div>
+<!-- 申告核准／駁回：駁回理由必填、會顯示在申請人的查詢頁 -->
+<div class="scrim" id="reviewDialog">
+  <div class="paper dialog wide" role="dialog" aria-modal="true">
+    <h3 id="reviewTitle"></h3>
+    <div class="muted" id="reviewTarget"></div>
+    <div class="form-grid">
+      <label><span id="reviewNoteLabel"></span><textarea class="field" id="reviewNote" rows="3" maxlength="255"></textarea></label>
+    </div>
+    <div class="actions">
+      <button class="btn" data-act="closeReview">取消</button>
+      <button class="btn" id="reviewOk"></button>
+    </div>
+  </div>
+</div>
+<div class="snack" id="snack"></div>
+
+<div class="switcher" id="switcher">
+  <button class="min" data-act="toggleSwitcher">–</button>
+  <b>Mockup 狀態</b>
+  <div id="switchBody">
+    <button data-state="normal" class="on">有資料</button>
+    <button data-state="empty">空</button>
+    <button data-state="loadError">載入失敗</button>
+    <button data-state="dupError">新增重複</button>
+  </div>
+</div>
+
+<script>
+const rows = [
+  { id: 52, site: "pixiv", author_id: "82517969", artwork_id: "", nickname: "しらたま", source: "admin", note: "本人 Twitter 私訊要求", is_proceed: false, finish_time: null, created_at: "2026-11-04 15:20" },
+  { id: 51, site: "pixiv", author_id: "1453201", artwork_id: "145304494", nickname: "Mika", source: "admin", note: "", is_proceed: true, finish_time: "2026-11-04 12:05", created_at: "2026-11-04 12:01" },
+  { id: 37, site: "nico", author_id: "3392811", artwork_id: "", nickname: "", source: "legacy", note: "", is_proceed: true, finish_time: "2026-11-04 10:15", created_at: "2017-05-22 09:12" },
+  { id: 12, site: "tinami", author_id: "59021", artwork_id: "", nickname: "ねこまた", source: "legacy", note: "", is_proceed: true, finish_time: "2026-11-04 10:10", created_at: "2015-03-08 21:40" },
+];
+const sourceLabel = { admin: "後台", submission: "版權申告", legacy: "舊資料" };
+const submissions = [
+  { id: 8, status: "pending", ip: "203.0.113.25", ip_count: 1, site: "pixiv", author_id: "82517969", artwork_id: "", nickname: "しらたま", email: "shiratama@example.jp", message: "我是畫師本人，請停止收錄我所有的作品。pixiv 個人資料頁的連結區有放這個信箱可以確認。", created_at: "2026-11-04 15:20" },
+  { id: 7, status: "pending", ip: "198.51.100.7", ip_count: 14, site: "pixiv", author_id: "1453201", artwork_id: "145304494", nickname: "Mika", email: "", message: "", created_at: "2026-11-04 11:48" },
+  { id: 5, status: "approved", ip: "192.0.2.10", ip_count: 1, site: "nico", author_id: "3392811", artwork_id: "", nickname: "", email: "a@example.com", message: "請刪除", note: "", reviewed_at: "2026-11-02 10:00", created_at: "2026-11-01 22:10" },
+  { id: 4, status: "rejected", ip: "198.51.100.7", ip_count: 14, site: "pixiv", author_id: "777", artwork_id: "", nickname: "某畫師", email: "x@example.com", message: "我不喜歡這個畫師", note: "非畫師本人或權利人", reviewed_at: "2026-10-30 09:00", created_at: "2026-10-29 18:30" },
+];
+const subStatus = { pending: '<span class="chip warn">待審</span>', approved: '<span class="chip ok">已核准</span>', rejected: '<span class="chip err">已駁回</span>' };
+let subFilter = "pending";
+function sourceUrl(r) {
+  const author = { pixiv: `https://www.pixiv.net/users/${r.author_id}`, nico: `https://seiga.nicovideo.jp/user/illust/${r.author_id}`, tinami: `https://www.tinami.com/creator/profile/${r.author_id}` };
+  return author[r.site];
+}
+function renderSubmissions() {
+  const data = submissions.filter((r) => !subFilter || r.status === subFilter);
+  $("subList").innerHTML = data.length ? `<table>
+    <thead><tr><th>送出時間</th><th>畫師</th><th>範圍</th><th>聯絡 email</th><th>說明</th><th>IP</th><th>狀態</th><th></th></tr></thead>
+    <tbody>${data.map((r) => `<tr>
+      <td class="muted">${r.created_at}</td>
+      <td>${r.nickname || '<span class="muted">（無暱稱）</span>'}<span class="sub">${r.site} · <a class="id-link" href="${sourceUrl(r)}" target="_blank">${r.author_id} ↗</a></span></td>
+      <td>${r.artwork_id ? `作品 <a class="id-link" href="${nekoUrl(r)}" target="_blank">${r.artwork_id}</a>` : `<a class="id-link" href="${nekoUrl(r)}" target="_blank">整個畫師</a>`}</td>
+      <td>${r.email || '<span class="muted">—</span>'}</td>
+      <td style="max-width:320px">${r.message || '<span class="muted">—</span>'}${r.note ? `<span class="sub">審核備註：${r.note}</span>` : ""}</td>
+      <td>${r.ip}<span class="sub">${r.ip_count > 1 ? `<a href="#" class="chip err">同 IP ${r.ip_count} 件</a>` : ""}</span></td>
+      <td>${subStatus[r.status]}${r.reviewed_at ? `<span class="sub">${r.reviewed_at}</span>` : ""}</td>
+      <td>${r.status === "pending" ? `<div class="actions"><button class="btn primary" data-act="approve" data-id="${r.id}">核准</button><button class="btn danger" data-act="reject" data-id="${r.id}">駁回</button></div>` : ""}</td>
+    </tr>`).join("")}</tbody></table>` : `<div class="empty">沒有申告</div>`;
+}
+function openReview(r, approve) {
+  $("reviewTitle").textContent = approve ? "核准版權申告" : "駁回版權申告";
+  $("reviewTarget").textContent = `${r.site} ${r.nickname || r.author_id}：${r.artwork_id ? "作品 " + r.artwork_id : "整個畫師"}`;
+  $("reviewNoteLabel").textContent = approve ? "備註（選填）" : "駁回理由（申請人看得到）";
+  $("reviewNote").value = "";
+  const ok = $("reviewOk");
+  ok.textContent = approve ? "核准並從搜尋移除" : "駁回"; ok.className = approve ? "btn primary" : "btn danger";
+  ok.onclick = () => {
+    if (!approve && !$("reviewNote").value.trim()) { snack("駁回需要填寫理由", true); return; }
+    r.status = approve ? "approved" : "rejected"; r.note = $("reviewNote").value; r.reviewed_at = "2026-11-04 16:00";
+    $("reviewDialog").classList.remove("open"); renderSubmissions();
+    snack(approve ? "已核准，5 分鐘內從搜尋移除" : "已駁回");
+  };
+  $("reviewDialog").classList.add("open");
+}
+let state = "normal", status = "";
+const $ = (id) => document.getElementById(id);
+
+function nekoUrl(r) { return `https://neko.maid.tw/${r.site}/${r.author_id}${r.artwork_id ? "/" + r.artwork_id : ""}`; }
+
+function render() {
+  const list = $("list");
+  if (state === "empty") { list.innerHTML = `<div class="empty">沒有符合的禁抓</div>`; return; }
+  const data = rows.filter((r) => !status || (status === "pending") !== r.is_proceed);
+  list.innerHTML = `<table>
+    <thead><tr><th>來源站</th><th>畫師</th><th>範圍</th><th>來源</th><th>備註</th><th>搜尋狀態</th><th>建立時間</th><th></th></tr></thead>
+    <tbody>${data.map((r) => `<tr>
+      <td>${r.site}</td>
+      <td>${r.nickname || '<span class="muted">（無暱稱）</span>'}<a class="sub id-link" href="${nekoUrl({ ...r, artwork_id: "" })}" target="_blank">${r.author_id}</a></td>
+      <td>${r.artwork_id ? `作品 <a class="id-link" href="${nekoUrl(r)}" target="_blank">${r.artwork_id}</a>` : "整個畫師"}</td>
+      <td><span class="chip">${sourceLabel[r.source]}</span></td>
+      <td>${r.note || '<span class="muted">—</span>'}</td>
+      <td>${r.is_proceed ? `<span class="chip ok">已移除</span><span class="sub">${r.finish_time}</span>` : '<span class="chip warn">待移除</span>'}</td>
+      <td class="muted">${r.created_at}</td>
+      <td><button class="btn danger" data-act="askDelete" data-id="${r.id}">解除</button></td>
+    </tr>`).join("")}</tbody></table>
+    <div class="pager"><button class="btn" disabled>上一頁</button><span class="muted" style="align-self:center">1 / 1</span><button class="btn" disabled>下一頁</button></div>`;
+}
+
+function snack(msg, err) {
+  const s = $("snack"); s.textContent = msg; s.className = "snack show" + (err ? " err" : "");
+  clearTimeout(snack.t); snack.t = setTimeout(() => (s.className = "snack"), 2600);
+}
+
+function confirmAsk(title, body, okLabel, onOk) {
+  $("confirmTitle").textContent = title; $("confirmBody").textContent = body; $("confirmOk").textContent = okLabel;
+  $("confirmOk").onclick = () => { $("confirm").classList.remove("open"); onOk(); };
+  $("confirm").classList.add("open");
+}
+
+// 貼網址時自動帶入站台與 ID（實作時放前端 helper，後端只收 site／author_id／artwork_id）
+function parseUrl(raw) {
+  const rules = [
+    [/neko\.maid\.tw\/(pixiv|nico|tinami)\/([\w-]+)(?:\/([\w-]+))?/, (m) => [m[1], m[2], m[3] || ""]],
+    [/pixiv\.net\/(?:\w+\/)?users\/(\d+)/, (m) => ["pixiv", m[1], ""]],
+    [/pixiv\.net\/(?:\w+\/)?artworks\/(\d+)/, (m) => ["pixiv", "", m[1]]],
+    [/seiga\.nicovideo\.jp\/user\/illust\/(\d+)/, (m) => ["nico", m[1], ""]],
+    [/seiga\.nicovideo\.jp\/seiga\/im(\d+)/, (m) => ["nico", "", m[1]]],
+    [/tinami\.com\/creator\/profile\/(\d+)/, (m) => ["tinami", m[1], ""]],
+    [/tinami\.com\/view\/(\d+)/, (m) => ["tinami", "", m[1]]],
+  ];
+  for (const [re, pick] of rules) { const m = raw.match(re); if (m) return pick(m); }
+  return null;
+}
+$("url").addEventListener("input", (e) => {
+  const hit = parseUrl(e.target.value); if (!hit) return;
+  [$("fSite").value, $("fAuthor").value, $("fArtwork").value] = hit;
+});
+
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-act],[data-state],[data-status],[data-view],[data-sub]"); if (!t) return;
+  if (t.dataset.view) {
+    e.preventDefault();
+    $("viewForbidden").hidden = t.dataset.view !== "forbidden"; $("viewSubmissions").hidden = t.dataset.view !== "submissions";
+    document.querySelectorAll("[data-view]").forEach((b) => b.classList.toggle("active", b === t));
+    return;
+  }
+  if (t.dataset.sub !== undefined) {
+    subFilter = t.dataset.sub;
+    document.querySelectorAll(".sub-tab").forEach((b) => b.classList.toggle("active", b === t));
+    renderSubmissions(); return;
+  }
+  if (t.dataset.state) {
+    state = t.dataset.state;
+    document.querySelectorAll("[data-state]").forEach((b) => b.classList.toggle("on", b === t));
+    render(); if (state === "loadError") snack("讀取禁抓名單失敗，請稍後再試", true);
+    return;
+  }
+  if (t.dataset.status !== undefined) {
+    status = t.dataset.status;
+    document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b === t));
+    render(); return;
+  }
+  switch (t.dataset.act) {
+    case "openCreate": $("createDialog").classList.add("open"); break;
+    case "close": $("createDialog").classList.remove("open"); break;
+    case "closeConfirm": $("confirm").classList.remove("open"); break;
+    case "create":
+      if (state === "dupError") { snack("這個目標已經在禁抓名單裡", true); break; }
+      $("createDialog").classList.remove("open"); snack("已新增，5 分鐘內從搜尋移除");
+      break;
+    case "askDelete": {
+      const r = rows.find((x) => String(x.id) === t.dataset.id);
+      confirmAsk("確定解除禁抓？", `解除後 ${r.site} ${r.artwork_id ? "作品 " + r.artwork_id : "畫師 " + r.author_id} 可以重新被抓取，已收錄的作品會回到搜尋。`, "解除", () => snack("已解除，5 分鐘內回到搜尋"));
+      break;
+    }
+    case "approve": case "reject":
+      openReview(submissions.find((x) => String(x.id) === t.dataset.id), t.dataset.act === "approve"); break;
+    case "closeReview": $("reviewDialog").classList.remove("open"); break;
+    case "toggleSwitcher": $("switchBody").hidden = !$("switchBody").hidden; break;
+  }
+});
+$("hamburger").onclick = () => { $("side").classList.toggle("open"); $("drawerScrim").classList.toggle("open"); };
+$("drawerScrim").onclick = () => { $("side").classList.remove("open"); $("drawerScrim").classList.remove("open"); };
+render();
+renderSubmissions();
+</script>
+</body>
+</html>
