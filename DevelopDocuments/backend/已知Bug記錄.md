@@ -42,3 +42,20 @@
 - **後續（同日）**：`og:url` 全面改成等於 canonical（比照 SteamLoom），拿掉 `Meta.OpenGraphURL` 欄位、模板直接輸出 `.Canonical`，平台第一次抓就停，讚數與分享數也歸到真正的網址（舊的 `/sns/...` 累積數會歸零）。galgame.tv 沒走 SNS 渲染不受影響；neko.maid.tw 的 og:url 從 `faryne.dev/sns/nekomaid/...` 變成 `faryne.dev/nekomaid/...`。`/sns/*` 路由仍保留給 nginx 轉爬蟲用，剝掉重複 sns 的處理也保留，給平台快取裡的舊 og:url 重抓用。branch `fix/sns-og-url-canonical`。
 - **測試環境注意**：ETF 相關測試（`TestBuildMetaStripsTrackingQuery`、`TestBuildMetaDynamicETFRoute`、`TestRenderHTMLRedirectScriptUsesAbsoluteURL`）要連 DB，沒有 DB 會 panic、中斷後面的測試，尚未處理；本機可用 `go test ./service/sns/ -skip` 跳過。網域寫死 `beta.faryne.dev` 的問題已在 2026-11-02 改成 `faryne.dev`（`config` 預設值也一起改），跟本機 `.env` 的 `FRONTEND_PATH` 一致就會過。
 - **狀態**：已修（branch `fix/sns-path-normalize`、`fix/sns-og-url-canonical`）。部署後要在 FB 分享偵錯工具按「再次抓取」更新快取。
+
+## steamloom.works 拿到的使用者 IP 全是 Cloudflare 邊緣 IP（2026-11-04，已修待部署）
+
+- **現象**：steamloom.works 開了 Cloudflare proxy（橘雲），後端 `ctx.IP()` 拿到的都是 Cloudflare 的邊緣 IP（`104.16.0.0/13`、`172.64.0.0/13` 這類），不是使用者的 IP。
+- **影響**：
+  - SteamLoom 稽核紀錄（`middleware/storytelleraudit`）的 IP 欄位沒有參考價值；2026-11-04 部署前的舊紀錄都是 Cloudflare IP。
+  - OAuth 動態註冊（`storytelleroauth.Register(ctx.IP(), …)`）依 IP 限流，所有使用者共用少數幾個 Cloudflare IP，新的 MCP 連接器註冊可能被一起擋掉。
+  - `steamloom.works/mcp` 的 client IP（`service/mcp/client_ip.go`）也是錯的。
+  - faryne.dev、neko.maid.tw 是灰雲，不受影響。
+- **Root cause**：nginx 沒有 `real_ip` 設定，`$remote_addr` 是 Cloudflare 連進來的 IP，各 location 的 `proxy_set_header X-Real-IP $remote_addr` 就把它當成使用者 IP 傳給後端（Fiber 以 `X-Real-IP` 取 IP，只信任 127.0.0.1）。機器上的設定與 repo 的 `httpd_conf/nginx` 相同，已確認沒有在別處設定。
+- **解法**：新增 `httpd_conf/snippets/cloudflare_real_ip.conf`（Cloudflare 官方公布的 IPv4／IPv6 段＋`real_ip_header CF-Connecting-IP`），在 `httpd_conf/nginx` 的 http context include。只有來源在 Cloudflare IP 段時才採用 `CF-Connecting-IP`，其他來源無法偽造。已用 docker 版 nginx 驗證語法、偽造無效、Cloudflare 來源會改用真實 IP。
+- **部署**：
+  1. 把 snippet 複製到 `/etc/nginx/snippets/cloudflare_real_ip.conf`，再更新 site 設定。
+  2. 執行 `nginx -t` 後 reload。
+  3. 用自己的網路打一次 steamloom.works，確認稽核紀錄的 IP 是自己的 IP。
+- **之後**：galgame.tv 搬到 nginx 後面時也是橘雲，直接沿用這份 snippet（見 `DevelopDocuments/api_domain/API網域整合_2026-11-04.md`）。
+- **狀態**：已修，待部署（branch `fix/nginx-cloudflare-real-ip`）。

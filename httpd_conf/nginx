@@ -16,6 +16,11 @@ upstream faryne_api {
     server 127.0.0.1:33333;
 }
 
+# 開了 Cloudflare proxy 的網域（steamloom.works）要從 CF-Connecting-IP 取回使用者真實 IP，
+# 否則 X-Real-IP 會是 Cloudflare 的邊緣 IP（稽核紀錄、OAuth 註冊限流、MCP client IP 都會錯）。
+# 檔案在 repo 的 httpd_conf/snippets/cloudflare_real_ip.conf，部署時複製到 /etc/nginx/snippets/。
+include /etc/nginx/snippets/cloudflare_real_ip.conf;
+
 # 藏掉 Server response header 裡的版本號（例如 nginx/1.24.0 -> nginx），減少對外洩漏版本資訊。
 server_tokens off;
 
