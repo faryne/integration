@@ -43,7 +43,7 @@
 - **測試環境注意**：ETF 相關測試（`TestBuildMetaStripsTrackingQuery`、`TestBuildMetaDynamicETFRoute`、`TestRenderHTMLRedirectScriptUsesAbsoluteURL`）要連 DB，沒有 DB 會 panic、中斷後面的測試，尚未處理；本機可用 `go test ./service/sns/ -skip` 跳過。網域寫死 `beta.faryne.dev` 的問題已在 2026-11-02 改成 `faryne.dev`（`config` 預設值也一起改），跟本機 `.env` 的 `FRONTEND_PATH` 一致就會過。
 - **狀態**：已修（branch `fix/sns-path-normalize`、`fix/sns-og-url-canonical`）。部署後要在 FB 分享偵錯工具按「再次抓取」更新快取。
 
-## steamloom.works 拿到的使用者 IP 全是 Cloudflare 邊緣 IP（2026-11-04，已修待部署）
+## steamloom.works 拿到的使用者 IP 全是 Cloudflare 邊緣 IP（2026-11-04，已修）
 
 - **現象**：steamloom.works 開了 Cloudflare proxy（橘雲），後端 `ctx.IP()` 拿到的都是 Cloudflare 的邊緣 IP（`104.16.0.0/13`、`172.64.0.0/13` 這類），不是使用者的 IP。
 - **影響**：
@@ -58,4 +58,4 @@
   2. 執行 `nginx -t` 後 reload。
   3. 用自己的網路打一次 steamloom.works，確認稽核紀錄的 IP 是自己的 IP。
 - **之後**：galgame.tv 搬到 nginx 後面時也是橘雲，直接沿用這份 snippet（見 `DevelopDocuments/api_domain/API網域整合_2026-11-04.md`）。
-- **狀態**：已修，待部署（branch `fix/nginx-cloudflare-real-ip`）。
+- **狀態**：已修並部署（2026-11-04，branch `fix/nginx-cloudflare-real-ip`）。部署後帶識別 User-Agent 打 steamloom.works 的頁面與 `/api`，nginx access log 記到的是使用者真實 IP。
