@@ -161,9 +161,6 @@
     "duplicatePending": "この動画はすでに申請済みで、審査待ちです。"
   },
   "admin": {
-    "heading": "ギャルゲー管理画面",
-    "noPermission": "管理者権限が必要です。",
-    "subtitle": "審査待ち、インデックス状態、削除、動画の審査を管理します。",
     "tabs": {
       "brands": "チャンネル管理",
       "videos": "動画管理",
@@ -225,6 +222,15 @@
       "empty": "条件に一致するキーワードはありません。",
       "enabled": "有効",
       "disabled": "無効"
+    },
+    "actionFailed": "操作に失敗しました。しばらくしてからもう一度お試しください。",
+    "loadFailed": "読み込みに失敗しました。しばらくしてからもう一度お試しください。",
+    "confirm": {
+      "title": "削除の確認",
+      "cancel": "キャンセル",
+      "deleteBrand": "チャンネル「{{name}}」を削除しますか？",
+      "deleteVideo": "動画「{{title}}」を削除しますか？",
+      "deleteKeyword": "キーワード「{{keyword}}」を削除しますか？"
     }
   },
   "brands": {

@@ -1,3 +1,4 @@
+import { BACKEND_ADMIN_PATH } from "@/helpers/backendAdmin.ts";
 import type { LayoutDropMenu, LayoutNavigationItem } from "@/types/layout.ts";
 
 export const headerNavigationItems: LayoutNavigationItem[] = [
@@ -38,19 +39,18 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
         title: "AV 女優搜尋",
         href: "/av/actress",
         description: "定時索引 AV 女優資訊",
-        // 上稿不擋登入，但有登入會記錄提交者；管理者從帳號選單進女優管理後台
+        // 上稿不擋登入，但有登入會記錄提交者；管理者從帳號選單進整合後台
         requiresAuth: true,
         subPages: [
           { title: "女優主題", href: "/av/actress/topics" },
           { title: "新增女優", href: "/av/actress/submit" },
-          { title: "女優管理後台", href: "/av/actress/admin" },
         ],
         accountLinks: [
           {
-            title: "AV 女優管理後台",
-            href: "/av/actress/admin",
+            title: "後台管理",
+            href: BACKEND_ADMIN_PATH,
             adminOnly: true,
-            badge: "avActressSubmissions",
+            badge: "backendAdmin",
           },
         ],
       },

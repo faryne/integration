@@ -13,9 +13,10 @@ import { Link as RouterLink } from "react-router-dom";
 
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { galgameSubmitItems } from "@/components/galgame/layout/galgameNavigation.ts";
+import { backendAdminUrl, galgameAdminPath } from "@/helpers/backendAdmin.ts";
 import { galgamePath } from "@/helpers/galgame.ts";
 
-/** 頭像選單：收我的最愛、投稿、管理後台（限管理員）與登出；未登入時只顯示登入按鈕 */
+/** 頭像選單：收我的最愛、投稿、整合後台入口（限管理員）與登出；未登入時只顯示登入按鈕 */
 export function GalgameUserMenu() {
   const { t } = useTranslation();
   const { user, session, loading, submitting, login, logout } = useAuth();
@@ -42,7 +43,6 @@ export function GalgameUserMenu() {
   const links = [
     { key: "favorites", path: "favorites" },
     ...galgameSubmitItems,
-    ...(session?.user.is_admin ? [{ key: "admin", path: "admin" }] : []),
   ];
   return (
     <>
@@ -81,6 +81,16 @@ export function GalgameUserMenu() {
             {t(`galgame.layout.nav.${item.key}`)}
           </MenuItem>
         ))}
+        {/* 管理功能在 faryne.dev 的整合後台；galgame.tv 是不同網域，一律整頁跳轉 */}
+        {session?.user.is_admin && (
+          <MenuItem
+            component="a"
+            href={backendAdminUrl(galgameAdminPath("brands"))}
+            onClick={close}
+          >
+            {t("galgame.layout.nav.admin")}
+          </MenuItem>
+        )}
         <Divider />
         <MenuItem
           disabled={submitting}

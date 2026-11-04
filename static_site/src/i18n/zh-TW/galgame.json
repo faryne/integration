@@ -161,9 +161,6 @@
     "duplicatePending": "影片已被提出，正在等待審核"
   },
   "admin": {
-    "heading": "Galgame 管理後台",
-    "noPermission": "需要管理員權限。",
-    "subtitle": "管理待審、索引狀態、刪除與影片審核。",
     "tabs": {
       "brands": "頻道管理",
       "videos": "影片管理",
@@ -225,6 +222,15 @@
       "empty": "沒有符合條件的關鍵字。",
       "enabled": "啟用",
       "disabled": "停用"
+    },
+    "actionFailed": "操作失敗，請稍後再試。",
+    "loadFailed": "讀取失敗，請稍後再試。",
+    "confirm": {
+      "title": "確認刪除",
+      "cancel": "取消",
+      "deleteBrand": "確定要刪除頻道「{{name}}」嗎？",
+      "deleteVideo": "確定要刪除影片「{{title}}」嗎？",
+      "deleteKeyword": "確定要刪除關鍵字「{{keyword}}」嗎？"
     }
   },
   "brands": {

@@ -28,23 +28,15 @@ import {
 } from "@/data/avActressTopicAdmin.ts";
 import { apiErrorMessage } from "@/helpers/apiError.ts";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
-import {
-  AV_ACTRESS_SECTION,
-  sectionTitle,
-  useTitle,
-} from "@/helpers/title.tsx";
-import { avAdminTopicsPath } from "@/helpers/avActressAdmin.ts";
+import { avAdminTopicsPath } from "@/helpers/backendAdmin.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ActressTopicConditionForm } from "@/components/av/actress_topic_condition_form.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 
-/** 新增／編輯自訂主題：/av/actress/admin/topics/new、/av/actress/admin/topics/:id；權限由後台 layout 檢查 */
+/** 新增／編輯自訂主題：/backend_admin/av/topics/new、/backend_admin/av/topics/:id；權限由後台 layout 檢查 */
 export function AVActressTopicEdit() {
   const id = Number(useParams<{ id: string }>().id) || 0;
   const detail = useAdminActressTopic(id);
-  useTitle(
-    sectionTitle(AV_ACTRESS_SECTION, id ? "編輯女優主題" : "新增女優主題"),
-  );
   useBreadcrumbTail(id ? (detail.data?.title ?? "編輯主題") : "新增主題");
 
   return (

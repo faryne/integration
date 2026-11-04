@@ -30,22 +30,14 @@ import {
   formatSubmissionTime,
   submitterLabel,
 } from "@/helpers/avActressSubmission.ts";
-import {
-  AV_ACTRESS_SECTION,
-  sectionTitle,
-  useTitle,
-} from "@/helpers/title.tsx";
-import { avAdminSubmissionPath } from "@/helpers/avActressAdmin.ts";
-import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
+import { avAdminSubmissionPath } from "@/helpers/backendAdmin.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { useFlashMessage } from "@/helpers/flashMessage.ts";
 
 const STATUSES: ActressSubmissionStatus[] = ["pending", "approved", "rejected"];
 
-/** 女優上稿審核列表：/av/actress/admin/submissions?status=&page=（狀態與頁碼存在網址）；權限由後台 layout 檢查 */
+/** 女優上稿審核列表：/backend_admin/av/submissions?status=&page=（狀態與頁碼存在網址）；權限由後台 layout 檢查 */
 export function AVActressSubmissions() {
-  useTitle(sectionTitle(AV_ACTRESS_SECTION, "女優上稿審核"));
-  useBreadcrumbTail("上稿審核");
   const flash = useFlashMessage();
   return (
     <>
@@ -73,8 +65,8 @@ function SubmissionList() {
 
   return (
     <Stack spacing={2} sx={{ textAlign: "left" }}>
-      <Typography fontWeight={900} variant="h5">
-        AV 女優上稿審核
+      <Typography component="h1" fontWeight={900} variant="h5">
+        上稿審核
       </Typography>
       <Paper variant="outlined">
         <Tabs

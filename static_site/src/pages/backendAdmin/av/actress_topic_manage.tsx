@@ -27,20 +27,12 @@ import {
 } from "@/apis/av/actress_topic_admin.ts";
 import { TOPIC_GROUP_LABELS } from "@/data/avActressTopicAdmin.ts";
 import { apiErrorMessage } from "@/helpers/apiError.ts";
-import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { useFlashMessage } from "@/helpers/flashMessage.ts";
-import {
-  AV_ACTRESS_SECTION,
-  sectionTitle,
-  useTitle,
-} from "@/helpers/title.tsx";
-import { avAdminTopicPath } from "@/helpers/avActressAdmin.ts";
+import { avAdminTopicPath } from "@/helpers/backendAdmin.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 
-/** 女優主題管理：/av/actress/admin/topics，只列自訂主題（特輯、身材），內建主題不能編輯；權限由後台 layout 檢查 */
+/** 女優主題管理：/backend_admin/av/topics，只列自訂主題（特輯、身材），內建主題不能編輯；權限由後台 layout 檢查 */
 export function AVActressTopicManage() {
-  useTitle(sectionTitle(AV_ACTRESS_SECTION, "女優主題管理"));
-  useBreadcrumbTail("管理主題");
   const flash = useFlashMessage();
   return (
     <>
@@ -83,7 +75,7 @@ function TopicList() {
         sx={{ alignItems: "center", justifyContent: "space-between" }}
       >
         <Typography component="h1" fontWeight={900} variant="h5">
-          管理主題
+          女優主題
         </Typography>
         <Button
           component={RouterLink}
