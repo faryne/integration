@@ -20,8 +20,12 @@ import {
   useReviewActressSubmission,
 } from "@/apis/av/actress_submission.ts";
 import { useFlashMessage } from "@/helpers/flashMessage.ts";
-import { ACTRESS_FIELD_LABELS } from "@/data/avActressFields.ts";
 import {
+  ACTRESS_FIELD_LABELS,
+  ACTRESS_REJECT_REASONS,
+} from "@/data/avActressFields.ts";
+import {
+  ACTRESS_DIFF_SPEC,
   changedActressFields,
   mergeActressFields,
 } from "@/helpers/avActressFields.ts";
@@ -41,11 +45,9 @@ import {
 } from "@/helpers/backendAdmin.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ActressPhoto } from "@/components/av/actress_photo.tsx";
-import { ActressSubmissionDiff } from "@/components/av/actress_submission_diff.tsx";
-import {
-  ApproveDialog,
-  RejectDialog,
-} from "@/components/av/actress_review_dialogs.tsx";
+import { SubmissionDiff } from "@/components/av/submission_diff.tsx";
+import { ApproveDialog } from "@/components/av/actress_review_dialogs.tsx";
+import { RejectDialog } from "@/components/av/submission_reject_dialog.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 
 /** 審核頁：/backend_admin/av/submissions/:id；權限由後台 layout 檢查 */
@@ -216,7 +218,7 @@ function ReviewContent({ d }: { d: ActressSubmissionDetail }) {
                 />
               )}
             </Stack>
-            <ActressSubmissionDiff
+            <SubmissionDiff
               left={left}
               leftLabel={
                 isEdit
@@ -233,6 +235,7 @@ function ReviewContent({ d }: { d: ActressSubmissionDetail }) {
                   : d.payload
               }
               rightLabel={mergeCandidate ? "合併後的值" : "提交的值"}
+              spec={ACTRESS_DIFF_SPEC}
             />
           </Stack>
         </Paper>
@@ -318,10 +321,13 @@ function ReviewContent({ d }: { d: ActressSubmissionDetail }) {
         }
         onClose={() => setDialog(null)}
         onConfirm={() =>
-          approve.mutate(mergeTarget, {
-            onSuccess: done("已核准"),
-            onError: failed,
-          })
+          approve.mutate(
+            { merge_target: mergeTarget },
+            {
+              onSuccess: done("已核准"),
+              onError: failed,
+            },
+          )
         }
         onMergeTargetChange={setMergeTarget}
         open={dialog === "approve"}
@@ -334,6 +340,7 @@ function ReviewContent({ d }: { d: ActressSubmissionDetail }) {
           reject.mutate(note, { onSuccess: done("已否決"), onError: failed })
         }
         open={dialog === "reject"}
+        reasons={ACTRESS_REJECT_REASONS}
       />
       <CustomSnackbar
         message={snack?.message ?? ""}

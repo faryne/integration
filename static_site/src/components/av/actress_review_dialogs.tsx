@@ -1,7 +1,5 @@
-import { useState } from "react";
 import {
   Button,
-  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -10,18 +8,9 @@ import {
   FormControlLabel,
   Radio,
   RadioGroup,
-  Stack,
-  TextField,
   Typography,
 } from "@mui/material";
 import type { ActressCandidate } from "@/types/avActressSubmission.ts";
-
-const REJECT_REASONS = [
-  "資料來源不可信",
-  "與現有女優重複",
-  "資料有誤",
-  "沒有實質變更",
-];
 
 const candidateKey = (c: ActressCandidate) => `${c.domain}-${c.aid}`;
 
@@ -110,63 +99,6 @@ export function ApproveDialog({
             : merging
               ? "新增並核准"
               : "核准"}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-/** 否決：常用原因快選＋可自由填寫（選填） */
-export function RejectDialog({
-  open,
-  loading,
-  onClose,
-  onConfirm,
-}: {
-  open: boolean;
-  loading: boolean;
-  onClose: () => void;
-  onConfirm: (note: string) => void;
-}) {
-  const [note, setNote] = useState("");
-  return (
-    <Dialog fullWidth maxWidth="sm" onClose={onClose} open={open}>
-      <DialogTitle>否決這張提交單？</DialogTitle>
-      <DialogContent>
-        <Stack spacing={1.5} sx={{ pt: 1 }}>
-          <Stack direction="row" flexWrap="wrap" gap={0.75}>
-            {REJECT_REASONS.map((r) => (
-              <Chip
-                clickable
-                color={note === r ? "primary" : "default"}
-                key={r}
-                label={r}
-                onClick={() => setNote(r)}
-                size="small"
-              />
-            ))}
-          </Stack>
-          <TextField
-            label="否決原因（選填）"
-            minRows={3}
-            multiline
-            onChange={(e) => setNote(e.target.value)}
-            value={note}
-          />
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>取消</Button>
-        <Button
-          color="error"
-          disabled={loading}
-          onClick={() => onConfirm(note)}
-          startIcon={
-            loading ? <CircularProgress color="inherit" size={16} /> : undefined
-          }
-          variant="contained"
-        >
-          否決
         </Button>
       </DialogActions>
     </Dialog>

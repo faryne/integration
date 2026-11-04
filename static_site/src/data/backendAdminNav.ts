@@ -1,13 +1,14 @@
 import {
   avAdminSubmissionsPath,
   avAdminTopicsPath,
+  avAdminVideoSubmissionsPath,
   BACKEND_ADMIN_PATH,
   galgameAdminPath,
 } from "@/helpers/backendAdmin.ts";
 
 /** 側欄數字的來源，對應 useBackendAdminPendingCounts 的回傳欄位 */
 export type BackendAdminBadge =
-  "avSubmissions" | "galgameBrands" | "galgameVideos";
+  "avSubmissions" | "avVideoSubmissions" | "galgameBrands" | "galgameVideos";
 
 export interface BackendAdminNavItem {
   label: string;
@@ -45,12 +46,17 @@ export const backendAdminNav: BackendAdminNavGroup[] = [
     ],
   },
   {
-    title: "AV 女優",
+    title: "AV",
     items: [
       {
-        label: "上稿審核",
+        label: "女優上稿審核",
         href: avAdminSubmissionsPath,
         badge: "avSubmissions",
+      },
+      {
+        label: "影片修改審核",
+        href: avAdminVideoSubmissionsPath,
+        badge: "avVideoSubmissions",
       },
       { label: "女優主題", href: avAdminTopicsPath },
     ],

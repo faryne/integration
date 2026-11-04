@@ -70,6 +70,7 @@ func NewServer(name, version string) *Server {
 	s.registerBuiltInTools()
 	s.registerAVTools()
 	s.registerAVActressSubmissionTools()
+	s.registerAVVideoSubmissionTools()
 	s.registerGalgameTools()
 	s.registerNekomaidTools()
 	s.registerTWStatsTools()

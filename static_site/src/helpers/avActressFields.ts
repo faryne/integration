@@ -5,8 +5,11 @@ import type {
 } from "@/types/avActressSubmission.ts";
 import {
   ACTRESS_FIELD_KEYS,
+  ACTRESS_FIELD_LABELS,
   EMPTY_ACTRESS_FIELDS,
 } from "@/data/avActressFields.ts";
+import type { SubmissionDiffSpec } from "@/helpers/submissionDiff.ts";
+import { linkLabel } from "@/helpers/referenceLink.ts";
 
 /** 搜尋結果的女優轉成上稿欄位（修改表單預填用）；舊資料的數值可能是字串或缺欄位 */
 export function actressToFields(actress: Actress): ActressFields {
@@ -58,19 +61,6 @@ export function formatActressField(f: ActressFields, key: ActressFieldKey) {
   return v;
 }
 
-/** 網址的網域（去掉 www.），連結沒填名稱時顯示 */
-export function linkHost(url: string) {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
-
-export function linkLabel(link: ActressLink) {
-  return link.title || linkHost(link.url);
-}
-
 /**
  * 新增單合併到同名女優後的結果（與後端 mergeActressFields 相同規則）：
  * 提交有填的欄位覆寫、沒填的保留；別名、興趣與參考連結取聯集。審核頁用來預覽合併後的差異
@@ -101,3 +91,14 @@ export function mergeActressFields(
   ];
   return merged;
 }
+
+/** 審核頁比對表的女優欄位定義；別名、興趣、參考連結逐項比對 */
+export const ACTRESS_DIFF_SPEC: SubmissionDiffSpec<
+  ActressFields,
+  ActressFieldKey
+> = {
+  keys: ACTRESS_FIELD_KEYS,
+  labels: ACTRESS_FIELD_LABELS,
+  format: formatActressField,
+  listKeys: ["aliases", "interests", "links"],
+};

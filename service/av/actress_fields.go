@@ -80,21 +80,12 @@ func normalizeActressFields(f avEntity.ActressFields) (avEntity.ActressFields, e
 			interests = append(interests, v)
 		}
 	}
-	links := make([]avEntity.ActressLink, 0, len(f.Links))
-	for _, l := range f.Links {
-		l.Title, l.URL = strings.TrimSpace(l.Title), strings.TrimSpace(l.URL)
-		if l.URL == "" {
-			continue
-		}
-		if !isHTTPURL(l.URL) || utf8.RuneCountInString(l.Title) > actressMaxTextLen {
-			return f, invalidActress("參考連結格式不正確：%s", l.URL)
-		}
-		if !slices.ContainsFunc(links, func(x avEntity.ActressLink) bool { return x.URL == l.URL }) {
-			links = append(links, l)
-		}
+	links, err := normalizeLinks(f.Links)
+	if err != nil {
+		return f, err
 	}
-	if len(interests) > actressMaxListItems || len(links) > actressMaxListItems {
-		return f, invalidActress("興趣或參考連結最多 %d 筆", actressMaxListItems)
+	if len(interests) > actressMaxListItems {
+		return f, invalidActress("興趣最多 %d 筆", actressMaxListItems)
 	}
 	f.Interests, f.Links, f.Aliases = interests, links, mergeActressAliases(f.Name, f.Aliases)
 	if len(f.Aliases) > actressMaxListItems {
@@ -106,6 +97,27 @@ func normalizeActressFields(f avEntity.ActressFields) (avEntity.ActressFields, e
 		}
 	}
 	return f, nil
+}
+
+// normalizeLinks 參考連結（女優、影片共用）：去頭尾空白、略過沒填網址的列、只收 http(s)、以 URL 去重複
+func normalizeLinks(in []avEntity.ActressLink) ([]avEntity.ActressLink, error) {
+	links := make([]avEntity.ActressLink, 0, len(in))
+	for _, l := range in {
+		l.Title, l.URL = strings.TrimSpace(l.Title), strings.TrimSpace(l.URL)
+		if l.URL == "" {
+			continue
+		}
+		if !isHTTPURL(l.URL) || utf8.RuneCountInString(l.Title) > actressMaxTextLen {
+			return nil, invalidActress("參考連結格式不正確：%s", l.URL)
+		}
+		if !slices.ContainsFunc(links, func(x avEntity.ActressLink) bool { return x.URL == l.URL }) {
+			links = append(links, l)
+		}
+	}
+	if len(links) > actressMaxListItems {
+		return nil, invalidActress("參考連結最多 %d 筆", actressMaxListItems)
+	}
+	return links, nil
 }
 
 func isHTTPURL(raw string) bool {

@@ -94,6 +94,11 @@ const AVVideoDetail = lazy(() =>
     default: module.AVVideoDetail,
   })),
 );
+const AVVideoEdit = lazy(() =>
+  import("@/pages/av/video_edit.tsx").then((module) => ({
+    default: module.AVVideoEdit,
+  })),
+);
 const TwStatsIndex = lazy(() =>
   import("@/pages/opendata/twstats_index.tsx").then((module) => ({
     default: module.TwStatsIndex,
@@ -679,6 +684,10 @@ function App() {
                   <Route path={""} element={<LabHome />} />
                 </Route>
                 <Route path={""} element={<DefaultLayout />}>
+                  <Route
+                    path={"/av/video/:no/edit"}
+                    element={<AVVideoEdit />}
+                  />
                   <Route path={"/av/video/:no"} element={<AVVideoDetail />} />
                   <Route path={"/av/video"} element={<AVVideo />} />
                   {/* 上稿、後台、主題要排在 :name 前面（靜態路徑本來就優先，排前面讀起來比較清楚） */}

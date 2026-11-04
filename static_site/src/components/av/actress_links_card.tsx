@@ -1,7 +1,7 @@
 import { Card, CardContent, Link, Stack, Typography } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import type { ActressLink } from "@/types/av.ts";
-import { linkHost, linkLabel } from "@/helpers/avActressFields.ts";
+import { linkHost, linkLabel } from "@/helpers/referenceLink.ts";
 
 /** 女優頁「連結」區塊：上稿核准的參考連結；沒有連結就不顯示 */
 export function ActressLinksCard({ links }: { links?: ActressLink[] | null }) {

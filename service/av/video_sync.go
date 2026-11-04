@@ -122,13 +122,32 @@ func persistVideos(ctx context.Context, repo *avRepo.RepositoryDMMVideo, videos 
 		return 0, err
 	}
 
+	vids := make([]int, 0, len(ids))
+	for _, id := range ids {
+		vids = append(vids, id)
+	}
+	// 核准過的手動修改（影片修改審核）：寫 ES 前蓋回去，MySQL info 維持 DMM 原始資料
+	overrides, err := avRepo.NewDMMVideoOverride().ByVids(vids)
+	if err != nil {
+		return 0, err
+	}
+
 	indexed := 0
-	for _, v := range videos {
+	for i, v := range videos {
 		id, ok := ids[strings.ToUpper(v.No)]
 		if !ok {
 			return indexed, fmt.Errorf("dmm id not found after upsert: no=%s", v.No)
 		}
-		if err := indexVideo(ctx, videoIndexDocument{DmmVideo: v, Vid: id}, waitVisible); err != nil {
+		var doc any = videoIndexDocument{DmmVideo: v, Vid: id}
+		if raw, ok := overrides[id]; ok {
+			src := toVideoSource(doc)
+			applyVideoOverrides(src, raw)
+			doc = src
+			// 回寫覆寫後的資料：單筆同步要用覆寫後的官方番號確認查得到
+			raw, _ := json.Marshal(src)
+			_ = json.Unmarshal(raw, &videos[i])
+		}
+		if err := indexVideo(ctx, id, doc, refreshOption(waitVisible)); err != nil {
 			return indexed, err
 		}
 		indexed++
@@ -136,7 +155,8 @@ func persistVideos(ctx context.Context, repo *avRepo.RepositoryDMMVideo, videos 
 	return indexed, nil
 }
 
-func indexVideo(ctx context.Context, doc videoIndexDocument, waitVisible bool) error {
+// indexVideo 寫一部影片的 ES 文件；document id 固定是 vid（dmm.id），重複寫入就是整份覆蓋
+func indexVideo(ctx context.Context, vid int, doc any, refresh string) error {
 	es := client.GetElasticSearch(enum.ESDefault)
 	if es == nil {
 		return fmt.Errorf("elasticsearch client is not initialized")
@@ -149,15 +169,15 @@ func indexVideo(ctx context.Context, doc videoIndexDocument, waitVisible bool) e
 		config.EnvConfig().DMMVideoIndex,
 		bytes.NewReader(body),
 		es.Index.WithContext(ctx),
-		es.Index.WithDocumentID(strconv.Itoa(doc.Vid)),
-		es.Index.WithRefresh(refreshOption(waitVisible)),
+		es.Index.WithDocumentID(strconv.Itoa(vid)),
+		es.Index.WithRefresh(refresh),
 	)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return fmt.Errorf("index dmm video failed: status=%s vid=%d no=%s", resp.Status(), doc.Vid, doc.No)
+		return fmt.Errorf("index dmm video failed: status=%s vid=%d", resp.Status(), vid)
 	}
 	return nil
 }
@@ -186,9 +206,12 @@ func SyncDMMVideoByNo(ctx context.Context, no string) (dmm.DmmVideo, error) {
 		return v, err
 	}
 
-	if _, err = persistVideos(ctx, avRepo.NewDMMVideo(), []dmm.DmmVideo{v}, true); err != nil {
+	// persistVideos 會把手動覆寫蓋回 videos，之後的官方番號檢查用覆寫後的值
+	videos := []dmm.DmmVideo{v}
+	if _, err = persistVideos(ctx, avRepo.NewDMMVideo(), videos, true); err != nil {
 		return v, err
 	}
+	v = videos[0]
 	// 資料是新的，但 DMM 沒給官方番號一樣出不了 MissAV 連結，視為確定失敗
 	if v.MakerNo == "" {
 		markVideoOrphanOrLog(ctx, v.No)

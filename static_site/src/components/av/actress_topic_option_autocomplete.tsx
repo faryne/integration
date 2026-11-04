@@ -1,6 +1,6 @@
-import type { HTMLAttributes, Key } from "react";
-import { Autocomplete, Box, TextField } from "@mui/material";
+import { Autocomplete, TextField } from "@mui/material";
 import type { ActressTopicOption } from "@/types/avActressTopic.ts";
+import { renderCountOption } from "@/components/av/option_count.tsx";
 
 /**
  * 主題條件的自動完成（出身地、類型共用）：選項來自 facet，附數量、依數量排序，打字可以篩選。
@@ -34,25 +34,7 @@ export function ActressTopicOptionAutocomplete({
     loading,
     loadingText: "讀取選項中…",
     noOptionsText: "沒有符合的選項",
-    renderOption: (
-      props: HTMLAttributes<HTMLLIElement> & { key?: Key },
-      option: string,
-    ) => {
-      const { key, ...rest } = props;
-      const count = counts.get(option);
-      return (
-        <li key={key} {...rest}>
-          <Box component="span" sx={{ flex: 1 }}>
-            {option}
-          </Box>
-          <Box component="span" sx={{ color: "text.secondary", ml: 2 }}>
-            {count === undefined
-              ? "目前沒有資料"
-              : `${count.toLocaleString()} ${unit}`}
-          </Box>
-        </li>
-      );
-    },
+    renderOption: renderCountOption(counts, unit, "目前沒有資料"),
   };
   const input = (params: object) => (
     <TextField {...params} label={label} size="small" />

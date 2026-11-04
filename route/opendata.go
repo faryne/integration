@@ -40,13 +40,21 @@ func OpenData(app *fiber.App) {
 	// 女優上稿：不擋登入（有登入就記錄提交者），IP 限流
 	g4.Post("/actress/submissions", authsession.Optional(authService.BrandMain), opendata.AvActressSubmit)
 	g4.Get("/actress/submissions/:id", opendata.AvActressSubmissionStatus)
+	// 影片修改：同女優上稿（不擋登入、限流共用）；suggest 是修改表單陣列欄位的 autocomplete
+	g4.Post("/video/submissions", authsession.Optional(authService.BrandMain), opendata.AvVideoSubmit)
+	g4.Get("/video/submissions/:id", opendata.AvVideoSubmissionStatus)
+	g4.Get("/video/suggest", opendata.AvVideoTermSuggest)
 
-	// 女優上稿審核：主站登入且 users.is_admin
+	// 女優上稿、影片修改審核：主站登入且 users.is_admin
 	gAvAdmin := app.Group("/admin/av", authsession.New(authService.BrandMain))
 	gAvAdmin.Get("/actress-submissions", opendata.AdminActressSubmissions)
 	gAvAdmin.Get("/actress-submissions/:id", opendata.AdminActressSubmission)
 	gAvAdmin.Put("/actress-submissions/:id/approve", opendata.AdminApproveActressSubmission)
 	gAvAdmin.Put("/actress-submissions/:id/reject", opendata.AdminRejectActressSubmission)
+	gAvAdmin.Get("/video-submissions", opendata.AdminVideoSubmissions)
+	gAvAdmin.Get("/video-submissions/:id", opendata.AdminVideoSubmission)
+	gAvAdmin.Put("/video-submissions/:id/approve", opendata.AdminApproveVideoSubmission)
+	gAvAdmin.Put("/video-submissions/:id/reject", opendata.AdminRejectVideoSubmission)
 	// 女優主題的自訂主題（特輯、身材）；儲存後等下一次每週排程才產生
 	gAvAdmin.Get("/actress-topics", opendata.AdminActressTopics)
 	gAvAdmin.Get("/actress-topics/options", opendata.AdminActressTopicOptions)

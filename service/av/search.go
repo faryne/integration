@@ -40,7 +40,7 @@ var fVideo = func(i av.RawVideo) av.CleanVideo {
 	if i.Actresses != nil {
 		o.Actresses = i.Actresses
 	}
-	o.ActressIDs = nonNil(i.ActressIDs)
+	o.ActressIDs, o.Links = nonNil(i.ActressIDs), nonNil(i.Links)
 	return o
 }
 

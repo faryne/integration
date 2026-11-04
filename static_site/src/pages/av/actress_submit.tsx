@@ -15,7 +15,7 @@ import {
   useTitle,
 } from "@/helpers/title.tsx";
 import { ActressSubmissionForm } from "@/components/av/actress_submission_form.tsx";
-import { ActressSubmissionDone } from "@/components/av/actress_submission_done.tsx";
+import { SubmissionDone } from "@/components/av/submission_done.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
@@ -30,7 +30,9 @@ export function AVActressSubmit() {
     <SubmissionShell key={round} title="新增女優">
       {(submit, doneId, submitting) =>
         doneId ? (
-          <ActressSubmissionDone
+          <SubmissionDone
+            againLabel="再新增一位"
+            backLabel="回到女優頁面"
             backTo="/av/actress"
             id={doneId}
             onAgain={() => setRound((r) => r + 1)}
@@ -70,7 +72,11 @@ export function AVActressEdit() {
     <SubmissionShell title={`修改女優資料：${name}`}>
       {(submit, doneId, submitting) =>
         doneId ? (
-          <ActressSubmissionDone backTo={backTo} id={doneId} />
+          <SubmissionDone
+            backLabel="回到女優頁面"
+            backTo={backTo}
+            id={doneId}
+          />
         ) : actress ? (
           <ActressSubmissionForm
             base={actressToFields(actress)}
