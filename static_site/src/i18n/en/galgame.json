@@ -161,9 +161,6 @@
     "duplicatePending": "This video has already been submitted and is awaiting review."
   },
   "admin": {
-    "heading": "Galgame admin",
-    "noPermission": "Admin permission is required.",
-    "subtitle": "Manage pending reviews, indexing status, deletions, and video submissions.",
     "tabs": {
       "brands": "Channels",
       "videos": "Videos",
@@ -225,6 +222,15 @@
       "empty": "No keywords match these filters.",
       "enabled": "Enabled",
       "disabled": "Disabled"
+    },
+    "actionFailed": "Action failed. Please try again later.",
+    "loadFailed": "Failed to load. Please try again later.",
+    "confirm": {
+      "title": "Confirm deletion",
+      "cancel": "Cancel",
+      "deleteBrand": "Delete the channel “{{name}}”?",
+      "deleteVideo": "Delete the video “{{title}}”?",
+      "deleteKeyword": "Delete the keyword “{{keyword}}”?"
     }
   },
   "brands": {

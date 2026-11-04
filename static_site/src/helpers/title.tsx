@@ -159,7 +159,7 @@ function toCanonicalUrl(value: string) {
   ).toString();
 }
 
-function setMetaByName(name: string, content: string) {
+export function setMetaByName(name: string, content: string) {
   let element = document.head.querySelector<HTMLMetaElement>(
     `meta[name="${name}"]`,
   );

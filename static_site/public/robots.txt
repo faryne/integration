@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+# 整合後台不收錄
+Disallow: /backend_admin
 
 Sitemap: https://faryne.dev/sitemap.xml

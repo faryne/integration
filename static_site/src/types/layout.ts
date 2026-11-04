@@ -17,7 +17,7 @@ export interface LayoutMenuItem {
   badge?: AccountLinkBadge;
 }
 
-export type AccountLinkBadge = "avActressSubmissions";
+export type AccountLinkBadge = "backendAdmin";
 
 export interface LayoutDropMenu {
   title: string;

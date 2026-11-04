@@ -34,16 +34,11 @@ import {
 } from "@/helpers/avActressSubmission.ts";
 import { apiErrorMessage } from "@/helpers/apiError.ts";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
-import {
-  AV_ACTRESS_SECTION,
-  sectionTitle,
-  useTitle,
-} from "@/helpers/title.tsx";
 import { actressPagePath } from "@/helpers/avActressRef.ts";
 import {
   avAdminSubmissionPath,
   avAdminSubmissionsPath,
-} from "@/helpers/avActressAdmin.ts";
+} from "@/helpers/backendAdmin.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ActressPhoto } from "@/components/av/actress_photo.tsx";
 import { ActressSubmissionDiff } from "@/components/av/actress_submission_diff.tsx";
@@ -53,10 +48,9 @@ import {
 } from "@/components/av/actress_review_dialogs.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 
-/** 審核頁：/av/actress/admin/submissions/:id；權限由後台 layout 檢查 */
+/** 審核頁：/backend_admin/av/submissions/:id；權限由後台 layout 檢查 */
 export function AVActressSubmissionReview() {
   const id = Number(useParams<{ id: string }>().id) || 0;
-  useTitle(sectionTitle(AV_ACTRESS_SECTION, `女優上稿審核 #${id}`));
   useBreadcrumbTail(`#${id}`);
   const flash = useFlashMessage();
   return (

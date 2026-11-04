@@ -10,7 +10,7 @@ import {
 import { Link as RouterLink } from "react-router-dom";
 import { useActressTopicIndex } from "@/apis/av/actress_topic.ts";
 import { actressTopicPath } from "@/helpers/avActressTopic.ts";
-import { avAdminTopicsPath } from "@/helpers/avActressAdmin.ts";
+import { avAdminTopicsPath } from "@/helpers/backendAdmin.ts";
 import {
   AV_ACTRESS_SECTION,
   sectionTitle,

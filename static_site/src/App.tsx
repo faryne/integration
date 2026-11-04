@@ -23,11 +23,13 @@ import { useMaintenanceState } from "@/apis/maintenanceStore.ts";
 import { loadStorytellerProjectWorkspace } from "@/pages/storyteller/storytellerRoutePreload.ts";
 import { ParamRedirect } from "@/components/common/ParamRedirect.tsx";
 import {
-  AV_ACTRESS_ADMIN_PATH,
   avAdminSubmissionPath,
   avAdminSubmissionsPath,
   avAdminTopicsPath,
-} from "@/helpers/avActressAdmin.ts";
+  BACKEND_ADMIN_PATH,
+} from "@/helpers/backendAdmin.ts";
+import { backendAdminRoutes } from "@/pages/backendAdmin/routes.tsx";
+import { LegacyGalgameAdminRedirect } from "@/components/backendAdmin/LegacyGalgameAdminRedirect.tsx";
 
 function formatMaintenanceRetryMessage(retryAt: string | null) {
   if (!retryAt) {
@@ -77,16 +79,6 @@ const AVActressEdit = lazy(() =>
     default: module.AVActressEdit,
   })),
 );
-const AVActressSubmissions = lazy(() =>
-  import("@/pages/av/actress_submissions.tsx").then((module) => ({
-    default: module.AVActressSubmissions,
-  })),
-);
-const AVActressSubmissionReview = lazy(() =>
-  import("@/pages/av/actress_submission_review.tsx").then((module) => ({
-    default: module.AVActressSubmissionReview,
-  })),
-);
 const AVActressTopics = lazy(() =>
   import("@/pages/av/actress_topics.tsx").then((module) => ({
     default: module.AVActressTopics,
@@ -95,21 +87,6 @@ const AVActressTopics = lazy(() =>
 const AVActressTopic = lazy(() =>
   import("@/pages/av/actress_topic.tsx").then((module) => ({
     default: module.AVActressTopic,
-  })),
-);
-const AVActressAdminLayout = lazy(() =>
-  import("@/layouts/AVActressAdminLayout.tsx").then((module) => ({
-    default: module.AVActressAdminLayout,
-  })),
-);
-const AVActressTopicManage = lazy(() =>
-  import("@/pages/av/actress_topic_manage.tsx").then((module) => ({
-    default: module.AVActressTopicManage,
-  })),
-);
-const AVActressTopicEdit = lazy(() =>
-  import("@/pages/av/actress_topic_edit.tsx").then((module) => ({
-    default: module.AVActressTopicEdit,
   })),
 );
 const AVVideoDetail = lazy(() =>
@@ -257,7 +234,6 @@ const GalgameSubmitBrand = lazy(
 const GalgameSubmitVideo = lazy(
   () => import("@/pages/galgame/submit-video.tsx"),
 );
-const GalgameAdmin = lazy(() => import("@/pages/galgame/admin.tsx"));
 
 function AnalyticsTracker() {
   const location = useLocation();
@@ -648,7 +624,7 @@ function App() {
               <Route path={"/favorites"} element={<GalgameFavorites />} />
               <Route path={"/submit"} element={<GalgameSubmitBrand />} />
               <Route path={"/submit-video"} element={<GalgameSubmitVideo />} />
-              <Route path={"/admin"} element={<GalgameAdmin />} />
+              <Route path={"/admin"} element={<LegacyGalgameAdminRedirect />} />
               <Route path={"/:brandSlug"} element={<GalgameBrand />} />
               <Route
                 path={"/:brandSlug/video/:videoId"}
@@ -666,6 +642,8 @@ function App() {
                   {storytellerRoutes}
                 </Route>
 
+                {backendAdminRoutes}
+
                 <Route path={"galgame"} element={<GalgameLayout />}>
                   <Route path={""} element={<GalgameHome />} />
                   <Route path={"brands"} element={<GalgameBrands />} />
@@ -675,7 +653,10 @@ function App() {
                     path={"submit-video"}
                     element={<GalgameSubmitVideo />}
                   />
-                  <Route path={"admin"} element={<GalgameAdmin />} />
+                  <Route
+                    path={"admin"}
+                    element={<LegacyGalgameAdminRedirect />}
+                  />
                   <Route path={":brandSlug"} element={<GalgameBrand />} />
                   <Route
                     path={":brandSlug/video/:videoId"}
@@ -705,30 +686,15 @@ function App() {
                     path={"/av/actress/submit"}
                     element={<AVActressSubmit />}
                   />
-                  {/* 女優管理後台：layout 負責權限與左側導覽，上稿審核、女優主題是子頁 */}
+                  {/* 女優管理後台已搬到整合後台，舊網址（含子路徑）原樣轉過去 */}
                   <Route
-                    path={AV_ACTRESS_ADMIN_PATH}
-                    element={<AVActressAdminLayout />}
-                  >
-                    <Route
-                      index
-                      element={<Navigate replace to={"submissions"} />}
-                    />
-                    <Route
-                      path={"submissions"}
-                      element={<AVActressSubmissions />}
-                    />
-                    <Route
-                      path={"submissions/:id"}
-                      element={<AVActressSubmissionReview />}
-                    />
-                    <Route path={"topics"} element={<AVActressTopicManage />} />
-                    {/* :id 為 new 時是新增 */}
-                    <Route
-                      path={"topics/:id"}
-                      element={<AVActressTopicEdit />}
-                    />
-                  </Route>
+                    path={"/av/actress/admin/*"}
+                    element={
+                      <ParamRedirect
+                        to={(p) => `${BACKEND_ADMIN_PATH}/av/${p["*"] ?? ""}`}
+                      />
+                    }
+                  />
                   {/* 搬進後台前的舊網址 */}
                   <Route
                     path={"/av/actress/submissions"}

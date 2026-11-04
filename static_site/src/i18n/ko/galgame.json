@@ -161,9 +161,6 @@
     "duplicatePending": "이미 제출되어 검토를 기다리는 영상입니다."
   },
   "admin": {
-    "heading": "미연시 관리자 페이지",
-    "noPermission": "관리자 권한이 필요합니다.",
-    "subtitle": "검토 대기, 색인 상태, 삭제, 영상 심사를 관리합니다.",
     "tabs": {
       "brands": "채널 관리",
       "videos": "영상 관리",
@@ -225,6 +222,15 @@
       "empty": "조건에 맞는 키워드가 없습니다.",
       "enabled": "사용 중",
       "disabled": "사용 안 함"
+    },
+    "actionFailed": "작업에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+    "loadFailed": "불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "confirm": {
+      "title": "삭제 확인",
+      "cancel": "취소",
+      "deleteBrand": "채널 「{{name}}」을(를) 삭제할까요?",
+      "deleteVideo": "동영상 「{{title}}」을(를) 삭제할까요?",
+      "deleteKeyword": "키워드 「{{keyword}}」을(를) 삭제할까요?"
     }
   },
   "brands": {

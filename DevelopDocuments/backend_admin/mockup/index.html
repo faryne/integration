@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>整合後台 Mockup</title>
+<style>
+  /* 色彩 token：對齊 MUI 預設主題，深色模式跟著系統或右下角切換 */
+  :root {
+    --bg: #f5f6f8; --paper: #fff; --text: #1f2328; --muted: #667085; --line: #e3e6ea;
+    --primary: #1976d2; --primary-soft: #e8f1fb; --error: #d32f2f; --warn: #ed6c02; --ok: #2e7d32;
+    --selected: rgba(25,118,210,.08); --shadow: 0 1px 2px rgba(0,0,0,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121417; --paper: #1b1e23; --text: #e6e8eb; --muted: #9aa3ae; --line: #2c3138;
+      --primary: #64a8f0; --primary-soft: #1d2b3b; --selected: rgba(100,168,240,.14); --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121417; --paper: #1b1e23; --text: #e6e8eb; --muted: #9aa3ae; --line: #2c3138;
+    --primary: #64a8f0; --primary-soft: #1d2b3b; --selected: rgba(100,168,240,.14); --shadow: none;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 "Noto Sans TC", "PingFang TC", system-ui, sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; cursor: pointer; }
+
+  /* 頂部列 */
+  .topbar { position: sticky; top: 0; z-index: 20; height: 56px; display: flex; align-items: center; gap: 8px;
+    padding: 0 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
+  .brand { font-weight: 900; font-size: 16px; }
+  .brand small { color: var(--muted); font-weight: 700; margin-left: 6px; }
+  .spacer { flex: 1; }
+  .icon-btn { border: 0; background: transparent; color: var(--text); width: 36px; height: 36px; border-radius: 50%; }
+  .icon-btn:hover { background: var(--selected); }
+  .hamburger { display: none; font-size: 20px; }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: #fff; border: 0;
+    font-weight: 800; }
+  .menu { position: absolute; right: 16px; top: 52px; background: var(--paper); border: 1px solid var(--line);
+    border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.12); min-width: 180px; padding: 6px; display: none; }
+  .menu.open { display: block; }
+  .menu .who { padding: 8px 10px; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+  .menu a, .menu button { display: block; width: 100%; text-align: left; padding: 8px 10px; border: 0; background: none;
+    color: var(--text); border-radius: 6px; }
+  .menu a:hover, .menu button:hover { background: var(--selected); }
+
+  /* 主體：側欄 + 內容 */
+  .shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: calc(100vh - 56px); }
+  .side { border-right: 1px solid var(--line); background: var(--paper); padding: 12px 8px; position: sticky; top: 56px;
+    height: calc(100vh - 56px); overflow-y: auto; }
+  .group { margin-bottom: 14px; }
+  .group-title { font-size: 12px; font-weight: 800; color: var(--muted); padding: 4px 12px; }
+  .nav-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px;
+    border-radius: 6px; font-weight: 700; }
+  .nav-item:hover { background: var(--selected); }
+  .nav-item.active { background: var(--selected); color: var(--primary); }
+  .badge { background: var(--error); color: #fff; border-radius: 10px; font-size: 12px; min-width: 20px; height: 20px;
+    padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
+  .main { padding: 20px 24px 48px; min-width: 0; }
+  .crumbs { color: var(--muted); font-size: 13px; margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .crumbs a:hover { color: var(--primary); text-decoration: underline; }
+  .crumbs .cur { color: var(--text); }
+  h1 { font-size: 22px; margin: 0 0 16px; font-weight: 900; }
+
+  .paper { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .card { padding: 16px; }
+  .card h3 { margin: 0 0 12px; font-size: 16px; font-weight: 900; }
+  .stat { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 6px; }
+  .stat:hover { background: var(--selected); }
+  .stat b { font-size: 20px; }
+  .stat b.zero { color: var(--muted); font-weight: 600; }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px; }
+  .field { border: 1px solid var(--line); background: var(--paper); color: var(--text); border-radius: 6px;
+    padding: 8px 12px; min-width: 240px; font: inherit; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; overflow-x: auto; }
+  .tab { border: 0; background: none; padding: 10px 14px; color: var(--muted); font-weight: 700; white-space: nowrap;
+    border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 640px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 12px; color: var(--muted); font-weight: 800; }
+  tr:last-child td { border-bottom: 0; }
+  .chip { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--line);
+    margin-right: 4px; white-space: nowrap; }
+  .chip.warn { border-color: var(--warn); color: var(--warn); }
+  .chip.ok { border-color: var(--ok); color: var(--ok); }
+  .chip.err { border-color: var(--error); color: var(--error); }
+  .btn { border: 1px solid var(--line); background: var(--paper); color: var(--text); padding: 5px 12px; border-radius: 6px;
+    font-weight: 700; white-space: nowrap; }
+  .btn:hover { background: var(--selected); }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .btn.danger { color: var(--error); border-color: var(--error); }
+  .btn.big { padding: 10px 20px; font-size: 15px; }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .thumb { width: 32px; height: 32px; border-radius: 50%; background: var(--primary-soft); display: inline-flex;
+    align-items: center; justify-content: center; font-weight: 800; color: var(--primary); margin-right: 8px; vertical-align: middle; }
+  .muted { color: var(--muted); }
+  .pager { display: flex; justify-content: flex-end; gap: 6px; padding: 12px; }
+
+  /* 登入卡／403：全頁置中，沒有側欄 */
+  .center { min-height: calc(100vh - 56px); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .gate { width: 100%; max-width: 380px; padding: 32px 24px; text-align: center; }
+  .gate h2 { margin: 0 0 20px; font-size: 20px; font-weight: 900; }
+  .gate .code { font-size: 40px; font-weight: 900; color: var(--error); margin-bottom: 4px; }
+  .gate .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .google { display: inline-flex; align-items: center; gap: 10px; }
+  .google i { width: 18px; height: 18px; border-radius: 50%; background: conic-gradient(#ea4335 0 25%, #fbbc05 0 50%, #34a853 0 75%, #4285f4 0); }
+
+  /* confirm 對話框與 SNACK */
+  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+  .scrim.open { display: flex; }
+  .dialog { max-width: 400px; width: 100%; padding: 20px; }
+  .dialog h3 { margin: 0 0 8px; }
+  .dialog .actions { justify-content: flex-end; margin-top: 20px; }
+  .snack { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(100px); background: #323232; color: #fff;
+    padding: 10px 18px; border-radius: 6px; transition: transform .2s; z-index: 60; }
+  .snack.show { transform: translateX(-50%) translateY(0); }
+  .snack.err { background: var(--error); }
+
+  /* Mockup 專用的狀態切換面板（實作時不會有） */
+  .switcher { position: fixed; right: 16px; bottom: 16px; z-index: 40; background: #222; color: #fff; border-radius: 10px;
+    padding: 10px; font-size: 12px; max-width: 240px; box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+  .switcher b { display: block; margin-bottom: 6px; }
+  .switcher button { background: #3a3a3a; color: #fff; border: 0; border-radius: 4px; padding: 4px 8px; margin: 2px; font-size: 12px; }
+  .switcher button.on { background: #1976d2; }
+  .switcher .min { float: right; background: none; padding: 0 4px; }
+
+  /* 手機：側欄收成 Drawer */
+  @media (max-width: 899px) {
+    .hamburger { display: inline-block; }
+    .shell { grid-template-columns: minmax(0, 1fr); }
+    .side { position: fixed; left: 0; top: 56px; bottom: 0; width: 260px; z-index: 30; transform: translateX(-100%);
+      transition: transform .2s; height: auto; box-shadow: 4px 0 24px rgba(0,0,0,.2); }
+    .side.open { transform: none; }
+    .drawer-scrim { position: fixed; inset: 56px 0 0 0; background: rgba(0,0,0,.35); z-index: 25; display: none; }
+    .drawer-scrim.open { display: block; }
+    .main { padding: 16px 16px 120px; }
+    .field { min-width: 0; width: 100%; }
+    .brand small { display: none; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <button class="icon-btn hamburger" id="hamburger" aria-label="開啟選單">☰</button>
+  <a class="brand" href="#/" data-go="dashboard">faryne.dev<small>後台</small></a>
+  <div class="spacer"></div>
+  <button class="avatar" id="avatarBtn" aria-label="帳號選單">F</button>
+  <div class="menu" id="accountMenu">
+    <div class="who">faryne@gmail.com</div>
+    <a href="#" onclick="return false">回到網站</a>
+    <button data-act="logout">登出</button>
+  </div>
+</header>
+<div id="root"></div>
+<div class="drawer-scrim" id="drawerScrim"></div>
+
+<div class="scrim" id="confirm">
+  <div class="paper dialog" role="dialog" aria-modal="true">
+    <h3 id="confirmTitle">刪除頻道</h3>
+    <div class="muted" id="confirmBody"></div>
+    <div class="actions">
+      <button class="btn" data-act="cancel">取消</button>
+      <button class="btn danger" data-act="doDelete">刪除</button>
+    </div>
+  </div>
+</div>
+<div class="snack" id="snack"></div>
+
+<div class="switcher" id="switcher">
+  <button class="min" id="minSwitcher" title="收起">–</button>
+  <b>Mockup 狀態</b>
+  <div id="authBtns"></div>
+  <div style="margin-top:6px">
+    <button data-theme-set="light">淺色</button><button data-theme-set="dark">深色</button>
+  </div>
+</div>
+
+<script>
+// ===== 假資料 =====
+const state = {
+  auth: "admin",          // guest | user | admin
+  page: "dashboard",
+  tab: "all",
+  pending: { avSubmissions: 3, gBrands: 2, gVideos: 5 },
+  brands: [
+    { id: 1, name: "Key Official", videos: 412, synced: "2026-11-04 03:10", status: "all" },
+    { id: 2, name: "ゆずソフト公式", videos: 286, synced: "2026-11-04 03:12", status: "all" },
+    { id: 3, name: "CUFFS Channel", videos: 91, synced: "2026-10-28 03:05", status: "paused" },
+    { id: 4, name: "Navel Official", videos: 154, synced: "2026-11-04 03:15", status: "all" },
+    { id: 5, name: "某已解散社團", videos: 12, synced: "2026-06-01 03:00", status: "deleted" },
+  ],
+  brandSubs: [
+    { id: 11, name: "Lump of Sugar", url: "youtube.com/@lumpofsugar", at: "2026-11-03 21:40" },
+    { id: 12, name: "SAGA PLANETS", url: "youtube.com/@sagaplanets", at: "2026-11-04 09:02" },
+  ],
+  avSubs: [
+    { id: 201, name: "河北彩伽", kind: "edit", flags: ["資料已變更"], channel: "web", at: "2026-11-04 10:12" },
+    { id: 202, name: "七ツ森りり", kind: "new", flags: ["同名女優"], channel: "mcp", at: "2026-11-04 08:30" },
+    { id: 203, name: "楓ふうあ", kind: "new", flags: [], channel: "web", at: "2026-11-03 23:55" },
+  ],
+  topics: [
+    { id: 1, name: "2026 年度新人", enabled: true, kind: "特輯" },
+    { id: 2, name: "高身長", enabled: true, kind: "身材" },
+    { id: 3, name: "引退特輯", enabled: false, kind: "特輯" },
+  ],
+};
+
+// ===== 側欄設定：之後的模組都加在這裡（對應實作的 data/backendAdminNav.ts）=====
+const nav = [
+  { title: "總覽", items: [{ key: "dashboard", label: "總覽" }] },
+  { title: "Galgame", items: [
+    { key: "g-brands", label: "頻道管理", tabs: [["all", "全部頻道"], ["paused", "暫停索引頻道"], ["deleted", "已刪除頻道"]] },
+    { key: "g-videos", label: "影片管理", tabs: [["all", "全部影片"], ["deleted", "已刪除影片"]] },
+    { key: "g-brand-subs", label: "待審頻道", badge: "gBrands" },
+    { key: "g-video-subs", label: "待審影片", badge: "gVideos" },
+    { key: "g-keywords", label: "影片關鍵字" },
+  ]},
+  { title: "AV 女優", items: [
+    { key: "av-subs", label: "上稿審核", badge: "avSubmissions" },
+    { key: "av-topics", label: "女優主題" },
+  ]},
+  { title: "其他後台", items: [{ key: "ext-steamloom", label: "SteamLoom 檢舉後台 ↗", external: true }] },
+];
+const findItem = (key) => { for (const g of nav) for (const i of g.items) if (i.key === key) return { group: g, item: i }; return null; };
+
+// ===== 畫面 =====
+const $ = (s) => document.querySelector(s);
+const root = $("#root");
+
+function gate(kind) {
+  if (kind === "guest") return `
+    <div class="center"><div class="paper gate">
+      <h2>faryne.dev 後台</h2>
+      <button class="btn big google" data-act="login"><i></i>使用 Google 登入</button>
+    </div></div>`;
+  return `
+    <div class="center"><div class="paper gate">
+      <div class="code">403</div>
+      <h2>需要管理者權限</h2>
+      <div class="row">
+        <button class="btn primary" data-act="switchAccount">切換帳號</button>
+        <a class="btn" href="#" onclick="return false">回到網站</a>
+      </div>
+    </div></div>`;
+}
+
+function sidebar() {
+  return `<nav class="side" id="side" aria-label="後台導覽">${nav.map((g) => `
+    <div class="group">
+      ${g.title !== "總覽" ? `<div class="group-title">${g.title}</div>` : ""}
+      ${g.items.map((i) => {
+        const n = i.badge ? state.pending[i.badge] : 0;
+        return `<a href="#" class="nav-item ${state.page === i.key ? "active" : ""}" data-go="${i.key}">
+          <span>${i.label}</span>${n > 0 ? `<span class="badge">${n}</span>` : ""}</a>`;
+      }).join("")}
+    </div>`).join("")}</nav>`;
+}
+
+function crumbs() {
+  const f = findItem(state.page);
+  const parts = [`<a href="#" data-go="dashboard">後台</a>`];
+  if (f && state.page !== "dashboard") parts.push(`<span>${f.group.title}</span>`, `<span class="cur">${f.item.label}</span>`);
+  if (!f) parts.push(`<span class="cur">找不到頁面</span>`);
+  return `<div class="crumbs">${parts.join("<span>/</span>")}</div>`;
+}
+
+function tabs(item) {
+  if (!item.tabs) return "";
+  return `<div class="tabs">${item.tabs.map(([k, l]) =>
+    `<button class="tab ${state.tab === k ? "active" : ""}" data-tab="${k}">${l}</button>`).join("")}</div>`;
+}
+
+const pages = {
+  dashboard: () => `
+    <h1>總覽</h1>
+    <div class="cards">
+      <div class="paper card"><h3>Galgame</h3>
+        ${stat("待審頻道", state.pending.gBrands, "g-brand-subs")}
+        ${stat("待審影片", state.pending.gVideos, "g-video-subs")}
+      </div>
+      <div class="paper card"><h3>AV 女優</h3>
+        ${stat("待審上稿", state.pending.avSubmissions, "av-subs")}
+      </div>
+    </div>`,
+
+  "g-brands": (item) => {
+    const rows = state.brands.filter((b) => b.status === state.tab);
+    return `<h1>頻道管理</h1>
+      <div class="toolbar"><input class="field" placeholder="搜尋頻道"></div>
+      ${tabs(item)}
+      <div class="paper table-wrap"><table>
+        <thead><tr><th>頻道</th><th>影片數</th><th>最後同步</th><th>狀態</th><th>操作</th></tr></thead>
+        <tbody>${rows.length ? rows.map((b) => `<tr>
+          <td><span class="thumb">${b.name[0]}</span>${b.name}</td>
+          <td>${b.videos}</td><td class="muted">${b.synced}</td>
+          <td>${b.status === "paused" ? `<span class="chip warn">暫停索引</span>` : b.status === "deleted" ? `<span class="chip err">已刪除</span>` : `<span class="chip ok">索引中</span>`}</td>
+          <td><div class="actions">${b.status === "deleted"
+            ? `<button class="btn" data-act="restore" data-id="${b.id}">刪除回滾</button>`
+            : b.status === "paused"
+              ? `<button class="btn" data-act="resume" data-id="${b.id}">重新啟動索引</button>`
+              : `<button class="btn" data-act="pause" data-id="${b.id}">暫停索引</button>
+                 <button class="btn" data-act="snack" data-msg="已排入完全索引">完全索引</button>
+                 <button class="btn danger" data-act="askDelete" data-id="${b.id}">刪除</button>`}
+          </div></td></tr>`).join("") : `<tr><td colspan="5" class="muted" style="text-align:center;padding:32px">沒有符合條件的頻道。</td></tr>`}
+        </tbody></table>
+        <div class="pager"><button class="btn">‹</button><button class="btn primary">1</button><button class="btn">2</button><button class="btn">›</button></div>
+      </div>`;
+  },
+
+  "g-videos": (item) => `<h1>影片管理</h1>
+    <div class="toolbar"><input class="field" placeholder="搜尋影片"></div>
+    ${tabs(item)}
+    ${simpleTable(["影片", "頻道", "上檔", "操作"], [
+      ["【公式】新作 OP ムービー", "ゆずソフト公式", "2026-11-02", state.tab === "deleted" ? btn("刪除回滾") : btn("刪除影片", "danger")],
+      ["キャラクター紹介 PV", "Key Official", "2026-11-01", state.tab === "deleted" ? btn("刪除回滾") : btn("刪除影片", "danger")],
+    ])}`,
+
+  "g-brand-subs": () => `<h1>待審頻道</h1>
+    ${simpleTable(["頻道", "網址", "提出時間", "操作"], state.brandSubs.map((s) => [
+      s.name, `<span class="muted">${s.url}</span>`, `<span class="muted">${s.at}</span>`,
+      `<div class="actions"><button class="btn primary" data-act="approve" data-id="${s.id}">核准</button><button class="btn" data-act="approve" data-id="${s.id}" data-reject="1">拒絕</button></div>`]),
+      "目前沒有待審頻道。")}`,
+
+  "g-video-subs": () => `<h1>待審影片</h1>
+    ${simpleTable(["影片", "頻道", "提出時間", "操作"], Array.from({ length: state.pending.gVideos }, (_, i) => [
+      `投稿影片 #${i + 1}`, "Navel Official", `<span class="muted">2026-11-0${(i % 4) + 1}</span>`,
+      `<div class="actions"><button class="btn primary" data-act="approveVideo">核准</button><button class="btn" data-act="approveVideo">拒絕</button></div>`]),
+      "目前沒有待審影片。")}`,
+
+  "g-keywords": () => `<h1>影片關鍵字</h1>
+    <div class="toolbar"><input class="field" placeholder="關鍵字"><button class="btn primary" data-act="snack" data-msg="已新增">新增</button></div>
+    ${simpleTable(["關鍵字", "狀態", "操作"], [
+      ["OP", `<span class="chip ok">啟用</span>`, `<div class="actions">${btn("停用")}${btn("刪除", "danger", "askDeleteKw")}</div>`],
+      ["PV", `<span class="chip ok">啟用</span>`, `<div class="actions">${btn("停用")}${btn("刪除", "danger", "askDeleteKw")}</div>`],
+      ["体験版", `<span class="chip">停用</span>`, `<div class="actions">${btn("啟用")}${btn("刪除", "danger", "askDeleteKw")}</div>`],
+    ])}`,
+
+  "av-subs": () => `<h1>上稿審核</h1>
+    ${simpleTable(["女優", "類型", "標記", "來源", "提出時間", ""], state.avSubs.map((s) => [
+      `<b>${s.name}</b>`, `<span class="chip">${s.kind === "edit" ? "修改" : "新增"}</span>`,
+      s.flags.map((f) => `<span class="chip warn">${f}</span>`).join("") || `<span class="muted">—</span>`,
+      s.channel === "mcp" ? `<span class="chip">MCP</span>` : `<span class="muted">網頁</span>`,
+      `<span class="muted">${s.at}</span>`, `<button class="btn" data-act="snack" data-msg="進入 /backend_admin/av/submissions/${s.id}">審核</button>`]),
+      "目前沒有待審上稿。")}`,
+
+  "av-topics": () => `<h1>女優主題</h1>
+    <div class="toolbar"><button class="btn primary" data-act="snack" data-msg="進入 /backend_admin/av/topics/new">新增主題</button></div>
+    ${simpleTable(["", "主題", "分類", "狀態", "操作"], state.topics.map((t) => [
+      `<span class="muted" title="拖曳排序">⋮⋮</span>`, t.name, `<span class="chip">${t.kind}</span>`,
+      t.enabled ? `<span class="chip ok">啟用</span>` : `<span class="chip">停用</span>`,
+      `<div class="actions">${btn("編輯")}${btn(t.enabled ? "停用" : "啟用")}${btn("刪除", "danger", "askDeleteKw")}</div>`]))}`,
+
+  notfound: () => `<h1>找不到頁面</h1><div class="paper card"><a class="btn" href="#" data-go="dashboard">回到總覽</a></div>`,
+};
+
+function stat(label, n, go) {
+  return `<a href="#" class="stat" data-go="${go}"><span>${label}</span><b class="${n ? "" : "zero"}">${n}</b></a>`;
+}
+function btn(label, cls = "", act = "snack") {
+  return `<button class="btn ${cls}" data-act="${act}" data-msg="${label}（mockup）">${label}</button>`;
+}
+function simpleTable(head, rows, empty = "沒有資料。") {
+  return `<div class="paper table-wrap"><table><thead><tr>${head.map((h) => `<th>${h}</th>`).join("")}</tr></thead>
+    <tbody>${rows.length ? rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")
+      : `<tr><td colspan="${head.length}" class="muted" style="text-align:center;padding:32px">${empty}</td></tr>`}</tbody></table></div>`;
+}
+
+function render() {
+  $("#avatarBtn").style.display = state.auth === "guest" ? "none" : "";
+  $("#hamburger").style.visibility = state.auth === "admin" ? "visible" : "hidden";
+  if (state.auth !== "admin") { root.innerHTML = gate(state.auth); renderSwitcher(); return; }
+  const f = findItem(state.page);
+  const body = f ? pages[state.page](f.item) : pages.notfound();
+  root.innerHTML = `<div class="shell">${sidebar()}<main class="main">${crumbs()}${body}</main></div>`;
+  renderSwitcher();
+}
+
+function renderSwitcher() {
+  $("#authBtns").innerHTML = [["guest", "未登入"], ["user", "非管理者"], ["admin", "管理者"]]
+    .map(([k, l]) => `<button class="${state.auth === k ? "on" : ""}" data-auth="${k}">${l}</button>`).join("")
+    + `<button data-go="notfound-x">後台 404</button>`;
+}
+
+let snackTimer;
+function snack(msg, err) {
+  const el = $("#snack"); el.textContent = msg; el.className = "snack show" + (err ? " err" : "");
+  clearTimeout(snackTimer); snackTimer = setTimeout(() => (el.className = "snack"), 2200);
+}
+function closeDrawer() { $("#side")?.classList.remove("open"); $("#drawerScrim").classList.remove("open"); }
+
+let pendingDelete = null;
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-go],[data-act],[data-tab],[data-auth],[data-theme-set]");
+  if (!t) { if (!e.target.closest("#accountMenu,#avatarBtn")) $("#accountMenu").classList.remove("open"); return; }
+  if (t.tagName === "A") e.preventDefault();
+
+  if (t.dataset.go) {
+    const f = findItem(t.dataset.go);
+    if (f?.item.external) { snack("另開分頁：steamloom.works 的檢舉後台"); return; }
+    state.page = f ? t.dataset.go : "notfound-x"; state.tab = "all";
+    if (state.auth !== "admin") state.auth = "admin";
+    closeDrawer(); render(); window.scrollTo(0, 0); return;
+  }
+  if (t.dataset.tab) { state.tab = t.dataset.tab; render(); return; }
+  if (t.dataset.auth) { state.auth = t.dataset.auth; render(); return; }
+  if (t.dataset.themeSet) { document.documentElement.dataset.theme = t.dataset.themeSet; return; }
+
+  const id = Number(t.dataset.id);
+  const brand = state.brands.find((b) => b.id === id);
+  switch (t.dataset.act) {
+    case "login": state.auth = "admin"; render(); break;
+    case "switchAccount": state.auth = "guest"; render(); break;
+    case "logout": $("#accountMenu").classList.remove("open"); state.auth = "guest"; render(); break;
+    case "pause": brand.status = "paused"; render(); snack("已暫停索引"); break;
+    case "resume": brand.status = "all"; render(); snack("已重新啟動索引"); break;
+    case "restore": brand.status = "all"; render(); snack("已回滾刪除"); break;
+    case "askDelete":
+      pendingDelete = brand;
+      $("#confirmTitle").textContent = "刪除頻道";
+      $("#confirmBody").textContent = `確定要刪除「${brand.name}」嗎？`;
+      $("#confirm").classList.add("open"); break;
+    case "askDeleteKw":
+      pendingDelete = null;
+      $("#confirmTitle").textContent = "確認刪除";
+      $("#confirmBody").textContent = "確定要刪除嗎？";
+      $("#confirm").classList.add("open"); break;
+    case "cancel": $("#confirm").classList.remove("open"); break;
+    case "doDelete":
+      if (pendingDelete) pendingDelete.status = "deleted";
+      $("#confirm").classList.remove("open"); render(); snack("已刪除"); break;
+    case "approve":
+      state.brandSubs = state.brandSubs.filter((s) => s.id !== id);
+      state.pending.gBrands = state.brandSubs.length; render(); snack(t.dataset.reject ? "已拒絕" : "已核准"); break;
+    case "approveVideo":
+      state.pending.gVideos = Math.max(0, state.pending.gVideos - 1); render(); snack("已處理"); break;
+    case "snack": snack(t.dataset.msg); break;
+  }
+});
+$("#avatarBtn").onclick = (e) => { e.stopPropagation(); $("#accountMenu").classList.toggle("open"); };
+$("#hamburger").onclick = () => { $("#side")?.classList.toggle("open"); $("#drawerScrim").classList.toggle("open"); };
+$("#drawerScrim").onclick = closeDrawer;
+$("#minSwitcher").onclick = () => $("#switcher").style.display = "none";
+render();
+</script>
+</body>
+</html>
