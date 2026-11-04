@@ -24,11 +24,12 @@ const (
 	sitemapCacheTTL = time.Hour
 )
 
-// SteamLoomRobotsTxt 私人頁（工作台、授權、分享連結、站內搜尋結果）不給爬
+// SteamLoomRobotsTxt 私人頁（工作台、授權、分享連結、站內搜尋結果）與 API 不給爬
 func SteamLoomRobotsTxt() string {
 	return strings.Join([]string{
 		"User-agent: *",
 		"Allow: /",
+		"Disallow: /api/",
 		"Disallow: /my/",
 		"Disallow: /oauth/",
 		"Disallow: /mcp",

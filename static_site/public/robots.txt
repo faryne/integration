@@ -2,5 +2,8 @@ User-agent: *
 Allow: /
 # 整合後台不收錄
 Disallow: /backend_admin
+# API（JSON）不需要被爬：AI 爬蟲曾大量抓 /api-integration 的資料（見 DevelopDocuments/api_domain）
+Disallow: /api/
+Disallow: /api-integration/
 
 Sitemap: https://faryne.dev/sitemap.xml
