@@ -2,8 +2,10 @@
 #
 # Assumptions from this repository:
 # - Go/Fiber backend listens on 127.0.0.1:8080 by default.
-# - Frontend builds with VITE_API_BASE=https://faryne.dev/api-integration.
-# - /api-integration/* should proxy to the backend with the prefix stripped.
+# - 各網域的 /api/* 轉給後端並剝掉前綴（faryne.dev、galgame.tv、neko.maid.tw、steamloom.works）。
+#   faryne.dev 的 /api-integration/* 是舊入口，外部呼叫端（MCP client、userscript 等）還在用，永久保留。
+#   共用設定在 httpd_conf/snippets/（部署到 /etc/nginx/snippets/），詳見
+#   DevelopDocuments/api_domain/API網域整合_2026-11-04.md。
 # - /sns/* and /mcp are backend-rendered/API endpoints.
 # - If frontend is served by nginx, the Vite build output is under
 #   /var/www/faryne.dev/dist.
@@ -20,6 +22,10 @@ upstream faryne_api {
 # 否則 X-Real-IP 會是 Cloudflare 的邊緣 IP（稽核紀錄、OAuth 註冊限流、MCP client IP 都會錯）。
 # 檔案在 repo 的 httpd_conf/snippets/cloudflare_real_ip.conf，部署時複製到 /etc/nginx/snippets/。
 include /etc/nginx/snippets/cloudflare_real_ip.conf;
+
+# 一般 combined 格式最後多記 Origin：觀察有哪些網站還在跨站呼叫 /api-integration，CORS 收斂前用來確認白名單
+log_format with_origin '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent '
+                       '"$http_referer" "$http_user_agent" "$http_origin"';
 
 # 藏掉 Server response header 裡的版本號（例如 nginx/1.24.0 -> nginx），減少對外洩漏版本資訊。
 server_tokens off;
@@ -43,7 +49,7 @@ map "$is_social_bot:$uri" $sns_render {
 server {
     listen 80;
     listen [::]:80;
-    server_name faryne.dev www.faryne.dev neko.maid.tw steamloom.works www.steamloom.works;
+    server_name faryne.dev www.faryne.dev neko.maid.tw steamloom.works www.steamloom.works galgame.tv www.galgame.tv;
 
     # Enable this redirect after HTTPS certificates are ready.
     return 301 https://$host$request_uri;
@@ -62,56 +68,24 @@ server {
     root /var/www/faryne.dev/dist;
     index index.html;
 
-    access_log /var/log/nginx/access.log;
+    access_log /var/log/nginx/access.log with_origin;
     error_log /var/log/nginx/error.log;
 
     location /hololive.json {
         alias /var/www/html/public/hololive.json;
     }
 
-    location /api-integration/ {
-        proxy_pass http://faryne_api/;
-        proxy_http_version 1.1;
-
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        proxy_connect_timeout 30s;
-        # AAS（agentic 多輪 tool-calling）單一步驟逾時已經拉到 180s
-        # （service/storyteller/ai_provider.go 的 aiProviderAgenticTimeout），
-        # 最多到 8 步，累加起來可能遠超過舊的 300s，這裡跟著放寬到 600s，
-        # 避免 Go 那邊還在正常跑、卻先被 nginx 這層掐斷連線。
-        proxy_send_timeout 600s;
-        proxy_read_timeout 600s;
-
-        # 後端掛掉時，讓錯誤回應也帶 CORS header，且格式比照 service/output.CommonOutput，
-        # 前端不用為了這種情況多寫一套解析邏輯。放在具名 location 是因為它是 nginx 自己產生
-        # 回應（不會有 upstream 的 header 混進來），才不會跟正常回應的 Access-Control-Allow-Origin
-        # 重複衝突。502/503/504 各自對應不同成因（連不上／服務端明確拒絕／逾時），分開給訊息。
-        error_page 502 = @api_gateway_down_502;
-        error_page 503 = @api_gateway_down_503;
-        error_page 504 = @api_gateway_down_504;
+    # 新入口：前端打同網域的 /api/*
+    location ^~ /api/ {
+        include /etc/nginx/snippets/faryne_api_proxy.conf;
     }
 
-    location @api_gateway_down_502 {
-        default_type application/json;
-        add_header 'Access-Control-Allow-Origin' '*' always;
-        return 502 '{"code":502,"cost_time":0,"data":null,"custom_code":"502000","uri":"$request_uri","method":"$request_method","message":"後端服務目前無法連線，請稍後再試"}';
+    # 舊入口：外部呼叫端（MCP client、userscript、Firebase 的 /sns 302 等）仍在使用，永久保留
+    location ^~ /api-integration/ {
+        include /etc/nginx/snippets/faryne_api_proxy.conf;
     }
 
-    location @api_gateway_down_503 {
-        default_type application/json;
-        add_header 'Access-Control-Allow-Origin' '*' always;
-        return 503 '{"code":503,"cost_time":0,"data":null,"custom_code":"503000","uri":"$request_uri","method":"$request_method","message":"服務暫時維護中，請稍後再試"}';
-    }
-
-    location @api_gateway_down_504 {
-        default_type application/json;
-        add_header 'Access-Control-Allow-Origin' '*' always;
-        return 504 '{"code":504,"cost_time":0,"data":null,"custom_code":"504000","uri":"$request_uri","method":"$request_method","message":"後端服務回應逾時，請稍後再試"}';
-    }
+    include /etc/nginx/snippets/faryne_api_errors.conf;
 
     # SNS / OG meta routes are rendered by the backend.
     location @faryne_sns {
@@ -149,6 +123,13 @@ server {
 
     ssl_certificate /etc/letsencrypt/live/neko.maid.tw/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/neko.maid.tw/privkey.pem;
+
+    # 前端打同網域的 /api/*；^~ 讓它優先於下面 retrieve.json／search.rss 的 regex location
+    location ^~ /api/ {
+        include /etc/nginx/snippets/faryne_api_proxy.conf;
+    }
+
+    include /etc/nginx/snippets/faryne_api_errors.conf;
 
     location ~ (retrieve\.json|search\.rss) {
         rewrite ^/(.*)$ /nekomaid/$1 break;
@@ -188,6 +169,35 @@ server {
 
 }
 
+# galgame.tv 開了 Cloudflare proxy（橘雲）：瀏覽器看到的是 CF 的憑證，這裡掛的是 CF Origin CA 憑證，
+# 只給 Cloudflare 回源用（CF SSL 模式 Full (strict)）。真實 IP 由 cloudflare_real_ip.conf 還原。
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name galgame.tv www.galgame.tv;
+
+    ssl_certificate /etc/ssl/cloudflare/galgame.tv.cert;
+    ssl_certificate_key /etc/ssl/cloudflare/galgame.tv.pem;
+
+    # 前端打同網域的 /api/*
+    location ^~ /api/ {
+        include /etc/nginx/snippets/faryne_api_proxy.conf;
+    }
+
+    include /etc/nginx/snippets/faryne_api_errors.conf;
+
+    # 前端本體仍在 Firebase Hosting（galgame-tv.web.app），比照 neko.maid.tw 轉過去
+    location / {
+        proxy_pass https://galgame-tv.web.app;
+        proxy_ssl_server_name on;
+        proxy_ssl_name galgame-tv.web.app;
+        proxy_set_header Host galgame-tv.web.app;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
@@ -200,19 +210,11 @@ server {
 
     # SteamLoom 前端只走同源 /api；結尾的斜線會在 proxy_pass 時移除 /api 前綴，
     # 例如 /api/storyteller/projects 轉成後端的 /storyteller/projects。
-    location /api/ {
-        proxy_pass http://faryne_api/;
-        proxy_http_version 1.1;
-
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        proxy_connect_timeout 30s;
-        proxy_send_timeout 600s;
-        proxy_read_timeout 600s;
+    location ^~ /api/ {
+        include /etc/nginx/snippets/faryne_api_proxy.conf;
     }
+
+    include /etc/nginx/snippets/faryne_api_errors.conf;
 
     # SteamLoom 是獨立站，故事頁面在這個網域是直接掛在根路徑（沒有 /storyteller 前綴）；
     # 這裡補上 /storyteller 前綴轉給後端，才會對到 service/sns/meta.go 裡 pathCollection
