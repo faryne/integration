@@ -16,6 +16,10 @@ export const avAdminTopicsPath = `${BACKEND_ADMIN_PATH}/av/topics`;
 export const avAdminTopicPath = (id: number | "new") =>
   `${avAdminTopicsPath}/${id}`;
 
+// neko.maid.tw 管理：禁抓名單、版權申告審核
+export const nekomaidAdminPath = (page: "forbidden" | "claims") =>
+  `${BACKEND_ADMIN_PATH}/nekomaid/${page}`;
+
 // galgame 管理：五個功能頁
 export type GalgameAdminPage =
   | "brands"

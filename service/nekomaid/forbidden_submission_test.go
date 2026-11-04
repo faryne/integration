@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"faryne.dev/config"
 	"faryne.dev/model/entity/nekomaid"
 )
 
@@ -38,10 +39,50 @@ func TestNormalizeForbiddenSubmit(t *testing.T) {
 	})
 }
 
+// withIPHashSecret 測試期間暫時設定 IP 雜湊鑰匙，結束後還原
+func withIPHashSecret(t *testing.T, secret string) {
+	t.Helper()
+	original := config.EnvConfig().NekomaidIPHashSecret
+	config.EnvConfig().NekomaidIPHashSecret = secret
+	t.Cleanup(func() { config.EnvConfig().NekomaidIPHashSecret = original })
+}
+
 func TestSubmitForbiddenHoneypot(t *testing.T) {
-	// honeypot 有值時假裝成功、不碰 DB（欄位全空也不會報驗證錯誤）
-	result, err := SubmitForbidden(nekomaid.ForbiddenSubmitRequest{Website: "http://spam.example"}, "")
-	if err != nil || result == nil || len(result.Token) != 32 || result.Status != nekomaid.SubmissionPending {
+	withIPHashSecret(t, "test-secret")
+	// honeypot 有值時假裝成功、不碰 DB（欄位全空也不會報驗證錯誤），回傳的 hash 跟真的送出一樣
+	result, err := SubmitForbidden(nekomaid.ForbiddenSubmitRequest{Website: "http://spam.example"}, "203.0.113.25")
+	want, _ := hashSubmitterIP("203.0.113.25")
+	if err != nil || result == nil || result.Hash != want || result.Status != nekomaid.SubmissionPending {
 		t.Fatalf("result = %+v, err = %v", result, err)
+	}
+}
+
+func TestHashSubmitterIP(t *testing.T) {
+	withIPHashSecret(t, "test-secret")
+	a, _ := hashSubmitterIP("203.0.113.25")
+	again, _ := hashSubmitterIP("203.0.113.25")
+	other, _ := hashSubmitterIP("203.0.113.26")
+	if !ipHashPattern.MatchString(a) || a != again || a == other {
+		t.Fatalf("hash = %q, again = %q, other = %q", a, again, other)
+	}
+	// 換鑰匙後同一 IP 的 hash 也要不同（沒有鑰匙無法從 hash 反推 IP）
+	withIPHashSecret(t, "another-secret")
+	if b, _ := hashSubmitterIP("203.0.113.25"); b == a {
+		t.Fatalf("hash should depend on secret")
+	}
+	// 沒設鑰匙一律拒絕，不產生可被暴力反推的雜湊
+	withIPHashSecret(t, "")
+	if _, err := hashSubmitterIP("203.0.113.25"); !errors.Is(err, ErrIPHashSecretMissing) {
+		t.Fatalf("err = %v, want ErrIPHashSecretMissing", err)
+	}
+}
+
+func TestListPublicForbiddenSubmissionsRejectsMalformedHash(t *testing.T) {
+	// 格式不對的 hash 直接回空列表，不碰 DB
+	for _, hash := range []string{"abc", "../../etc", strings.Repeat("g", 32), strings.Repeat("A", 32)} {
+		rows, total, err := ListPublicForbiddenSubmissions(nekomaid.ForbiddenSubmissionPublicRequest{}, hash)
+		if err != nil || total != 0 || len(rows) != 0 {
+			t.Fatalf("hash %q: rows = %v, total = %d, err = %v", hash, rows, total, err)
+		}
 	}
 }

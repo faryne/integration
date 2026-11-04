@@ -4,11 +4,16 @@ import {
   avAdminVideoSubmissionsPath,
   BACKEND_ADMIN_PATH,
   galgameAdminPath,
+  nekomaidAdminPath,
 } from "@/helpers/backendAdmin.ts";
 
 /** 側欄數字的來源，對應 useBackendAdminPendingCounts 的回傳欄位 */
 export type BackendAdminBadge =
-  "avSubmissions" | "avVideoSubmissions" | "galgameBrands" | "galgameVideos";
+  | "avSubmissions"
+  | "avVideoSubmissions"
+  | "galgameBrands"
+  | "galgameVideos"
+  | "nekomaidClaims";
 
 export interface BackendAdminNavItem {
   label: string;
@@ -59,6 +64,17 @@ export const backendAdminNav: BackendAdminNavGroup[] = [
         badge: "avVideoSubmissions",
       },
       { label: "女優主題", href: avAdminTopicsPath },
+    ],
+  },
+  {
+    title: "Nekomaid",
+    items: [
+      { label: "禁抓名單", href: nekomaidAdminPath("forbidden") },
+      {
+        label: "版權申告",
+        href: nekomaidAdminPath("claims"),
+        badge: "nekomaidClaims",
+      },
     ],
   },
   {

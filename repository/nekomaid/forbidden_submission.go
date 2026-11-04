@@ -30,16 +30,35 @@ func (r *ForbiddenSubmissionRepository) Create(row *nekomaid.ArtworkForbiddenSub
 	return r.GetDB().Create(row).Error
 }
 
-// StatusByToken 申請人查詢審核狀態
-func (r *ForbiddenSubmissionRepository) StatusByToken(token string) (*nekomaid.ForbiddenSubmissionStatus, error) {
-	var row nekomaid.ForbiddenSubmissionStatus
-	result := r.withNickname().
-		Select("artwork_forbidden_submissions.*, COALESCE(aa.nickname, '') AS nickname").
-		Where("artwork_forbidden_submissions.token = ?", token).Limit(1).Scan(&row)
-	if result.Error == nil && result.RowsAffected == 0 {
-		return nil, gorm.ErrRecordNotFound
+// PublicSearch 公開的處理結果列表，新的在前；ipHash 有值時只列該 IP 送出的申告。
+// 只選公開欄位，email、IP、說明不會出現在結果裡。
+func (r *ForbiddenSubmissionRepository) PublicSearch(input nekomaid.ForbiddenSubmissionPublicRequest, ipHash string) ([]nekomaid.ForbiddenSubmissionStatus, int64, error) {
+	query := r.withNickname()
+	if input.Status != "" {
+		query = query.Where("artwork_forbidden_submissions.status = ?", input.Status)
 	}
-	return &row, result.Error
+	if ipHash != "" {
+		query = query.Where("artwork_forbidden_submissions.ip_hash = ?", ipHash)
+	}
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	rows := make([]nekomaid.ForbiddenSubmissionStatus, 0)
+	err := query.Select(`artwork_forbidden_submissions.id, artwork_forbidden_submissions.site,
+		artwork_forbidden_submissions.author_id, artwork_forbidden_submissions.artwork_id,
+		COALESCE(aa.nickname, '') AS nickname, artwork_forbidden_submissions.status,
+		artwork_forbidden_submissions.reviewer_note, artwork_forbidden_submissions.created_at,
+		artwork_forbidden_submissions.reviewed_at,
+		EXISTS (SELECT 1 FROM artwork_forbidden f
+		        WHERE f.is_deleted = 0 AND f.site = artwork_forbidden_submissions.site
+		          AND f.author_id = artwork_forbidden_submissions.author_id
+		          AND f.artwork_id IN ('', artwork_forbidden_submissions.artwork_id)) AS is_forbidden`).
+		Order("artwork_forbidden_submissions.id DESC").
+		Offset(int((input.PageValue() - 1) * input.PerPageValue())).
+		Limit(int(input.PerPageValue())).
+		Scan(&rows).Error
+	return rows, total, err
 }
 
 // Search 後台審核列表：待審的舊的先看，其他依新到舊

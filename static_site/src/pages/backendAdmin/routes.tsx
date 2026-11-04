@@ -75,6 +75,17 @@ const AVTopicEdit = lazy(() =>
   })),
 );
 
+const NekomaidForbidden = lazy(() =>
+  import("@/pages/backendAdmin/nekomaid/Forbidden.tsx").then((m) => ({
+    default: m.NekomaidAdminForbidden,
+  })),
+);
+const NekomaidClaims = lazy(() =>
+  import("@/pages/backendAdmin/nekomaid/Claims.tsx").then((m) => ({
+    default: m.NekomaidAdminClaims,
+  })),
+);
+
 /** /backend_admin 底下的路由；權限閘門在 BackendAdminLayout */
 export const backendAdminRoutes = (
   <Route path={BACKEND_ADMIN_PATH} element={<BackendAdminLayout />}>
@@ -99,6 +110,11 @@ export const backendAdminRoutes = (
       <Route path={"topics"} element={<AVTopicManage />} />
       {/* :id 為 new 時是新增 */}
       <Route path={"topics/:id"} element={<AVTopicEdit />} />
+    </Route>
+    <Route path={"nekomaid"}>
+      <Route index element={<Navigate replace to={"forbidden"} />} />
+      <Route path={"forbidden"} element={<NekomaidForbidden />} />
+      <Route path={"claims"} element={<NekomaidClaims />} />
     </Route>
     <Route path={"*"} element={<NotFound />} />
   </Route>

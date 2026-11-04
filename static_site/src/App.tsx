@@ -228,6 +228,9 @@ const Userscripts = lazy(() => import("@/pages/tools/userscripts.tsx"));
 const Webshot = lazy(() => import("@/pages/tools/webshot.tsx"));
 const McpTools = lazy(() => import("@/pages/tools/mcp.tsx"));
 const Nekomaid = lazy(() => import("@/pages/nekomaid"));
+const NekomaidCopyrightClaims = lazy(
+  () => import("@/pages/nekomaid/CopyrightClaims.tsx"),
+);
 const GalgameHome = lazy(() => import("@/pages/galgame"));
 const GalgameBrand = lazy(() => import("@/pages/galgame/brand.tsx"));
 const GalgameBrands = lazy(() => import("@/pages/galgame/brands.tsx"));
@@ -612,6 +615,15 @@ function App() {
           {standaloneNekomaid && (
             <Route path={""} element={<NekomaidLayout />}>
               <Route path={"/"} element={<Nekomaid />} />
+              {/* 靜態路徑優先於 /:site、/:site/:authorId，不會被當成搜尋頁 */}
+              <Route
+                path={"/copyright-claim"}
+                element={<NekomaidCopyrightClaims />}
+              />
+              <Route
+                path={"/copyright-claim/:hash"}
+                element={<NekomaidCopyrightClaims />}
+              />
               <Route path={"/:site"} element={<Nekomaid />} />
               <Route path={"/:site/:authorId"} element={<Nekomaid />} />
               <Route
@@ -671,6 +683,14 @@ function App() {
 
                 <Route path={"/nekomaid"} element={<NekomaidLayout />}>
                   <Route path={""} element={<Nekomaid />} />
+                  <Route
+                    path={"copyright-claim"}
+                    element={<NekomaidCopyrightClaims />}
+                  />
+                  <Route
+                    path={"copyright-claim/:hash"}
+                    element={<NekomaidCopyrightClaims />}
+                  />
                   <Route path={":site"} element={<Nekomaid />} />
                   <Route path={":site/:authorId"} element={<Nekomaid />} />
                   <Route

@@ -2,15 +2,18 @@ package nekomaid
 
 import (
 	"cmp"
-	"crypto/rand"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/mail"
+	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"faryne.dev/config"
 	"faryne.dev/model/entity/nekomaid"
 	"faryne.dev/model/enum"
 	nekomaidRepo "faryne.dev/repository/nekomaid"
@@ -30,11 +33,16 @@ const (
 var ErrForbiddenSubmitLimited = errors.New("artwork forbidden submission ip limit reached")
 
 // SubmitForbidden 作品頁送出的版權申告；範圍最大到畫師（ArtworkId 留空＝整個畫師）。
-// 不需登入，一律進待審；回傳的 token 給申請人查詢審核結果（沒有寄信管道，這是唯一的回饋方式）。
+// 不需登入，一律進待審；回傳送出者 IP 的 hash，申請人用 /copyright-claim/:hash 查自己（同一 IP）所有申告的處理結果
+// （沒有寄信管道，這是唯一的回饋方式）。
 func SubmitForbidden(req nekomaid.ForbiddenSubmitRequest, ip string) (*nekomaid.ForbiddenSubmitResult, error) {
+	ipHash, err := hashSubmitterIP(ip)
+	if err != nil {
+		return nil, err
+	}
 	// honeypot 有值＝機器人：假裝成功、不寫入，避免對方知道被擋
 	if strings.TrimSpace(req.Website) != "" {
-		return &nekomaid.ForbiddenSubmitResult{Token: newSubmissionToken(), Status: nekomaid.SubmissionPending}, nil
+		return &nekomaid.ForbiddenSubmitResult{Hash: ipHash, Status: nekomaid.SubmissionPending}, nil
 	}
 	row, err := normalizeForbiddenSubmit(req)
 	if err != nil {
@@ -50,12 +58,12 @@ func SubmitForbidden(req nekomaid.ForbiddenSubmitRequest, ip string) (*nekomaid.
 		return nil, err
 	}
 
-	// 記錄送出者 IP：限流之外，後台也靠它辨認同一來源的大量惡意申告
-	row.Token, row.Status, row.Ip = newSubmissionToken(), nekomaid.SubmissionPending, ip
+	// 記錄送出者 IP：限流之外，後台也靠它辨認同一來源的大量惡意申告；公開查詢只用雜湊後的 ip_hash
+	row.Status, row.Ip, row.IpHash = nekomaid.SubmissionPending, ip, ipHash
 	if err := nekomaidRepo.NewForbiddenSubmissionRepository().Create(row); err != nil {
 		return nil, err
 	}
-	return &nekomaid.ForbiddenSubmitResult{Token: row.Token, Status: row.Status}, nil
+	return &nekomaid.ForbiddenSubmitResult{Hash: ipHash, Status: row.Status}, nil
 }
 
 // normalizeForbiddenSubmit 驗證並整理申告欄位（不碰 DB）；畫師 ID 必填，email 與說明都是選填，有填 email 才檢查格式
@@ -78,16 +86,20 @@ func normalizeForbiddenSubmit(req nekomaid.ForbiddenSubmitRequest) (*nekomaid.Ar
 	return &nekomaid.ArtworkForbiddenSubmission{Site: site, AuthorId: authorID, ArtworkId: artworkID, ContactEmail: email, Message: message}, nil
 }
 
-// ForbiddenSubmissionStatusByToken 申請人查詢審核狀態；審核備註只在駁回時給（核准時的備註是內部用）
-func ForbiddenSubmissionStatusByToken(token string) (*nekomaid.ForbiddenSubmissionStatus, error) {
-	status, err := nekomaidRepo.NewForbiddenSubmissionRepository().StatusByToken(strings.TrimSpace(token))
-	if err != nil {
-		return nil, err
+// ListPublicForbiddenSubmissions 公開的處理結果列表（/copyright-claim）；ipHash 有值時只列該 IP 送出的申告
+// （/copyright-claim/:hash）。格式不對的 hash 直接回空列表，不透露任何資訊。
+// 審核備註只在駁回時公開（核准時的備註是內部用）。
+func ListPublicForbiddenSubmissions(input nekomaid.ForbiddenSubmissionPublicRequest, ipHash string) ([]nekomaid.ForbiddenSubmissionStatus, int64, error) {
+	if ipHash != "" && !ipHashPattern.MatchString(ipHash) {
+		return []nekomaid.ForbiddenSubmissionStatus{}, 0, nil
 	}
-	if status.Status != nekomaid.SubmissionRejected {
-		status.ReviewerNote = ""
+	rows, total, err := nekomaidRepo.NewForbiddenSubmissionRepository().PublicSearch(input, ipHash)
+	for i := range rows {
+		if rows[i].Status != nekomaid.SubmissionRejected {
+			rows[i].ReviewerNote = ""
+		}
 	}
-	return status, nil
+	return rows, total, err
 }
 
 // SearchForbiddenSubmissions 後台審核列表
@@ -148,9 +160,20 @@ func acquireForbiddenSubmit(ip string) error {
 	return nil
 }
 
-// newSubmissionToken 32 字元的隨機查詢 token
-func newSubmissionToken() string {
-	b := make([]byte, 16)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)
+// ErrIPHashSecretMissing 沒設定 NEKOMAID_IP_HASH_SECRET；沒有鑰匙的 IP 雜湊可被暴力反推，所以直接拒收申告
+var ErrIPHashSecretMissing = errors.New("NEKOMAID_IP_HASH_SECRET is not configured")
+
+// ipHashPattern 公開查詢網址上的 hash 格式：HMAC-SHA256 的前 32 個 hex 字元
+var ipHashPattern = regexp.MustCompile(`^[0-9a-f]{32}$`)
+
+// hashSubmitterIP 用伺服器端鑰匙對 IP 做 HMAC-SHA256，取前 32 個 hex 字元（128 bits）當公開查詢用的 hash；
+// 同一 IP 永遠得到同一個 hash，但沒有鑰匙就無法從 hash 反推 IP
+func hashSubmitterIP(ip string) (string, error) {
+	secret := config.EnvConfig().NekomaidIPHashSecret
+	if secret == "" {
+		return "", ErrIPHashSecretMissing
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(ip))
+	return hex.EncodeToString(mac.Sum(nil))[:32], nil
 }

@@ -62,10 +62,13 @@ type envConfig struct {
 	S3Bucket    string `env:"S3_BUCKET"`
 	CDNUrl      string `env:"CDN_URL"`
 
-	NekomaidBucket           string `env:"NEKOMAID_BUCKET"`
-	NekomaidTinamiKey        string `env:"NEKOMAID_TINAMI_KEY"`
-	NekomaidS3Key            string `env:"NEKOMAID_S3_KEY"`
-	NekomaidS3Secret         string `env:"NEKOMAID_S3_SECRET"`
+	NekomaidBucket    string `env:"NEKOMAID_BUCKET"`
+	NekomaidTinamiKey string `env:"NEKOMAID_TINAMI_KEY"`
+	NekomaidS3Key     string `env:"NEKOMAID_S3_KEY"`
+	NekomaidS3Secret  string `env:"NEKOMAID_S3_SECRET"`
+	// NekomaidIPHashSecret 版權申告查詢網址 /copyright-claim/:hash 的 IP 雜湊鑰匙（HMAC-SHA256）；
+	// 不能留空：IPv4 只有 43 億種，沒有鑰匙的雜湊可以被暴力反推回 IP。換鑰匙會讓既有的查詢網址全部失效。
+	NekomaidIPHashSecret     string `env:"NEKOMAID_IP_HASH_SECRET"`
 	CloudFrontKeyPairID      string `env:"CLOUDFRONT_KEY_PAIR_ID"`
 	CloudFrontPrivateKeyFile string `env:"CLOUDFRONT_PRIVATE_KEY_FILE"`
 	PixivUsername            string `env:"PIXIV_USERNAME"`

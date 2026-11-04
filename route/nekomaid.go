@@ -18,9 +18,10 @@ func Nekomaid(app *fiber.App) {
 	g.Post("/retrieve.json", nekomaid.Retrieve)
 	g.Get("/retrieve.json", nekomaid.Retrieve)
 
-	// 版權申告：必須註冊在 /:site/:authorId 之前，否則 GET 會被當成搜尋路徑吃掉
+	// 版權申告：必須註冊在 /:site、/:site/:authorId 之前，否則 GET 會被當成搜尋路徑吃掉
 	g.Post("/forbidden-submissions", nekomaid.SubmitForbidden)
-	g.Get("/forbidden-submissions/:token", nekomaid.ForbiddenSubmissionStatus)
+	g.Get("/forbidden-submissions", nekomaid.PublicForbiddenSubmissions)
+	g.Get("/forbidden-submissions/:hash", nekomaid.ForbiddenSubmissionsByHash)
 
 	// 原本在 route/opendata.go 底下的 /opendata/nekomaid 搜尋與作品詳情路由，
 	// 併入這裡並統一路徑為 /nekomaid/...。

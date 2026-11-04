@@ -18,7 +18,7 @@ const (
 // 範圍最大到畫師：ArtworkId 空字串＝整個畫師。
 type ArtworkForbiddenSubmission struct {
 	Id           uint64            `json:"id" gorm:"primaryKey"`
-	Token        string            `json:"-"` // 申請人查詢審核狀態用，後台不需要看
+	IpHash       string            `json:"-"` // 送出者 IP 的 HMAC 雜湊，公開查詢網址 /copyright-claim/:hash 用
 	Site         enum.NekomaidSite `json:"site"`
 	AuthorId     string            `json:"author_id"`
 	ArtworkId    string            `json:"artwork_id"`
@@ -50,14 +50,21 @@ type ForbiddenSubmitRequest struct {
 	Website      string `json:"website"`
 }
 
-// ForbiddenSubmitResult 送出後回給申請人的查詢 token
+// ForbiddenSubmitResult 送出後回給申請人的查詢 hash（同一 IP 的所有申告共用）
 type ForbiddenSubmitResult struct {
-	Token  string `json:"token"`
+	Hash   string `json:"hash"`
 	Status string `json:"status"`
 }
 
-// ForbiddenSubmissionStatus 申請人用 token 查到的審核狀態；不含 email、IP 等個資
+// ForbiddenSubmissionPublicRequest 公開的處理結果列表查詢；Status 空字串＝全部
+type ForbiddenSubmissionPublicRequest struct {
+	entity.CommonPaginationQueryRequest
+	Status string `query:"status"`
+}
+
+// ForbiddenSubmissionStatus 公開的申告處理結果；刻意不含 email、IP、說明
 type ForbiddenSubmissionStatus struct {
+	Id           uint64            `json:"id"`
 	Site         enum.NekomaidSite `json:"site"`
 	AuthorId     string            `json:"author_id"`
 	ArtworkId    string            `json:"artwork_id"`
@@ -66,6 +73,9 @@ type ForbiddenSubmissionStatus struct {
 	ReviewerNote string            `json:"reviewer_note"` // 只有駁回時才有值
 	CreatedAt    time.Time         `json:"created_at"`
 	ReviewedAt   *time.Time        `json:"reviewed_at"`
+	// IsForbidden 申告目標「現在」是否在禁抓中（整個畫師或這件作品）；跟申告本身的狀態無關——
+	// 同畫師別人的申告被核准、或核准後又解除，都會反映在這裡。前端據此決定要不要放站內連結（禁抓中點了會 404）
+	IsForbidden bool `json:"is_forbidden"`
 }
 
 // ForbiddenSubmissionAdminItem 後台審核列表的一列：附上畫師暱稱，以及同一 IP 送過幾件（辨認大量惡意申告）

@@ -295,6 +295,7 @@ function DetailContent({
         authorName={authorName}
         title={artwork.title}
         artworkId={artwork.artwork_id}
+        claimable
       />
       <Box
         id="nekomaid-artwork-viewer"
