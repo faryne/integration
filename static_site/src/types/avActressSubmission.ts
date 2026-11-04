@@ -1,4 +1,5 @@
 import type { ActressLink } from "@/types/av.ts";
+import type { SubmissionStatus } from "@/types/avSubmission.ts";
 
 /** 上稿可編輯的女優欄位（與後端 ActressFields 同格式） */
 export interface ActressFields {
@@ -24,7 +25,7 @@ export interface ActressFields {
 export type ActressFieldKey = keyof ActressFields;
 
 export type ActressSubmissionKind = "create" | "edit";
-export type ActressSubmissionStatus = "pending" | "approved" | "rejected";
+export type ActressSubmissionStatus = SubmissionStatus;
 
 export interface ActressCandidate {
   domain: string;

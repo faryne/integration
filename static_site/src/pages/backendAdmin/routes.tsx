@@ -54,6 +54,16 @@ const AVSubmissionReview = lazy(() =>
     default: m.AVActressSubmissionReview,
   })),
 );
+const AVVideoSubmissions = lazy(() =>
+  import("@/pages/backendAdmin/av/video_submissions.tsx").then((m) => ({
+    default: m.AVVideoSubmissions,
+  })),
+);
+const AVVideoSubmissionReview = lazy(() =>
+  import("@/pages/backendAdmin/av/video_submission_review.tsx").then((m) => ({
+    default: m.AVVideoSubmissionReview,
+  })),
+);
 const AVTopicManage = lazy(() =>
   import("@/pages/backendAdmin/av/actress_topic_manage.tsx").then((m) => ({
     default: m.AVActressTopicManage,
@@ -81,6 +91,11 @@ export const backendAdminRoutes = (
       <Route index element={<Navigate replace to={"submissions"} />} />
       <Route path={"submissions"} element={<AVSubmissions />} />
       <Route path={"submissions/:id"} element={<AVSubmissionReview />} />
+      <Route path={"video-submissions"} element={<AVVideoSubmissions />} />
+      <Route
+        path={"video-submissions/:id"}
+        element={<AVVideoSubmissionReview />}
+      />
       <Route path={"topics"} element={<AVTopicManage />} />
       {/* :id 為 new 時是新增 */}
       <Route path={"topics/:id"} element={<AVTopicEdit />} />

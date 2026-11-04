@@ -4,10 +4,10 @@ import CloseIcon from "@mui/icons-material/Close";
 import type { ActressLink } from "@/types/av.ts";
 
 /**
- * 參考連結（多筆）：每列名稱（選填）＋網址。核准後直接成為女優頁的「連結」。
+ * 參考連結（多筆）：每列名稱（選填）＋網址。女優上稿、影片修改共用，核准後成為該頁的「連結」。
  * baseUrls 有給時（修改模式），新加的連結會標色
  */
-export function ActressLinksEditor({
+export function LinksEditor({
   links,
   baseUrls,
   onChange,

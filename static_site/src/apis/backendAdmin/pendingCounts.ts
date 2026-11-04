@@ -1,4 +1,5 @@
 import { usePendingActressSubmissionCount } from "@/apis/av/actress_submission.ts";
+import { usePendingVideoSubmissionCount } from "@/apis/av/video_submission.ts";
 import {
   useAdminGalgameBrands,
   useAdminGalgameVideoSubmissions,
@@ -13,11 +14,13 @@ export function useBackendAdminPendingCounts(
   enabled = true,
 ): Partial<Record<BackendAdminBadge, number>> {
   const av = usePendingActressSubmissionCount(enabled);
+  const avVideos = usePendingVideoSubmissionCount(enabled);
   // 查詢本身也只在管理者登入時才送出
   const brands = useAdminGalgameBrands("pending", 1, 1, "", enabled);
   const videos = useAdminGalgameVideoSubmissions("pending", 1, 1, enabled);
   return {
     avSubmissions: av.data,
+    avVideoSubmissions: avVideos.data,
     galgameBrands: brands.data?.total,
     galgameVideos: videos.data?.total,
   };

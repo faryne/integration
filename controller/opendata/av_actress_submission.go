@@ -18,8 +18,8 @@ import (
 	"faryne.dev/service/output"
 )
 
-// customCodeAvActressSubmitLimited 這個 IP 一小時內的上稿次數用完
-const customCodeAvActressSubmitLimited output.CustomCode = "429006"
+// customCodeAvSubmitLimited 這個 IP 一小時內的上稿次數（女優＋影片合計）用完
+const customCodeAvSubmitLimited output.CustomCode = "429006"
 
 // AvActressSubmit 提交女優新增／修改，等管理者審核。不需登入，有登入就記錄提交者
 // @Summary Submit an AV actress create/edit for review
@@ -43,7 +43,7 @@ func AvActressSubmit(ctx fiber.Ctx) error {
 	}
 	result, err := av.SubmitActress(req, nil, avEntity.SubmissionChannelWeb, userID, ctx.IP())
 	if err != nil {
-		return actressSubmissionError(err)
+		return avSubmissionError(err)
 	}
 	return output.Success(result)
 }
@@ -72,7 +72,7 @@ func AdminActressSubmissions(ctx fiber.Ctx) error {
 	}
 	rows, total, err := av.ListActressSubmissions(authsession.Session(ctx).UserId, req)
 	if err != nil {
-		return actressSubmissionError(err)
+		return avSubmissionError(err)
 	}
 	return output.Success(serviceHelper.ResultPaginate(ctx, rows, total))
 }
@@ -81,7 +81,7 @@ func AdminActressSubmissions(ctx fiber.Ctx) error {
 func AdminActressSubmission(ctx fiber.Ctx) error {
 	detail, err := av.GetActressSubmission(authsession.Session(ctx).UserId, submissionIDParam(ctx))
 	if err != nil {
-		return actressSubmissionError(err)
+		return avSubmissionError(err)
 	}
 	return output.Success(detail)
 }
@@ -94,7 +94,7 @@ func AdminApproveActressSubmission(ctx fiber.Ctx) error {
 	}
 	sub, err := av.ApproveActressSubmission(ctx.Context(), authsession.Session(ctx).UserId, submissionIDParam(ctx), req.MergeTarget)
 	if err != nil {
-		return actressSubmissionError(err)
+		return avSubmissionError(err)
 	}
 	return output.Success(sub)
 }
@@ -107,7 +107,7 @@ func AdminRejectActressSubmission(ctx fiber.Ctx) error {
 	}
 	sub, err := av.RejectActressSubmission(authsession.Session(ctx).UserId, submissionIDParam(ctx), req.ReviewNote)
 	if err != nil {
-		return actressSubmissionError(err)
+		return avSubmissionError(err)
 	}
 	return output.Success(sub)
 }
@@ -118,25 +118,26 @@ func submissionIDParam(ctx fiber.Ctx) uint64 {
 }
 
 // actressSubmissionError 上稿／審核的錯誤轉成對應的 HTTP 狀態；訊息本身已是給使用者看的中文
-func actressSubmissionError(err error) error {
+func avSubmissionError(err error) error {
 	switch {
-	case errors.Is(err, av.ErrActressSubmitLimited):
-		var limit av.ActressSubmitLimitError
+	case errors.Is(err, av.ErrAVSubmitLimited):
+		var limit av.AVSubmitLimitError
 		minutes := 60
 		if errors.As(err, &limit) {
 			minutes = max(int(math.Ceil(limit.RetryAfter.Minutes())), 1)
 		}
-		return output.New(http.StatusTooManyRequests, customCodeAvActressSubmitLimited, nil, fmt.Sprintf("上稿次數已達上限，請 %d 分鐘後再試", minutes))
+		return output.New(http.StatusTooManyRequests, customCodeAvSubmitLimited, nil, fmt.Sprintf("上稿次數已達上限，請 %d 分鐘後再試", minutes))
 	case errors.Is(err, authService.ErrAdminRequired):
 		return output.New(http.StatusForbidden, "", nil, "需要管理者權限")
-	case errors.Is(err, av.ErrActressTargetNotFound):
+	case errors.Is(err, av.ErrActressTargetNotFound), errors.Is(err, av.ErrVideoTargetNotFound):
 		return output.New(http.StatusNotFound, "", nil, err.Error())
 	case errors.Is(err, av.ErrSubmissionNotReviewable):
 		return output.New(http.StatusConflict, "", nil, err.Error())
-	case errors.Is(err, av.ErrActressWritesDisabled):
+	case errors.Is(err, av.ErrActressWritesDisabled), errors.Is(err, av.ErrVideoWritesDisabled):
 		return output.New(http.StatusServiceUnavailable, "", nil, err.Error())
 	case errors.Is(err, av.ErrActressInvalid), errors.Is(err, av.ErrActressNoChanges),
-		errors.Is(err, av.ErrActressTargetAmbiguous), errors.Is(err, av.ErrMergeTargetRequired):
+		errors.Is(err, av.ErrActressTargetAmbiguous), errors.Is(err, av.ErrMergeTargetRequired),
+		errors.Is(err, av.ErrVideoTargetAmbiguous):
 		return output.New(http.StatusBadRequest, "", nil, err.Error())
 	}
 	return output.FromError(err)

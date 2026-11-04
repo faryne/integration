@@ -8,17 +8,19 @@ import {
   Divider,
   Skeleton,
 } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import { useMemo } from "react";
 import type { VideoSyncResult } from "@/apis/av/video_sync.ts";
 import { VideoDetailTabs } from "@/components/av/video_detail_tabs.tsx";
 import { VideoSyncButton } from "@/components/av/video_sync_button.tsx";
+import { VideoLinksRow } from "@/components/av/video_links_row.tsx";
 import { ImageViewer } from "@/components/common/ImageViewer.tsx";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
-import { actressBaseName } from "@/helpers/avActressName.ts";
+import { videoActressPath } from "@/helpers/avActressName.ts";
 
 export interface IVideoDetail {
   video?: Video;
@@ -45,14 +47,9 @@ export function VideoDetail(props: IVideoDetail) {
 
   const chipClick = (s: string, keyPrefix: string) => {
     if (keyPrefix === "actress") {
-      // 新影片有 DMM 女優 ID：直接到女優頁，由對照表找出是同名中的哪一位；舊影片沒有 ID，維持到女優搜尋頁。
-      // chip 照 DMM 原文顯示，連結去掉括號裡的別名，女優頁才查得到人
-      const dmmID = video?.actress_ids?.[video.actresses.indexOf(s)];
-      const name = encodeURIComponent(actressBaseName(s));
+      // chip 照 DMM 原文顯示，連結規則見 videoActressPath
       navigate(
-        dmmID
-          ? `/av/actress/${name}?dmm_id=${encodeURIComponent(dmmID)}`
-          : "/av/actress?name=" + name,
+        videoActressPath(s, video?.actress_ids?.[video.actresses.indexOf(s)]),
       );
       return;
     }
@@ -203,7 +200,7 @@ export function VideoDetail(props: IVideoDetail) {
             </Typography>
           </Stack>
 
-          <Box>
+          <Stack direction="row" flexWrap="wrap" gap={1}>
             {video.maker_no ? (
               <Button
                 endIcon={<OpenInNewIcon />}
@@ -228,7 +225,17 @@ export function VideoDetail(props: IVideoDetail) {
                 onSynced={async (r) => props.onSynced?.(r)}
               />
             )}
-          </Box>
+            {/* 送出修改等管理者審核；orphan 片也可以，官方番號正是靠這裡補 */}
+            <Button
+              component={RouterLink}
+              startIcon={<EditOutlinedIcon />}
+              sx={{ borderRadius: 1.5, px: 2 }}
+              to={`/av/video/${encodeURIComponent(video.maker_no?.trim() || video.no)}/edit`}
+              variant="outlined"
+            >
+              修改資料
+            </Button>
+          </Stack>
         </Stack>
       </Box>
 
@@ -268,6 +275,7 @@ export function VideoDetail(props: IVideoDetail) {
                 </Box>
               </Box>
             ))}
+            <VideoLinksRow divider={infoRows.length > 0} links={video.links} />
           </Box>
         }
       />

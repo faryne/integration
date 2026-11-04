@@ -48,3 +48,11 @@ export const EMPTY_ACTRESS_FIELDS: ActressFields = {
   links: [],
   aliases: [],
 };
+
+/** 女優上稿的否決常用原因 */
+export const ACTRESS_REJECT_REASONS = [
+  "資料來源不可信",
+  "與現有女優重複",
+  "資料有誤",
+  "沒有實質變更",
+];

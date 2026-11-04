@@ -68,7 +68,7 @@ func SubmitActress(req avEntity.ActressSubmitRequest, present []string, channel 
 		return nil, invalidActress("kind 只能是 create 或 edit")
 	}
 
-	if err := acquireActressSubmit(ip); err != nil {
+	if err := acquireAVSubmit(ip); err != nil {
 		return nil, err
 	}
 	raw, _ := json.Marshal(payload)

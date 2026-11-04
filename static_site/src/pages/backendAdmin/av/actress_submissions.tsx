@@ -66,7 +66,7 @@ function SubmissionList() {
   return (
     <Stack spacing={2} sx={{ textAlign: "left" }}>
       <Typography component="h1" fontWeight={900} variant="h5">
-        上稿審核
+        女優上稿審核
       </Typography>
       <Paper variant="outlined">
         <Tabs

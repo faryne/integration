@@ -23,8 +23,10 @@ export const SUBMISSION_RESOLUTION_LABEL = {
   merged: "合併到既有女優",
 };
 
-/** 提交者：有登入顯示會員編號，匿名顯示 IP 雜湊前四碼 */
-export function submitterLabel(s: ActressSubmissionSummary) {
+/** 提交者：有登入顯示會員編號，匿名顯示 IP 雜湊前四碼（女優上稿、影片修改共用） */
+export function submitterLabel(
+  s: Pick<ActressSubmissionSummary, "submitter_user_id" | "ip_hash_prefix">,
+) {
   if (s.submitter_user_id) return `會員 #${s.submitter_user_id}`;
   return s.ip_hash_prefix ? `匿名（IP ${s.ip_hash_prefix}…）` : "匿名";
 }

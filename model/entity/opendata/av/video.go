@@ -58,6 +58,8 @@ type RawVideo struct {
 	Timestamp   time.Time     `json:"@timestamp"`
 	MakerNo     string        `json:"maker_no"`
 	IsOrphan    bool          `json:"is_orphan"`
+	// Links 核准過的參考連結（影片修改審核）；DMM 沒有這個欄位
+	Links []ActressLink `json:"links"`
 }
 
 type CleanVideo struct {
@@ -83,6 +85,8 @@ type CleanVideo struct {
 	MakerNo    string   `json:"maker_no"`
 	// IsOrphan 同步資料確定失敗，前端不顯示同步按鈕
 	IsOrphan bool `json:"is_orphan,omitempty"`
+	// Links 參考連結，詳細頁「基本資料」最後一列
+	Links []ActressLink `json:"links"`
 }
 
 // VideoFacetBucket 篩選統計的一個值與筆數

@@ -25,7 +25,7 @@ import { useDebouncedValue } from "@/helpers/useDebouncedValue.ts";
 import { actressPagePath } from "@/helpers/avActressRef.ts";
 import { useAVActressSearch } from "@/apis/av/actress_search.ts";
 import { ActressPhoto } from "@/components/av/actress_photo.tsx";
-import { ActressLinksEditor } from "@/components/av/actress_links_editor.tsx";
+import { LinksEditor } from "@/components/common/LinksEditor.tsx";
 import { ActressInterestsInput } from "@/components/av/actress_interests_input.tsx";
 
 type NumberKey =
@@ -218,7 +218,7 @@ export function ActressSubmissionForm({
           )}
           {section(
             "參考連結",
-            <ActressLinksEditor
+            <LinksEditor
               baseUrls={base?.links.map((l) => l.url)}
               links={fields.links}
               onChange={(v) => set("links", v)}
