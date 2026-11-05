@@ -2,6 +2,7 @@ import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { Link as RouterLink } from "react-router-dom";
 import type { NekomaidArtwork } from "@/types/nekomaid.ts";
+import { FavoriteHeart } from "@/components/nekomaid/account/FavoriteButtons.tsx";
 import {
   artworkPath,
   artworkPhotoCount,
@@ -60,6 +61,11 @@ export function ArtworkCard({
           position: "relative",
         }}
       >
+        <FavoriteHeart
+          artworkId={item.artwork_id}
+          authorId={String(item.author_id)}
+          site={site}
+        />
         {thumb && (
           <Box
             sx={{

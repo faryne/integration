@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>neko 帳號與追蹤 Mockup</title>
+<style>
+  /* 色彩 token：對齊 MUI 預設主題；neko 本體是白底，header 用站上既有的深色漸層 */
+  :root {
+    --bg: #fff; --paper: #fff; --text: #1f2328; --muted: #667085; --line: #e3e6ea;
+    --primary: #1976d2; --error: #d32f2f; --warn: #ed6c02; --ok: #2e7d32; --selected: rgba(25,118,210,.08);
+    --heart: #e91e63;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 "Noto Sans TC", "PingFang TC", system-ui, sans-serif; }
+  a { color: var(--primary); text-decoration: none; cursor: pointer; }
+  a:hover { text-decoration: underline; }
+  button, input { font: inherit; }
+
+  /* header：沿用 NekomaidLayout 的漸層，右側加登入入口／使用者選單 */
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 24px; color: #f8fafc;
+    background: radial-gradient(circle at 10% 0%, rgba(245,158,11,.26), transparent 32%), radial-gradient(circle at 88% 0%, rgba(14,165,233,.18), transparent 28%), linear-gradient(110deg, #33251d 0%, #111827 48%, #0f2941 100%); }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 900; color: inherit; }
+  .brand i { width: 36px; height: 36px; border-radius: 8px; background: #f6c6d6; display: inline-block; }
+  .ghost { border: 1px solid rgba(255,255,255,.3); color: #f8fafc; background: none; border-radius: 6px; padding: 5px 14px; font-weight: 700; cursor: pointer; }
+  .ghost:hover { background: rgba(255,255,255,.08); }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; border: 0; background: #f59e0b; color: #fff; font-weight: 900; cursor: pointer; }
+  .menu { position: absolute; right: 24px; top: 58px; background: var(--paper); color: var(--text); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.14); min-width: 180px; padding: 6px; display: none; z-index: 20; }
+  .menu.open { display: block; }
+  .menu .who { padding: 8px 10px; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+  .menu button { display: block; width: 100%; text-align: left; padding: 8px 10px; border: 0; background: none; border-radius: 6px; cursor: pointer; }
+  .menu button:hover { background: var(--selected); }
+
+  .verify-bar { background: #fff4e5; color: #663c00; padding: 10px 24px; font-size: 13px; text-align: center; }
+  .main { padding: 24px; max-width: 1180px; margin: 0 auto; }
+  .crumbs { color: var(--muted); font-size: 14px; margin-bottom: 12px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .crumbs .cur { color: var(--text); font-weight: 800; }
+  .flag { color: var(--muted); font-size: 13px; margin-left: 2px; }
+  h1 { font-size: 22px; margin: 0 0 16px; font-weight: 900; }
+
+  /* 表單卡片：登入、註冊、忘記密碼 */
+  .card { max-width: 420px; margin: 8px auto; border: 1px solid var(--line); border-radius: 12px; padding: 24px; display: grid; gap: 14px; }
+  .card h1 { text-align: center; margin: 0; }
+  .tabs { display: flex; border-bottom: 1px solid var(--line); }
+  .tab { flex: 1; border: 0; background: none; padding: 10px; color: var(--muted); font-weight: 700; border-bottom: 2px solid transparent; cursor: pointer; }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+  label.f { display: grid; gap: 4px; font-size: 13px; font-weight: 700; }
+  .input { border: 1px solid #c4c4c4; border-radius: 6px; padding: 10px 12px; width: 100%; }
+  .btn { border: 1px solid var(--primary); color: var(--primary); background: none; border-radius: 6px; padding: 8px 16px; font-weight: 700; cursor: pointer; }
+  .btn.contained { background: var(--primary); color: #fff; }
+  .btn.block { width: 100%; padding: 10px; }
+  .btn.small { padding: 4px 12px; font-size: 13px; }
+  .btn.danger { color: var(--error); border-color: var(--error); }
+  .btn.on { background: var(--heart); border-color: var(--heart); color: #fff; }
+  .links { display: flex; justify-content: space-between; font-size: 13px; }
+  .alert { border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .alert.info { background: #e5f2fd; color: #0b4a75; }
+  .alert.warn { background: #fff4e5; color: #663c00; }
+  .alert.ok { background: #edf7ed; color: #1e4620; }
+  .muted { color: var(--muted); }
+
+  /* 作品頁（簡化） */
+  .viewer { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,460px); gap: 16px; align-items: start; }
+  .image { aspect-ratio: 3/4; border-radius: 12px; background: linear-gradient(135deg, #f6c6d6, #b9c9f5); }
+  .panel { border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: grid; gap: 14px; }
+  .panel h2 { margin: 0; font-size: 28px; font-weight: 900; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .new { outline: 2px dashed var(--warn); outline-offset: 3px; border-radius: 6px; }
+
+  /* 作品卡片：右上角愛心 */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .art { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+  .art .thumb { aspect-ratio: 3/4; background: linear-gradient(135deg, #cfe3ff, #f7d6e6); }
+  .art .t { padding: 6px 8px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .heart { position: absolute; right: 6px; top: 6px; width: 32px; height: 32px; border-radius: 50%; border: 0; background: rgba(0,0,0,.45); color: #fff; font-size: 16px; cursor: pointer; }
+  .heart.on { color: var(--heart); background: #fff; }
+
+  /* 我的追蹤 */
+  .authors { display: grid; gap: 12px; }
+  .author { border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; align-items: center; }
+  .author .thumbs { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .author .thumbs div { aspect-ratio: 1; border-radius: 6px; background: linear-gradient(135deg, #ffe0b2, #c5cae9); }
+  .author b { font-size: 16px; }
+
+  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+  .scrim.open { display: flex; }
+  .dialog { background: var(--paper); border-radius: 12px; width: 100%; max-width: 400px; padding: 20px; }
+  .dialog h3 { margin: 0 0 8px; }
+  .dialog .row { justify-content: flex-end; margin-top: 16px; }
+  .snack { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(120px); background: #323232; color: #fff; padding: 10px 18px; border-radius: 6px; transition: transform .2s; z-index: 60; }
+  .snack.err { background: var(--error); }
+  .snack.show { transform: translateX(-50%) translateY(0); }
+
+  /* Mockup 專用的狀態切換面板（實作時不會有） */
+  .switcher { position: fixed; right: 16px; bottom: 16px; z-index: 70; background: #222; color: #fff; border-radius: 10px; padding: 10px; font-size: 12px; max-width: 300px; max-height: 70vh; overflow: auto; }
+  .switcher b { display: block; margin: 6px 0 2px; }
+  .switcher button { background: #3a3a3a; color: #fff; border: 0; border-radius: 4px; padding: 4px 8px; margin: 2px; font-size: 12px; cursor: pointer; }
+  .switcher button.on { background: #1976d2; }
+
+  @media (max-width: 899px) {
+    .viewer { grid-template-columns: minmax(0,1fr); }
+    .main { padding: 16px 16px 220px; }
+    .topbar { padding: 12px 16px; }
+    .switcher { left: 8px; right: 8px; max-width: none; bottom: 8px; max-height: 40vh; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" data-go="artwork"><i></i>難以名狀的抓圖器</a>
+  <!-- 新增：未登入時是「登入」，登入後是頭像選單 -->
+  <div id="authArea"></div>
+</header>
+<div class="menu" id="userMenu">
+  <div class="who" id="whoLabel"></div>
+  <button data-go="me">我的追蹤</button>
+  <button data-act="logout">登出</button>
+</div>
+<!-- 新增：還沒驗證 email 時，每一頁頂端都會顯示 -->
+<div class="verify-bar" id="verifyBar" hidden>請在 24 小時內到信箱點驗證連結，否則帳號會被刪除。</div>
+<main class="main" id="view"></main>
+
+<div class="scrim" id="confirm">
+  <div class="dialog" role="dialog" aria-modal="true">
+    <h3>取消追蹤？</h3>
+    <div class="muted" id="confirmBody"></div>
+    <div class="row">
+      <button class="btn" data-act="closeConfirm">取消</button>
+      <button class="btn danger" data-act="doUnfollow">取消追蹤</button>
+    </div>
+  </div>
+</div>
+<div class="snack" id="snack"></div>
+
+<div class="switcher">
+  <b>登入狀態</b>
+  <button data-login="out" class="on">未登入</button>
+  <button data-login="in">已登入</button>
+  <b>頁面</b>
+  <button data-go="artwork" class="on">作品頁</button>
+  <button data-go="author">畫師頁</button>
+  <button data-go="login">登入</button>
+  <button data-go="register">註冊</button>
+  <button data-go="forgot">忘記密碼</button>
+  <button data-go="me">我的追蹤</button>
+  <b>登入（舊會員搬家）的例外</b>
+  <button data-a="weak">舊密碼太短</button>
+  <button data-a="email">舊 email 無效</button>
+  <button data-a="emailTaken">新 email 已被使用</button>
+  <button data-a="merged">已合併的帳號</button>
+  <b>註冊的例外</b>
+  <button data-r="legacy">email 是舊會員的</button>
+  <b>Email 驗證</b>
+  <button data-verify="pending">已登入、尚未驗證</button>
+  <b>信件連結（/auth/action）</b>
+  <button data-action="verified">驗證成功</button>
+  <button data-action="verifiedMerged">驗證成功＋合併舊帳號</button>
+  <button data-action="expired">連結失效</button>
+  <button data-action="reset">重設密碼</button>
+  <button data-action="resetDone">重設完成</button>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let loggedIn = false, verified = true, page = "artwork", loginState = "", favArtwork = false, favAuthor = false;
+let favArtworks = new Set([2, 5]);
+let authors = [
+  { id: "82517969", name: "しらたま", site: "pixiv" },
+  { id: "12405988", name: "bosack/ぽかぽか", site: "pixiv" },
+  { id: "3392811", name: "（無暱稱）", site: "nico" },
+];
+let removing = null;
+
+function snack(msg, err) {
+  const s = $("snack"); s.textContent = msg; s.className = "snack show" + (err ? " err" : "");
+  clearTimeout(snack.t); snack.t = setTimeout(() => (s.className = "snack"), 2600);
+}
+function go(p) { page = p; loginState = ""; render(); }
+// 未登入時按愛心／追蹤：直接帶去登入頁，登入後回到原頁（?redirect=）
+function needLogin() { if (!loggedIn) { go("login"); snack("登入後就能收藏與追蹤"); return true; } return false; }
+
+const crumb = (...items) => `<div class="crumbs">${items.map((t, i) => i === items.length - 1 ? `<span class="cur">${t}</span>` : `<a data-go="artwork">${t}</a><span>/</span>`).join("")}</div>`;
+
+const views = {
+  artwork: () => `
+    <div class="crumbs"><a>難以名狀的抓圖器</a><span>/</span><a>Pixiv</a><span>/</span><a data-go="author">しらたま</a><span class="flag">⚐</span><span>/</span><span class="cur">夏のメイドさん</span><span class="flag">⚐</span></div>
+    <div class="viewer">
+      <div class="image"></div>
+      <div class="panel">
+        <div class="row"><span class="muted">Pixiv</span></div>
+        <div><h2>夏のメイドさん</h2><div class="muted">by <a data-go="author">しらたま</a> / 作者 ID：82517969</div></div>
+        <div class="row">
+          <button class="btn contained">圖片原始頁 ↗</button>
+          <button class="btn">畫師頁面</button>
+          <button class="btn">同畫師作品</button>
+          <button class="btn">分享</button>
+        </div>
+        <!-- 新增：收藏作品、追蹤畫師（已收藏／已追蹤時是實心） -->
+        <div class="row new">
+          <button class="btn ${favArtwork ? "on" : ""}" data-act="favArtwork">${favArtwork ? "♥ 已收藏" : "♡ 收藏作品"}</button>
+          <button class="btn ${favAuthor ? "on" : ""}" data-act="favAuthor">${favAuthor ? "✓ 已追蹤畫師" : "＋ 追蹤畫師"}</button>
+        </div>
+      </div>
+    </div>`,
+  author: () => `
+    ${crumb("難以名狀的抓圖器", "Pixiv", "しらたま")}
+    <div class="row" style="justify-content:space-between;margin-bottom:12px">
+      <h1 style="margin:0">しらたま</h1>
+      <!-- 新增：畫師頁標題旁的追蹤按鈕 -->
+      <button class="btn new ${favAuthor ? "on" : ""}" data-act="favAuthor">${favAuthor ? "✓ 已追蹤" : "＋ 追蹤畫師"}</button>
+    </div>
+    <div class="grid">${[1, 2, 3, 4, 5, 6].map((n) => artCard(n, `作品 ${n}`)).join("")}</div>`,
+  login: () => `
+    ${crumb("難以名狀的抓圖器", "登入")}
+    <div class="card">
+      <h1>登入</h1>
+      ${loginForm()}
+      <div class="links"><a data-go="register">註冊新帳號</a><a data-go="forgot">忘記密碼</a></div>
+    </div>`,
+  // 信件裡的驗證／重設密碼連結都指到這一頁，依 mode 顯示
+  action: () => `
+    ${crumb("難以名狀的抓圖器", loginState.startsWith("reset") ? "重設密碼" : "Email 驗證")}
+    <div class="card">
+      ${{
+        verified: `<h1>Email 驗證完成</h1><div class="alert ok">已完成驗證。</div><button class="btn contained block" data-go="artwork">回到首頁</button>`,
+        verifiedMerged: `<h1>Email 驗證完成</h1><div class="alert ok">已完成驗證，並把同一個 email 的 2 個舊帳號（shiratama2、shira_test）的追蹤併進來。</div><button class="btn contained block" data-go="me">查看我的追蹤</button>`,
+        expired: `<h1>連結已失效</h1><div class="alert warn">這個連結已經用過或過期，請重新登入，系統會再寄一封新的信。</div><button class="btn contained block" data-go="login">登入</button>`,
+        reset: `<h1>重設密碼</h1><label class="f">新密碼<input class="input" type="password" autocomplete="new-password"></label><label class="f">再輸入一次新密碼<input class="input" type="password" autocomplete="new-password"></label><button class="btn contained block" data-action="resetDone">重設密碼</button>`,
+        resetDone: `<h1>密碼已重設</h1><div class="alert ok">請用新密碼登入。</div><button class="btn contained block" data-go="login">登入</button>`,
+      }[loginState]}
+    </div>`,
+  register: () => `
+    ${crumb("難以名狀的抓圖器", "註冊")}
+    <div class="card">
+      <h1>註冊</h1>
+      <label class="f">Email<input class="input" type="email" value="${loginState === "legacy" ? "shiratama@example.jp" : ""}"></label>
+      ${loginState === "legacy" ? `<div class="alert info">這個 email 已經有帳號，請用原本的密碼<a data-go="login">登入</a>，或<a data-go="forgot">重設密碼</a>。</div>` : ""}
+      <label class="f">密碼<input class="input" type="password"></label>
+      <label class="f">再輸入一次密碼<input class="input" type="password"></label>
+      <button class="btn contained block" data-act="register">註冊</button>
+      <div class="links"><a data-go="login">已經有帳號？登入</a></div>
+    </div>`,
+  forgot: () => `
+    ${crumb("難以名狀的抓圖器", "忘記密碼")}
+    <div class="card">
+      <h1>忘記密碼</h1>
+      ${loginState === "sent" ? `<div class="alert ok">如果這個 email 有註冊，重設密碼信已寄出。</div>` : `
+      <label class="f">Email<input class="input" type="email"></label>
+      <button class="btn contained block" data-act="sendReset">寄送重設密碼信</button>`}
+      <div class="links"><a data-go="login">回到登入</a></div>
+    </div>`,
+  me: () => `
+    ${crumb("難以名狀的抓圖器", "我的追蹤")}
+    <h1>我的追蹤</h1>
+    <div class="tabs" style="margin-bottom:16px">
+      <button class="tab ${meTab === "authors" ? "active" : ""}" data-me="authors">畫師（${authors.length}）</button>
+      <button class="tab ${meTab === "artworks" ? "active" : ""}" data-me="artworks">作品（${favArtworks.size}）</button>
+    </div>
+    ${meTab === "authors"
+      ? (authors.length ? `<div class="authors">${authors.map((a) => `
+        <div class="author">
+          <div><b><a data-go="author">${a.name}</a></b> <span class="muted">${a.site} · ${a.id}</span></div>
+          <button class="btn small danger" data-unfollow="${a.id}">取消追蹤</button>
+          <div class="thumbs"><div></div><div></div><div></div><div></div></div>
+        </div>`).join("")}</div>` : `<p class="muted" style="text-align:center;padding:40px">還沒有追蹤的畫師</p>`)
+      : (favArtworks.size ? `<div class="grid">${[...favArtworks].map((n) => artCard(n, `收藏作品 ${n}`)).join("")}</div>` : `<p class="muted" style="text-align:center;padding:40px">還沒有收藏的作品</p>`)}`,
+};
+let meTab = "authors";
+
+function artCard(n, title) {
+  const on = loggedIn && favArtworks.has(n);
+  return `<div class="art"><div class="thumb"></div><div class="t">${title}</div>
+    <button class="heart ${on ? "on" : ""}" data-heart="${n}" aria-label="${on ? "取消收藏" : "收藏"}">${on ? "♥" : "♡"}</button></div>`;
+}
+
+function loginForm() {
+  // 單一表單：帳號或 email 都可以，後端判斷；舊會員第一次登入時順便搬進 Firebase
+  const extra = {
+    weak: `<div class="alert warn">舊密碼太短，請設定至少 6 個字的新密碼。</div>
+      <label class="f">新密碼<input class="input" type="password" autocomplete="new-password"></label>
+      <label class="f">再輸入一次新密碼<input class="input" type="password" autocomplete="new-password"></label>`,
+    email: `<div class="alert warn">這個帳號的 email 無法使用，請填寫新的 email。</div>
+      <label class="f">新 email<input class="input" type="email"></label>`,
+    emailTaken: `<div class="alert warn">這個 email 已經被其他帳號使用，請換一個。</div>
+      <label class="f">新 email<input class="input" type="email" value="taken@example.com"></label>`,
+    merged: `<div class="alert info">這個帳號已合併到「shiratama」，請改用 shiratama 登入。</div>`,
+  }[loginState] ?? "";
+  return `
+    <label class="f">帳號或 Email<input class="input" autocomplete="username" value="${loginState ? "shiratama_old" : ""}"></label>
+    <label class="f">密碼<input class="input" type="password" autocomplete="current-password"></label>
+    ${extra}
+    <button class="btn contained block" data-act="login">登入</button>`;
+}
+
+function render() {
+  if (page === "me" && !loggedIn) page = "login"; // 我的追蹤要登入
+  $("authArea").innerHTML = loggedIn
+    ? `<button class="avatar" data-act="menu" aria-label="帳號選單">S</button>`
+    : `<button class="ghost" data-go="login">登入</button>`;
+  $("whoLabel").textContent = "shiratama_old";
+  $("verifyBar").hidden = !(loggedIn && !verified);
+  $("userMenu").classList.remove("open");
+  $("view").innerHTML = views[page]();
+  document.querySelectorAll("[data-go]").forEach((b) => b.closest(".switcher") && b.classList.toggle("on", b.dataset.go === page));
+  document.querySelectorAll("[data-login]").forEach((b) => b.classList.toggle("on", (b.dataset.login === "in") === loggedIn));
+}
+
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-go],[data-act],[data-login],[data-a],[data-r],[data-verify],[data-action],[data-heart],[data-me],[data-unfollow]");
+  if (!t) return;
+  const d = t.dataset;
+  if (d.login) { loggedIn = d.login === "in"; render(); return; }
+  if (d.go) { go(d.go); return; }
+  if (d.a) { page = "login"; loginState = d.a; render(); return; }
+  if (d.r) { page = "register"; loginState = d.r; render(); return; }
+  if (d.verify) { loggedIn = true; verified = false; page = "artwork"; render(); return; }
+  if (d.action) { page = "action"; loginState = d.action; if (d.action.startsWith("verified")) verified = true; render(); return; }
+  if (d.me) { meTab = d.me; render(); return; }
+  if (d.heart) {
+    if (needLogin()) return;
+    const n = Number(d.heart);
+    favArtworks.has(n) ? favArtworks.delete(n) : favArtworks.add(n);
+    render(); return;
+  }
+  if (d.unfollow) {
+    removing = authors.find((a) => a.id === d.unfollow);
+    $("confirmBody").textContent = `不再追蹤 ${removing.name}？`;
+    $("confirm").classList.add("open"); return;
+  }
+  switch (d.act) {
+    case "menu": $("userMenu").classList.toggle("open"); break;
+    case "logout": loggedIn = false; verified = true; go("artwork"); break;
+    case "login": loggedIn = true; go("artwork"); break;
+    case "register": loggedIn = true; verified = false; go("artwork"); break;
+    case "sendReset": loginState = "sent"; render(); break;
+    case "favArtwork": if (!needLogin()) { favArtwork = !favArtwork; render(); } break;
+    case "favAuthor": if (!needLogin()) { favAuthor = !favAuthor; render(); } break;
+    case "closeConfirm": $("confirm").classList.remove("open"); break;
+    case "doUnfollow":
+      authors = authors.filter((a) => a !== removing);
+      $("confirm").classList.remove("open"); render(); break;
+  }
+});
+render();
+</script>
+</body>
+</html>

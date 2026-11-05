@@ -5,6 +5,10 @@ import "@/styles/common.css";
 import { isNekomaidSite, nekomaidPath } from "@/helpers/nekomaid.ts";
 import { MASCOT_ASSET_CDN_BASE } from "@/helpers/mascotAssets.ts";
 import IndependentFooter from "@/components/common/IndependentFooter.tsx";
+import {
+  AccountMenu,
+  VerifyEmailBar,
+} from "@/components/nekomaid/account/AccountMenu.tsx";
 
 export function NekomaidLayout() {
   const standaloneNekomaid = isNekomaidSite();
@@ -72,8 +76,14 @@ export function NekomaidLayout() {
             </Box>
           </Stack>
 
-          {!standaloneNekomaid && (
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            flexWrap="wrap"
+            useFlexGap
+          >
+            {!standaloneNekomaid && (
               <Button
                 component={RouterLink}
                 to="/"
@@ -92,10 +102,12 @@ export function NekomaidLayout() {
               >
                 回 faryne.dev
               </Button>
-            </Stack>
-          )}
+            )}
+            <AccountMenu />
+          </Stack>
         </Stack>
       </Box>
+      <VerifyEmailBar />
 
       <Box
         component="main"

@@ -1,6 +1,8 @@
 package route
 
 import (
+	"faryne.dev/config"
+	"faryne.dev/controller/auth"
 	"faryne.dev/controller/nekomaid"
 	"faryne.dev/middleware/authsession"
 	authService "faryne.dev/service/auth"
@@ -17,6 +19,25 @@ func Nekomaid(app *fiber.App) {
 	g.Get("/search.rss/:site?/:authorId?/:artworkId?", nekomaid.SearchRSS)
 	g.Post("/retrieve.json", nekomaid.Retrieve)
 	g.Get("/retrieve.json", nekomaid.Retrieve)
+
+	// 帳號（neko 專用 brand）與我的追蹤：同樣要註冊在 /:site 系列之前
+	g.Post("/auth/login", nekomaid.AccountLogin)
+	g.Post("/auth/register", nekomaid.AccountRegister)
+	g.Post("/auth/password-reset", nekomaid.AccountPasswordReset)
+	g.Post("/auth/action", nekomaid.AccountAction)
+	g.Get("/auth/session", authsession.New(authService.BrandNekomaid), nekomaid.AccountCurrent)
+	g.Delete("/auth/session", authsession.Optional(authService.BrandNekomaid), auth.DestroySessionBestEffort)
+	if config.EnvConfig().EnableDevAuthBypass {
+		g.Post("/auth/dev-session", nekomaid.AccountDevSession)
+	}
+	me := g.Group("/me", authsession.New(authService.BrandNekomaid))
+	me.Get("/favorites/keys", nekomaid.FavoriteKeys)
+	me.Get("/favorites/authors", nekomaid.FavoriteAuthors)
+	me.Get("/favorites/artworks", nekomaid.FavoriteArtworks)
+	me.Put("/favorites/authors/:site/:authorId", nekomaid.FollowAuthor)
+	me.Delete("/favorites/authors/:site/:authorId", nekomaid.UnfollowAuthor)
+	me.Put("/favorites/artworks/:site/:authorId/:artworkId", nekomaid.FavoriteArtwork)
+	me.Delete("/favorites/artworks/:site/:authorId/:artworkId", nekomaid.UnfavoriteArtwork)
 
 	// 版權申告：必須註冊在 /:site、/:site/:authorId 之前，否則 GET 會被當成搜尋路徑吃掉
 	g.Post("/forbidden-submissions", nekomaid.SubmitForbidden)

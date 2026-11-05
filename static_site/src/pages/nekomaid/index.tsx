@@ -34,6 +34,10 @@ import { EsCursorPagination } from "@/components/common/EsCursorPagination.tsx";
 import { isVideoMedia, VideoViewer } from "@/components/common/VideoViewer.tsx";
 import { CollapsibleRelatedTags } from "@/components/nekomaid/CollapsibleRelatedTags.tsx";
 import { CompactRecommendations } from "@/components/nekomaid/CompactRecommendations.tsx";
+import {
+  FavoriteArtworkButton,
+  FollowAuthorButton,
+} from "@/components/nekomaid/account/FavoriteButtons.tsx";
 import { NekomaidBreadcrumb } from "@/components/nekomaid/NekomaidBreadcrumb.tsx";
 import {
   type NekomaidSearchFormValue,
@@ -206,6 +210,19 @@ function ArtworkInfoPanel({
           >
             分享
           </Button>
+        </Stack>
+
+        {/* 收藏作品、追蹤畫師（只在 neko.maid.tw 顯示） */}
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <FavoriteArtworkButton
+            artworkId={artwork.artwork_id}
+            authorId={String(artwork.author_id)}
+            site={itemSite(artwork)}
+          />
+          <FollowAuthorButton
+            authorId={String(artwork.author_id)}
+            site={itemSite(artwork)}
+          />
         </Stack>
 
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -574,13 +591,18 @@ function ListPage({
                     : "讀取中"}
               </Typography>
             </Box>
-            <Button
-              component={RouterLink}
-              to={nekomaidPath()}
-              variant="outlined"
-            >
-              清除條件
-            </Button>
+            <Stack direction="row" spacing={1} alignItems="flex-start">
+              {routeSite && routeAuthorId && (
+                <FollowAuthorButton authorId={routeAuthorId} site={routeSite} />
+              )}
+              <Button
+                component={RouterLink}
+                to={nekomaidPath()}
+                variant="outlined"
+              >
+                清除條件
+              </Button>
+            </Stack>
           </Stack>
 
           <CollapsibleRelatedTags tags={tags} />
