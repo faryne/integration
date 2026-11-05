@@ -18,8 +18,10 @@ import (
 
 // 信件連結的 mode（Firebase 動作網址帶來的參數）
 const (
-	ModeVerifyEmail   = "verifyEmail"
-	ModeResetPassword = "resetPassword"
+	ModeVerifyEmail = "verifyEmail"
+	// ModeVerifyAndChangeEmail 舊帳號修改 email：點了寄到新信箱的驗證信才換（見 change_email.go）
+	ModeVerifyAndChangeEmail = "verifyAndChangeEmail"
+	ModeResetPassword        = "resetPassword"
 )
 
 // PasswordReset 忘記密碼：還沒搬家的舊會員先代建 Firebase 帳號並綁定（重設完就能登入），再請 Firebase 寄重設信。
@@ -61,15 +63,15 @@ func PasswordReset(ctx context.Context, req nekomaid.PasswordResetRequest, ip st
 	return nil
 }
 
-// HandleAction 信件連結回到 neko.maid.tw/auth/action：驗證 email 或重設密碼。
-// 兩者都證明了信箱主人身分，所以都會記下驗證時間並合併同 email 的舊帳號。
+// HandleAction 信件連結回到 neko.maid.tw/auth/action：驗證 email（含舊帳號修改 email）或重設密碼。
+// 都證明了信箱主人身分，所以都會記下驗證時間並合併同 email 的舊帳號（＝帳號整合，之後就不能再改 email）。
 func HandleAction(ctx context.Context, req nekomaid.AuthActionRequest) (*nekomaid.AuthActionResult, error) {
 	fb := firebaseauth.New()
-	var email string
+	var email, uid string
 	var err error
 	switch req.Mode {
-	case ModeVerifyEmail:
-		email, err = fb.ConfirmEmailVerification(ctx, req.OobCode)
+	case ModeVerifyEmail, ModeVerifyAndChangeEmail:
+		email, uid, err = fb.ConfirmEmailVerification(ctx, req.OobCode)
 	case ModeResetPassword:
 		if len([]rune(req.NewPassword)) < minPasswordLength {
 			return nil, errInvalidInput("密碼至少要 6 個字")
@@ -88,11 +90,25 @@ func HandleAction(ctx context.Context, req nekomaid.AuthActionRequest) (*nekomai
 		return nil, err
 	}
 
-	user, err := nekomaidRepo.NewUserRepository().BoundByEmail(email)
+	users := nekomaidRepo.NewUserRepository()
+	// 有 UID 優先用 UID 找（修改 email 的連結套用前，DB 裡還是舊 email），沒有再用 email 找
+	var user *nekomaid.User
+	if uid != "" {
+		user, err = users.ByFirebaseUID(uid)
+	} else {
+		user, err = users.BoundByEmail(email)
+	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return &nekomaid.AuthActionResult{Email: email, Merged: []string{}}, nil
 	} else if err != nil {
 		return nil, err
+	}
+	// Firebase 的 email 已經換了（修改 email 的連結）：DB 跟著換、清掉等待中的新信箱
+	if !strings.EqualFold(strings.TrimSpace(user.Email), email) || user.PendingEmail != nil {
+		if err := users.Updates(user.Id, map[string]any{"email": email, "pending_email": nil}); err != nil {
+			return nil, err
+		}
+		user.Email, user.PendingEmail = email, nil
 	}
 	merged, err := markVerified(user)
 	return &nekomaid.AuthActionResult{Email: email, Merged: merged}, err

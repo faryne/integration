@@ -16,6 +16,7 @@ import {
   useNekomaidLogout,
 } from "@/apis/nekomaid/account.ts";
 import { useNekomaidSession } from "@/apis/nekomaid/accountSession.ts";
+import { ChangeEmailDialog } from "@/components/nekomaid/account/ChangeEmailDialog.tsx";
 import { nekomaidPath } from "@/helpers/nekomaid.ts";
 import {
   nekomaidAccountEnabled,
@@ -102,17 +103,41 @@ export function AccountMenu() {
   );
 }
 
-/** 還沒驗證 email 時，每一頁頂端的提示條 */
+/**
+ * 還沒驗證 email 時，每一頁頂端的提示條；改版前的舊帳號（還沒整合）多一個「修改 email」
+ * （舊 email 可能早就收不到信）
+ */
 export function VerifyEmailBar() {
   const account = useNekomaidAccount();
+  const [changing, setChanging] = useState(false);
   if (!nekomaidAccountEnabled() || !account.data || account.data.email_verified)
     return null;
+  const { pending_email: pending, can_change_email: canChange } = account.data;
   return (
-    <Alert
-      severity="warning"
-      sx={{ borderRadius: 0, justifyContent: "center" }}
-    >
-      請在 24 小時內到信箱點驗證連結，否則帳號會被刪除。
-    </Alert>
+    <>
+      <Alert
+        action={
+          canChange && (
+            <Button
+              color="inherit"
+              onClick={() => setChanging(true)}
+              size="small"
+              sx={{ textTransform: "none" }}
+            >
+              修改 email
+            </Button>
+          )
+        }
+        severity="warning"
+        sx={{ alignItems: "center", borderRadius: 0, justifyContent: "center" }}
+      >
+        {pending
+          ? `驗證信已寄到 ${pending}，請在 24 小時內點連結，否則帳號會被刪除。`
+          : "請在 24 小時內到信箱點驗證連結，否則帳號會被刪除。"}
+      </Alert>
+      {canChange && (
+        <ChangeEmailDialog onClose={() => setChanging(false)} open={changing} />
+      )}
+    </>
   );
 }

@@ -113,13 +113,20 @@ func (c *Client) SendPasswordReset(ctx context.Context, email string) error {
 	return c.call(ctx, "accounts:sendOobCode", map[string]any{"requestType": "PASSWORD_RESET", "email": email}, nil)
 }
 
-// ConfirmEmailVerification 用信件連結裡的 oobCode 完成 email 驗證，回傳被驗證的 email
-func (c *Client) ConfirmEmailVerification(ctx context.Context, oobCode string) (string, error) {
+// SendVerifyAndChangeEmail 寄驗證信到新信箱，點了連結才真的換成新 email（需要該帳號的 idToken）
+func (c *Client) SendVerifyAndChangeEmail(ctx context.Context, idToken, newEmail string) error {
+	return c.call(ctx, "accounts:sendOobCode", map[string]any{"requestType": "VERIFY_AND_CHANGE_EMAIL", "idToken": idToken, "newEmail": newEmail}, nil)
+}
+
+// ConfirmEmailVerification 用信件連結裡的 oobCode 完成 email 驗證（含「驗證後更換 email」），
+// 回傳驗證後的 email 與 Firebase UID（UID 可能是空的，呼叫端再用 email 找）
+func (c *Client) ConfirmEmailVerification(ctx context.Context, oobCode string) (email, localID string, err error) {
 	var out struct {
-		Email string `json:"email"`
+		Email   string `json:"email"`
+		LocalID string `json:"localId"`
 	}
-	err := c.call(ctx, "accounts:update", map[string]any{"oobCode": oobCode}, &out)
-	return out.Email, err
+	err = c.call(ctx, "accounts:update", map[string]any{"oobCode": oobCode}, &out)
+	return out.Email, out.LocalID, err
 }
 
 // ResetPassword 用重設密碼信的 oobCode 設定新密碼，回傳帳號 email

@@ -65,7 +65,7 @@ func TestNotConfigured(t *testing.T) {
 
 func TestConfirmEmailVerification(t *testing.T) {
 	c, received := fakeIdentityToolkit(t, http.StatusOK, `{"email":"a@example.com","emailVerified":true}`)
-	email, err := c.ConfirmEmailVerification(context.Background(), "code-1")
+	email, _, err := c.ConfirmEmailVerification(context.Background(), "code-1")
 	if err != nil || email != "a@example.com" || (*received)["oobCode"] != "code-1" || (*received)["_path"] != "/v1/accounts:update" {
 		t.Fatalf("email = %q, err = %v, request = %+v", email, err, *received)
 	}

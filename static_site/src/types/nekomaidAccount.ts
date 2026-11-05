@@ -18,6 +18,10 @@ export interface NekomaidAccount {
   email_verified: boolean;
   /** 未驗證時：超過這個時間帳號就會被清除 */
   verification_deadline: string | null;
+  /** 改版前的舊帳號、還沒整合（email 驗證）時才能修改 email */
+  can_change_email: boolean;
+  /** 等待驗證的新 email（點了寄到新信箱的驗證信才換） */
+  pending_email: string | null;
 }
 
 /** 信件連結處理結果；merged 是驗證成功時一起併進來的舊帳號 */

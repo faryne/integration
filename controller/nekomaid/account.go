@@ -109,3 +109,17 @@ func accountError(err error) error {
 	}
 	return output.FromError(err)
 }
+
+// AccountChangeEmail 改版前的舊帳號在整合前修改 email（驗證信寄到新信箱，點了才換）
+func AccountChangeEmail(ctx fiber.Ctx) error {
+	var input nekomaidEntity.ChangeEmailRequest
+	if err := helper.BindJSON(ctx, &input); err != nil {
+		return err
+	}
+	requestCtx, cancel := context.WithTimeout(context.Background(), accountRequestTimeout)
+	defer cancel()
+	if err := account.ChangeEmail(requestCtx, authsession.Session(ctx).UserId, input); err != nil {
+		return accountError(err)
+	}
+	return output.Success(nil)
+}

@@ -32,7 +32,9 @@ export default function NekomaidAuthAction() {
   const mode = params.get("mode") ?? "";
   const oobCode = params.get("oobCode") ?? "";
   const isReset = mode === "resetPassword";
-  const verify = useNekomaidVerifyEmail(oobCode, mode === "verifyEmail");
+  // 驗證 email 與舊帳號修改 email（點了寄到新信箱的驗證信才換）都是一進頁面就送
+  const isVerify = mode === "verifyEmail" || mode === "verifyAndChangeEmail";
+  const verify = useNekomaidVerifyEmail(oobCode, mode, isVerify);
   const reset = useNekomaidAuthAction();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -41,7 +43,7 @@ export default function NekomaidAuthAction() {
   const result = isReset ? reset : verify;
   const linkInvalid =
     !oobCode ||
-    !["verifyEmail", "resetPassword"].includes(mode) ||
+    !["verifyEmail", "verifyAndChangeEmail", "resetPassword"].includes(mode) ||
     (result.isError && accountErrorReason(result.error) === "link_invalid");
   const merged = result.data?.merged ?? [];
 

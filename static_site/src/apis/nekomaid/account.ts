@@ -89,7 +89,11 @@ export function useNekomaidAuthAction() {
  * oobCode 只能用一次，開發模式的 StrictMode 會掛載兩次；query 依 oobCode 去重、結果留在快取，
  * 重新掛載也接得回結果（mutation 狀態在重新掛載後會遺失，畫面會一直轉圈）。
  */
-export function useNekomaidVerifyEmail(oobCode: string, enabled: boolean) {
+export function useNekomaidVerifyEmail(
+  oobCode: string,
+  mode: string,
+  enabled: boolean,
+) {
   const queryClient = useQueryClient();
   return useQuery({
     queryKey: ["nekomaid-verify-email", oobCode],
@@ -104,7 +108,7 @@ export function useNekomaidVerifyEmail(oobCode: string, enabled: boolean) {
       const result = (
         await nekoHttp.post<CommonResponse<NekomaidActionResult>>(
           "/auth/action",
-          { mode: "verifyEmail", oob_code: oobCode },
+          { mode, oob_code: oobCode },
         )
       ).data.data;
       void queryClient.invalidateQueries({ queryKey: ["nekomaid-account"] });
@@ -124,6 +128,17 @@ export function useNekomaidAccount() {
     queryFn: async () =>
       (await nekoHttp.get<CommonResponse<NekomaidAccount>>("/auth/session"))
         .data.data,
+  });
+}
+
+/** 舊帳號修改 email：驗證信寄到新信箱，點了才換 */
+export function useNekomaidChangeEmail() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { email: string; password: string }) =>
+      nekoHttp.put("/auth/email", input),
+    onSuccess: () =>
+      void queryClient.invalidateQueries({ queryKey: ["nekomaid-account"] }),
   });
 }
 

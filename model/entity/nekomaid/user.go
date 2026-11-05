@@ -13,10 +13,12 @@ type User struct {
 	Username    string  // 舊站登入用的帳號；改版後註冊的是空字串
 	Userpass    string  // 舊雜湊；搬進 Firebase 後清空（被合併的帳號保留，用來判斷「已合併」）
 	Email       string
-	CreatedOn   time.Time
-	UpdatedAt   *time.Time
-	IsDeleted   bool
-	DeletedAt   *time.Time
+	// PendingEmail 舊帳號申請修改、等待驗證的新 email（點了寄到新信箱的驗證信才換）
+	PendingEmail *string
+	CreatedOn    time.Time
+	UpdatedAt    *time.Time
+	IsDeleted    bool
+	DeletedAt    *time.Time
 	// MergedIntoId 同 email 驗證後被合併到哪個帳號
 	MergedIntoId *uint64
 	// VerificationSentAt 最後一次寄驗證信；超過 24 小時還沒驗證就會被清除
@@ -29,6 +31,16 @@ type User struct {
 
 func (User) TableName() string {
 	return "users_v2"
+}
+
+// IsLegacy 改版前的舊帳號：舊站一定有帳號名稱，改版後註冊的沒有
+func (u User) IsLegacy() bool {
+	return u.Username != ""
+}
+
+// CanChangeEmail 修改 email 只開放給改版前的舊帳號，而且要在整合（email 驗證）前；驗證過就不能再改
+func (u User) CanChangeEmail() bool {
+	return u.IsLegacy() && u.FirebaseUid != nil && u.EmailVerifiedAt == nil
 }
 
 // DisplayName 畫面上顯示的名稱：舊會員是帳號，改版後註冊的沒有帳號就用 email
@@ -78,6 +90,14 @@ type AccountResponse struct {
 	Email                string     `json:"email"`
 	EmailVerified        bool       `json:"email_verified"`
 	VerificationDeadline *time.Time `json:"verification_deadline"` // 未驗證時：超過這個時間就會被清除
+	CanChangeEmail       bool       `json:"can_change_email"`      // 改版前的舊帳號、還沒整合
+	PendingEmail         *string    `json:"pending_email"`         // 等待驗證的新 email
+}
+
+// ChangeEmailRequest 舊帳號修改 email：要輸入目前的密碼
+type ChangeEmailRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 // FavoriteAuthor 追蹤的畫師（users_fav_authors）

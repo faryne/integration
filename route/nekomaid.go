@@ -26,6 +26,7 @@ func Nekomaid(app *fiber.App) {
 	g.Post("/auth/password-reset", nekomaid.AccountPasswordReset)
 	g.Post("/auth/action", nekomaid.AccountAction)
 	g.Get("/auth/session", authsession.New(authService.BrandNekomaid), nekomaid.AccountCurrent)
+	g.Put("/auth/email", authsession.New(authService.BrandNekomaid), nekomaid.AccountChangeEmail)
 	g.Delete("/auth/session", authsession.Optional(authService.BrandNekomaid), auth.DestroySessionBestEffort)
 	if config.EnvConfig().EnableDevAuthBypass {
 		g.Post("/auth/dev-session", nekomaid.AccountDevSession)

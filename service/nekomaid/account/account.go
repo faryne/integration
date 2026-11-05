@@ -20,6 +20,7 @@ func Current(userID uint64) (*nekomaid.AccountResponse, error) {
 	resp := &nekomaid.AccountResponse{
 		Id: user.Id, Name: user.DisplayName(), Email: user.Email, EmailVerified: user.EmailVerifiedAt != nil,
 	}
+	resp.CanChangeEmail, resp.PendingEmail = user.CanChangeEmail(), user.PendingEmail
 	if user.EmailVerifiedAt == nil && user.VerificationSentAt != nil {
 		deadline := user.VerificationSentAt.Add(verificationWindow)
 		resp.VerificationDeadline = &deadline
