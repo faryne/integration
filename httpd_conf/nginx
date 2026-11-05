@@ -55,16 +55,20 @@ server {
     return 301 https://$host$request_uri;
 }
 
-# 443 的預設 server：沒列在任何 server_name 的 Host 一律在 TLS 握手階段拒絕。
+# 443 的預設 server：沒列在任何 server_name 的 Host 一律直接斷線（444）。
 # 沒有這個區塊時，nekomimi.maid.tw（SSH 用的主機名稱）、api.neko.maid.tw 等指到這台的網域
 # 會掉進第一個 443 區塊，變成 faryne.dev 的鏡像站，還會帶著奇怪的 Origin 打 API。
-# 需要 nginx >= 1.19.4（ssl_reject_handshake）；port 80 不用動，未知 Host 轉到 https 後一樣被擋。
+# 機器上是 nginx 1.10，沒有 ssl_reject_handshake（1.19.4+），只能借現有憑證完成握手再斷線；
+# 升級後可改成 ssl_reject_handshake on、拿掉憑證兩行。port 80 不用動，未知 Host 轉到 https 後一樣被擋。
 server {
     listen 443 ssl http2 default_server;
     listen [::]:443 ssl http2 default_server;
     server_name _;
 
-    ssl_reject_handshake on;
+    ssl_certificate /etc/letsencrypt/live/neko.maid.tw/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/neko.maid.tw/privkey.pem;
+
+    return 444;
 }
 
 server {
