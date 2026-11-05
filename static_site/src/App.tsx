@@ -30,6 +30,7 @@ import {
 } from "@/helpers/backendAdmin.ts";
 import { backendAdminRoutes } from "@/pages/backendAdmin/routes.tsx";
 import { LegacyGalgameAdminRedirect } from "@/components/backendAdmin/LegacyGalgameAdminRedirect.tsx";
+import { NekomaidAccountGate } from "@/components/nekomaid/account/NekomaidAccountGate.tsx";
 
 function formatMaintenanceRetryMessage(retryAt: string | null) {
   if (!retryAt) {
@@ -234,7 +235,7 @@ const NekomaidCopyrightClaims = lazy(
 const NekomaidCopyrightClaimNew = lazy(
   () => import("@/pages/nekomaid/CopyrightClaimNew.tsx"),
 );
-// neko 帳號與我的追蹤（只在 neko.maid.tw 與本機開發打開，見 nekomaidAccountEnabled）
+// neko 帳號與我的追蹤（開關見 nekomaidAccountEnabled；沒開時 NekomaidAccountGate 回 404）
 const NekomaidLogin = lazy(() => import("@/pages/nekomaid/account/Login.tsx"));
 const NekomaidRegister = lazy(
   () => import("@/pages/nekomaid/account/Register.tsx"),
@@ -643,14 +644,46 @@ function App() {
                 path={"/copyright-claim/:hash"}
                 element={<NekomaidCopyrightClaims />}
               />
-              <Route path={"/login"} element={<NekomaidLogin />} />
-              <Route path={"/register"} element={<NekomaidRegister />} />
+              <Route
+                path={"/login"}
+                element={
+                  <NekomaidAccountGate>
+                    <NekomaidLogin />
+                  </NekomaidAccountGate>
+                }
+              />
+              <Route
+                path={"/register"}
+                element={
+                  <NekomaidAccountGate>
+                    <NekomaidRegister />
+                  </NekomaidAccountGate>
+                }
+              />
               <Route
                 path={"/forgot-password"}
-                element={<NekomaidForgotPassword />}
+                element={
+                  <NekomaidAccountGate>
+                    <NekomaidForgotPassword />
+                  </NekomaidAccountGate>
+                }
               />
-              <Route path={"/auth/action"} element={<NekomaidAuthAction />} />
-              <Route path={"/me"} element={<NekomaidMe />} />
+              <Route
+                path={"/auth/action"}
+                element={
+                  <NekomaidAccountGate>
+                    <NekomaidAuthAction />
+                  </NekomaidAccountGate>
+                }
+              />
+              <Route
+                path={"/me"}
+                element={
+                  <NekomaidAccountGate>
+                    <NekomaidMe />
+                  </NekomaidAccountGate>
+                }
+              />
               <Route path={"/:site"} element={<Nekomaid />} />
               <Route path={"/:site/:authorId"} element={<Nekomaid />} />
               <Route
@@ -722,17 +755,46 @@ function App() {
                     path={"copyright-claim/:hash"}
                     element={<NekomaidCopyrightClaims />}
                   />
-                  <Route path={"login"} element={<NekomaidLogin />} />
-                  <Route path={"register"} element={<NekomaidRegister />} />
+                  <Route
+                    path={"login"}
+                    element={
+                      <NekomaidAccountGate>
+                        <NekomaidLogin />
+                      </NekomaidAccountGate>
+                    }
+                  />
+                  <Route
+                    path={"register"}
+                    element={
+                      <NekomaidAccountGate>
+                        <NekomaidRegister />
+                      </NekomaidAccountGate>
+                    }
+                  />
                   <Route
                     path={"forgot-password"}
-                    element={<NekomaidForgotPassword />}
+                    element={
+                      <NekomaidAccountGate>
+                        <NekomaidForgotPassword />
+                      </NekomaidAccountGate>
+                    }
                   />
                   <Route
                     path={"auth/action"}
-                    element={<NekomaidAuthAction />}
+                    element={
+                      <NekomaidAccountGate>
+                        <NekomaidAuthAction />
+                      </NekomaidAccountGate>
+                    }
                   />
-                  <Route path={"me"} element={<NekomaidMe />} />
+                  <Route
+                    path={"me"}
+                    element={
+                      <NekomaidAccountGate>
+                        <NekomaidMe />
+                      </NekomaidAccountGate>
+                    }
+                  />
                   <Route path={":site"} element={<Nekomaid />} />
                   <Route path={":site/:authorId"} element={<Nekomaid />} />
                   <Route

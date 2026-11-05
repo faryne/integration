@@ -3,11 +3,14 @@ import { isNekomaidSite, nekomaidPath } from "@/helpers/nekomaid.ts";
 // neko 帳號相關的路徑與開關
 
 /**
- * 帳號與追蹤只在 neko.maid.tw 開（faryne.dev/nekomaid 是主站 brand，不顯示登入與愛心）；
- * 本機開發走 localhost/nekomaid，dev build 也打開方便測試
+ * 帳號與追蹤只在 neko.maid.tw 開（faryne.dev/nekomaid 是主站 brand，不顯示登入與愛心），
+ * 而且要用 VITE_NEKOMAID_ACCOUNT_ENABLED=true 建置才會打開（後端對應 NEKOMAID_ACCOUNT_ENABLED）；
+ * Firebase 動作網址設定好之前先關著。本機開發（dev build）一律打開方便測試
  */
 export const nekomaidAccountEnabled = () =>
-  isNekomaidSite() || import.meta.env.DEV;
+  import.meta.env.DEV ||
+  (isNekomaidSite() &&
+    import.meta.env.VITE_NEKOMAID_ACCOUNT_ENABLED === "true");
 
 /** 登入頁；redirect 是登入後要回去的站內路徑 */
 export const nekomaidLoginPath = (redirect = "") =>

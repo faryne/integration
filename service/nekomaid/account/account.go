@@ -3,6 +3,7 @@ package account
 import (
 	"time"
 
+	"faryne.dev/config"
 	modelAuth "faryne.dev/model/entity/auth"
 	"faryne.dev/model/entity/nekomaid"
 	nekomaidRepo "faryne.dev/repository/nekomaid"
@@ -31,6 +32,10 @@ func Current(userID uint64) (*nekomaid.AccountResponse, error) {
 // RunUnverifiedCleanup 每天一次：驗證信寄出超過 24 小時仍未驗證的帳號 soft delete（規格 §2.5），分批處理。
 // 從沒寄過驗證信的舊帳號（一直沒回來登入的）不會被選到；Firebase 帳號不刪，本人用正確密碼回來登入會恢復。
 func RunUnverifiedCleanup() {
+	// 帳號功能沒開就不會有新寄出的驗證信，也不該替使用者刪帳號
+	if !config.EnvConfig().NekomaidAccountEnabled {
+		return
+	}
 	const batchSize, maxBatches = 500, 20
 	users := nekomaidRepo.NewUserRepository()
 	cutoff := time.Now().Add(-verificationWindow)

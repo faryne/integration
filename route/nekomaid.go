@@ -20,28 +20,31 @@ func Nekomaid(app *fiber.App) {
 	g.Post("/retrieve.json", nekomaid.Retrieve)
 	g.Get("/retrieve.json", nekomaid.Retrieve)
 
-	// 帳號（neko 專用 brand）與我的追蹤：同樣要註冊在 /:site 系列之前
-	g.Post("/auth/login", nekomaid.AccountLogin)
-	g.Post("/auth/register", nekomaid.AccountRegister)
-	g.Post("/auth/password-reset", nekomaid.AccountPasswordReset)
-	g.Post("/auth/action", nekomaid.AccountAction)
-	g.Get("/auth/session", authsession.New(authService.BrandNekomaid), nekomaid.AccountCurrent)
-	g.Put("/auth/email", authsession.New(authService.BrandNekomaid), nekomaid.AccountChangeEmail)
-	g.Delete("/auth/session", authsession.Optional(authService.BrandNekomaid), auth.DestroySessionBestEffort)
-	if config.EnvConfig().EnableDevAuthBypass {
-		g.Post("/auth/dev-session", nekomaid.AccountDevSession)
+	// 帳號（neko 專用 brand）與我的追蹤：同樣要註冊在 /:site 系列之前；
+	// 總開關關閉時整組不註冊（請求會落到 /:site 搜尋路由，回不出帳號資料）
+	if config.EnvConfig().NekomaidAccountEnabled {
+		g.Post("/auth/login", nekomaid.AccountLogin)
+		g.Post("/auth/register", nekomaid.AccountRegister)
+		g.Post("/auth/password-reset", nekomaid.AccountPasswordReset)
+		g.Post("/auth/action", nekomaid.AccountAction)
+		g.Get("/auth/session", authsession.New(authService.BrandNekomaid), nekomaid.AccountCurrent)
+		g.Put("/auth/email", authsession.New(authService.BrandNekomaid), nekomaid.AccountChangeEmail)
+		g.Delete("/auth/session", authsession.Optional(authService.BrandNekomaid), auth.DestroySessionBestEffort)
+		if config.EnvConfig().EnableDevAuthBypass {
+			g.Post("/auth/dev-session", nekomaid.AccountDevSession)
+		}
+		me := g.Group("/me", authsession.New(authService.BrandNekomaid))
+		me.Get("/favorites/keys", nekomaid.FavoriteKeys)
+		me.Get("/favorites/authors", nekomaid.FavoriteAuthors)
+		me.Get("/favorites/artworks", nekomaid.FavoriteArtworks)
+		me.Get("/favorites/tags", nekomaid.FavoriteTags)
+		me.Put("/favorites/tags", nekomaid.FollowTag)
+		me.Delete("/favorites/tags", nekomaid.UnfollowTag)
+		me.Put("/favorites/authors/:site/:authorId", nekomaid.FollowAuthor)
+		me.Delete("/favorites/authors/:site/:authorId", nekomaid.UnfollowAuthor)
+		me.Put("/favorites/artworks/:site/:authorId/:artworkId", nekomaid.FavoriteArtwork)
+		me.Delete("/favorites/artworks/:site/:authorId/:artworkId", nekomaid.UnfavoriteArtwork)
 	}
-	me := g.Group("/me", authsession.New(authService.BrandNekomaid))
-	me.Get("/favorites/keys", nekomaid.FavoriteKeys)
-	me.Get("/favorites/authors", nekomaid.FavoriteAuthors)
-	me.Get("/favorites/artworks", nekomaid.FavoriteArtworks)
-	me.Get("/favorites/tags", nekomaid.FavoriteTags)
-	me.Put("/favorites/tags", nekomaid.FollowTag)
-	me.Delete("/favorites/tags", nekomaid.UnfollowTag)
-	me.Put("/favorites/authors/:site/:authorId", nekomaid.FollowAuthor)
-	me.Delete("/favorites/authors/:site/:authorId", nekomaid.UnfollowAuthor)
-	me.Put("/favorites/artworks/:site/:authorId/:artworkId", nekomaid.FavoriteArtwork)
-	me.Delete("/favorites/artworks/:site/:authorId/:artworkId", nekomaid.UnfavoriteArtwork)
 
 	// 版權申告：必須註冊在 /:site、/:site/:authorId 之前，否則 GET 會被當成搜尋路徑吃掉
 	g.Post("/forbidden-submissions", nekomaid.SubmitForbidden)
