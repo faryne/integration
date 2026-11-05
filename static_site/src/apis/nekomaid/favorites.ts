@@ -9,7 +9,12 @@ import type { NekomaidArtwork } from "@/types/nekomaid.ts";
 import type {
   NekomaidFavoriteAuthor,
   NekomaidFavoriteKeys,
+  NekomaidFavoriteTag,
 } from "@/types/nekomaidAccount.ts";
+
+/** 收藏的種類：畫師、作品、標籤 */
+export type FavoriteKind = "authors" | "artworks" | "tags";
+type FavoriteKeySets = Record<FavoriteKind, Set<string>>;
 
 // 我的追蹤（追蹤畫師、收藏作品）；全部要登入
 export const NEKOMAID_FAVORITE_PAGE_SIZE = 24;
@@ -39,12 +44,13 @@ export function useNekomaidFavoriteKeys() {
       return {
         authors: new Set(keys.authors),
         artworks: new Set(keys.artworks),
-      };
+        tags: new Set(keys.tags),
+      } satisfies FavoriteKeySets;
     },
   });
 }
 
-function useFavoriteList<T>(kind: "authors" | "artworks", page: number) {
+function useFavoriteList<T>(kind: FavoriteKind, page: number) {
   const session = useNekomaidSession();
   return useQuery({
     queryKey: [favoritesKey, kind, session?.user.id, page],
@@ -65,27 +71,41 @@ export const useNekomaidFavoriteAuthors = (page: number) =>
   useFavoriteList<NekomaidFavoriteAuthor>("authors", page);
 export const useNekomaidFavoriteArtworks = (page: number) =>
   useFavoriteList<NekomaidArtwork>("artworks", page);
+export const useNekomaidFavoriteTags = (page: number) =>
+  useFavoriteList<NekomaidFavoriteTag>("tags", page);
 
 /**
- * 切換追蹤／收藏：path 是 "authors/site/author" 或 "artworks/site/author/artwork"。
- * 先樂觀更新 key 讓按鈕馬上變，失敗再還原
+ * 切換收藏要打的 API：畫師／作品的 key 就是網址路徑（site/author[/artwork]）；
+ * 標籤可能含 /，收藏放 body、取消放 ?tag=
  */
+function favoriteRequest(kind: FavoriteKind, key: string, on: boolean) {
+  if (kind === "tags")
+    return on
+      ? nekoHttp.put("/me/favorites/tags", { tag: key })
+      : nekoHttp.delete("/me/favorites/tags", { params: { tag: key } });
+  return on
+    ? nekoHttp.put(`/me/favorites/${kind}/${key}`)
+    : nekoHttp.delete(`/me/favorites/${kind}/${key}`);
+}
+
+/** 切換追蹤／收藏：先樂觀更新 key 讓按鈕馬上變，失敗再還原 */
 export function useToggleNekomaidFavorite() {
   const queryClient = useQueryClient();
   const session = useNekomaidSession();
   const keysQueryKey = [favoritesKey, "keys", session?.user.id];
   return useMutation({
-    mutationFn: ({ path, on }: { path: string; key: string; on: boolean }) =>
-      on
-        ? nekoHttp.put(`/me/favorites/${path}`)
-        : nekoHttp.delete(`/me/favorites/${path}`),
-    onMutate: ({ path, key, on }) => {
-      const previous = queryClient.getQueryData<{
-        authors: Set<string>;
-        artworks: Set<string>;
-      }>(keysQueryKey);
+    mutationFn: ({
+      kind,
+      key,
+      on,
+    }: {
+      kind: FavoriteKind;
+      key: string;
+      on: boolean;
+    }) => favoriteRequest(kind, key, on),
+    onMutate: ({ kind, key, on }) => {
+      const previous = queryClient.getQueryData<FavoriteKeySets>(keysQueryKey);
       if (previous) {
-        const kind = path.startsWith("authors/") ? "authors" : "artworks";
         const next = new Set(previous[kind]);
         if (on) next.add(key);
         else next.delete(key);

@@ -24,6 +24,7 @@ import {
   NEKOMAID_FAVORITE_PAGE_SIZE,
   useNekomaidFavoriteArtworks,
   useNekomaidFavoriteAuthors,
+  useNekomaidFavoriteTags,
   useToggleNekomaidFavorite,
 } from "@/apis/nekomaid/favorites.ts";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog.tsx";
@@ -35,10 +36,14 @@ import { apiErrorMessage } from "@/helpers/apiError.ts";
 import { nekomaidPath, siteLabels } from "@/helpers/nekomaid.ts";
 import { nekomaidLoginPath } from "@/helpers/nekomaidAccount.ts";
 import { useTitle } from "@/helpers/title.tsx";
-import type { NekomaidFavoriteAuthor } from "@/types/nekomaidAccount.ts";
+import type {
+  NekomaidFavoriteAuthor,
+  NekomaidFavoriteTag,
+} from "@/types/nekomaidAccount.ts";
 
 // 分頁：畫師／作品（存在網址的 ?tab=）
-type MeTab = "authors" | "artworks";
+type MeTab = "authors" | "artworks" | "tags";
+const ME_TABS: MeTab[] = ["authors", "artworks", "tags"];
 
 /**
  * 我的追蹤：/me?tab=authors|artworks&page=。禁抓中的畫師／作品後端已過濾（收藏還在，解除後會回來）。
@@ -48,7 +53,7 @@ export default function NekomaidMe() {
   const session = useNekomaidSession();
   const location = useLocation();
   const [params, setParams] = useSearchParams();
-  const tab: MeTab = params.get("tab") === "artworks" ? "artworks" : "authors";
+  const tab: MeTab = ME_TABS.find((t) => t === params.get("tab")) ?? "authors";
   const page = Math.max(Number(params.get("page")) || 1, 1);
   useTitle("我的追蹤");
   if (!session) {
@@ -76,14 +81,22 @@ export default function NekomaidMe() {
       >
         <Tab label="畫師" value="authors" />
         <Tab label="作品" value="artworks" />
+        <Tab label="標籤" value="tags" />
       </Tabs>
-      {tab === "authors" ? (
+      {tab === "authors" && (
         <AuthorList
           onPage={(p) => setParams({ page: String(p) })}
           page={page}
         />
-      ) : (
+      )}
+      {tab === "artworks" && (
         <ArtworkList
+          onPage={(p) => setParams({ tab, page: String(p) })}
+          page={page}
+        />
+      )}
+      {tab === "tags" && (
+        <TagList
           onPage={(p) => setParams({ tab, page: String(p) })}
           page={page}
         />
@@ -197,7 +210,7 @@ function AuthorList({
           if (removing)
             toggle.mutate(
               {
-                path: `authors/${removing.site}/${removing.author_id}`,
+                kind: "authors",
                 key: `${removing.site}/${removing.author_id}`,
                 on: false,
               },
@@ -251,6 +264,90 @@ function ArtworkList({
         onPage={onPage}
         page={page}
         total={list.data?.total ?? 0}
+      />
+    </Stack>
+  );
+}
+
+/** 標籤 tab：每個收藏的標籤附「前一次登入～本次登入」之間新增、帶這個標籤的作品（規則同畫師）；取消收藏要確認 */
+function TagList({
+  page,
+  onPage,
+}: {
+  page: number;
+  onPage: (p: number) => void;
+}) {
+  const list = useNekomaidFavoriteTags(page);
+  const toggle = useToggleNekomaidFavorite();
+  const [removing, setRemoving] = useState<NekomaidFavoriteTag | null>(null);
+  const [error, setError] = useState("");
+  const rows = list.data?.data ?? [];
+
+  if (list.isPending) return <Skeleton height={240} variant="rounded" />;
+  return (
+    <Stack spacing={1.5}>
+      {rows.length === 0 ? (
+        <Empty text="還沒有收藏的標籤" />
+      ) : (
+        rows.map((row) => (
+          <Paper key={row.tag} sx={{ p: 2 }} variant="outlined">
+            <Stack
+              alignItems="center"
+              direction="row"
+              justifyContent="space-between"
+              spacing={1}
+            >
+              <Link
+                component={RouterLink}
+                fontWeight={800}
+                to={nekomaidPath(`?tag=${encodeURIComponent(row.tag)}`)}
+                underline="hover"
+              >
+                #{row.tag}
+              </Link>
+              <Button
+                color="error"
+                onClick={() => setRemoving(row)}
+                size="small"
+                variant="outlined"
+              >
+                取消收藏
+              </Button>
+            </Stack>
+            <NewArtworkStrip artworks={row.artworks} />
+          </Paper>
+        ))
+      )}
+      <ListPagination
+        onPage={onPage}
+        page={page}
+        total={list.data?.total ?? 0}
+      />
+      <ConfirmDialog
+        cancelLabel="取消"
+        confirmLabel="取消收藏"
+        loading={toggle.isPending}
+        message={`不再收藏標籤「${removing?.tag ?? ""}」？`}
+        onClose={() => setRemoving(null)}
+        onConfirm={() => {
+          if (removing)
+            toggle.mutate(
+              { kind: "tags", key: removing.tag, on: false },
+              {
+                onError: (e) =>
+                  setError(apiErrorMessage(e, "操作失敗，請稍後再試")),
+              },
+            );
+          setRemoving(null);
+        }}
+        open={removing !== null}
+        title="取消收藏標籤？"
+      />
+      <CustomSnackbar
+        message={error}
+        onClose={() => setError("")}
+        open={error !== ""}
+        severity="error"
       />
     </Stack>
   );

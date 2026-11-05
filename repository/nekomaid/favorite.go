@@ -52,14 +52,39 @@ func (r *FavoriteRepository) RemoveArtwork(userID uint64, site, authorID, artwor
 		Delete(&nekomaid.FavoriteArtwork{}).Error
 }
 
+// AddTag 收藏標籤；已收藏就略過
+func (r *FavoriteRepository) AddTag(userID uint64, tag string) error {
+	return r.GetDB().Clauses(clause.Insert{Modifier: "IGNORE"}).
+		Create(&nekomaid.FavoriteTag{UserId: userID, Tag: tag, CreatedOn: time.Now()}).Error
+}
+
+func (r *FavoriteRepository) RemoveTag(userID uint64, tag string) error {
+	return r.GetDB().Where("user_id = ? AND tag = ?", userID, tag).Delete(&nekomaid.FavoriteTag{}).Error
+}
+
+// ListTags 收藏的標籤（新收藏的在前）
+func (r *FavoriteRepository) ListTags(userID uint64, offset, limit int) ([]nekomaid.FavoriteTagItem, int64, error) {
+	query := r.GetDB().Model(&nekomaid.FavoriteTag{}).Where("user_id = ?", userID)
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	rows := make([]nekomaid.FavoriteTagItem, 0)
+	err := query.Select("tag, created_on").Order("created_on DESC").Offset(offset).Limit(limit).Scan(&rows).Error
+	return rows, total, err
+}
+
 // Keys 使用者全部的收藏 key（不過濾禁抓，只拿來畫按鈕狀態）
 func (r *FavoriteRepository) Keys(userID uint64) (nekomaid.FavoriteKeys, error) {
-	keys := nekomaid.FavoriteKeys{Authors: []string{}, Artworks: []string{}}
+	keys := nekomaid.FavoriteKeys{Authors: []string{}, Artworks: []string{}, Tags: []string{}}
 	err := r.GetDB().Model(&nekomaid.FavoriteAuthor{}).Where("user_id = ?", userID).
 		Pluck("CONCAT(site, '/', author_id)", &keys.Authors).Error
 	if err == nil {
 		err = r.GetDB().Model(&nekomaid.FavoriteArtwork{}).Where("user_id = ?", userID).
 			Pluck("CONCAT(site, '/', author_id, '/', artwork_id)", &keys.Artworks).Error
+	}
+	if err == nil {
+		err = r.GetDB().Model(&nekomaid.FavoriteTag{}).Where("user_id = ?", userID).Pluck("tag", &keys.Tags).Error
 	}
 	return keys, err
 }

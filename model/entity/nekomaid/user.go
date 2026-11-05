@@ -105,10 +105,34 @@ func (FavoriteArtwork) TableName() string {
 	return "users_fav_artworks"
 }
 
-// FavoriteKeys 使用者所有收藏的 key（畫愛心／追蹤按鈕狀態用）：畫師 "site/author"、作品 "site/author/artwork"
+// FavoriteTag 收藏的標籤（users_fav_tags）
+type FavoriteTag struct {
+	UserId    uint64
+	Tag       string
+	CreatedOn time.Time
+}
+
+func (FavoriteTag) TableName() string {
+	return "users_fav_tags"
+}
+
+// FavoriteKeys 使用者所有收藏的 key（畫愛心／追蹤按鈕狀態用）：畫師 "site/author"、作品 "site/author/artwork"、標籤原字
 type FavoriteKeys struct {
 	Authors  []string `json:"authors"`
 	Artworks []string `json:"artworks"`
+	Tags     []string `json:"tags"`
+}
+
+// FavoriteTagItem 我的追蹤 → 標籤列表的一列
+type FavoriteTagItem struct {
+	Tag       string                  `json:"tag"`
+	CreatedOn *time.Time              `json:"created_on"`
+	Artworks  []ArtworkSearchClearRow `json:"artworks" gorm:"-"` // 前一次登入～本次登入之間新增、帶這個標籤的作品（事後從 ES 補）
+}
+
+// FavoriteTagRequest 收藏標籤（標籤可能含 /，不放在網址路徑）
+type FavoriteTagRequest struct {
+	Tag string `json:"tag"`
 }
 
 // FavoriteAuthorItem 我的追蹤 → 畫師列表的一列

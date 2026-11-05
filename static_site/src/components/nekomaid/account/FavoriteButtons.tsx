@@ -1,15 +1,17 @@
 import type { MouseEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Button, IconButton } from "@mui/material";
+import { Button, Chip, IconButton } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import PersonAddAlt1Icon from "@mui/icons-material/PersonAddAlt1";
+import { Link as RouterLink } from "react-router-dom";
 
 import { useNekomaidSession } from "@/apis/nekomaid/accountSession.ts";
 import {
   artworkKey,
   authorKey,
+  type FavoriteKind,
   useNekomaidFavoriteKeys,
   useToggleNekomaidFavorite,
 } from "@/apis/nekomaid/favorites.ts";
@@ -28,11 +30,7 @@ const pinkSx = {
  * 收藏／追蹤的共用邏輯：沒登入就帶去登入頁（登入後回到這頁），有登入就切換。
  * faryne.dev/nekomaid 不開帳號功能，回傳 null 讓按鈕不顯示
  */
-function useFavoriteToggle(
-  kind: "authors" | "artworks",
-  key: string,
-  path: string,
-) {
+function useFavoriteToggle(kind: FavoriteKind, key: string) {
   const session = useNekomaidSession();
   const keys = useNekomaidFavoriteKeys();
   const toggle = useToggleNekomaidFavorite();
@@ -50,7 +48,7 @@ function useFavoriteToggle(
         navigate(nekomaidLoginPath(location.pathname + location.search));
         return;
       }
-      toggle.mutate({ path, key, on: !on });
+      toggle.mutate({ kind, key, on: !on });
     },
   };
 }
@@ -68,7 +66,6 @@ export function FavoriteArtworkButton({
   const state = useFavoriteToggle(
     "artworks",
     artworkKey(site, authorId, artworkId),
-    `artworks/${site}/${authorId}/${artworkId}`,
   );
   if (!state) return null;
   return (
@@ -91,11 +88,7 @@ export function FollowAuthorButton({
   site: string;
   authorId: string;
 }) {
-  const state = useFavoriteToggle(
-    "authors",
-    authorKey(site, authorId),
-    `authors/${site}/${authorId}`,
-  );
+  const state = useFavoriteToggle("authors", authorKey(site, authorId));
   if (!state) return null;
   return (
     <Button
@@ -122,7 +115,6 @@ export function FavoriteHeart({
   const state = useFavoriteToggle(
     "artworks",
     artworkKey(site, authorId, artworkId),
-    `artworks/${site}/${authorId}/${artworkId}`,
   );
   if (!state) return null;
   return (
@@ -146,5 +138,49 @@ export function FavoriteHeart({
         <FavoriteBorderIcon fontSize="small" />
       )}
     </IconButton>
+  );
+}
+
+/** 標籤搜尋結果頁：收藏標籤 */
+export function FollowTagButton({ tag }: { tag: string }) {
+  const state = useFavoriteToggle("tags", tag);
+  if (!state) return null;
+  return (
+    <Button
+      onClick={state.onClick}
+      startIcon={state.on ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+      sx={state.on ? pinkSx : undefined}
+      variant={state.on ? "contained" : "outlined"}
+    >
+      {state.on ? "已收藏標籤" : "收藏標籤"}
+    </Button>
+  );
+}
+
+/**
+ * 作品頁的標籤 chip：點標籤連到標籤搜尋，右邊的小愛心收藏／取消收藏這個標籤；
+ * 沒開帳號功能時（faryne.dev/nekomaid）就是一般的標籤 chip
+ */
+export function FavoriteTagChip({ tag, to }: { tag: string; to: string }) {
+  const state = useFavoriteToggle("tags", tag);
+  return (
+    <Chip
+      clickable
+      component={RouterLink}
+      deleteIcon={
+        state?.on ? (
+          <FavoriteIcon
+            aria-label="取消收藏標籤"
+            sx={{ "&&": { color: "#e91e63" } }}
+          />
+        ) : (
+          <FavoriteBorderIcon aria-label="收藏標籤" />
+        )
+      }
+      label={tag}
+      onDelete={state ? (e: MouseEvent) => state.onClick(e) : undefined}
+      size="small"
+      to={to}
+    />
   );
 }

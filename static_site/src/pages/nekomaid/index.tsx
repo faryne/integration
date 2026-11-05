@@ -36,7 +36,9 @@ import { CollapsibleRelatedTags } from "@/components/nekomaid/CollapsibleRelated
 import { CompactRecommendations } from "@/components/nekomaid/CompactRecommendations.tsx";
 import {
   FavoriteArtworkButton,
+  FavoriteTagChip,
   FollowAuthorButton,
+  FollowTagButton,
 } from "@/components/nekomaid/account/FavoriteButtons.tsx";
 import { NekomaidBreadcrumb } from "@/components/nekomaid/NekomaidBreadcrumb.tsx";
 import {
@@ -226,14 +228,12 @@ function ArtworkInfoPanel({
         </Stack>
 
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          {/* 標籤：點了連到標籤搜尋，右邊小愛心收藏標籤（只在 neko.maid.tw 有愛心） */}
           {artwork.tags?.map((tag) => (
-            <Chip
+            <FavoriteTagChip
               key={tag}
-              label={tag}
-              component={RouterLink}
+              tag={tag}
               to={nekomaidPath(`?tag=${encodeURIComponent(tag)}`)}
-              clickable
-              size="small"
             />
           ))}
         </Stack>
@@ -595,6 +595,7 @@ function ListPage({
               {routeSite && routeAuthorId && (
                 <FollowAuthorButton authorId={routeAuthorId} site={routeSite} />
               )}
+              {tag && <FollowTagButton tag={tag} />}
               <Button
                 component={RouterLink}
                 to={nekomaidPath()}

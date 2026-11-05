@@ -68,3 +68,36 @@ func setFavoriteArtwork(ctx fiber.Ctx, on bool) error {
 	}
 	return output.Success(nil)
 }
+
+// FavoriteTags 我的追蹤：標籤
+func FavoriteTags(ctx fiber.Ctx) error {
+	var input nekomaidEntity.FavoriteListRequest
+	if err := helper.BindQuery(ctx, &input); err != nil {
+		return err
+	}
+	rows, total, err := nekomaid.ListFavoriteTags(authsession.Session(ctx).UserId, input)
+	if err != nil {
+		return output.FromError(err)
+	}
+	return output.Success(serviceHelper.ResultPaginate(ctx, rows, total))
+}
+
+// FollowTag 收藏標籤（標籤放在 body：可能含 /，不能放網址路徑）
+func FollowTag(ctx fiber.Ctx) error {
+	var input nekomaidEntity.FavoriteTagRequest
+	if err := helper.BindJSON(ctx, &input); err != nil {
+		return err
+	}
+	if err := nekomaid.SetFavoriteTag(authsession.Session(ctx).UserId, input.Tag, true); err != nil {
+		return forbiddenError(err)
+	}
+	return output.Success(nil)
+}
+
+// UnfollowTag 取消收藏標籤（標籤放在 ?tag=）
+func UnfollowTag(ctx fiber.Ctx) error {
+	if err := nekomaid.SetFavoriteTag(authsession.Session(ctx).UserId, ctx.Query("tag"), false); err != nil {
+		return forbiddenError(err)
+	}
+	return output.Success(nil)
+}

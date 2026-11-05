@@ -26,10 +26,18 @@ export interface NekomaidActionResult {
   merged: string[];
 }
 
-/** 收藏 key：畫師 "site/author"、作品 "site/author/artwork" */
+/** 收藏 key：畫師 "site/author"、作品 "site/author/artwork"、標籤原字 */
 export interface NekomaidFavoriteKeys {
   authors: string[];
   artworks: string[];
+  tags: string[];
+}
+
+/** 我的追蹤 → 標籤 */
+export interface NekomaidFavoriteTag {
+  tag: string;
+  created_on: string | null;
+  artworks: NekomaidArtwork[];
 }
 
 /** 我的追蹤 → 畫師 */
