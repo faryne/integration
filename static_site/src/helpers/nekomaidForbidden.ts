@@ -10,6 +10,9 @@ import type {
 export const copyrightClaimPath = (hash = "") =>
   nekomaidPath(hash ? `copyright-claim/${hash}` : "copyright-claim");
 
+/** 頁尾的版權申告頁：貼畫師頁網址，申告整個畫師 */
+export const copyrightClaimNewPath = () => nekomaidPath("copyright-claim/new");
+
 export const FORBIDDEN_SOURCE_LABEL: Record<NekomaidForbiddenSource, string> = {
   admin: "後台",
   submission: "版權申告",

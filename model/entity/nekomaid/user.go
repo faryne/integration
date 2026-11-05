@@ -22,6 +22,9 @@ type User struct {
 	// VerificationSentAt 最後一次寄驗證信；超過 24 小時還沒驗證就會被清除
 	VerificationSentAt *time.Time
 	EmailVerifiedAt    *time.Time
+	// PreviousLoginAt／CurrentLoginAt 每次登入成功時輪替；我的追蹤 → 畫師 tab 列出這段期間新增的作品
+	PreviousLoginAt *time.Time
+	CurrentLoginAt  *time.Time
 }
 
 func (User) TableName() string {
@@ -114,7 +117,7 @@ type FavoriteAuthorItem struct {
 	AuthorId  string                  `json:"author_id"`
 	Nickname  string                  `json:"nickname"`
 	CreatedOn *time.Time              `json:"created_on"`
-	Artworks  []ArtworkSearchClearRow `json:"artworks" gorm:"-"` // 最新幾件作品（縮圖用；事後從 ES 補，不是 DB 欄位）
+	Artworks  []ArtworkSearchClearRow `json:"artworks" gorm:"-"` // 前一次登入～本次登入之間新增的作品（事後從 ES 補，不是 DB 欄位）
 }
 
 // FavoriteListRequest 我的追蹤列表分頁

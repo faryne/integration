@@ -7,7 +7,6 @@ import {
 } from "react-router-dom";
 import {
   Box,
-  Breadcrumbs,
   Button,
   Grid,
   Link,
@@ -30,8 +29,10 @@ import {
 import { ConfirmDialog } from "@/components/common/ConfirmDialog.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ArtworkCard } from "@/components/nekomaid/ArtworkCard.tsx";
+import { NekomaidPageBreadcrumb } from "@/components/nekomaid/NekomaidBreadcrumb.tsx";
+import { NewArtworkStrip } from "@/components/nekomaid/account/NewArtworkStrip.tsx";
 import { apiErrorMessage } from "@/helpers/apiError.ts";
-import { artworkPath, nekomaidPath, siteLabels } from "@/helpers/nekomaid.ts";
+import { nekomaidPath, siteLabels } from "@/helpers/nekomaid.ts";
 import { nekomaidLoginPath } from "@/helpers/nekomaidAccount.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import type { NekomaidFavoriteAuthor } from "@/types/nekomaidAccount.ts";
@@ -60,15 +61,9 @@ export default function NekomaidMe() {
   }
 
   return (
-    <Stack spacing={2} sx={{ textAlign: "left" }}>
-      <Breadcrumbs aria-label="我的追蹤麵包屑" sx={{ fontSize: 14 }}>
-        <Link component={RouterLink} to={nekomaidPath()} underline="hover">
-          難以名狀的抓圖器
-        </Link>
-        <Typography color="text.primary" fontWeight={800}>
-          我的追蹤
-        </Typography>
-      </Breadcrumbs>
+    // 內容不需要撐滿整個寬螢幕：限制寬度、靠左（麵包屑位置跟其他頁一致）
+    <Stack spacing={2} sx={{ maxWidth: 1200, textAlign: "left" }}>
+      <NekomaidPageBreadcrumb items={[{ label: "我的追蹤" }]} />
       <Typography component="h1" fontWeight={900} variant="h5">
         我的追蹤
       </Typography>
@@ -183,37 +178,7 @@ function AuthorList({
                 取消追蹤
               </Button>
             </Stack>
-            <Box
-              sx={{
-                display: "grid",
-                gap: 1,
-                gridTemplateColumns: "repeat(4, 1fr)",
-                mt: 1.5,
-              }}
-            >
-              {author.artworks.map((artwork) => (
-                <Box
-                  component={RouterLink}
-                  key={artwork.artwork_id}
-                  sx={{
-                    aspectRatio: "1",
-                    bgcolor: "#f3f4f6",
-                    borderRadius: 1,
-                    display: "block",
-                    overflow: "hidden",
-                  }}
-                  to={artworkPath(artwork)}
-                >
-                  <Box
-                    alt={artwork.title}
-                    component="img"
-                    loading="lazy"
-                    src={artwork.thumb || artwork.photos?.[0]?.url}
-                    sx={{ height: "100%", objectFit: "cover", width: "100%" }}
-                  />
-                </Box>
-              ))}
-            </Box>
+            <NewArtworkStrip artworks={author.artworks} />
           </Paper>
         ))
       )}

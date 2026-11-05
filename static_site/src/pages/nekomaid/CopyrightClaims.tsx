@@ -6,7 +6,6 @@ import {
 import {
   Alert,
   Box,
-  Breadcrumbs,
   Chip,
   Link,
   Pagination,
@@ -22,8 +21,9 @@ import {
   COPYRIGHT_CLAIM_PAGE_SIZE,
   useCopyrightClaims,
 } from "@/apis/nekomaid/copyrightClaim.ts";
+import { NekomaidPageBreadcrumb } from "@/components/nekomaid/NekomaidBreadcrumb.tsx";
 import { formatSubmissionTime } from "@/helpers/avActressSubmission.ts";
-import { nekomaidPath, siteLabels } from "@/helpers/nekomaid.ts";
+import { siteLabels } from "@/helpers/nekomaid.ts";
 import {
   CLAIM_STATUS_COLOR,
   CLAIM_STATUS_LABEL,
@@ -59,30 +59,18 @@ export default function CopyrightClaimsPage() {
   useTitle(pageTitle, { path: copyrightClaimPath(hash) });
 
   return (
-    <Stack spacing={2} sx={{ maxWidth: 880, mx: "auto", textAlign: "left" }}>
-      <Breadcrumbs aria-label="版權申告麵包屑" sx={{ fontSize: 14 }}>
-        <Link component={RouterLink} to={nekomaidPath()} underline="hover">
-          難以名狀的抓圖器
-        </Link>
-        {hash ? (
-          <Link
-            component={RouterLink}
-            to={copyrightClaimPath()}
-            underline="hover"
-          >
-            版權申告
-          </Link>
-        ) : (
-          <Typography color="text.primary" fontWeight={800}>
-            版權申告
-          </Typography>
-        )}
-        {hash && (
-          <Typography color="text.primary" fontWeight={800}>
-            你送出的申告
-          </Typography>
-        )}
-      </Breadcrumbs>
+    // 限制寬度、靠左（麵包屑位置跟作品頁等其他頁一致）
+    <Stack spacing={2} sx={{ maxWidth: 880, textAlign: "left" }}>
+      <NekomaidPageBreadcrumb
+        items={
+          hash
+            ? [
+                { label: "版權申告", to: copyrightClaimPath() },
+                { label: "你送出的申告" },
+              ]
+            : [{ label: "版權申告" }]
+        }
+      />
       <Typography component="h1" fontWeight={900} variant="h5">
         {pageTitle}
       </Typography>

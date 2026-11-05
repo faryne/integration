@@ -231,6 +231,9 @@ const Nekomaid = lazy(() => import("@/pages/nekomaid"));
 const NekomaidCopyrightClaims = lazy(
   () => import("@/pages/nekomaid/CopyrightClaims.tsx"),
 );
+const NekomaidCopyrightClaimNew = lazy(
+  () => import("@/pages/nekomaid/CopyrightClaimNew.tsx"),
+);
 // neko 帳號與我的追蹤（只在 neko.maid.tw 與本機開發打開，見 nekomaidAccountEnabled）
 const NekomaidLogin = lazy(() => import("@/pages/nekomaid/account/Login.tsx"));
 const NekomaidRegister = lazy(
@@ -633,6 +636,10 @@ function App() {
                 element={<NekomaidCopyrightClaims />}
               />
               <Route
+                path={"/copyright-claim/new"}
+                element={<NekomaidCopyrightClaimNew />}
+              />
+              <Route
                 path={"/copyright-claim/:hash"}
                 element={<NekomaidCopyrightClaims />}
               />
@@ -706,6 +713,10 @@ function App() {
                   <Route
                     path={"copyright-claim"}
                     element={<NekomaidCopyrightClaims />}
+                  />
+                  <Route
+                    path={"copyright-claim/new"}
+                    element={<NekomaidCopyrightClaimNew />}
                   />
                   <Route
                     path={"copyright-claim/:hash"}

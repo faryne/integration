@@ -78,6 +78,11 @@ func (r *UserRepository) Updates(id uint64, fields map[string]any) error {
 	return r.GetDB().Model(&nekomaid.User{}).Where("id = ?", id).Updates(fields).Error
 }
 
+// RecordLogin 登入成功：本次登入時間移到「前一次」，本次改成現在（同一句 UPDATE，前一次取的是更新前的值）
+func (r *UserRepository) RecordLogin(id uint64, now time.Time) error {
+	return r.GetDB().Exec("UPDATE users_v2 SET previous_login_at = current_login_at, current_login_at = ? WHERE id = ?", now, id).Error
+}
+
 // MergeInto 把 sources 的追蹤（畫師、作品、標籤）併到 target，重複的略過；sources soft delete 並記 merged_into_id。
 // sources 的 userpass 保留：之後有人用被併的帳號登入，驗得過密碼才告訴他「已合併到 ○○」
 func (r *UserRepository) MergeInto(targetID uint64, sourceIDs []uint64) error {

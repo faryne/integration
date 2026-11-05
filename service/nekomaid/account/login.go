@@ -185,6 +185,12 @@ func finishLogin(ctx context.Context, user *nekomaid.User, idToken string) (*mod
 	if user.EmailVerifiedAt == nil && (user.VerificationSentAt == nil || time.Since(*user.VerificationSentAt) >= verificationWindow) {
 		sendVerification(ctx, user, idToken)
 	}
+	// 輪替登入時間（我的追蹤 → 畫師 tab 用）；記不上不擋登入
+	now := time.Now()
+	if err := users.RecordLogin(user.Id, now); err != nil {
+		log.Logger().Warn("Record nekomaid login time failed", zap.Uint64("user_id", user.Id), zap.Error(err))
+	}
+	user.PreviousLoginAt, user.CurrentLoginAt = user.CurrentLoginAt, &now
 	return issueSession(user)
 }
 
