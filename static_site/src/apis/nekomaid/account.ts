@@ -84,6 +84,36 @@ export function useNekomaidAuthAction() {
   });
 }
 
+/**
+ * 驗證 email 的信件連結：進頁面就送，用 query 而不是 mutation——
+ * oobCode 只能用一次，開發模式的 StrictMode 會掛載兩次；query 依 oobCode 去重、結果留在快取，
+ * 重新掛載也接得回結果（mutation 狀態在重新掛載後會遺失，畫面會一直轉圈）。
+ */
+export function useNekomaidVerifyEmail(oobCode: string, enabled: boolean) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: ["nekomaid-verify-email", oobCode],
+    enabled: enabled && Boolean(oobCode),
+    retry: false,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    queryFn: async () => {
+      const result = (
+        await nekoHttp.post<CommonResponse<NekomaidActionResult>>(
+          "/auth/action",
+          { mode: "verifyEmail", oob_code: oobCode },
+        )
+      ).data.data;
+      void queryClient.invalidateQueries({ queryKey: ["nekomaid-account"] });
+      void queryClient.invalidateQueries({ queryKey: ["nekomaid-favorites"] });
+      return result;
+    },
+  });
+}
+
 /** 目前登入者（頁首名稱、未驗證提示條）；沒登入不查 */
 export function useNekomaidAccount() {
   const session = useNekomaidSession();

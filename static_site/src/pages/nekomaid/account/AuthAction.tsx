@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import {
   Alert,
@@ -11,6 +11,7 @@ import {
 import {
   accountErrorReason,
   useNekomaidAuthAction,
+  useNekomaidVerifyEmail,
 } from "@/apis/nekomaid/account.ts";
 import { AccountPageShell } from "@/components/nekomaid/account/AccountPageShell.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
@@ -23,31 +24,26 @@ import {
 
 /**
  * 信件連結（Firebase 動作網址設成 /auth/action）：?mode=verifyEmail|resetPassword&oobCode=…
- * 驗證 email 一進頁面就送出；重設密碼先填新密碼。兩者成功時後端都會合併同 email 的舊帳號
+ * 驗證 email 一進頁面就送出（query，見 useNekomaidVerifyEmail）；重設密碼先填新密碼（mutation）。
+ * 兩者成功時後端都會合併同 email 的舊帳號
  */
 export default function NekomaidAuthAction() {
   const [params] = useSearchParams();
   const mode = params.get("mode") ?? "";
   const oobCode = params.get("oobCode") ?? "";
   const isReset = mode === "resetPassword";
-  const action = useNekomaidAuthAction();
+  const verify = useNekomaidVerifyEmail(oobCode, mode === "verifyEmail");
+  const reset = useNekomaidAuthAction();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
-  const verifySent = useRef(false);
+  // 目前這個 mode 的結果
+  const result = isReset ? reset : verify;
   const linkInvalid =
     !oobCode ||
     !["verifyEmail", "resetPassword"].includes(mode) ||
-    (action.isError && accountErrorReason(action.error) === "link_invalid");
-
-  // 驗證 email：進頁面就送一次（StrictMode 下也只送一次）
-  useEffect(() => {
-    if (mode !== "verifyEmail" || !oobCode || verifySent.current) return;
-    verifySent.current = true;
-    action.mutate({ mode, oob_code: oobCode });
-  }, [mode, oobCode, action]);
-
-  const merged = action.data?.merged ?? [];
+    (result.isError && accountErrorReason(result.error) === "link_invalid");
+  const merged = result.data?.merged ?? [];
 
   return (
     <AccountPageShell title={isReset ? "重設密碼" : "Email 驗證"}>
@@ -64,7 +60,7 @@ export default function NekomaidAuthAction() {
             登入
           </Button>
         </>
-      ) : action.isSuccess ? (
+      ) : result.isSuccess ? (
         <>
           <Alert severity="success">
             {isReset ? "密碼已重設，請用新密碼登入。" : "已完成驗證。"}
@@ -90,7 +86,7 @@ export default function NekomaidAuthAction() {
           component="form"
           onSubmit={(e) => {
             e.preventDefault();
-            action.mutate(
+            reset.mutate(
               { mode, oob_code: oobCode, new_password: password },
               {
                 onError: (err) =>
@@ -118,7 +114,7 @@ export default function NekomaidAuthAction() {
             value={confirm}
           />
           <Button
-            disabled={action.isPending || !password || password !== confirm}
+            disabled={reset.isPending || !password || password !== confirm}
             size="large"
             type="submit"
             variant="contained"
@@ -126,9 +122,9 @@ export default function NekomaidAuthAction() {
             重設密碼
           </Button>
         </Stack>
-      ) : action.isError ? (
+      ) : result.isError ? (
         <Alert severity="error">
-          {apiErrorMessage(action.error, "驗證失敗，請稍後再試")}
+          {apiErrorMessage(result.error, "驗證失敗，請稍後再試")}
         </Alert>
       ) : (
         <CircularProgress sx={{ alignSelf: "center" }} />
