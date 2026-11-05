@@ -1,4 +1,5 @@
 import { Stack, Typography } from "@mui/material";
+import { Link as RouterLink } from "react-router-dom";
 
 export interface IndependentFooterProps {
   service_name: string; // 服務名稱
@@ -7,6 +8,8 @@ export interface IndependentFooterProps {
   links?: ReadonlyArray<{
     href: string;
     label: string;
+    /** 站內頁面：同一頁切換（SPA 路由），不開新分頁 */
+    internal?: boolean;
   }>;
 }
 
@@ -50,19 +53,31 @@ export default function IndependentFooter(props: IndependentFooterProps) {
           faryne.dev
         </Typography>
       </Typography>
-      {props.links?.map((link) => (
-        <Typography
-          key={link.href}
-          component="a"
-          variant="body2"
-          href={link.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          sx={{ color: "text.secondary", textDecoration: "underline" }}
-        >
-          {link.label}
-        </Typography>
-      ))}
+      {props.links?.map((link) =>
+        link.internal ? (
+          <Typography
+            key={link.href}
+            component={RouterLink}
+            variant="body2"
+            to={link.href}
+            sx={{ color: "text.secondary", textDecoration: "underline" }}
+          >
+            {link.label}
+          </Typography>
+        ) : (
+          <Typography
+            key={link.href}
+            component="a"
+            variant="body2"
+            href={link.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ color: "text.secondary", textDecoration: "underline" }}
+          >
+            {link.label}
+          </Typography>
+        ),
+      )}
     </Stack>
   );
 }

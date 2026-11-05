@@ -90,6 +90,12 @@ func CreateDevSession() (*modelAuth.SessionResponse, error) {
 	})
 }
 
+// IssueSessionFor 帳密由品牌自己驗證完的使用者直接簽發 session（例如 neko 由後端呼叫 Firebase REST 登入，
+// 不經過前端 Firebase idToken），跟 CreateSessionFor 共用同一份 Redis session 格式與品牌檢查。
+func IssueSessionFor(user *modelAuth.User, brand string) (*modelAuth.SessionResponse, error) {
+	return issueSessionWithBrand(user, brand)
+}
+
 func issueSessionWithBrand(user *modelAuth.User, brand string) (*modelAuth.SessionResponse, error) {
 	encryptKey, encryptKeyHash, err := newEncryptKey()
 	if err != nil {

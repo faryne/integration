@@ -62,16 +62,25 @@ type envConfig struct {
 	S3Bucket    string `env:"S3_BUCKET"`
 	CDNUrl      string `env:"CDN_URL"`
 
-	NekomaidBucket           string `env:"NEKOMAID_BUCKET"`
-	NekomaidTinamiKey        string `env:"NEKOMAID_TINAMI_KEY"`
-	NekomaidS3Key            string `env:"NEKOMAID_S3_KEY"`
-	NekomaidS3Secret         string `env:"NEKOMAID_S3_SECRET"`
-	CloudFrontKeyPairID      string `env:"CLOUDFRONT_KEY_PAIR_ID"`
-	CloudFrontPrivateKeyFile string `env:"CLOUDFRONT_PRIVATE_KEY_FILE"`
-	PixivUsername            string `env:"PIXIV_USERNAME"`
-	PixivPassword            string `env:"PIXIV_PASSWORD"`
-	NicoEmail                string `env:"NICO_EMAIL"`
-	NicoPassword             string `env:"NICO_PASSWORD"`
+	NekomaidBucket    string `env:"NEKOMAID_BUCKET"`
+	NekomaidTinamiKey string `env:"NEKOMAID_TINAMI_KEY"`
+	NekomaidS3Key     string `env:"NEKOMAID_S3_KEY"`
+	NekomaidS3Secret  string `env:"NEKOMAID_S3_SECRET"`
+	// NekomaidIPHashSecret 版權申告查詢網址 /copyright-claim/:hash 的 IP 雜湊鑰匙（HMAC-SHA256）；
+	// 不能留空：IPv4 只有 43 億種，沒有鑰匙的雜湊可以被暴力反推回 IP。換鑰匙會讓既有的查詢網址全部失效。
+	NekomaidIPHashSecret string `env:"NEKOMAID_IP_HASH_SECRET"`
+	// NekomaidFirebaseAPIKey neko 帳號用的 Firebase 專案 Web API Key：註冊、登入、寄信全部由後端打
+	// Identity Toolkit REST API（不需要管理者金鑰，前端也不載入 Firebase 登入 SDK）
+	NekomaidFirebaseAPIKey string `env:"NEKOMAID_FIREBASE_API_KEY"`
+	// NekomaidFirebaseAuthEndpoint Identity Toolkit 的網址；本機用 Firebase Auth 模擬器時改成
+	// http://localhost:9099/identitytoolkit.googleapis.com
+	NekomaidFirebaseAuthEndpoint string `env:"NEKOMAID_FIREBASE_AUTH_ENDPOINT,default=https://identitytoolkit.googleapis.com"`
+	CloudFrontKeyPairID          string `env:"CLOUDFRONT_KEY_PAIR_ID"`
+	CloudFrontPrivateKeyFile     string `env:"CLOUDFRONT_PRIVATE_KEY_FILE"`
+	PixivUsername                string `env:"PIXIV_USERNAME"`
+	PixivPassword                string `env:"PIXIV_PASSWORD"`
+	NicoEmail                    string `env:"NICO_EMAIL"`
+	NicoPassword                 string `env:"NICO_PASSWORD"`
 
 	FinMindToken   string `env:"FINMIND_TOKEN"`
 	DiscordWebhook string `env:"DISCORD_WEBHOOK"`

@@ -1,14 +1,16 @@
-import { Box, Button, Divider, Stack, Typography } from "@mui/material";
-import HomeIcon from "@mui/icons-material/Home";
+import { Box, Divider, Stack, Typography } from "@mui/material";
 import { Link as RouterLink, Outlet } from "react-router-dom";
 import "@/styles/common.css";
-import { isNekomaidSite, nekomaidPath } from "@/helpers/nekomaid.ts";
+import { nekomaidPath } from "@/helpers/nekomaid.ts";
+import { copyrightClaimNewPath } from "@/helpers/nekomaidForbidden.ts";
 import { MASCOT_ASSET_CDN_BASE } from "@/helpers/mascotAssets.ts";
 import IndependentFooter from "@/components/common/IndependentFooter.tsx";
+import {
+  AccountMenu,
+  VerifyEmailBar,
+} from "@/components/nekomaid/account/AccountMenu.tsx";
 
 export function NekomaidLayout() {
-  const standaloneNekomaid = isNekomaidSite();
-
   return (
     <Box
       sx={{
@@ -72,30 +74,18 @@ export function NekomaidLayout() {
             </Box>
           </Stack>
 
-          {!standaloneNekomaid && (
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              <Button
-                component={RouterLink}
-                to="/"
-                size="small"
-                startIcon={<HomeIcon fontSize="small" />}
-                sx={{
-                  borderColor: "rgba(255,255,255,0.28)",
-                  color: "#f8fafc",
-                  ml: { sm: 1 },
-                  "&:hover": {
-                    borderColor: "rgba(255,255,255,0.54)",
-                    bgcolor: "rgba(255,255,255,0.08)",
-                  },
-                }}
-                variant="outlined"
-              >
-                回 faryne.dev
-              </Button>
-            </Stack>
-          )}
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            flexWrap="wrap"
+            useFlexGap
+          >
+            <AccountMenu />
+          </Stack>
         </Stack>
       </Box>
+      <VerifyEmailBar />
 
       <Box
         component="main"
@@ -111,7 +101,17 @@ export function NekomaidLayout() {
 
       <Box component="footer" sx={{ px: { xs: 2, md: 4 } }}>
         <Divider sx={{ opacity: 0.1 }} />
-        <IndependentFooter service_name="難以名狀的抓圖器" />
+        <IndependentFooter
+          service_name="難以名狀的抓圖器"
+          links={[
+            // 給畫師申告整個帳號停止收錄（作品頁的小旗子則可以只申告單一作品）
+            {
+              href: copyrightClaimNewPath(),
+              label: "版權申告",
+              internal: true,
+            },
+          ]}
+        />
       </Box>
     </Box>
   );

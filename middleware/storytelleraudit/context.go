@@ -4,11 +4,11 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"net"
 	"strings"
 	"sync/atomic"
 	"time"
 
+	"faryne.dev/controller/helper"
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	auditService "faryne.dev/service/storytelleraudit"
 	"github.com/gofiber/fiber/v3"
@@ -33,7 +33,7 @@ func NewRequestContext() fiber.Handler {
 			// OAuth token／revoke 端點由應用程式直接呼叫，歸在 API 入口
 			source = storytellerModel.AuditSourceAPI
 		}
-		ip := requestIP(ctx.IP(), ctx.RequestCtx().RemoteIP())
+		ip := helper.ClientIP(ctx)
 		value := auditService.RequestContext{
 			RequestID: requestID, Source: source, AuthMethod: storytellerModel.AuditAuthMethodNone,
 			IP: ip, UserAgent: ctx.Get(fiber.HeaderUserAgent),
@@ -43,16 +43,6 @@ func NewRequestContext() fiber.Handler {
 		ctx.Set("X-Request-ID", requestID)
 		return ctx.Next()
 	}
-}
-
-func requestIP(proxyIP string, remoteIP net.IP) string {
-	if proxyIP = strings.TrimSpace(proxyIP); proxyIP != "" {
-		return proxyIP
-	}
-	if remoteIP == nil {
-		return ""
-	}
-	return remoteIP.String()
 }
 
 func Set(ctx fiber.Ctx, update func(*auditService.RequestContext)) {

@@ -34,6 +34,12 @@ import { EsCursorPagination } from "@/components/common/EsCursorPagination.tsx";
 import { isVideoMedia, VideoViewer } from "@/components/common/VideoViewer.tsx";
 import { CollapsibleRelatedTags } from "@/components/nekomaid/CollapsibleRelatedTags.tsx";
 import { CompactRecommendations } from "@/components/nekomaid/CompactRecommendations.tsx";
+import {
+  FavoriteArtworkButton,
+  FavoriteTagChip,
+  FollowAuthorButton,
+  FollowTagButton,
+} from "@/components/nekomaid/account/FavoriteButtons.tsx";
 import { NekomaidBreadcrumb } from "@/components/nekomaid/NekomaidBreadcrumb.tsx";
 import {
   type NekomaidSearchFormValue,
@@ -208,15 +214,26 @@ function ArtworkInfoPanel({
           </Button>
         </Stack>
 
+        {/* 收藏作品、追蹤畫師（只在 neko.maid.tw 顯示） */}
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <FavoriteArtworkButton
+            artworkId={artwork.artwork_id}
+            authorId={String(artwork.author_id)}
+            site={itemSite(artwork)}
+          />
+          <FollowAuthorButton
+            authorId={String(artwork.author_id)}
+            site={itemSite(artwork)}
+          />
+        </Stack>
+
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          {/* 標籤：點了連到標籤搜尋，右邊小愛心收藏標籤（只在 neko.maid.tw 有愛心） */}
           {artwork.tags?.map((tag) => (
-            <Chip
+            <FavoriteTagChip
               key={tag}
-              label={tag}
-              component={RouterLink}
+              tag={tag}
               to={nekomaidPath(`?tag=${encodeURIComponent(tag)}`)}
-              clickable
-              size="small"
             />
           ))}
         </Stack>
@@ -295,6 +312,7 @@ function DetailContent({
         authorName={authorName}
         title={artwork.title}
         artworkId={artwork.artwork_id}
+        claimable
       />
       <Box
         id="nekomaid-artwork-viewer"
@@ -573,13 +591,19 @@ function ListPage({
                     : "讀取中"}
               </Typography>
             </Box>
-            <Button
-              component={RouterLink}
-              to={nekomaidPath()}
-              variant="outlined"
-            >
-              清除條件
-            </Button>
+            <Stack direction="row" spacing={1} alignItems="flex-start">
+              {routeSite && routeAuthorId && (
+                <FollowAuthorButton authorId={routeAuthorId} site={routeSite} />
+              )}
+              {tag && <FollowTagButton tag={tag} />}
+              <Button
+                component={RouterLink}
+                to={nekomaidPath()}
+                variant="outlined"
+              >
+                清除條件
+              </Button>
+            </Stack>
           </Stack>
 
           <CollapsibleRelatedTags tags={tags} />

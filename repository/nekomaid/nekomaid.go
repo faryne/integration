@@ -30,14 +30,6 @@ func (r *NekomaidRepository) CheckExists(site enum.NekomaidSite, authorId, artwo
 	return count > 0, err
 }
 
-func (r *NekomaidRepository) CheckForbidden(site enum.NekomaidSite, authorId string) (bool, error) {
-	var count int64
-	err := r.GetDB().Model(&nekomaid.ArtworkForbidden{}).
-		Where("site = ? AND author_id = ?", site, authorId).
-		Count(&count).Error
-	return count > 0, err
-}
-
 func (r *NekomaidRepository) UpdateAuthorNickname(site enum.NekomaidSite, authorId, nickname string) error {
 	author := nekomaid.ArtworkAuthor{
 		Site:     site,

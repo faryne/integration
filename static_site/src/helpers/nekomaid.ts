@@ -67,27 +67,35 @@ export function useR18Confirmed() {
   return useAgeConfirmed();
 }
 
+/** 來源站的作品原始頁網址；不支援的站回空字串（禁抓後台、版權申告也用） */
+export function siteArtworkUrl(site: string, artworkId: string | number) {
+  if (site === "pixiv") return `https://www.pixiv.net/artworks/${artworkId}`;
+  if (site === "nico") return `https://seiga.nicovideo.jp/seiga/${artworkId}`;
+  if (site === "tinami") return `https://www.tinami.com/view/${artworkId}`;
+  return "";
+}
+
+/** 來源站的畫師頁網址；不支援的站回空字串 */
+export function siteAuthorUrl(site: string, authorId: string | number) {
+  if (site === "pixiv") return `https://www.pixiv.net/users/${authorId}`;
+  if (site === "nico")
+    return `https://seiga.nicovideo.jp/user/illust/${authorId}`;
+  if (site === "tinami")
+    return `https://www.tinami.com/creator/profile/${authorId}`;
+  return "";
+}
+
 export function externalArtworkUrl(item: NekomaidArtwork) {
   if (item.artwork_page) return item.artwork_page;
-  const site = itemSite(item);
-  if (site === "pixiv")
-    return `https://www.pixiv.net/artworks/${item.artwork_id}`;
-  if (site === "nico")
-    return `https://seiga.nicovideo.jp/seiga/${item.artwork_id}`;
-  if (site === "tinami")
-    return `https://www.tinami.com/view/${item.artwork_id}`;
-  return item.nekomaid_link ?? "";
+  return (
+    siteArtworkUrl(itemSite(item), item.artwork_id) ||
+    (item.nekomaid_link ?? "")
+  );
 }
 
 export function externalAuthorUrl(item: NekomaidArtwork) {
   if (item.author_page) return item.author_page;
-  const site = itemSite(item);
-  if (site === "pixiv") return `https://www.pixiv.net/users/${item.author_id}`;
-  if (site === "nico") {
-    return `https://seiga.nicovideo.jp/user/illust/${item.author_id}`;
-  }
-  if (site === "tinami") {
-    return `https://www.tinami.com/creator/profile/${item.author_id}`;
-  }
-  return item.nekomaid_link ?? "";
+  return (
+    siteAuthorUrl(itemSite(item), item.author_id) || (item.nekomaid_link ?? "")
+  );
 }

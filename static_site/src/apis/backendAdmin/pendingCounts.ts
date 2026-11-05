@@ -4,6 +4,7 @@ import {
   useAdminGalgameBrands,
   useAdminGalgameVideoSubmissions,
 } from "@/apis/galgame/admin.ts";
+import { usePendingNekomaidClaimCount } from "@/apis/nekomaid/forbiddenAdmin.ts";
 import type { BackendAdminBadge } from "@/data/backendAdminNav.ts";
 
 /**
@@ -18,10 +19,12 @@ export function useBackendAdminPendingCounts(
   // 查詢本身也只在管理者登入時才送出
   const brands = useAdminGalgameBrands("pending", 1, 1, "", enabled);
   const videos = useAdminGalgameVideoSubmissions("pending", 1, 1, enabled);
+  const nekomaidClaims = usePendingNekomaidClaimCount(enabled);
   return {
     avSubmissions: av.data,
     avVideoSubmissions: avVideos.data,
     galgameBrands: brands.data?.total,
     galgameVideos: videos.data?.total,
+    nekomaidClaims: nekomaidClaims.data,
   };
 }

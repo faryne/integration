@@ -1,0 +1,19 @@
+# neko.maid.tw（artworks DB）專用的 sql-migrate 設定；跟主站 migration/config.yml 分開，
+# 避免兩個 DB 的 migration 紀錄混在同一張 migrations 表。
+# 連線字串一律從 NEKOMAID_DSN 環境變數帶入（Makefile 的 mig-*-nekomaid 會從 .env 讀），不寫死在這裡。
+# 注意：本機 .env 的 NEKOMAID_DSN 目前指向 prod（walolita.maid.tw），跑 localhost 一樣會動到 prod。
+localhost:
+  dialect: mysql
+  datasource: ${NEKOMAID_DSN}
+  dir: migration/nekomaid
+  table: migrations
+development:
+  dialect: mysql
+  datasource: ${NEKOMAID_DSN}
+  dir: migration/nekomaid
+  table: migrations
+master:
+  dialect: mysql
+  datasource: ${NEKOMAID_DSN}
+  dir: migration/nekomaid
+  table: migrations

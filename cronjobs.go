@@ -9,6 +9,8 @@ import (
 	erogeService "faryne.dev/service/eroge"
 	"faryne.dev/service/log"
 	"faryne.dev/service/nccc"
+	nekomaidService "faryne.dev/service/nekomaid"
+	nekomaidAccount "faryne.dev/service/nekomaid/account"
 	ratesService "faryne.dev/service/rates"
 	storytellerService "faryne.dev/service/storyteller"
 	storytellerNotifyService "faryne.dev/service/storytellernotify"
@@ -413,6 +415,25 @@ var cronJobs = map[string]cronGroup{
 						log.Logger().Error("tw-stats refresh failed: " + err.Error())
 					}
 				},
+			},
+		},
+	},
+	"nekomaid": {
+		Enabled: true,
+		Jobs: []cronJobConfig{
+			{
+				// 禁抓名單異動後同步 ES：新增禁抓→拉掉、解除→回補；只動 ES，函式內只在 production 執行
+				Name:     "nekomaid-forbidden-sync",
+				Schedule: "*/5 * * * *",
+				Enabled:  true,
+				Handler:  nekomaidService.RunForbiddenSync,
+			},
+			{
+				// 驗證信寄出超過 24 小時仍未驗證的帳號 soft delete（不分新舊帳號；從沒寄過驗證信的舊帳號不受影響）
+				Name:     "nekomaid-unverified-cleanup",
+				Schedule: "30 4 * * *",
+				Enabled:  true,
+				Handler:  nekomaidAccount.RunUnverifiedCleanup,
 			},
 		},
 	},

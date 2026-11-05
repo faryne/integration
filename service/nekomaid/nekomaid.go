@@ -22,8 +22,6 @@ import (
 	"faryne.dev/model/enum"
 	repo "faryne.dev/repository/nekomaid"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	s3config "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/disintegration/imaging"
@@ -100,13 +98,7 @@ func UploadImage(site enum.NekomaidSite, authorId, artworkId string, reader *htt
 	o.Original = o.Raw
 
 	cfg := config.EnvConfig()
-	// s3 client
-	s3creds := credentials.NewStaticCredentialsProvider(cfg.NekomaidS3Key, cfg.NekomaidS3Secret, "")
-	s3cfg, _ := s3config.LoadDefaultConfig(context.TODO(),
-		s3config.WithRegion(cfg.S3Region),
-		s3config.WithCredentialsProvider(s3creds),
-	)
-	s3Client := s3.NewFromConfig(s3cfg)
+	s3Client := newS3Client(context.TODO())
 
 	// 處理縮圖
 	if idx == 0 {
@@ -226,12 +218,7 @@ func UploadUgoira(site enum.NekomaidSite, artworkId string, webmData, zipData []
 	hashId := hex.EncodeToString(m.Sum(nil))[0:5]
 
 	cfg := config.EnvConfig()
-	s3creds := credentials.NewStaticCredentialsProvider(cfg.NekomaidS3Key, cfg.NekomaidS3Secret, "")
-	s3cfg, _ := s3config.LoadDefaultConfig(context.TODO(),
-		s3config.WithRegion(cfg.S3Region),
-		s3config.WithCredentialsProvider(s3creds),
-	)
-	s3Client := s3.NewFromConfig(s3cfg)
+	s3Client := newS3Client(context.TODO())
 
 	webmKey := ugoiraObjectKey(site, artworkId, fmt.Sprintf("%s_%s.webm", artworkId, hashId))
 	zipKey := ugoiraObjectKey(site, artworkId, fmt.Sprintf("%s_%s.zip", artworkId, hashId))
@@ -302,43 +289,6 @@ func UploadUgoira(site enum.NekomaidSite, artworkId string, webmData, zipData []
 	return o, thumb, nil
 }
 
-func DeleteImages(ctx context.Context, photos []nekomaid.ArtworkPhoto, thumb string) {
-	cfg := config.EnvConfig()
-	s3creds := credentials.NewStaticCredentialsProvider(cfg.S3AccessKey, cfg.S3SecretKey, "")
-	s3cfg, _ := s3config.LoadDefaultConfig(ctx,
-		s3config.WithRegion(cfg.S3Region),
-		s3config.WithCredentialsProvider(s3creds),
-	)
-	s3Client := s3.NewFromConfig(s3cfg)
-
-	// 刪除主圖片
-	for _, p := range photos {
-		if p.Filename != "" {
-			_, _ = s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
-				Bucket: aws.String(cfg.NekomaidBucket),
-				Key:    aws.String(p.Filename),
-			})
-		}
-		if originalKey := s3KeyFromURL(p.Original); strings.HasPrefix(originalKey, "ugoira/") {
-			_, _ = s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
-				Bucket: aws.String(cfg.NekomaidBucket),
-				Key:    aws.String(originalKey),
-			})
-		}
-	}
-
-	// 刪除縮圖
-	if thumb != "" {
-		thumbKey := s3KeyFromURL(thumb)
-		if thumbKey != "" {
-			_, _ = s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
-				Bucket: aws.String(cfg.NekomaidBucket),
-				Key:    aws.String(thumbKey),
-			})
-		}
-	}
-}
-
 func getDomain() string {
 	return domains[rand.Intn(len(domains))]
 }
@@ -377,7 +327,7 @@ func (r *Retriever) RetrieveAndSave(ctx context.Context, site enum.NekomaidSite,
 	}
 
 	// 3. 判斷是否為不能抓取的項目
-	forbidden, err := r.repository.CheckForbidden(site, artwork.AuthorId)
+	forbidden, err := repo.NewForbiddenRepository().IsForbidden(site, artwork.AuthorId, artwork.ArtworkId)
 	if err != nil {
 		cleanup()
 		return "", err
