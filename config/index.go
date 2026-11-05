@@ -72,6 +72,10 @@ type envConfig struct {
 	// NekomaidFirebaseAPIKey neko 帳號用的 Firebase 專案 Web API Key：註冊、登入、寄信全部由後端打
 	// Identity Toolkit REST API（不需要管理者金鑰，前端也不載入 Firebase 登入 SDK）
 	NekomaidFirebaseAPIKey string `env:"NEKOMAID_FIREBASE_API_KEY"`
+	// NekomaidAccountEnabled neko 帳號與我的追蹤的總開關：關閉時不註冊 /nekomaid/auth/*、/nekomaid/me/*，
+	// 未驗證帳號清除排程也不跑。Firebase 動作網址設定不了（EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED）之前先關著，
+	// 禁抓與版權申告不受影響
+	NekomaidAccountEnabled bool `env:"NEKOMAID_ACCOUNT_ENABLED,default=false"`
 	// NekomaidFirebaseAuthEndpoint Identity Toolkit 的網址；本機用 Firebase Auth 模擬器時改成
 	// http://localhost:9099/identitytoolkit.googleapis.com
 	NekomaidFirebaseAuthEndpoint string `env:"NEKOMAID_FIREBASE_AUTH_ENDPOINT,default=https://identitytoolkit.googleapis.com"`
