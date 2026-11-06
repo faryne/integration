@@ -13,19 +13,19 @@ build-linux-arm:
 
 build-frontend:
 	cd static_site; \
-	VITE_API_BASE=https://faryne.dev/api-integration pnpm build && \
+	VITE_API_BASE=https://faryne.dev/api pnpm build && \
 	pnpm deploy:main && \
 	cd ..
 
 build-frontend-galgame:
 	cd static_site; \
-	VITE_API_BASE=https://faryne.dev/api-integration pnpm build && \
+	VITE_API_BASE=https://galgame.tv/api pnpm build && \
 	pnpm deploy:galgame && \
 	cd ..
 
 build-frontend-nekomaid:
 	cd static_site; \
-	VITE_API_BASE=https://faryne.dev/api-integration pnpm build && \
+	VITE_API_BASE=https://neko.maid.tw/api pnpm build && \
 	pnpm deploy:nekomaid && \
 	cd ..
 

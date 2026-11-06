@@ -15,8 +15,7 @@ import (
 //
 // Skill 的公開下載也掛在這裡：steamloom.works 的 nginx 把整個 /mcp 前綴改寫成 /storyteller-mcp
 // （httpd_conf/nginx 的 location /mcp），對外網址就是 https://steamloom.works/mcp/skill.md；
-// faryne.dev 則走 /api-integration/storyteller-mcp/skill.md。steamloom.works 沒有 /api-integration，
-// 那個前綴只會落到前端首頁。這幾條（SKILL.md、ZIP、兩支安裝程式）是 GET、不掛 storytellerbearer，不需要登入。
+// faryne.dev 則走 /api/storyteller-mcp/skill.md（舊的 /api-integration/ 前綴也通）。這幾條（SKILL.md、ZIP、兩支安裝程式）是 GET、不掛 storytellerbearer，不需要登入。
 func StorytellerMCP(app *fiber.App) {
 	app.Post("/storyteller-mcp", storytellerbearer.New(), storytellermcp.Handle)
 	app.Get("/storyteller-mcp/skill.md", storytellermcp.SkillMarkdown)

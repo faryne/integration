@@ -23,7 +23,7 @@ upstream faryne_api {
 # 檔案在 repo 的 httpd_conf/snippets/cloudflare_real_ip.conf，部署時複製到 /etc/nginx/snippets/。
 include /etc/nginx/snippets/cloudflare_real_ip.conf;
 
-# 一般 combined 格式最後多記 Origin：觀察有哪些網站還在跨站呼叫 /api-integration，CORS 收斂前用來確認白名單
+# 一般 combined 格式最後多記 Origin：查有哪些網站跨站呼叫 /api-integration；CORS 收斂後用來找被白名單擋掉的合法來源
 log_format with_origin '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent '
                        '"$http_referer" "$http_user_agent" "$http_origin"';
 

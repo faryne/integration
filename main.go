@@ -29,7 +29,6 @@ import (
 	storytellerNotify "faryne.dev/service/storytellernotify"
 	"faryne.dev/service/validation"
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/logger"
 	recover2 "github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/joho/godotenv"
@@ -317,9 +316,7 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	})
 	app.Use(recover2.New())
 	app.Use(logger.New())
-	app.Use(cors.New(cors.Config{
-		ExposeHeaders: []string{"X-Session-Expires-At"},
-	}))
+	app.Use(corsMiddleware())
 	app.Use(storytellerAuditMiddleware.NewRequestContext())
 	app.Use(maintenanceMiddleware())
 	// <editor-fold desc="">
