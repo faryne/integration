@@ -10,6 +10,7 @@ import (
 	avRepo "faryne.dev/repository/av"
 	authService "faryne.dev/service/auth"
 	"faryne.dev/service/client"
+	"faryne.dev/service/search"
 )
 
 const (
@@ -147,9 +148,9 @@ func ActressTopicOptionsFor(ctx context.Context, userID uint64) (avEntity.Actres
 	body := map[string]any{
 		"size":  0,
 		"query": actressDomainQuery(actressSearchDomains),
-		"aggs":  map[string]any{"cities": termsAgg("born_city.keyword", 500)},
+		"aggs":  map[string]any{"cities": search.TermsAgg("born_city.keyword", 500)},
 	}
-	if err := esSearch(ctx, actressIndexName(), body, &res); err != nil {
+	if err := search.Raw(ctx, actressIndexName(), body, &res); err != nil {
 		return out, err
 	}
 	out.BornCities = make([]avEntity.ActressTopicOption, 0, len(res.Aggregations.Cities.Buckets))

@@ -1,21 +1,12 @@
 package av
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 
-	"faryne.dev/config"
 	avEntity "faryne.dev/model/entity/opendata/av"
-	"faryne.dev/model/enum"
 	avRepo "faryne.dev/repository/av"
-	"faryne.dev/service/client"
 )
-
-// topicCompositePageSize composite aggregation 每頁的桶數；prod 一次要 9,000 個桶會回 503，分頁才穩
-const topicCompositePageSize = 1000
 
 // loadActressTopicProfiles 從 MySQL 讀全部 xcity＋manual 女優（info 已套用過覆寫），算好星座，再補上出演統計
 func loadActressTopicProfiles(ctx context.Context) ([]actressTopicProfile, error) {
@@ -49,93 +40,38 @@ func loadActressTopicProfiles(ctx context.Context) ([]actressTopicProfile, error
 
 // actressStatsByName 全部影片依出演者分組：部數、最早／最晚配信日（含總集編，跟女優頁一致）
 func actressStatsByName(ctx context.Context) (map[string]actressVideoStats, error) {
-	return compositeByActress(ctx, nil, true)
+	return statsByActressBaseName(ctx, avEntity.VideoStatsFilter{}, true)
 }
 
-// actressStatsByRow 單一位女優的統計，條件跟女優頁（本名那一頁）的出演影片相同（actressVideoQuery）
+// actressStatsByRow 單一位女優的統計，條件跟女優頁（本名那一頁）的出演影片相同（actressVideoFilter）
 func actressStatsByRow(ctx context.Context, row avEntity.DMMActress) (actressVideoStats, error) {
-	query, err := actressVideoQuery(row, row.Name)
+	f, err := actressVideoFilter(row, row.Name)
 	if err != nil {
 		return actressVideoStats{}, err
 	}
-	var out struct {
-		Hits struct {
-			Total struct {
-				Value int `json:"value"`
-			} `json:"total"`
-		} `json:"hits"`
-		Aggregations struct {
-			First, Last topicDateAgg
-		} `json:"aggregations"`
-	}
-	body := map[string]any{"size": 0, "track_total_hits": true, "query": query, "aggs": topicDateAggs()}
-	if err := esVideoSearch(ctx, body, &out); err != nil {
-		return actressVideoStats{}, err
-	}
-	return actressVideoStats{Count: out.Hits.Total.Value, First: out.Aggregations.First.ValueAsString, Last: out.Aggregations.Last.ValueAsString}, nil
+	s, err := avRepo.NewVideoIndex().DateStats(ctx, avEntity.VideoIndexQuery{Actress: &f})
+	return actressVideoStats(s), err
 }
 
-// topicDateAgg min／max 聚合的結果；沒有影片時 value_as_string 不存在，維持空字串
-type topicDateAgg struct {
-	ValueAsString string `json:"value_as_string"`
-}
-
-func topicDateAggs() map[string]any {
-	return map[string]any{
-		"first": map[string]any{"min": map[string]any{"field": "vod_date", "format": "yyyy/MM/dd"}},
-		"last":  map[string]any{"max": map[string]any{"field": "vod_date", "format": "yyyy/MM/dd"}},
+// statsByActressBaseName 依出演者分組統計，名字用 actressBaseName 去掉別名後合併（「名字」和「名字（別名…）」算同一位）
+func statsByActressBaseName(ctx context.Context, f avEntity.VideoStatsFilter, withDates bool) (map[string]actressVideoStats, error) {
+	rows, err := avRepo.NewVideoIndex().StatsByActress(ctx, f, withDates)
+	if err != nil {
+		return nil, err
 	}
-}
-
-// compositeByActress 以 actresses.keyword 分組跑 composite aggregation（分頁），名字用 actressBaseName 去掉別名後合併。
-// filter 為 nil 時看全部影片；withDates 才另外取最早／最晚配信日（類型統計只要部數）
-func compositeByActress(ctx context.Context, filter map[string]any, withDates bool) (map[string]actressVideoStats, error) {
 	out := map[string]actressVideoStats{}
-	var after map[string]any
-	for {
-		composite := map[string]any{"size": topicCompositePageSize, "sources": []any{map[string]any{"name": map[string]any{"terms": map[string]any{"field": "actresses.keyword"}}}}}
-		if after != nil {
-			composite["after"] = after
+	for _, b := range rows {
+		name := actressBaseName(b.Name)
+		if name == "" {
+			continue
 		}
-		agg := map[string]any{"composite": composite}
-		if withDates {
-			agg["aggs"] = topicDateAggs()
-		}
-		body := map[string]any{"size": 0, "aggs": map[string]any{"a": agg}}
-		if filter != nil {
-			body["query"] = filter
-		}
-		var res struct {
-			Aggregations struct {
-				A struct {
-					AfterKey map[string]any `json:"after_key"`
-					Buckets  []struct {
-						Key         struct{ Name string } `json:"key"`
-						DocCount    int                   `json:"doc_count"`
-						First, Last topicDateAgg
-					} `json:"buckets"`
-				} `json:"a"`
-			} `json:"aggregations"`
-		}
-		if err := esVideoSearch(ctx, body, &res); err != nil {
-			return nil, err
-		}
-		for _, b := range res.Aggregations.A.Buckets {
-			name := actressBaseName(b.Key.Name)
-			if name == "" {
-				continue
-			}
-			s := out[name]
-			s.Count += b.DocCount
-			s.First = minDate(s.First, b.First.ValueAsString)
-			s.Last = max(s.Last, b.Last.ValueAsString)
-			out[name] = s
-		}
-		if len(res.Aggregations.A.Buckets) < topicCompositePageSize || res.Aggregations.A.AfterKey == nil {
-			return out, nil
-		}
-		after = res.Aggregations.A.AfterKey
+		s := out[name]
+		s.Count += b.Count
+		s.First = minDate(s.First, b.First)
+		s.Last = max(s.Last, b.Last)
+		out[name] = s
 	}
+	return out, nil
 }
 
 // minDate 取較早的日期，空字串視為沒有資料（vod_date 格式可以直接比字串）
@@ -144,34 +80,4 @@ func minDate(a, b string) string {
 		return b
 	}
 	return a
-}
-
-// esVideoSearch 對 dmmvideos 送一個查詢，整包回應解到 out
-func esVideoSearch(ctx context.Context, body map[string]any, out any) error {
-	return esSearch(ctx, config.EnvConfig().DMMVideoIndex, body, out)
-}
-
-// esSearch 對指定索引送一個查詢（主題排程與管理頁的聚合用），整包回應解到 out
-func esSearch(ctx context.Context, index string, body map[string]any, out any) error {
-	es := client.GetElasticSearch(enum.ESDefault)
-	if es == nil {
-		return fmt.Errorf("elasticsearch client is not initialized")
-	}
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return err
-	}
-	resp, err := es.Search(es.Search.WithContext(ctx), es.Search.WithIndex(index), es.Search.WithBody(bytes.NewReader(buf)))
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	raw, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	if resp.IsError() {
-		return fmt.Errorf("search %s failed: status=%s body=%.300s", index, resp.Status(), raw)
-	}
-	return json.Unmarshal(raw, out)
 }

@@ -49,7 +49,7 @@ func AvVideoSearch(ctx fiber.Ctx) error {
 	if err != nil {
 		return output.New(http.StatusInternalServerError, "", nil, err.Error())
 	}
-	return output.Success(serviceHelper.ResultPaginate(ctx, rows, r.Hits.Total.Value))
+	return output.Success(serviceHelper.ResultPaginate(ctx, rows, r.Total))
 }
 
 // AvVideoFacets counts common tags, makers, series and actresses under the current video search conditions.

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"faryne.dev/config"
 	avEntity "faryne.dev/model/entity/opendata/av"
 	avRepo "faryne.dev/repository/av"
 	authService "faryne.dev/service/auth"
@@ -89,8 +88,8 @@ func resolveVideoTarget(ctx context.Context, req avEntity.VideoSubmitRequest) (i
 	}
 	var byNo, all []int
 	nos := map[int]string{}
-	for _, hit := range r.Hits.Hits {
-		vid, err := strconv.Atoi(hit.Id)
+	for _, hit := range r.Hits {
+		vid, err := strconv.Atoi(hit.ID)
 		if err != nil || slices.Contains(all, vid) {
 			continue
 		}
@@ -114,7 +113,7 @@ func resolveVideoTarget(ctx context.Context, req avEntity.VideoSubmitRequest) (i
 		}
 		return 0, nil, fmt.Errorf("%w：%s", ErrVideoTargetAmbiguous, strings.Join(list, "、"))
 	}
-	srcs, err := getVideoSources(ctx, []int{vid})
+	srcs, err := avRepo.NewVideoIndex().Sources(ctx, []int{vid})
 	if err != nil {
 		return 0, nil, err
 	}
@@ -129,27 +128,9 @@ func resolveVideoTarget(ctx context.Context, req avEntity.VideoSubmitRequest) (i
 func videoNewValues(ctx context.Context, before, after avEntity.VideoFields) (map[string][]string, error) {
 	out := map[string][]string{}
 	for field, added := range addedTerms(before, after) {
-		var res struct {
-			Aggregations struct {
-				Values struct {
-					Buckets []struct {
-						Key string `json:"key"`
-					} `json:"buckets"`
-				} `json:"values"`
-			} `json:"aggregations"`
-		}
-		key := field + ".keyword"
-		body := map[string]any{
-			"size":  0,
-			"query": map[string]any{"terms": map[string]any{key: added}},
-			"aggs":  map[string]any{"values": map[string]any{"terms": map[string]any{"field": key, "include": added, "size": len(added)}}},
-		}
-		if err := esSearch(ctx, config.EnvConfig().DMMVideoIndex, body, &res); err != nil {
+		existing, err := avRepo.NewVideoIndex().ExistingTerms(ctx, field, added)
+		if err != nil {
 			return nil, err
-		}
-		existing := map[string]bool{}
-		for _, b := range res.Aggregations.Values.Buckets {
-			existing[b.Key] = true
 		}
 		for _, v := range added {
 			if !existing[v] {
@@ -200,8 +181,8 @@ func makerNoTaken(vid int, makerNo string) ([]avEntity.VideoRef, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, hit := range r.Hits.Hits {
-		if id, _ := strconv.Atoi(hit.Id); id != vid && strings.EqualFold(hit.Source.MakerNo, makerNo) {
+	for _, hit := range r.Hits {
+		if id, _ := strconv.Atoi(hit.ID); id != vid && strings.EqualFold(hit.Source.MakerNo, makerNo) {
 			out = append(out, avEntity.VideoRef{No: hit.Source.No, MakerNo: hit.Source.MakerNo, Title: hit.Source.Title})
 		}
 	}
@@ -245,7 +226,7 @@ func ListVideoSubmissions(ctx context.Context, userID uint64, req avEntity.Video
 			vids = append(vids, sub.TargetVid)
 		}
 	}
-	srcs, err := getVideoSources(ctx, vids)
+	srcs, err := avRepo.NewVideoIndex().Sources(ctx, vids)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -271,7 +252,7 @@ func GetVideoSubmission(ctx context.Context, userID, id uint64) (*avEntity.Video
 	if err != nil {
 		return nil, err
 	}
-	srcs, err := getVideoSources(ctx, []int{sub.TargetVid})
+	srcs, err := avRepo.NewVideoIndex().Sources(ctx, []int{sub.TargetVid})
 	if err != nil {
 		return nil, err
 	}

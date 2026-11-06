@@ -4,6 +4,9 @@ import (
 	"context"
 	"slices"
 	"strings"
+
+	avEntity "faryne.dev/model/entity/opendata/av"
+	avRepo "faryne.dev/repository/av"
 )
 
 const (
@@ -43,24 +46,14 @@ type topicTagCount struct {
 
 // fetchGenreTags 全部影片的標籤 facet（依部數由多到少），只留可以當作類型的標籤；標籤約 500 種，一次就拿得完
 func fetchGenreTags(ctx context.Context) ([]topicTagCount, error) {
-	var res struct {
-		Aggregations struct {
-			Tags struct {
-				Buckets []struct {
-					Key      string `json:"key"`
-					DocCount int    `json:"doc_count"`
-				} `json:"buckets"`
-			} `json:"tags"`
-		} `json:"aggregations"`
-	}
-	body := map[string]any{"size": 0, "aggs": map[string]any{"tags": map[string]any{"terms": map[string]any{"field": "tags.keyword", "size": 2000}}}}
-	if err := esVideoSearch(ctx, body, &res); err != nil {
+	tags, err := avRepo.NewVideoIndex().Terms(ctx, "tags", 2000)
+	if err != nil {
 		return nil, err
 	}
 	var out []topicTagCount
-	for _, b := range res.Aggregations.Tags.Buckets {
-		if isGenreTag(b.Key) {
-			out = append(out, topicTagCount{b.Key, b.DocCount})
+	for _, b := range tags {
+		if isGenreTag(b.Value) {
+			out = append(out, topicTagCount{b.Value, b.Count})
 		}
 	}
 	return out, nil
@@ -80,11 +73,7 @@ func (g *genreCounter) get(tag string) (map[string]int, error) {
 	if c, ok := g.counts[tag]; ok {
 		return c, nil
 	}
-	filter := map[string]any{"bool": map[string]any{
-		"filter":   []any{map[string]any{"term": map[string]any{"tags.keyword": tag}}},
-		"must_not": []any{map[string]any{"term": map[string]any{"tags.keyword": topicCompilationTag}}},
-	}}
-	stats, err := compositeByActress(g.ctx, filter, false)
+	stats, err := statsByActressBaseName(g.ctx, avEntity.VideoStatsFilter{Tag: tag, ExcludeTag: topicCompilationTag}, false)
 	if err != nil {
 		return nil, err
 	}

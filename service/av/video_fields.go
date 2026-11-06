@@ -206,7 +206,7 @@ func sourceStrings(v any) []string {
 
 // applyVideoValues 把 values（json key → 值）裡指定的欄位寫進 ES 文件。
 // 出演改過時重新對齊 actress_ids，但原本沒有 actress_ids 的舊片維持沒有：
-// 女優頁靠「沒有 actress_ids」把舊片算給對照表裡的同名女優（見 actressVideoQuery），補上空陣列影片就會從她的頁面消失
+// 女優頁靠「沒有 actress_ids」把舊片算給對照表裡的同名女優（見 actressVideoFilter），補上空陣列影片就會從她的頁面消失
 func applyVideoValues(src map[string]any, values map[string]any, keys []string) {
 	oldNames := sourceStrings(src["actresses"])
 	for _, k := range keys {

@@ -10,8 +10,7 @@ import (
 // 或全半形混用「江波りゅう（RYU)」；別名之間用「、」分隔。
 // 女優頁、主題頁統計都靠下面這組規則把「名字」和「名字（別名…）」當成同一位。
 
-// actressAliasOpeners 名字後面接這些字串，就是開始寫別名
-var actressAliasOpeners = []string{"（", "(", " （", " ("}
+// 「名字後面接哪些字串就是開始寫別名」的清單在 av.ActressAliasOpeners（影片索引查詢也要用）
 
 // actressBaseName 去掉括號裡的別名，只留本名；沒有括號就原樣（去頭尾空白）回傳
 func actressBaseName(name string) string {
@@ -44,15 +43,4 @@ func mergeActressAliases(name string, groups ...[]string) []string {
 		}
 	}
 	return out
-}
-
-// actressNameVideoQuery 影片出演者是這個名字：完全相符，或是「名字（別名…）」的寫法。
-// prefix 只掃 keyword 的 term dictionary（全站約 5 萬個名字），成本跟 term 差不多；
-// 一定要緊接括號，「あい」才不會撈到「あいり」
-func actressNameVideoQuery(name string) map[string]any {
-	should := []map[string]any{{"term": map[string]any{"actresses.keyword": name}}}
-	for _, opener := range actressAliasOpeners {
-		should = append(should, map[string]any{"prefix": map[string]any{"actresses.keyword": name + opener}})
-	}
-	return map[string]any{"bool": map[string]any{"should": should, "minimum_should_match": 1}}
 }

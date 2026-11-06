@@ -1,0 +1,39 @@
+package av
+
+import (
+	"context"
+
+	"faryne.dev/model/entity/opendata/av"
+	"faryne.dev/repository/search"
+)
+
+// VideoIndex AV 影片的搜尋索引（dmmvideos）。所有讀寫都經過這裡，換搜尋引擎（ES → Manticore）時只換實作，
+// service／controller 不用動。介面上不能出現任何 ES 的概念（DSL、refresh、_id 字串…），詳見
+// DevelopDocuments/search/搜尋引擎抽象層與Manticore_2026-11-06.md
+type VideoIndex interface {
+	// Search 一頁 30 筆，依配信日由新到舊；Shuffle 時改成隨機排序
+	Search(ctx context.Context, q av.VideoIndexQuery) (search.Page[av.RawVideo], error)
+	// Facets 目前條件下常見的標籤／發售商／系列／出演
+	Facets(ctx context.Context, q av.VideoIndexQuery) (av.VideoFacets, error)
+	// DateStats 符合條件的影片部數與最早／最晚配信日
+	DateStats(ctx context.Context, q av.VideoIndexQuery) (av.VideoStats, error)
+	// StatsByActress 全部影片依出演者名字分組統計；withDates 才算最早／最晚配信日
+	StatsByActress(ctx context.Context, f av.VideoStatsFilter, withDates bool) ([]av.VideoActressStats, error)
+	// Terms 欄位值依作品數由多到少（不含空字串）；contains 有值時只留包含其中任一個子字串的值
+	Terms(ctx context.Context, field string, size int, contains ...string) ([]av.VideoFacetBucket, error)
+	// ExistingTerms values 裡哪些值至少有一部影片用過
+	ExistingTerms(ctx context.Context, field string, values []string) (map[string]bool, error)
+	// Sources 依 vid 取原始文件（找不到的不會出現在結果裡）；用 map 是因為整份寫回時不能弄丟 RawVideo 沒定義的欄位
+	Sources(ctx context.Context, vids []int) (map[int]map[string]any, error)
+	// Index 整份寫入（覆蓋）一部影片；waitVisible 為 true 時要等寫入後馬上查得到才回傳
+	Index(ctx context.Context, vid int, doc any, waitVisible bool) error
+	// MarkOrphan 把這些影片標成 orphan（寫入後馬上查得到）
+	MarkOrphan(ctx context.Context, vids []int) error
+	// NextDelistedVids 下一批還沒標 orphan 的下架影片（一次性回補工具用，見 service/av/video_orphan_delisted.go）
+	NextDelistedVids(ctx context.Context, size int) ([]int, error)
+}
+
+// NewVideoIndex 目前只有 ES 實作；Manticore adapter 與依設定切換在規格 P1 加入
+func NewVideoIndex() VideoIndex {
+	return videoIndexES{}
+}
