@@ -41,10 +41,8 @@ type envConfig struct {
 	// prod 要寄真的信才設成 ses；之後換 Mailgun 等服務時在 service/mail 加 driver。
 	MailDriver      string `env:"MAIL_DRIVER,default=log"`
 	MailDefaultFrom string `env:"MAIL_DEFAULT_FROM"`
-	// SES 設定：憑證優先用 SES_AWS_ACCESS_KEY／SECRET，沒設就走 AWS 預設憑證鏈；configuration set 選填（追蹤退信／投訴用）
-	SESRegion           string `env:"SES_REGION,default=ap-northeast-1"`
-	SESAWSAccessKey     string `env:"SES_AWS_ACCESS_KEY"`
-	SESAWSSecretKey     string `env:"SES_AWS_SECRET_KEY"`
+	// SES 跟 S3 共用 S3_ACCESS_KEY／S3_SECRET_KEY／S3_REGION（SES 權限直接掛在那把 key 上）；
+	// configuration set 選填（追蹤退信／投訴用）
 	SESConfigurationSet string `env:"SES_CONFIGURATION_SET"`
 
 	// MaintenanceMode 手動維護開關；有設 MaintenanceStart／MaintenanceEnd 任一個時，
