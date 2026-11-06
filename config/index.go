@@ -37,6 +37,16 @@ type envConfig struct {
 	AuditAWSAccessKey          string `env:"AUDIT_AWS_ACCESS_KEY"`
 	AuditAWSSecretKey          string `env:"AUDIT_AWS_SECRET_KEY"`
 
+	// 共用寄信服務（service/mail）。MAIL_DRIVER：log（預設，只寫 log 不寄出，本機用）／ses。
+	// prod 要寄真的信才設成 ses；之後換 Mailgun 等服務時在 service/mail 加 driver。
+	MailDriver      string `env:"MAIL_DRIVER,default=log"`
+	MailDefaultFrom string `env:"MAIL_DEFAULT_FROM"`
+	// SES 設定：憑證優先用 SES_AWS_ACCESS_KEY／SECRET，沒設就走 AWS 預設憑證鏈；configuration set 選填（追蹤退信／投訴用）
+	SESRegion           string `env:"SES_REGION,default=ap-northeast-1"`
+	SESAWSAccessKey     string `env:"SES_AWS_ACCESS_KEY"`
+	SESAWSSecretKey     string `env:"SES_AWS_SECRET_KEY"`
+	SESConfigurationSet string `env:"SES_CONFIGURATION_SET"`
+
 	// MaintenanceMode 手動維護開關；有設 MaintenanceStart／MaintenanceEnd 任一個時，
 	// 改用時間區間判斷是否進維護模式，MaintenanceMode 這個值會被忽略。
 	MaintenanceMode  bool   `env:"MAINTENANCE_MODE,default=false"`
