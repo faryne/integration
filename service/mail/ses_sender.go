@@ -21,11 +21,11 @@ type sesSender struct {
 
 func newSESSender(ctx context.Context) (sender, error) {
 	cfg := config.EnvConfig()
-	options := []func(*awsconfig.LoadOptions) error{awsconfig.WithRegion(cfg.SESRegion)}
-	// 憑證優先用 SES_AWS_ACCESS_KEY／SECRET；沒設就走 AWS 預設憑證鏈（例如 EC2 instance role）
-	if cfg.SESAWSAccessKey != "" && cfg.SESAWSSecretKey != "" {
+	// 跟 S3 共用同一把 key 與 region（SES 權限掛在那把 key 上）；沒設 key 就走 AWS 預設憑證鏈
+	options := []func(*awsconfig.LoadOptions) error{awsconfig.WithRegion(cfg.S3Region)}
+	if cfg.S3AccessKey != "" && cfg.S3SecretKey != "" {
 		options = append(options, awsconfig.WithCredentialsProvider(
-			credentials.NewStaticCredentialsProvider(cfg.SESAWSAccessKey, cfg.SESAWSSecretKey, "")))
+			credentials.NewStaticCredentialsProvider(cfg.S3AccessKey, cfg.S3SecretKey, "")))
 	}
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, options...)
 	if err != nil {
