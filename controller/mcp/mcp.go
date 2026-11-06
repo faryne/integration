@@ -22,8 +22,10 @@ func Handle(ctx fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	// 通知（沒有 id，例如 notifications/initialized）不用回 JSON-RPC 回應；
+	// MCP Streamable HTTP 規格要求回 202 Accepted、不帶 body
 	if !shouldReply {
-		return ctx.SendStatus(http.StatusNoContent)
+		return ctx.SendStatus(http.StatusAccepted)
 	}
 	return ctx.JSON(resp)
 }
