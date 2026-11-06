@@ -13,10 +13,7 @@ import (
 const topicDateLayout = "2006/01/02"
 
 // actressVideoStats 一位女優的出演統計（含總集編，跟女優頁的出演影片一致）
-type actressVideoStats struct {
-	Count       int
-	First, Last string // vod_date，沒有影片時是空字串
-}
+type actressVideoStats avEntity.VideoStats
 
 // actressTopicProfile 套用主題條件時看的一位女優：資料欄位＋推算的星座＋出演統計
 type actressTopicProfile struct {

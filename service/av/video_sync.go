@@ -1,12 +1,10 @@
 package av
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"slices"
 	"strconv"
 	"strings"
@@ -14,9 +12,7 @@ import (
 
 	"faryne.dev/config"
 	avEntity "faryne.dev/model/entity/opendata/av"
-	"faryne.dev/model/enum"
 	avRepo "faryne.dev/repository/av"
-	"faryne.dev/service/client"
 	"faryne.dev/service/dmm"
 	"faryne.dev/service/log"
 	"go.uber.org/zap"
@@ -85,8 +81,8 @@ func videoWritesAllowed() bool {
 	return cfg.IsProduction() || cfg.DMMVideoIndex != "dmmvideos"
 }
 
-// persistVideos 先整頁 upsert 進 MySQL 取得 id，再逐筆寫 ES。
-// waitVisible 為 true 時每筆都等 ES refresh 後才回傳（單筆同步要馬上查得到）；批次同步不等，避免拖慢
+// persistVideos 先整頁 upsert 進 MySQL 取得 id，再逐筆寫搜尋索引。
+// waitVisible 為 true 時每筆都等寫入後查得到才回傳（單筆同步要馬上查得到）；批次同步不等，避免拖慢
 func persistVideos(ctx context.Context, repo *avRepo.RepositoryDMMVideo, videos []dmm.DmmVideo, waitVisible bool) (int, error) {
 	if len(videos) == 0 {
 		return 0, nil
@@ -132,7 +128,7 @@ func persistVideos(ctx context.Context, repo *avRepo.RepositoryDMMVideo, videos 
 		return 0, err
 	}
 
-	indexed := 0
+	idx, indexed := avRepo.NewVideoIndex(), 0
 	for i, v := range videos {
 		id, ok := ids[strings.ToUpper(v.No)]
 		if !ok {
@@ -147,39 +143,12 @@ func persistVideos(ctx context.Context, repo *avRepo.RepositoryDMMVideo, videos 
 			raw, _ := json.Marshal(src)
 			_ = json.Unmarshal(raw, &videos[i])
 		}
-		if err := indexVideo(ctx, id, doc, refreshOption(waitVisible)); err != nil {
+		if err := idx.Index(ctx, id, doc, waitVisible); err != nil {
 			return indexed, err
 		}
 		indexed++
 	}
 	return indexed, nil
-}
-
-// indexVideo 寫一部影片的 ES 文件；document id 固定是 vid（dmm.id），重複寫入就是整份覆蓋
-func indexVideo(ctx context.Context, vid int, doc any, refresh string) error {
-	es := client.GetElasticSearch(enum.ESDefault)
-	if es == nil {
-		return fmt.Errorf("elasticsearch client is not initialized")
-	}
-	body, err := json.Marshal(doc)
-	if err != nil {
-		return err
-	}
-	resp, err := es.Index(
-		config.EnvConfig().DMMVideoIndex,
-		bytes.NewReader(body),
-		es.Index.WithContext(ctx),
-		es.Index.WithDocumentID(strconv.Itoa(vid)),
-		es.Index.WithRefresh(refresh),
-	)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return fmt.Errorf("index dmm video failed: status=%s vid=%d", resp.Status(), vid)
-	}
-	return nil
 }
 
 func truncateRunes(s string, n int) string {
@@ -236,48 +205,25 @@ func markVideoOrphanOrLog(ctx context.Context, no string) {
 	}
 }
 
-// markVideoOrphan 依內部番號找出 ES 文件（vid＝dmm.id），把 MySQL 與 ES 都標成 orphan
+// markVideoOrphan 依內部番號找出影片（vid＝dmm.id），把 MySQL 與搜尋索引都標成 orphan
 func markVideoOrphan(ctx context.Context, no string) error {
 	if !videoWritesAllowed() {
 		return ErrVideoWritesDisabled
 	}
 	r, _, err := VideoSearch(avEntity.VideoQueryRequest{No: no, Page: 1})
-	if err != nil || r == nil {
+	if err != nil {
 		return err
 	}
-	ids := make([]int, 0, len(r.Hits.Hits))
-	for _, hit := range r.Hits.Hits {
-		ids = append(ids, hit.Source.Vid)
+	// MySQL 用文件裡的 vid，索引用文件 ID（兩者照規則相同，沿用原本的寫法）
+	vids, docIDs := make([]int, 0, len(r.Hits)), make([]int, 0, len(r.Hits))
+	for _, hit := range r.Hits {
+		vids = append(vids, hit.Source.Vid)
+		if id, err := strconv.Atoi(hit.ID); err == nil {
+			docIDs = append(docIDs, id)
+		}
 	}
-	if err := avRepo.NewDMMVideo().MarkOrphan(ids); err != nil {
+	if err := avRepo.NewDMMVideo().MarkOrphan(vids); err != nil {
 		return err
 	}
-	es := client.GetElasticSearch(enum.ESDefault)
-	if es == nil {
-		return fmt.Errorf("elasticsearch client is not initialized")
-	}
-	for _, hit := range r.Hits.Hits {
-		resp, err := es.Update(
-			config.EnvConfig().DMMVideoIndex,
-			hit.Id,
-			strings.NewReader(`{"doc":{"is_orphan":true}}`),
-			es.Update.WithContext(ctx),
-			es.Update.WithRefresh("wait_for"),
-		)
-		if err != nil {
-			return err
-		}
-		resp.Body.Close()
-		if resp.IsError() {
-			return fmt.Errorf("mark dmm video orphan failed: status=%s id=%s", resp.Status(), hit.Id)
-		}
-	}
-	return nil
-}
-
-func refreshOption(waitVisible bool) string {
-	if waitVisible {
-		return "wait_for"
-	}
-	return "false"
+	return avRepo.NewVideoIndex().MarkOrphan(ctx, docIDs)
 }

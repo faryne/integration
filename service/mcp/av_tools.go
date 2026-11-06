@@ -138,7 +138,7 @@ func (s *Server) registerAVTools() {
 			if err != nil {
 				return nil, err
 			}
-			result := searchResult{Total: r.Hits.Total.Value, Page: req.Page, Data: rows}
+			result := searchResult{Total: r.Total, Page: req.Page, Data: rows}
 			if args.Facets {
 				facets, err := avService.VideoFacets(req)
 				if err != nil {

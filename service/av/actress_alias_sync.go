@@ -6,11 +6,9 @@ import (
 	"slices"
 	"time"
 
-	"faryne.dev/config"
 	avEntity "faryne.dev/model/entity/opendata/av"
 	avRepo "faryne.dev/repository/av"
 	"faryne.dev/service/log"
-	"faryne.dev/service/search"
 	"go.uber.org/zap"
 )
 
@@ -29,7 +27,7 @@ type ActressAliasSyncResult struct {
 // 同名女優分不出是哪一位，寧可不補；手動改過別名（overrides 有 aliases）的女優也不動
 func SyncDMMActressAliases(ctx context.Context) (*ActressAliasSyncResult, error) {
 	result := &ActressAliasSyncResult{}
-	groups, err := dmmActressAliasGroups()
+	groups, err := dmmActressAliasGroups(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -91,20 +89,14 @@ func SyncDMMActressAliases(ctx context.Context) (*ActressAliasSyncResult, error)
 }
 
 // dmmActressAliasGroups 帶括號的 DMM 名字拆成「本名＋別名」；第一個是本名
-func dmmActressAliasGroups() ([][]string, error) {
-	q := map[string]any{
-		"size": 0,
-		"aggs": map[string]any{"names": map[string]any{"terms": map[string]any{
-			"field": "actresses.keyword", "include": ".*[（(].*", "size": actressAliasTermsSize,
-		}}},
-	}
-	r, _, err := search.Search[avEntity.RawVideo, avEntity.CleanVideo](config.EnvConfig().DMMVideoIndex, q)
+func dmmActressAliasGroups(ctx context.Context) ([][]string, error) {
+	names, err := avRepo.NewVideoIndex().Terms(ctx, "actresses", actressAliasTermsSize, "（", "(")
 	if err != nil {
 		return nil, err
 	}
 	var groups [][]string
-	for _, b := range r.Aggregations["names"].Buckets {
-		if base, aliases := parseActressAlias(b.Key); base != "" && len(aliases) > 0 {
+	for _, b := range names {
+		if base, aliases := parseActressAlias(b.Value); base != "" && len(aliases) > 0 {
 			groups = append(groups, append([]string{base}, aliases...))
 		}
 	}

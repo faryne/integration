@@ -33,7 +33,7 @@ func ApproveVideoSubmission(ctx context.Context, userID, id uint64) (*avEntity.D
 		if sub.Status != avEntity.SubmissionStatusPending && sub.Status != avEntity.SubmissionStatusRejected {
 			return ErrSubmissionNotReviewable
 		}
-		srcs, err := getVideoSources(ctx, []int{sub.TargetVid})
+		srcs, err := avRepo.NewVideoIndex().Sources(ctx, []int{sub.TargetVid})
 		if err != nil {
 			return err
 		}
@@ -54,7 +54,7 @@ func ApproveVideoSubmission(ctx context.Context, userID, id uint64) (*avEntity.D
 		if err := overrideRepo.Save(tx, override); err != nil {
 			return err
 		}
-		if err := indexVideo(ctx, sub.TargetVid, src, "wait_for"); err != nil {
+		if err := avRepo.NewVideoIndex().Index(ctx, sub.TargetVid, src, true); err != nil {
 			return err
 		}
 		sub.Status, sub.ReviewerUserID, sub.ReviewedAt, sub.UpdatedAt = avEntity.SubmissionStatusApproved, &userID, &now, now
