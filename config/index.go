@@ -17,6 +17,10 @@ type envConfig struct {
 	ChromePath       string `env:"CHROME_PATH"`
 	FrontendPath     string `env:"FRONTEND_PATH" default:"https://faryne.dev"`
 
+	// CORSAllowOrigins 是一般 API 允許跨站呼叫的 origin（逗號分隔）；留空用 config/cors.go 的預設 prod 清單，
+	// 設成 * 代表全開（CORS 收斂出事時的回滾開關）。MCP／OAuth 這類公開協定端點不受影響，一律 *。
+	CORSAllowOrigins string `env:"CORS_ALLOW_ORIGINS"`
+
 	// AMQPURL 是 AMQP 連線字串，目前用 CloudAMQP 代管的 LavinMQ（amqps://user:pass@host/vhost）；留空代表不啟用佇列
 	AMQPURL string `env:"AMQP_URL"`
 

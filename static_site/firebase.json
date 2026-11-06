@@ -53,7 +53,7 @@
       "redirects": [
         {
           "source": "/sns/:path*",
-          "destination": "https://faryne.dev/api-integration/sns/:path",
+          "destination": "https://faryne.dev/api/sns/:path",
           "type": 302
         },
         {
@@ -142,7 +142,7 @@
       "redirects": [
         {
           "source": "/sns/:path*",
-          "destination": "https://faryne.dev/api-integration/sns/nekomaid/:path",
+          "destination": "https://neko.maid.tw/api/sns/nekomaid/:path",
           "type": 302
         }
       ],
