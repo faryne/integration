@@ -32,6 +32,7 @@ import FaceRetouchingNaturalIcon from "@mui/icons-material/FaceRetouchingNatural
 import SearchOffIcon from "@mui/icons-material/SearchOff";
 import AddIcon from "@mui/icons-material/Add";
 import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
+import { joyuPath } from "@/helpers/joyu.ts";
 
 type ActressRangeKey = "height" | "b" | "w" | "h";
 
@@ -213,7 +214,7 @@ export function AVActress() {
               <Button
                 component={RouterLink}
                 startIcon={<CategoryOutlinedIcon />}
-                to="/av/actress/topics"
+                to={joyuPath("actress/topics")}
                 variant="outlined"
               >
                 女優主題
@@ -222,7 +223,7 @@ export function AVActress() {
               <Button
                 component={RouterLink}
                 startIcon={<AddIcon />}
-                to="/av/actress/submit"
+                to={joyuPath("actress/submit")}
                 variant="outlined"
               >
                 新增女優

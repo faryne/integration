@@ -35,6 +35,13 @@ build-frontend-steamloom:
 	pnpm deploy:steamloom && \
 	cd ..
 
+# joyu.fyi（AV 女優資料站）：VITE_SITE=joyu 讓 index.html 換成 joyu 的品牌並拔掉 AdSense（見 vite-plugins/joyuSite.ts）
+build-frontend-joyu:
+	cd static_site; \
+	VITE_SITE=joyu VITE_API_BASE=https://joyu.fyi/api pnpm build && \
+	pnpm deploy:joyu && \
+	cd ..
+
 worker-install:
 	cd workers && npm install
 

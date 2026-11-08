@@ -230,24 +230,6 @@ const projects: Project[] = [
     ],
   },
   {
-    name: "DMM 影片",
-    type: "Search / Data pipeline",
-    link: "/av/video",
-    highlights: [
-      "使用 Golang 撰寫爬蟲擷取 Fanza 影片資料。",
-      "透過 Logstash 定期從 MySQL 同步資料到 Elasticsearch，並以 Golang / React 建立前端網站。",
-    ],
-  },
-  {
-    name: "女優搜尋",
-    type: "Search / Data pipeline",
-    link: "/av/actress",
-    highlights: [
-      "使用 Golang 撰寫爬蟲擷取女優資料。",
-      "透過 Logstash 定期從 MySQL 同步資料到 Elasticsearch，並以 Golang / React 建立前端網站。",
-    ],
-  },
-  {
     name: "難以名狀的抓圖器",
     type: "Crawler / Image delivery",
     link: "https://neko.maid.tw",

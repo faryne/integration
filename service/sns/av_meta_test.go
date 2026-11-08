@@ -23,3 +23,25 @@ func TestBuildMetaAvActress(t *testing.T) {
 		}
 	}
 }
+
+// joyu.fyi：nginx 補上 /av 前綴轉進來，canonical 要拿掉前綴、指向 joyu.fyi，站名與預覽圖也換成 joyu 的
+func TestBuildMetaJoyu(t *testing.T) {
+	cases := []struct{ path, query, canonical string }{
+		{"/av", "", "https://joyu.fyi/"},
+		{"/av/actress/%E9%82%A3%E6%B4%A5%E4%B9%83%E3%81%A1%E3%81%AA%E3%81%BF", "xcity_id=22221", "https://joyu.fyi/actress/%E9%82%A3%E6%B4%A5%E4%B9%83%E3%81%A1%E3%81%AA%E3%81%BF?xcity_id=22221"},
+		{"/av/actress/topics", "", "https://joyu.fyi/actress/topics"},
+		{"/av/video", "", "https://joyu.fyi/video"},
+	}
+	for _, c := range cases {
+		meta := BuildMeta(modelSNS.RenderRequest{Host: "joyu.fyi", Path: c.path, Query: c.query})
+		if meta.Canonical != c.canonical {
+			t.Fatalf("%s: canonical %q, want %q", c.path, meta.Canonical, c.canonical)
+		}
+		if meta.SiteName != joyuSiteName || !strings.HasSuffix(meta.Title, " | "+joyuSiteName) || meta.Image != joyuOrigin+joyuDefaultImagePath {
+			t.Fatalf("%s: unexpected meta %+v", c.path, meta)
+		}
+		if strings.Contains(meta.Description, "Faryne") {
+			t.Fatalf("%s: description leaks faryne.dev: %q", c.path, meta.Description)
+		}
+	}
+}

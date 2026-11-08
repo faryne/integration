@@ -9,6 +9,7 @@ import { VideoDetail } from "@/components/av/video_detail.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { AV_VIDEO_SECTION, sectionTitle, useTitle } from "@/helpers/title.tsx";
+import { joyuPath } from "@/helpers/joyu.ts";
 
 export function AVVideoDetail() {
   const { no } = useParams<{ no: string }>();
@@ -29,7 +30,7 @@ export function AVVideoDetail() {
   if (!no || (v.isSuccess && !video)) {
     return (
       <ErrorPage
-        backUrl="/av/video"
+        backUrl={joyuPath("video")}
         code={404}
         message={no ? `找不到番號「${no}」的影片。` : "找不到影片。"}
       />
@@ -39,7 +40,7 @@ export function AVVideoDetail() {
   return (
     <AgeConfirmationGate
       description="AV 影片詳細頁包含成人內容與成人作品資料。請確認你已年滿 18 歲後再繼續瀏覽。"
-      leaveTo="/av/video"
+      leaveTo={joyuPath("video")}
       panelTitle="AV 影片詳細頁需要年齡確認"
     >
       <VideoDetail
@@ -55,7 +56,7 @@ export function AVVideoDetail() {
           if (!data.data?.data?.length) {
             throw new Error("synced video not found");
           }
-          navigate(`/av/video/${encodeURIComponent(result.maker_no)}`, {
+          navigate(joyuPath(`video/${encodeURIComponent(result.maker_no)}`), {
             replace: true,
           });
         }}

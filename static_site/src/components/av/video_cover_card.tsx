@@ -3,6 +3,7 @@ import { Box, Typography } from "@mui/material";
 import { Link } from "react-router-dom";
 import { AV_COVER_ASPECT_RATIO } from "@/data/avVideoCover.ts";
 import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
+import { joyuPath } from "@/helpers/joyu.ts";
 
 /** 直式封面卡片：封面＋番號＋兩行標題，相關作品等橫向列表用 */
 export function VideoCoverCard({ video }: { video: Video }) {
@@ -10,7 +11,7 @@ export function VideoCoverCard({ video }: { video: Video }) {
   return (
     <Box
       component={Link}
-      to={`/av/video/${encodeURIComponent(video.maker_no || video.no)}`}
+      to={joyuPath(`video/${encodeURIComponent(video.maker_no || video.no)}`)}
       sx={{
         color: "inherit",
         textAlign: "left",

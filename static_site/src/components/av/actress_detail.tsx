@@ -32,6 +32,7 @@ import {
   VideoResultSkeleton,
 } from "@/components/av/video_result_card.tsx";
 import { AV_VIDEO_GRID_COLUMNS } from "@/data/avVideoCover.ts";
+import { joyuPath } from "@/helpers/joyu.ts";
 
 const uniqueNonEmpty = (items: string[]) =>
   Array.from(new Set(items.map((item) => item.trim()).filter(Boolean)));
@@ -112,7 +113,7 @@ export function ActressDetail(props: IActressDetail) {
   const relatedTags = videoTagStats(videos);
 
   const toVideoSearch = (keyword: string) => {
-    navigate(`/av/video?keyword=${encodeURIComponent(keyword)}`);
+    navigate(joyuPath(`video?keyword=${encodeURIComponent(keyword)}`));
   };
 
   const renderRelatedChips = (items: string[], keyPrefix: string) =>

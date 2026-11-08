@@ -120,6 +120,8 @@ var pathCollection = []pathMeta{
 	// 女優頁同理，要排在 /av/actress 的 Prefix 通用卡前面
 	{Pattern: avActressPattern, Title: avActressSection, Description: "搜尋演員資料與作品索引的整理工具。", Apply: applyAvActressMeta},
 	{Path: "/", Title: siteName, Description: defaultDescription},
+	// joyu.fyi 首頁（女優搜尋）：nginx 補上前綴後是 /av
+	{Path: "/av", Title: avActressSection, Description: "搜尋演員資料與作品索引的整理工具。"},
 	{Path: "/av/video", Title: avVideoSection, Description: "以番號、標籤、演員與片名搜尋影片資料的整理工具。", Prefix: true},
 	{Path: "/av/actress", Title: avActressSection, Description: "搜尋演員資料與作品索引的整理工具。", Prefix: true},
 	{Path: "/data/tw-stats", Title: "台灣指標", Description: "查詢台灣公開統計指標，快速瀏覽資料趨勢與歷史紀錄。", Prefix: true},
@@ -156,6 +158,8 @@ func BuildMeta(req modelSNS.RenderRequest) modelSNS.Meta {
 	// faryne.dev/storyteller/* 跟 steamloom.works 是同一份內容，一律以 SteamLoom 為準，
 	// canonical 指回 steamloom.works，避免兩個網域重複收錄
 	steamloom := isSteamLoomHost(req.Host) || isStorytellerPath(frontendPath)
+	// AV 頁面已搬到 joyu.fyi：canonical 一律指向 joyu.fyi，站名、描述、預覽圖也不能帶 faryne.dev 的品牌
+	joyu := !steamloom && (isJoyuHost(req.Host) || isAvPath(frontendPath))
 
 	frontendOrigin := frontendOrigin()
 	currentSiteName := siteName
@@ -171,6 +175,12 @@ func BuildMeta(req modelSNS.RenderRequest) modelSNS.Meta {
 		if publicPath == "" {
 			publicPath = "/"
 		}
+	} else if joyu {
+		frontendOrigin = joyuOrigin
+		currentSiteName = joyuSiteName
+		currentDescription = joyuDescription
+		imagePath = joyuDefaultImagePath
+		publicPath = joyuPublicPath(frontendPath)
 	}
 
 	cleanQuery := stripTrackingQuery(req.Query)

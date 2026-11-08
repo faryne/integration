@@ -7,6 +7,7 @@ import {
   type Auth,
 } from "firebase/auth";
 import { isStorytellerAuthBrand } from "@/apis/auth/brand.ts";
+import { isJoyuSite } from "@/helpers/joyu.ts";
 
 const mainFirebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -21,12 +22,15 @@ const steamloomFirebaseConfig = {
   authDomain: import.meta.env.VITE_STEAMLOOM_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_STEAMLOOM_FIREBASE_PROJECT_ID,
   appId: import.meta.env.VITE_STEAMLOOM_FIREBASE_APP_ID,
-  messagingSenderId: import.meta.env.VITE_STEAMLOOM_FIREBASE_MESSAGING_SENDER_ID,
+  messagingSenderId: import.meta.env
+    .VITE_STEAMLOOM_FIREBASE_MESSAGING_SENDER_ID,
   storageBucket: import.meta.env.VITE_STEAMLOOM_FIREBASE_STORAGE_BUCKET,
 };
 
 const isConfigComplete = (config: typeof mainFirebaseConfig) =>
-  Boolean(config.apiKey && config.authDomain && config.projectId && config.appId);
+  Boolean(
+    config.apiKey && config.authDomain && config.projectId && config.appId,
+  );
 
 // SteamLoom 有自己的 Firebase 專案（登入彈窗才會顯示 SteamLoom 品牌），跟 session 端點一樣
 // 依 isStorytellerAuthBrand 選，本機 /storyteller 也會用 SteamLoom 專案。
@@ -36,7 +40,9 @@ const firebaseConfig =
     ? steamloomFirebaseConfig
     : mainFirebaseConfig;
 
-export const firebaseConfigReady = isConfigComplete(firebaseConfig);
+// joyu.fyi 目前不提供登入：不初始化 Firebase，免得用主站專案的設定而露出主站（之後做社群功能再接 joyu-firebase）
+export const firebaseConfigReady =
+  !isJoyuSite() && isConfigComplete(firebaseConfig);
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;

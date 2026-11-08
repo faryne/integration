@@ -12,6 +12,7 @@ import { SubmissionDone } from "@/components/av/submission_done.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
+import { joyuPath } from "@/helpers/joyu.ts";
 
 /** 修改影片資料：/av/video/:no/edit，:no 規則同詳細頁（官方番號或內部番號） */
 export function AVVideoEdit() {
@@ -23,14 +24,14 @@ export function AVVideoEdit() {
   useTitle(sectionTitle(AV_VIDEO_SECTION, `修改影片資料：${code}`));
   useBreadcrumbTail(`${code}・修改資料`);
   const navigate = useNavigate();
-  const backTo = `/av/video/${encodeURIComponent(no)}`;
+  const backTo = joyuPath(`video/${encodeURIComponent(no)}`);
   const mutation = useSubmitVideo();
   const [snack, setSnack] = useState<string | null>(null);
 
   if (!no || (v.isSuccess && !video)) {
     return (
       <ErrorPage
-        backUrl="/av/video"
+        backUrl={joyuPath("video")}
         code={404}
         message={`找不到番號「${no}」的影片。`}
       />
@@ -39,7 +40,7 @@ export function AVVideoEdit() {
   return (
     <AgeConfirmationGate
       description="AV 影片資料包含成人內容。請確認你已年滿 18 歲後再繼續瀏覽。"
-      leaveTo="/av/video"
+      leaveTo={joyuPath("video")}
       panelTitle="AV 影片資料需要年齡確認"
     >
       <Stack spacing={2}>

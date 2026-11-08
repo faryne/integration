@@ -58,22 +58,22 @@
         },
         {
           "source": "/dmm/actress",
-          "destination": "/av/actress",
+          "destination": "https://joyu.fyi/",
           "type": 301
         },
         {
           "source": "/dmm/actress/:path*",
-          "destination": "/av/actress/:path",
+          "destination": "https://joyu.fyi/actress/:path",
           "type": 301
         },
         {
           "source": "/dmm/video",
-          "destination": "/av/video",
+          "destination": "https://joyu.fyi/video",
           "type": 301
         },
         {
           "source": "/dmm/video/:path*",
-          "destination": "/av/video/:path",
+          "destination": "https://joyu.fyi/video/:path",
           "type": 301
         }
       ],
@@ -155,6 +155,37 @@
     },
     {
       "target": "steamloom",
+      "public": "dist",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "headers": [
+        {
+          "source": "**/*.@(jpg|jpeg|gif|png|webp|svg|ico)",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=604800"
+            }
+          ]
+        },
+        {
+          "source": "**/*.@(js|css)",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
+            }
+          ]
+        }
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
+    },
+    {
+      "target": "joyu",
       "public": "dist",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "headers": [

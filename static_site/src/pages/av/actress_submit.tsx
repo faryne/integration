@@ -19,6 +19,7 @@ import { SubmissionDone } from "@/components/av/submission_done.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
+import { joyuPath } from "@/helpers/joyu.ts";
 
 /** 新增女優：/av/actress/submit */
 export function AVActressSubmit() {
@@ -33,14 +34,14 @@ export function AVActressSubmit() {
           <SubmissionDone
             againLabel="再新增一位"
             backLabel="回到女優頁面"
-            backTo="/av/actress"
+            backTo={joyuPath("")}
             id={doneId}
             onAgain={() => setRound((r) => r + 1)}
           />
         ) : (
           <ActressSubmissionForm
             initial={EMPTY_ACTRESS_FIELDS}
-            onCancel={() => navigate("/av/actress")}
+            onCancel={() => navigate(joyuPath(""))}
             onSubmit={(fields) => submit({ kind: "create", fields })}
             submitting={submitting}
           />
@@ -62,7 +63,7 @@ export function AVActressEdit() {
   if (notFound) {
     return (
       <ErrorPage
-        backUrl="/av/actress"
+        backUrl={joyuPath("")}
         code={404}
         message={`找不到「${name}」的女優資料。`}
       />

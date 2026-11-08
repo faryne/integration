@@ -68,9 +68,7 @@ type toolCallParams struct {
 func NewServer(name, version string) *Server {
 	s := newBareServer(name, version)
 	s.registerBuiltInTools()
-	s.registerAVTools()
-	s.registerAVActressSubmissionTools()
-	s.registerAVVideoSubmissionTools()
+	// AV 工具不放在這裡：跟主站切割，改由 joyu.fyi/mcp 提供（見 NewJoyuServer）
 	s.registerGalgameTools()
 	s.registerNekomaidTools()
 	s.registerTWStatsTools()

@@ -12,6 +12,7 @@ import {
   sectionTitle,
   useTitle,
 } from "@/helpers/title.tsx";
+import { joyuPath } from "@/helpers/joyu.ts";
 
 export function AVActressDetail() {
   const { name = "" } = useParams<{ name: string }>();
@@ -66,7 +67,7 @@ export function AVActressDetail() {
   if (!name || notFound) {
     return (
       <ErrorPage
-        backUrl="/av/actress"
+        backUrl={joyuPath("")}
         code={404}
         message={
           name
@@ -80,7 +81,7 @@ export function AVActressDetail() {
   return (
     <AgeConfirmationGate
       description="AV 女優詳細頁包含成人內容與成人作品資料。請確認你已年滿 18 歲後再繼續瀏覽。"
-      leaveTo="/av/actress"
+      leaveTo={joyuPath("")}
       panelTitle="AV 女優詳細頁需要年齡確認"
     >
       <ActressDetail
