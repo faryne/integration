@@ -36,6 +36,15 @@ export const parseVideoSearchParams = (
     const value = query.get(param)?.trim();
     if (value) search[param] = value;
   }
+  // 出演條件指定是哪一位（同名女優分得開）：joyu「我的追蹤」頁的「到搜尋頁看全部」、追蹤的搜尋條件會帶
+  if (search.actress) {
+    const xcityID = parsePositiveInt(query.get("xcity_id"));
+    const manualID = parsePositiveInt(query.get("manual_id"));
+    const dmmID = query.get("dmm_id")?.trim();
+    if (xcityID) search.xcity_id = xcityID;
+    if (manualID) search.manual_id = manualID;
+    if (dmmID) search.dmm_id = dmmID;
+  }
   return search;
 };
 
@@ -52,6 +61,12 @@ export const videoSearchToParams = (
   for (const { param } of AV_VIDEO_EXACT_FILTERS) {
     const value = search[param]?.trim();
     if (value) query.set(param, value);
+  }
+  // 指定女優的 ID 只跟著出演條件走：拿掉出演條件時一起消失
+  if (search.actress?.trim()) {
+    if (search.xcity_id) query.set("xcity_id", String(search.xcity_id));
+    if (search.manual_id) query.set("manual_id", String(search.manual_id));
+    if (search.dmm_id) query.set("dmm_id", search.dmm_id);
   }
   return query;
 };

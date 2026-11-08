@@ -322,6 +322,7 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	// <editor-fold desc="">
 	route.Nekomaid(app) // nekomaid
 	route.OpenData(app)
+	route.Joyu(app) // joyu.fyi 登入後的個人 API（追蹤）
 	route.Tools(app)
 	route.Auth(app)
 	route.SNS(app)

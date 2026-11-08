@@ -24,6 +24,8 @@ type envConfig struct {
 	// joyu.fyi 的 reCAPTCHA Enterprise（Google Fraud Defense）：女優上稿、影片修改送出前驗證 token。
 	// JoyuRecaptchaKey 是 site key（前端也要一份：static_site 的 VITE_JOYU_RECAPTCHA_SITE_KEY）；
 	// JoyuRecaptchaSecret 是 key 的 legacy secret，後端用它呼叫 siteverify 驗證，沒設就不驗證（見 service/recaptcha）
+	// JoyuFirebaseProjectID joyu.fyi 登入用的 Firebase 專案（joyu-firebase）：後端只收這個專案簽發的 ID token
+	JoyuFirebaseProjectID string  `env:"JOYU_FIREBASE_PROJECT_ID"`
 	JoyuRecaptchaKey      string  `env:"JOYU_RECAPTCHA_KEY"`
 	JoyuRecaptchaSecret   string  `env:"JOYU_RECAPTCHA_SECRET"`
 	JoyuRecaptchaMinScore float64 `env:"JOYU_RECAPTCHA_MIN_SCORE,default=0.5"`

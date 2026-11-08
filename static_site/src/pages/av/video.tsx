@@ -38,6 +38,7 @@ import {
   VideoResultSkeleton,
 } from "@/components/av/video_result_card.tsx";
 import { AV_VIDEO_GRID_COLUMNS } from "@/data/avVideoCover.ts";
+import { SearchFollowButton } from "@/components/joyu/SearchFollowButton.tsx";
 
 export function AVVideo() {
   const [query, setQuery] = useSearchParams();
@@ -197,7 +198,14 @@ export function AVVideo() {
                   </Typography>
                 </Box>
                 {hasActiveFilter && (
-                  <Stack direction="row" flexWrap="wrap" gap={1}>
+                  <Stack
+                    direction="row"
+                    flexWrap="wrap"
+                    gap={1}
+                    sx={{ alignItems: "center" }}
+                  >
+                    {/* 有精確條件時可以把這組條件存成追蹤（joyu 我的追蹤頁會列出它最近的新片） */}
+                    <SearchFollowButton search={search} />
                     {search.keyword && (
                       <Chip
                         label={`關鍵字：${search.keyword}`}

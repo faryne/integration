@@ -18,7 +18,8 @@ export function ActressNames({
   if (aliases.length === 0) return null;
 
   return (
-    <Stack direction="row" flexWrap="wrap" gap={0.75} justifyContent="center">
+    // 靠左：P2 起放在女優頁頂端資料區（舊版側欄卡片才是置中）
+    <Stack direction="row" flexWrap="wrap" gap={0.75}>
       {[actress.name, ...aliases].map((name) => (
         <Chip
           clickable

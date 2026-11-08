@@ -52,7 +52,19 @@ func firebaseProjectID(brand string) string {
 	if id := strings.TrimSpace(cfg.StorytellerFirebaseProjectID); brand == BrandStoryteller && id != "" {
 		return id
 	}
+	// joyu 一定要用自己的專案，沒設定就驗不過（不能退回主站專案，否則主站帳號的 token 也會被接受）
+	if brand == BrandJoyu {
+		return strings.TrimSpace(cfg.JoyuFirebaseProjectID)
+	}
 	return strings.TrimSpace(cfg.FirebaseProjectID)
+}
+
+// allowedSignInProvider 各品牌接受的登入方式：joyu 另外接受匿名登入（不註冊也能先收藏，之後升級成 Google 帳號），其他品牌只收 Google
+func allowedSignInProvider(brand, provider string) bool {
+	if brand == BrandJoyu && provider == "anonymous" {
+		return true
+	}
+	return provider == "google.com"
 }
 
 func VerifyFirebaseIDToken(idToken string, brand string) (*FirebaseToken, error) {
@@ -90,8 +102,8 @@ func VerifyFirebaseIDToken(idToken string, brand string) (*FirebaseToken, error)
 	if claims.Subject == "" {
 		return nil, errors.New("Firebase token subject is empty")
 	}
-	if claims.Firebase.SignInProvider != "google.com" {
-		return nil, errors.New("only Google sign-in is allowed")
+	if !allowedSignInProvider(brand, claims.Firebase.SignInProvider) {
+		return nil, errors.New("sign-in provider is not allowed")
 	}
 
 	return &FirebaseToken{
