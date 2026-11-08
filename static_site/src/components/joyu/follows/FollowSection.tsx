@@ -65,7 +65,7 @@ export function FollowSection({
         sx={{
           display: { xs: "flex", md: "grid" },
           gap: 1.5,
-          gridTemplateColumns: "repeat(6, 1fr)",
+          gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
           overflowX: { xs: "auto", md: "visible" },
           pb: { xs: 1, md: 0 },
           "& > *": { flex: { xs: "0 0 120px", md: "initial" } },

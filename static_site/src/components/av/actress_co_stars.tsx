@@ -27,9 +27,9 @@ export function ActressCoStars({ items }: { items?: JoyuActressItem[] }) {
           display: "grid",
           gap: 1.75,
           gridTemplateColumns: {
-            xs: "repeat(3, 1fr)",
-            sm: "repeat(4, 1fr)",
-            md: "repeat(6, 1fr)",
+            xs: "repeat(3, minmax(0, 1fr))",
+            sm: "repeat(4, minmax(0, 1fr))",
+            md: "repeat(6, minmax(0, 1fr))",
           },
         }}
       >
