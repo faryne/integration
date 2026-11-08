@@ -155,6 +155,13 @@ function routeOutputPath(routePath) {
   return path.join(distDir, routePath, "index.html");
 }
 
+// prerender 的內容全是 faryne.dev 的頁面與品牌；joyu.fyi 的 build（VITE_SITE=joyu）跳過，
+// 不然會蓋掉 vite-plugins/joyuSite.ts 換好的 index.html，還會在 joyu 網域上多出主站頁面的靜態檔
+if (process.env.VITE_SITE === "joyu") {
+  console.log("Skip prerender for joyu.fyi build.");
+  process.exit(0);
+}
+
 const template = await readFile(indexPath, "utf8");
 
 for (const route of routes) {
