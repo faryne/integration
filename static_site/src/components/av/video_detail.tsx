@@ -4,13 +4,11 @@ import { Link as RouterLink } from "react-router-dom";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import { useMemo } from "react";
 import type { VideoSyncResult } from "@/apis/av/video_sync.ts";
 import { VideoDetailTabs } from "@/components/av/video_detail_tabs.tsx";
 import { VideoSyncButton } from "@/components/av/video_sync_button.tsx";
 import { VideoCast } from "@/components/av/video_cast.tsx";
 import { VideoMetaRows } from "@/components/av/video_meta_rows.tsx";
-import { ImageViewer } from "@/components/common/ImageViewer.tsx";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
 import { joyuPath } from "@/helpers/joyu.ts";
@@ -30,15 +28,6 @@ export function VideoDetail(props: IVideoDetail) {
   const displayCode = displayMakerNo || video?.no.toUpperCase() || "";
 
   useBreadcrumbTail(video ? `${displayCode} ${video.title}` : undefined);
-
-  const previewPhotos = useMemo(
-    () =>
-      (video?.images ?? []).map((image) => ({
-        thumb: image.thumb,
-        url: image.preview || image.thumb,
-      })),
-    [video?.images],
-  );
 
   if (!video) {
     return (
@@ -189,21 +178,8 @@ export function VideoDetail(props: IVideoDetail) {
         </Stack>
       </Box>
 
-      {/* 相關作品用 tab 切換（「基本資料」表格已拿掉，資料改在標題下方）；key 讓換片時回到第一個 tab */}
+      {/* 圖片預覽與相關作品用 tab 切換（有圖片時預設停在圖片預覽）；key 讓換片時回到第一個 tab */}
       <VideoDetailTabs key={video.no} video={video} />
-
-      {video.images.length > 0 && (
-        <Stack spacing={2} sx={{ textAlign: "left" }}>
-          <Typography
-            component="h2"
-            sx={{ fontWeight: 800, letterSpacing: 0 }}
-            variant="h5"
-          >
-            圖片預覽
-          </Typography>
-          <ImageViewer photos={previewPhotos} title={video.title} />
-        </Stack>
-      )}
     </Stack>
   );
 }
