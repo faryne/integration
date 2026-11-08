@@ -11,7 +11,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// 跟 main.go 一樣由 ErrorHandler 把 output.New 寫成回應：200 才有 Cache-Control，404／500 沒有
+// 跟 main.go 一樣由 ErrorHandler 把 output.New 寫成回應：200 是 public，其他是 no-store
 func TestPublicOnlyCachesSuccess(t *testing.T) {
 	app := fiber.New(fiber.Config{ErrorHandler: func(c fiber.Ctx, err error) error {
 		if v, ok := errors.AsType[output.CommonOutputInterface](err); ok {
@@ -23,7 +23,17 @@ func TestPublicOnlyCachesSuccess(t *testing.T) {
 	app.Get("/ok", mw, func(c fiber.Ctx) error { return output.Success("x") })
 	app.Get("/missing", mw, func(c fiber.Ctx) error { return output.New(404, "", nil, "nope") })
 
-	for path, want := range map[string]string{"/ok": "public, max-age=60, s-maxage=600", "/missing": ""} {
+	// 群組預設 no-store：沒掛 Public 的路由也不能被快取，掛了 Public 的不會被蓋掉
+	g := app.Group("/g", NoStoreByDefault())
+	g.Get("/plain", func(c fiber.Ctx) error { return output.Success("x") })
+	g.Get("/cached", mw, func(c fiber.Ctx) error { return output.Success("x") })
+
+	for path, want := range map[string]string{
+		"/ok":       "public, max-age=60, s-maxage=600",
+		"/missing":  "no-store",
+		"/g/plain":  "no-store",
+		"/g/cached": "public, max-age=60, s-maxage=600",
+	} {
 		res, err := app.Test(httptest.NewRequest("GET", path, nil))
 		if err != nil {
 			t.Fatal(err)

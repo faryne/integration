@@ -130,3 +130,9 @@
   - 原本規劃走 assessments API（要 Google Cloud 專案 ID 加 API key），使用者提供的是 legacy secret，所以改走 siteverify，不需要專案 ID 和 API key。
   - secret 沒設就**不驗證、直接放行**，本機和尚未設定的環境不會卡住。
   - Google 那邊本身出錯（逾時、非 200、回應解析失敗）時也放行並記 log：上稿另外有 IP 限流，不能因為 Google 暫時有問題就讓所有人都送不出去。
+
+### Cloudflare 快取上線後的修正（2026-11-08）
+- **現象**：Cache Rule 生效後，404 也被 Cloudflare 快取了（`cf-cache-status: HIT`）；而且上稿審核狀態（`GET /opendata/av/{actress,video}/submissions/:id`）跟其他公開 API 在同一個路徑前綴底下，審核結果改了之後可能還看到舊的。
+- **root cause**：沒有 `Cache-Control` 的回應被 Cloudflare 套用了預設 TTL（404 預設 3 分鐘、200 預設 2 小時）；Cloudflare 的 Browser Cache TTL（預設 4 小時）也把瀏覽器端的 `max-age=60` 蓋成 `14400`。
+- **解法（後端）**：`/opendata/av` 整個群組掛上 `httpcache.NoStoreByDefault()`，沒有標 `Public` 的路由一律 `no-store`；`Public` 遇到非 200 也明確送 `no-store`。這樣不管 Cloudflare 怎麼設，會變動的 API 和錯誤回應都不會被快取。
+- **解法（Cloudflare，使用者手動）**：Cache Rule 的 Browser TTL 改成「Respect origin」，Edge TTL 改成「Use cache-control header if present, bypass cache if not」；或者到 Caching → Configuration，把 Browser Cache TTL 改成「Respect Existing Headers」。
