@@ -29,6 +29,7 @@ func TestBuildMetaJoyu(t *testing.T) {
 	cases := []struct{ path, query, canonical string }{
 		{"/av", "", "https://joyu.fyi/"},
 		{"/av/actress/%E9%82%A3%E6%B4%A5%E4%B9%83%E3%81%A1%E3%81%AA%E3%81%BF", "xcity_id=22221", "https://joyu.fyi/actress/%E9%82%A3%E6%B4%A5%E4%B9%83%E3%81%A1%E3%81%AA%E3%81%BF?xcity_id=22221"},
+		{"/av/actress", "name=x", "https://joyu.fyi/actress?name=x"},
 		{"/av/actress/topics", "", "https://joyu.fyi/actress/topics"},
 		{"/av/video", "", "https://joyu.fyi/video"},
 	}
@@ -37,7 +38,8 @@ func TestBuildMetaJoyu(t *testing.T) {
 		if meta.Canonical != c.canonical {
 			t.Fatalf("%s: canonical %q, want %q", c.path, meta.Canonical, c.canonical)
 		}
-		if meta.SiteName != joyuSiteName || !strings.HasSuffix(meta.Title, " | "+joyuSiteName) || meta.Image != joyuOrigin+joyuDefaultImagePath {
+		// 首頁的標題就是站名，其他頁是「頁面 | joyu.fyi」
+		if meta.SiteName != joyuSiteName || (c.path != "/av" && !strings.HasSuffix(meta.Title, " | "+joyuSiteName)) || meta.Image != joyuOrigin+joyuDefaultImagePath {
 			t.Fatalf("%s: unexpected meta %+v", c.path, meta)
 		}
 		if strings.Contains(meta.Description, "Faryne") {

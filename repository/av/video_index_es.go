@@ -108,6 +108,18 @@ func (videoIndexES) Facets(ctx context.Context, input av.VideoIndexQuery) (av.Vi
 	return av.VideoFacets{Tags: a.Tags.values(), Makers: a.Makers.values(), Series: a.Series.values(), Actresses: a.Actresses.values()}, nil
 }
 
+func (videoIndexES) TopActresses(ctx context.Context, input av.VideoIndexQuery, size int) ([]av.VideoFacetBucket, error) {
+	q := map[string]any{"size": 0, "aggs": map[string]any{"actresses": esdsl.TermsAgg("actresses.keyword", size)}}
+	applyVideoConditions(input, q)
+	var res struct {
+		Aggregations struct{ Actresses esBuckets } `json:"aggregations"`
+	}
+	if err := esdsl.Raw(ctx, videoIndexName(), q, &res); err != nil {
+		return nil, err
+	}
+	return res.Aggregations.Actresses.values(), nil
+}
+
 // esDateAgg min／max 聚合的結果；沒有影片時 value_as_string 不存在，維持空字串
 type esDateAgg struct {
 	ValueAsString string `json:"value_as_string"`

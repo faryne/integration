@@ -13,5 +13,5 @@ export function videoActressPath(credit: string, dmmID?: string) {
   const name = encodeURIComponent(actressBaseName(credit));
   return dmmID
     ? joyuPath(`actress/${name}?dmm_id=${encodeURIComponent(dmmID)}`)
-    : joyuPath(`?name=${name}`);
+    : joyuPath(`actress?name=${name}`);
 }

@@ -33,6 +33,15 @@ export function AVVideoDetail() {
         backUrl={joyuPath("video")}
         code={404}
         message={no ? `找不到番號「${no}」的影片。` : "找不到影片。"}
+        // 首頁／頁首搜尋把長得像番號的字串直接導到這裡，可能其實是名字，給一條改用名字搜尋的路
+        extraAction={
+          no
+            ? {
+                label: "改用關鍵字搜尋",
+                href: joyuPath(`actress?name=${encodeURIComponent(no)}`),
+              }
+            : undefined
+        }
       />
     );
   }
@@ -51,7 +60,8 @@ export function AVVideoDetail() {
           const params = { page: 1, no: result.maker_no };
           const data = await queryClient.fetchQuery({
             queryKey: avVideoSearchQueryKey(params),
-            queryFn: () => fetchAVVideoSearch(params),
+            queryFn: () => fetchAVVideoSearch(params, true),
+            staleTime: 0,
           });
           if (!data.data?.data?.length) {
             throw new Error("synced video not found");
@@ -61,9 +71,12 @@ export function AVVideoDetail() {
           });
         }}
         onOrphaned={() => {
-          // 已標成 orphan：重新查詢這部，按鈕會依 is_orphan 隱藏
-          void queryClient.invalidateQueries({
-            queryKey: avVideoSearchQueryKey({ page: 1, no }),
+          // 已標成 orphan：繞過快取重新查詢這部，按鈕會依 is_orphan 隱藏
+          const params = { page: 1, no };
+          void queryClient.fetchQuery({
+            queryKey: avVideoSearchQueryKey(params),
+            queryFn: () => fetchAVVideoSearch(params, true),
+            staleTime: 0,
           });
         }}
       />

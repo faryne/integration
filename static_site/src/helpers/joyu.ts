@@ -33,3 +33,19 @@ export function joyuPath(path = "") {
   const normalizedPath = `/${path.replace(/^\/+/, "")}`;
   return isJoyuSite() ? normalizedPath : `${joyuOrigin()}${normalizedPath}`;
 }
+
+// 番號格式：英文 2～6 碼＋（可省略的）連字號＋數字 2～5 碼，例如 ABCD-123、abcd123。
+// DMM 內部番號（h_237nact00198）不會被當成番號，會進女優搜尋
+const videoCodePattern = /^([A-Za-z]{2,6})-?(\d{2,5})$/;
+
+/** 首頁與頁首搜尋框：番號直接到影片頁（統一成大寫加連字號），其他當女優名字到女優搜尋 */
+export function joyuSearchPath(input: string) {
+  const text = input.trim();
+  const code = text.match(videoCodePattern);
+  if (code) {
+    return joyuPath(`video/${code[1].toUpperCase()}-${code[2]}`);
+  }
+  return joyuPath(
+    text ? `actress?name=${encodeURIComponent(text)}` : "actress",
+  );
+}

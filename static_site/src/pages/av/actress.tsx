@@ -79,12 +79,17 @@ const parseActressSearchParams = (
   );
   const name = query.get("name")?.trim();
   const birthYear = parsePositiveInt(query.get("birth_year"));
+  // 生日月份（不帶年份）：joyu 首頁「近期生日」的「看全部」帶過來，列出當月壽星
+  const birthMonth = parsePositiveInt(query.get("birth_month"));
 
   if (name) {
     search.name = name;
   }
   if (birthYear) {
     search.birth_year = birthYear;
+  }
+  if (birthMonth && birthMonth <= 12) {
+    search.birth_month = birthMonth;
   }
 
   actressRangeKeys.forEach((key) => {
@@ -119,6 +124,9 @@ const actressSearchToParams = (
   if (search.birth_year && search.birth_year > 0) {
     query.set("birth_year", String(search.birth_year));
   }
+  if (search.birth_month && search.birth_month > 0) {
+    query.set("birth_month", String(search.birth_month));
+  }
   actressRangeKeys.forEach((key) => {
     const range = search[key];
     if (range && range.some((value) => value > 0)) {
@@ -152,6 +160,7 @@ export function AVActress() {
     search.cup ||
     search.cups ||
     search.birth_year ||
+    search.birth_month ||
     search.height ||
     search.b ||
     search.w ||
@@ -293,6 +302,14 @@ export function AVActress() {
                     {search.birth_year && (
                       <Chip
                         label={`出生年份：${search.birth_year}`}
+                        size="small"
+                        sx={{ borderRadius: 1 }}
+                        variant="outlined"
+                      />
+                    )}
+                    {search.birth_month && (
+                      <Chip
+                        label={`生日：${search.birth_month} 月`}
                         size="small"
                         sx={{ borderRadius: 1 }}
                         variant="outlined"

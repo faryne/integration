@@ -16,6 +16,15 @@ export function formatActressBirth(actress: Actress) {
     .join("/");
 }
 
+/** 年齡：生日年月日齊全才算，否則回 undefined */
+export function actressAge(actress: Actress, now = new Date()) {
+  const { birth_year: y, birth_month: m, birth_day: d } = actress;
+  if (!(y > 0 && m > 0 && d > 0)) return undefined;
+  const beforeBirthday =
+    now.getMonth() + 1 < m || (now.getMonth() + 1 === m && now.getDate() < d);
+  return now.getFullYear() - y - (beforeBirthday ? 1 : 0);
+}
+
 /** 搜尋卡片的身形摘要：罩杯／B／W／H／身高，沒填的略過 */
 export function formatActressBodyInfo(actress: Actress) {
   return [

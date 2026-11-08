@@ -114,14 +114,11 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
-    # AV 頁面已搬到 joyu.fyi（見 DevelopDocuments/opendata/joyu.fyi獨立站_2026-11-08.md）：一律 301，拿掉 /av 前綴；
-    # 女優列表（/av、/av/actress）是 joyu 首頁。在這裡直接 return，不經過 location / 的爬蟲判斷，爬蟲才拿得到 301。
+    # AV 頁面已搬到 joyu.fyi（見 DevelopDocuments/opendata/joyu.fyi獨立站_2026-11-08.md）：一律 301，拿掉 /av 前綴
+    # （/av/actress → /actress 女優搜尋，P2 起首頁是入口頁）；/av 轉首頁。在這裡直接 return，不經過 location / 的爬蟲判斷，爬蟲才拿得到 301。
     # 用 $request_uri 取路徑：保留原本的 percent-encoding（女優名字是日文）跟查詢字串；
     # 機器是 nginx 1.10，map 不能帶 regex capture，所以用 location + if。
     location = /av {
-        return 301 https://joyu.fyi/$is_args$args;
-    }
-    location = /av/actress {
         return 301 https://joyu.fyi/$is_args$args;
     }
     location ^~ /av/ {
@@ -367,6 +364,15 @@ server {
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # 女優主題的靜態 JSON（後端排程上傳到 S3，cdn.faryne.dev 提供）：走同網域代理，
+    # 瀏覽器的網路請求裡才不會出現 faryne.dev（跟 /api/ 同源的理由一樣）。只開放主題這個目錄，不把整個 CDN 鏡像出來
+    location ^~ /cdn/opendata/av/actress-topics/ {
+        proxy_pass https://cdn.faryne.dev/opendata/av/actress-topics/;
+        proxy_ssl_server_name on;
+        proxy_ssl_name cdn.faryne.dev;
+        proxy_set_header Host cdn.faryne.dev;
     }
 
     # MCP endpoint：只有 AV 工具，轉給後端 route.MCP 註冊的 /joyu-mcp（faryne.dev/mcp 已經不放 AV 工具）

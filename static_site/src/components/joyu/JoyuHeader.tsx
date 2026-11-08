@@ -1,17 +1,18 @@
 import { Link, useLocation } from "react-router-dom";
-import { Box, Container, Typography } from "@mui/material";
+import { Box, Container, IconButton, Typography } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 
 import { ColorModeMenu } from "@/components/common/siteLayout/ColorModeMenu.tsx";
-import {
-  SITE_HEADER_HEIGHT,
-  siteInk,
-} from "@/components/common/siteLayout/siteTheme.ts";
-import { JOYU_SITE_NAME } from "@/helpers/joyu.ts";
+import { SITE_HEADER_HEIGHT } from "@/components/common/siteLayout/siteTheme.ts";
+import { JOYU_SITE_NAME, joyuPath } from "@/helpers/joyu.ts";
 
+import { JoyuSearchBox } from "./JoyuSearchBox.tsx";
 import { findJoyuSection, joyuNavItems } from "./joyuNavigation.ts";
+import { joyuInk } from "./joyuTheme.ts";
 
 /**
- * joyu.fyi 頁首：沿用主站的墨色列樣式，但不帶 faryne.dev 品牌；只有三個區塊，手機也直接排開不用抽屜。
+ * joyu.fyi 頁首：深紫底＋粉紅強調（joyu 自己的配色）；三個區塊在手機上也直接排開。
+ * 搜尋框桌機直接輸入（番號到影片頁、名字到女優搜尋），手機只放圖示連到女優搜尋。
  * 目前不提供登入（之後做社群功能時才接 joyu-firebase 的 Auth），所以沒有帳號選單。
  */
 export function JoyuHeader() {
@@ -25,10 +26,9 @@ export function JoyuHeader() {
         position: "sticky",
         top: 0,
         zIndex: (theme) => theme.zIndex.appBar,
-        background: siteInk.bg,
-        backdropFilter: "blur(16px)",
-        borderBottom: `1px solid ${siteInk.line}`,
-        color: siteInk.text,
+        background: joyuInk.bg,
+        borderBottom: `1px solid ${joyuInk.line}`,
+        color: joyuInk.text,
       }}
     >
       <Container
@@ -38,7 +38,7 @@ export function JoyuHeader() {
           height: SITE_HEADER_HEIGHT,
           display: "flex",
           alignItems: "center",
-          gap: { xs: 1, md: 3.5 },
+          gap: { xs: 1, md: 3 },
         }}
       >
         <Box
@@ -84,22 +84,21 @@ export function JoyuHeader() {
                 alignItems: "center",
                 px: { xs: 1, md: 1.5 },
                 fontSize: 14,
-                color: item === current ? siteInk.glow : siteInk.text,
+                color: item === current ? joyuInk.accent : joyuInk.text,
                 textDecoration: "none",
                 whiteSpace: "nowrap",
-                "&:hover": { color: siteInk.glow },
-                // 目前所在區塊：底部光條，跟主站 header 同一套
+                "&:hover": { color: joyuInk.accent },
+                // 目前所在區塊：底部粉紅光條
                 ...(item === current && {
                   "&::after": {
                     content: '""',
                     position: "absolute",
                     left: 8,
                     right: 8,
-                    bottom: -1,
+                    bottom: 0,
                     height: 2,
                     borderRadius: 1,
-                    bgcolor: siteInk.glow,
-                    boxShadow: `0 0 10px ${siteInk.glow}`,
+                    bgcolor: joyuInk.accent,
                   },
                 }),
               }}
@@ -110,6 +109,17 @@ export function JoyuHeader() {
         </Box>
 
         <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}>
+          <Box sx={{ display: { xs: "none", md: "block" }, width: 260 }}>
+            <JoyuSearchBox variant="header" />
+          </Box>
+          <IconButton
+            aria-label="搜尋"
+            component={Link}
+            to={joyuPath("actress")}
+            sx={{ display: { md: "none" }, color: joyuInk.text }}
+          >
+            <SearchIcon fontSize="small" />
+          </IconButton>
           <ColorModeMenu />
         </Box>
       </Container>

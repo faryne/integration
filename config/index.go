@@ -21,6 +21,13 @@ type envConfig struct {
 	// 設成 * 代表全開（CORS 收斂出事時的回滾開關）。MCP／OAuth 這類公開協定端點不受影響，一律 *。
 	CORSAllowOrigins string `env:"CORS_ALLOW_ORIGINS"`
 
+	// joyu.fyi 的 reCAPTCHA Enterprise（Google Fraud Defense）：女優上稿、影片修改送出前驗證 token。
+	// JoyuRecaptchaKey 是 site key（前端也要一份：static_site 的 VITE_JOYU_RECAPTCHA_SITE_KEY）；
+	// JoyuRecaptchaSecret 是 key 的 legacy secret，後端用它呼叫 siteverify 驗證，沒設就不驗證（見 service/recaptcha）
+	JoyuRecaptchaKey      string  `env:"JOYU_RECAPTCHA_KEY"`
+	JoyuRecaptchaSecret   string  `env:"JOYU_RECAPTCHA_SECRET"`
+	JoyuRecaptchaMinScore float64 `env:"JOYU_RECAPTCHA_MIN_SCORE,default=0.5"`
+
 	// AMQPURL 是 AMQP 連線字串，目前用 CloudAMQP 代管的 LavinMQ（amqps://user:pass@host/vhost）；留空代表不啟用佇列
 	AMQPURL string `env:"AMQP_URL"`
 

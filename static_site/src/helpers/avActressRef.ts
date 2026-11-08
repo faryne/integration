@@ -88,7 +88,7 @@ export function useRoutedActress(name: string, suffix = "") {
     } else if (!refActress && byNameActress) {
       navigate(actressPagePath(name, undefined, suffix), { replace: true });
     } else if (!refActress && ref.dmm_id) {
-      navigate(joyuPath(`?name=${encodeURIComponent(name)}`), {
+      navigate(joyuPath(`actress?name=${encodeURIComponent(name)}`), {
         replace: true,
       });
     }

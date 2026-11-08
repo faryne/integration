@@ -25,6 +25,8 @@ export interface ErrorPageProps {
   // 拿掉以整頁為前提設計的 70vh 置中高度跟 Container 自己的左右內距，不然
   // 兩層內距疊在一起、加上跟外層寬度不成比例的高度，看起來會很不對勁。
   compact?: boolean;
+  // 主按鈕旁的第二個動作（例如 joyu 影片頁找不到番號時「改用關鍵字搜尋」）
+  extraAction?: { label: string; href: string };
 }
 
 // SteamLoom 是完全獨立的產品，錯誤頁不套用主站的貓娘女僕人設，改用蒸汽織機的故障意象。
@@ -91,6 +93,7 @@ export function ErrorPage({
   message,
   internalCode,
   compact = false,
+  extraAction,
 }: ErrorPageProps) {
   const storytellerAppearance = useContext(StorytellerAppearanceContext);
   const steamloom = isSteamLoomSite() || storytellerAppearance !== null;
@@ -210,6 +213,16 @@ export function ErrorPage({
           >
             {buttonText}
           </Button>
+          {extraAction && (
+            <Button
+              component="a"
+              href={extraAction.href}
+              variant="outlined"
+              sx={{ mt: 3, ml: 1.5 }}
+            >
+              {extraAction.label}
+            </Button>
+          )}
         </Box>
       </Stack>
     </Container>

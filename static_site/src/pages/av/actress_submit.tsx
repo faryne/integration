@@ -34,14 +34,14 @@ export function AVActressSubmit() {
           <SubmissionDone
             againLabel="再新增一位"
             backLabel="回到女優頁面"
-            backTo={joyuPath("")}
+            backTo={joyuPath("actress")}
             id={doneId}
             onAgain={() => setRound((r) => r + 1)}
           />
         ) : (
           <ActressSubmissionForm
             initial={EMPTY_ACTRESS_FIELDS}
-            onCancel={() => navigate(joyuPath(""))}
+            onCancel={() => navigate(joyuPath("actress"))}
             onSubmit={(fields) => submit({ kind: "create", fields })}
             submitting={submitting}
           />
@@ -63,7 +63,7 @@ export function AVActressEdit() {
   if (notFound) {
     return (
       <ErrorPage
-        backUrl={joyuPath("")}
+        backUrl={joyuPath("actress")}
         code={404}
         message={`找不到「${name}」的女優資料。`}
       />

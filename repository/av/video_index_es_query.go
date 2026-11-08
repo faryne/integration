@@ -27,7 +27,8 @@ func applyVideoConditions(input av.VideoIndexQuery, q map[string]any) {
 		esdsl.SetQuery(map[string]any{"range": map[string]any{"pulish_date": map[string]any{"gte": d1.Format("2006/01/02")}}}, false, q)
 	} else if input.Year > 0 {
 		d1 := time.Date(input.Year, 1, 1, 0, 0, 0, 0, time.Local)
-		d2 := time.Date(input.Year, 12, 31, 0, 0, 0, 0, time.Local)
+		// 上限用隔年 1/1（lt），12/31 當天配信的影片才不會被排除
+		d2 := time.Date(input.Year+1, 1, 1, 0, 0, 0, 0, time.Local)
 		esdsl.SetQuery(map[string]any{"range": map[string]any{"vod_date": map[string]any{"gte": d1.Format("2006/01/02"), "lt": d2.Format("2006/01/02")}}}, true, q)
 		esdsl.SetQuery(map[string]any{"range": map[string]any{"publish_date": map[string]any{"gte": d1.Format("2006/01/02"), "lt": d2.Format("2006/01/02")}}}, false, q)
 		esdsl.SetQuery(map[string]any{"range": map[string]any{"pulish_date": map[string]any{"gte": d1.Format("2006/01/02")}}}, false, q)

@@ -9,6 +9,7 @@ import (
 	"faryne.dev/service/av"
 	serviceHelper "faryne.dev/service/helper"
 	"faryne.dev/service/output"
+	"faryne.dev/service/recaptcha"
 )
 
 // AvVideoSubmit 提交影片修改，等管理者審核。不需登入，有登入就記錄提交者；限流與女優上稿共用
@@ -25,6 +26,9 @@ import (
 func AvVideoSubmit(ctx fiber.Ctx) error {
 	var req avEntity.VideoSubmitRequest
 	if err := helper.BindJSON(ctx, &req); err != nil {
+		return err
+	}
+	if err := verifyAvRecaptcha(ctx, recaptcha.ActionVideoSubmit); err != nil {
 		return err
 	}
 	var userID uint64

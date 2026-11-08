@@ -1,4 +1,4 @@
-// joyu.fyi 頁首導覽與麵包屑共用的區塊定義；以女優為主，首頁就是女優搜尋
+// joyu.fyi 頁首導覽與麵包屑共用的區塊定義；首頁（/）是入口頁，不屬於任何區塊，不顯示麵包屑
 export interface JoyuSection {
   title: string;
   href: string;
@@ -14,8 +14,8 @@ export const joyuSections: JoyuSection[] = [
   },
   {
     title: "女優",
-    href: "/",
-    match: (p) => p === "/" || p.startsWith("/actress"),
+    href: "/actress",
+    match: (p) => p.startsWith("/actress"),
   },
   { title: "影片", href: "/video", match: (p) => p.startsWith("/video") },
 ];

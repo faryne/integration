@@ -5,6 +5,7 @@ import "strings"
 // joyu.fyi（AV 女優資料站）：AV 頁面從 faryne.dev/av/* 搬到獨立網域，網址拿掉 /av 前綴，女優列表當首頁。
 // nginx 把 joyu.fyi 的爬蟲請求轉給後端時會補上 /av 前綴（同 steamloom 補 /storyteller），
 // 所以 pathCollection 裡的 /av/* 規則不用改；這裡負責把 canonical／站名／預覽圖換成 joyu 自己的。
+// P2（2026-11-08）起首頁是入口頁，女優搜尋列表在 /actress。
 const (
 	joyuSiteName = "joyu.fyi"
 	joyuOrigin   = "https://joyu.fyi"
@@ -24,14 +25,12 @@ func isAvPath(frontendPath string) bool {
 	return frontendPath == avPathPrefix || strings.HasPrefix(frontendPath, avPathPrefix+"/")
 }
 
-// joyuPublicPath 把帶 /av 前綴的前端路徑換成 joyu.fyi 上的真實網址：/av/video/X → /video/X；
-// 女優列表（/av、/av/actress）是首頁
+// joyuPublicPath 把帶 /av 前綴的前端路徑換成 joyu.fyi 上的真實網址：/av/video/X → /video/X，/av 是首頁
 func joyuPublicPath(frontendPath string) string {
-	publicPath := strings.TrimPrefix(frontendPath, avPathPrefix)
-	if publicPath == "" || publicPath == "/actress" {
-		return "/"
+	if publicPath := strings.TrimPrefix(frontendPath, avPathPrefix); publicPath != "" {
+		return publicPath
 	}
-	return publicPath
+	return "/"
 }
 
 // JoyuRobotsTxt joyu.fyi 的 robots.txt：API 不給爬；sitemap 等女優數量規劃好（可能要拆 sitemap index）再補
