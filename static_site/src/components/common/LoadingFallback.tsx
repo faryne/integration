@@ -1,6 +1,7 @@
-import { Box, Stack, Typography } from "@mui/material";
+import { Box, CircularProgress, Stack, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { isGalgameSite } from "@/helpers/galgame.ts";
+import { isJoyuSite } from "@/helpers/joyu.ts";
 import { MASCOT_ASSET_CDN_BASE } from "@/helpers/mascotAssets.ts";
 import { isNekomaidSite } from "@/helpers/nekomaid.ts";
 import {
@@ -9,8 +10,8 @@ import {
 } from "@/helpers/storytellerMascot.ts";
 import { isSteamLoomSite } from "@/helpers/steamloom.ts";
 
-type LoadingSite = "faryne" | "nekomaid" | "galgame" | "steamloom";
-type MainSite = Exclude<LoadingSite, "steamloom">;
+type LoadingSite = "faryne" | "nekomaid" | "galgame" | "steamloom" | "joyu";
+type MainSite = Exclude<LoadingSite, "steamloom" | "joyu">;
 
 const loadingContent: Record<
   MainSite,
@@ -60,6 +61,7 @@ const loadingContent: Record<
 // 同一份前端建置同時服務獨立網域與主站巢狀路徑，Loading 圖須跟路由一起切換。
 function getLoadingSite(): LoadingSite {
   if (typeof window === "undefined") return "faryne";
+  if (isJoyuSite()) return "joyu";
   const path = window.location.pathname;
   if (
     isSteamLoomSite() ||
@@ -78,6 +80,28 @@ function getLoadingSite(): LoadingSite {
 export function LoadingFallback() {
   const { t } = useTranslation();
   const site = getLoadingSite();
+  // joyu.fyi 跟主站切割，不用 faryne.dev 的看板娘（之後有自己的看板娘再換上去）；配色跟 joyu 圖示一致
+  if (site === "joyu") {
+    return (
+      <Box
+        role="status"
+        aria-live="polite"
+        sx={{
+          minHeight: "100vh",
+          display: "grid",
+          placeItems: "center",
+          background: "linear-gradient(#1c1420, #2b1d2e 55%, #1c1420)",
+        }}
+      >
+        <Stack alignItems="center" spacing={2}>
+          <CircularProgress sx={{ color: "#ff5c8a" }} />
+          <Typography sx={{ fontWeight: 800, color: "#f3e6ef" }}>
+            正在載入
+          </Typography>
+        </Stack>
+      </Box>
+    );
+  }
   const content =
     site === "steamloom"
       ? {
