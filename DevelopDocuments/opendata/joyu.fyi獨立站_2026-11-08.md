@@ -153,3 +153,13 @@
 4. 部署 nginx，**但先不加 faryne.dev 那段 `/av` 301**，只加 joyu.fyi 的 server 區塊。`nginx -t` 後 reload，確認 `https://joyu.fyi/` 正常。
 5. 部署主站前端（`make build-frontend`），再加上 faryne.dev 的 `/av` 301，reload nginx。
    - 這一步之後，舊網址就會轉到 joyu.fyi。
+
+## 已知 Bug 記錄
+
+### joyu.fyi 首頁的 index.html 仍是 faryne.dev 的 meta（已修正，2026-11-08）
+
+- **現象**：第一次部署 joyu 前端後，`https://joyu.fyi/` 的原始 HTML 裡，標題、描述、canonical、og:url、og:image、JSON-LD 都還是 faryne.dev 的。只有 favicon、成人內容標記、og:site_name 有換成 joyu 的，AdSense 也確實拔掉了。
+- **root cause**：`pnpm build` 在 `vite build` 之後還會跑 `scripts/prerender.mjs`，用寫死的 faryne.dev 標題、描述、canonical、預覽圖、JSON-LD 覆寫 `dist/index.html`，另外還會產生 `/data/rates` 等主站頁面的靜態檔，把 `vite-plugins/joyuSite.ts` 換好的內容又蓋回去。本機測試時是直接跑 `vite build`，沒經過 prerender，所以沒抓到。
+- **解法**：`prerender.mjs` 在 `VITE_SITE=joyu` 時直接跳過（4cb4e739）。驗證 joyu build 時要跑完整的 `pnpm build`，不能只跑 `vite build`。
+- **狀態**：已修正，重新跑 `make build-frontend-joyu` 部署後生效。
+- **備註**：steamloom.works、galgame.tv、neko.maid.tw 的 build 也會跑同一支 prerender，原始 HTML 一樣帶 faryne.dev 的 meta。給社群爬蟲的部分有後端 SNS render 蓋過去，但沒處理到的地方還在，之後要不要處理另外評估。
