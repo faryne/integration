@@ -33,7 +33,8 @@ func OpenData(app *fiber.App) {
 	g3.Get("/actress", opendata.XCityActressList)
 	g3.Get("/actress/detail/:id", opendata.XCityActressDetail)
 
-	g4 := g.Group("/av")
+	// 沒有標 httpcache.Public 的路由（上稿、審核狀態等）一律 no-store：Cloudflare 的 Cache Rule 是依路徑前綴設的
+	g4 := g.Group("/av", httpcache.NoStoreByDefault())
 	// 公開查詢（joyu.fyi 的搜尋、女優頁、影片頁）：資料只隨每日同步與審核核准變動，瀏覽器 1 分鐘、Cloudflare 10 分鐘
 	avCache := httpcache.Public(time.Minute, 10*time.Minute)
 	g4.Get("/search/video", avCache, opendata.AvVideoSearch)
