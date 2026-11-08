@@ -16,6 +16,7 @@ import { useMemo } from "react";
 import type { VideoSyncResult } from "@/apis/av/video_sync.ts";
 import { VideoDetailTabs } from "@/components/av/video_detail_tabs.tsx";
 import { VideoSyncButton } from "@/components/av/video_sync_button.tsx";
+import { VideoCast } from "@/components/av/video_cast.tsx";
 import { VideoLinksRow } from "@/components/av/video_links_row.tsx";
 import { ImageViewer } from "@/components/common/ImageViewer.tsx";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
@@ -199,6 +200,10 @@ export function VideoDetail(props: IVideoDetail) {
             >
               {video.title}
             </Typography>
+            <VideoCast
+              actresses={video.actresses}
+              actressIds={video.actress_ids}
+            />
           </Stack>
 
           <Stack direction="row" flexWrap="wrap" gap={1}>

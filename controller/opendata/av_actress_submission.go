@@ -16,10 +16,25 @@ import (
 	"faryne.dev/service/av"
 	serviceHelper "faryne.dev/service/helper"
 	"faryne.dev/service/output"
+	"faryne.dev/service/recaptcha"
 )
 
 // customCodeAvSubmitLimited 這個 IP 一小時內的上稿次數（女優＋影片合計）用完
 const customCodeAvSubmitLimited output.CustomCode = "429006"
+
+// customCodeAvRecaptchaFailed joyu.fyi 上稿的 reCAPTCHA 驗證沒過（token 缺少／過期、分數太低）
+const customCodeAvRecaptchaFailed output.CustomCode = "403401"
+
+// recaptchaHeader 前端把 reCAPTCHA token 放在這個 header（見 static_site/src/lib/recaptcha.ts）
+const recaptchaHeader = "X-Recaptcha-Token"
+
+// verifyAvRecaptcha 網頁上稿送出前的人機驗證；MCP 上稿不經過這裡（沒有瀏覽器，只靠 IP 限流）
+func verifyAvRecaptcha(ctx fiber.Ctx, action string) error {
+	if err := recaptcha.Verify(ctx.Context(), ctx.Get(recaptchaHeader), action, ctx.IP()); err != nil {
+		return output.New(http.StatusForbidden, customCodeAvRecaptchaFailed, nil, "人機驗證沒有通過，請重新整理頁面後再送出")
+	}
+	return nil
+}
 
 // AvActressSubmit 提交女優新增／修改，等管理者審核。不需登入，有登入就記錄提交者
 // @Summary Submit an AV actress create/edit for review
@@ -35,6 +50,9 @@ const customCodeAvSubmitLimited output.CustomCode = "429006"
 func AvActressSubmit(ctx fiber.Ctx) error {
 	var req avEntity.ActressSubmitRequest
 	if err := helper.BindJSON(ctx, &req); err != nil {
+		return err
+	}
+	if err := verifyAvRecaptcha(ctx, recaptcha.ActionActressSubmit); err != nil {
 		return err
 	}
 	var userID uint64

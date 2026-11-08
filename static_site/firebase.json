@@ -58,7 +58,7 @@
         },
         {
           "source": "/dmm/actress",
-          "destination": "https://joyu.fyi/",
+          "destination": "https://joyu.fyi/actress",
           "type": 301
         },
         {

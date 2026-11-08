@@ -120,8 +120,8 @@ var pathCollection = []pathMeta{
 	// 女優頁同理，要排在 /av/actress 的 Prefix 通用卡前面
 	{Pattern: avActressPattern, Title: avActressSection, Description: "搜尋演員資料與作品索引的整理工具。", Apply: applyAvActressMeta},
 	{Path: "/", Title: siteName, Description: defaultDescription},
-	// joyu.fyi 首頁（女優搜尋）：nginx 補上前綴後是 /av
-	{Path: "/av", Title: avActressSection, Description: "搜尋演員資料與作品索引的整理工具。"},
+	// joyu.fyi 首頁（入口頁）：nginx 補上前綴後是 /av
+	{Path: "/av", Title: joyuSiteName, Description: joyuDescription},
 	{Path: "/av/video", Title: avVideoSection, Description: "以番號、標籤、演員與片名搜尋影片資料的整理工具。", Prefix: true},
 	{Path: "/av/actress", Title: avActressSection, Description: "搜尋演員資料與作品索引的整理工具。", Prefix: true},
 	{Path: "/data/tw-stats", Title: "台灣指標", Description: "查詢台灣公開統計指標，快速瀏覽資料趨勢與歷史紀錄。", Prefix: true},

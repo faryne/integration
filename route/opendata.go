@@ -1,8 +1,11 @@
 package route
 
 import (
+	"time"
+
 	"faryne.dev/controller/opendata"
 	"faryne.dev/middleware/authsession"
+	"faryne.dev/middleware/httpcache"
 	authService "faryne.dev/service/auth"
 	"github.com/gofiber/fiber/v3"
 )
@@ -31,10 +34,16 @@ func OpenData(app *fiber.App) {
 	g3.Get("/actress/detail/:id", opendata.XCityActressDetail)
 
 	g4 := g.Group("/av")
-	g4.Get("/search/video", opendata.AvVideoSearch)
+	// 公開查詢（joyu.fyi 的搜尋、女優頁、影片頁）：資料只隨每日同步與審核核准變動，瀏覽器 1 分鐘、Cloudflare 10 分鐘
+	avCache := httpcache.Public(time.Minute, 10*time.Minute)
+	g4.Get("/search/video", avCache, opendata.AvVideoSearch)
 	// 搜尋頁「篩選」：目前條件下的常見標籤／發售商／系列／出演
-	g4.Get("/search/video/facets", opendata.AvVideoFacets)
-	g4.Get("/search/actress", opendata.AvActressSearch)
+	g4.Get("/search/video/facets", avCache, opendata.AvVideoFacets)
+	g4.Get("/search/actress", avCache, opendata.AvActressSearch)
+	// joyu.fyi 首頁「今天有新片的女優」、女優頁的作品統計與共演女優
+	g4.Get("/home/new-actresses", avCache, opendata.AvNewActresses)
+	g4.Get("/actress/summary", avCache, opendata.AvActressSummary)
+	g4.Get("/actress/by-names", avCache, opendata.AvActressesByNames)
 	// 詳細頁「同步資料」：用 DMM 內部番號重抓單一作品（IP＋作品冷卻限流）
 	g4.Post("/video/:no/sync", opendata.AvVideoSync)
 	// 女優上稿：不擋登入（有登入就記錄提交者），IP 限流

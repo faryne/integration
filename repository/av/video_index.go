@@ -15,6 +15,8 @@ type VideoIndex interface {
 	Search(ctx context.Context, q av.VideoIndexQuery) (search.Page[av.RawVideo], error)
 	// Facets 目前條件下常見的標籤／發售商／系列／出演
 	Facets(ctx context.Context, q av.VideoIndexQuery) (av.VideoFacets, error)
+	// TopActresses 符合條件的影片裡，出演者依部數由多到少取前 size 位（joyu 首頁新片女優、女優頁共演女優）
+	TopActresses(ctx context.Context, q av.VideoIndexQuery, size int) ([]av.VideoFacetBucket, error)
 	// DateStats 符合條件的影片部數與最早／最晚配信日
 	DateStats(ctx context.Context, q av.VideoIndexQuery) (av.VideoStats, error)
 	// StatsByActress 全部影片依出演者名字分組統計；withDates 才算最早／最晚配信日

@@ -37,13 +37,16 @@ export const avVideoSearchQueryKey = (
   params: ListByPaginationRequest<VideoSearchRequest>,
 ) => [params, "av/video"];
 
+// fresh：繞過瀏覽器與 Cloudflare 快取（API 有 Cache-Control，見後端 middleware/httpcache）。
+// 同步資料後馬上要看到新內容時用：多帶一個每次不同的參數，快取鍵就不會撞到舊的回應（後端會忽略這個參數）
 export async function fetchAVVideoSearch(
   params: ListByPaginationRequest<VideoSearchRequest>,
+  fresh = false,
 ) {
   const response = await axios.get<VideoSearchResponse>(
     `${import.meta.env.VITE_API_BASE}/opendata/av/search/video`,
     {
-      params,
+      params: fresh ? { ...params, _fresh: Date.now() } : params,
       // 陣列參數送成 tag=A&tag=B（axios 預設是 tag[]=A，後端讀不到）
       paramsSerializer: { indexes: null },
       timeout: 10000,

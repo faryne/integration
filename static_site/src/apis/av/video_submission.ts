@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import axios from "axios";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { CommonResponse } from "@/apis/interfaces.ts";
@@ -12,18 +13,28 @@ import type {
   VideoTermKey,
   VideoTermOption,
 } from "@/types/avVideoSubmission.ts";
+import { loadRecaptcha, recaptchaHeaders } from "@/lib/recaptcha.ts";
 
 const apiBase = import.meta.env.VITE_API_BASE;
 
 /** 提交影片修改：不需登入，有登入就帶上 session 讓後端記錄提交者 */
 export function useSubmitVideo() {
   const { session } = useAuth();
+  // 表單頁一打開就先載入 reCAPTCHA，送出時取 token 比較快、風險分數也比較準
+  useEffect(() => {
+    void loadRecaptcha();
+  }, []);
   return useMutation({
     mutationFn: async (body: VideoSubmitRequest) => {
       const response = await axios.post<CommonResponse<VideoSubmitResult>>(
         `${apiBase}/opendata/av/video/submissions`,
         body,
-        session ? { headers: sessionHeaders(session.encrypt_key) } : undefined,
+        {
+          headers: {
+            ...(await recaptchaHeaders("VIDEO_SUBMIT")),
+            ...(session && sessionHeaders(session.encrypt_key)),
+          },
+        },
       );
       return response.data.data;
     },

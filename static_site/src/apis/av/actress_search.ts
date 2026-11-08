@@ -20,6 +20,9 @@ export interface ActressSearchRequest extends ActressRef {
   height?: number[];
   random?: number;
   birth_year?: number;
+  // 不帶年份時：當月壽星（依生日日期排）；再帶 birth_day 時只取那天以後（joyu 首頁「近期生日」）
+  birth_month?: number;
+  birth_day?: number;
   name?: string;
 }
 

@@ -6,13 +6,19 @@ import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { actressRefOf, useRoutedActress } from "@/helpers/avActressRef.ts";
 import { useActressTopicIndex } from "@/apis/av/actress_topic.ts";
 import { findActressTopic } from "@/helpers/avActressTopic.ts";
-import type { ActressVideoTab } from "@/components/av/actress_detail.tsx";
+import type {
+  ActressVideoTab,
+  ActressWorksFilter,
+} from "@/components/av/actress_works.tsx";
+import { useAVVideoFacets } from "@/apis/av/video_facets.ts";
+import { useJoyuActressSummary } from "@/apis/av/joyu.ts";
 import {
   AV_ACTRESS_SECTION,
   sectionTitle,
   useTitle,
 } from "@/helpers/title.tsx";
 import { joyuPath } from "@/helpers/joyu.ts";
+import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 
 export function AVActressDetail() {
   const { name = "" } = useParams<{ name: string }>();
@@ -36,6 +42,8 @@ export function AVActressDetail() {
     description: `${name} 的個人資料與出演作品索引。`,
     type: "profile",
   });
+  // 麵包屑最後一層顯示網址上的名義
+  useBreadcrumbTail(name);
   // 從有類型條件的主題點進來（?topic=）時，出演影片多一個「該主題作品」tab 並預設選它，列出符合任一類型條件的作品（聯集）；
   // ?tab=all 是全部作品。主題資料還沒讀到前先不查影片，避免先查全部、再換成主題查第二次
   const topicSlug = searchParams.get("topic") ?? "";
@@ -53,21 +61,56 @@ export function AVActressDetail() {
       else next.delete("tab");
       return next;
     });
-  // 一律用這位自己的 ID 查出演影片，同名的人才分得開（舊網址也一樣）
+  // 作品篩選（發售商、標籤各一個）存在網址；換條件時回到第 1 頁
+  const filter: ActressWorksFilter = {
+    year: searchParams.get("year") ?? undefined,
+    maker: searchParams.get("maker") ?? undefined,
+    tag: searchParams.get("tag") ?? undefined,
+  };
+  const setFilter = (next: ActressWorksFilter) =>
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.delete("page");
+      (["year", "maker", "tag"] as const).forEach((key) => {
+        if (next[key]) params.set(key, next[key]);
+        else params.delete(key);
+      });
+      return params;
+    });
+  // 一律用這位自己的 ID 查，同名的人才分得開（舊網址也一樣）
+  const actressParams = {
+    actress: name,
+    ...(actress && actressRefOf(actress)),
+  };
   const videoQuery = useAVVideoSearch(
     {
       page: videoPage,
-      actress: name,
-      ...(actress && actressRefOf(actress)),
+      ...actressParams,
+      ...(filter.year && { year: Number(filter.year) }),
+      ...(filter.maker && { maker: filter.maker }),
+      ...(filter.tag && { tag: [filter.tag] }),
       ...(videoTab === "topic" && { any_tag: genreTags }),
     },
     !!actress && (!topicSlug || !topicIndex.isPending),
   );
+  // 篩選列的發售商／標籤：這位全部作品的統計（不受目前篩選影響，才能切換回別的選項）
+  const facets = useAVVideoFacets(actressParams);
+  // 頂端的作品數、出道年，以及共演女優
+  const summary = useJoyuActressSummary(actressParams, !!actress);
+  // 年份篩選的選項：出道年到最新一年（新到舊）；不另外查各年有沒有作品，中間空白的年份點了會顯示沒有作品
+  const firstYear = Number(summary.data?.first.slice(0, 4));
+  const lastYear = Number(summary.data?.last.slice(0, 4));
+  const years =
+    firstYear > 0 && lastYear >= firstYear
+      ? Array.from({ length: lastYear - firstYear + 1 }, (_, i) =>
+          String(lastYear - i),
+        )
+      : [];
 
   if (!name || notFound) {
     return (
       <ErrorPage
-        backUrl={joyuPath("")}
+        backUrl={joyuPath("actress")}
         code={404}
         message={
           name
@@ -87,15 +130,22 @@ export function AVActressDetail() {
       <ActressDetail
         actress={actress}
         pageName={name}
-        onVideoPageChange={setVideoPage}
         sameNames={sameNames}
-        videoTabs={
-          topic && genreTags.length
-            ? { label: topic.label, value: videoTab, onChange: setVideoTab }
-            : undefined
-        }
-        videoPage={videoPage}
-        videos={videoQuery}
+        summary={summary.data}
+        works={{
+          videos: videoQuery,
+          page: videoPage,
+          onPageChange: setVideoPage,
+          years,
+          makers: facets.data?.makers ?? [],
+          tags: facets.data?.tags ?? [],
+          filter,
+          onFilterChange: setFilter,
+          videoTabs:
+            topic && genreTags.length
+              ? { label: topic.label, value: videoTab, onChange: setVideoTab }
+              : undefined,
+        }}
       />
     </AgeConfirmationGate>
   );

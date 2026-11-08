@@ -4,6 +4,8 @@ import (
 	"context"
 	"slices"
 	"strings"
+	"sync"
+	"time"
 
 	"faryne.dev/model/entity"
 	"faryne.dev/model/entity/opendata/av"
@@ -160,6 +162,14 @@ func buildActressSearchQuery(input av.ActressQueryRequest, domains []string) map
 		search.SetQuery(map[string]any{"term": map[string]any{"birth_month": input.BirthMonth}}, true, q)
 	} else if input.BirthYear > 0 {
 		search.SetQuery(map[string]any{"term": map[string]any{"birth_year": input.BirthYear}}, true, q)
+	} else if input.BirthMonth > 0 {
+		// 不給年份：當月壽星，依生日日期排（joyu 首頁「近期生日」）；再給 birth_day 時只取那天（含）以後，
+		// 首頁用它列「今天到月底」。後面的罩杯、三圍條件仍會改掉排序
+		search.SetQuery(map[string]any{"term": map[string]any{"birth_month": input.BirthMonth}}, true, q)
+		if input.BirthDay > 0 {
+			search.SetQuery(map[string]any{"range": map[string]any{"birth_day": map[string]any{"gte": input.BirthDay}}}, true, q)
+		}
+		q["sort"] = []map[string]any{{"birth_day": map[string]any{"order": "asc"}}, {"birth_year": map[string]any{"order": "desc"}}}
 	}
 	if cups := actressCups(input); len(cups) > 0 {
 		search.SetQuery(actressCupQuery(cups), true, q)
@@ -241,7 +251,22 @@ func actressDomainQuery(domains []string) map[string]any {
 	return map[string]any{"bool": map[string]any{"should": should, "minimum_should_match": 1}}
 }
 
+// xcity 資料是否已經夠多：結果幾乎不會變，放記憶體快取 1 小時，女優搜尋每次少打一次 ES（查詢失敗不快取）
+var xcityReadyCache struct {
+	sync.Mutex
+	ready   bool
+	checked time.Time
+}
+
+const xcityReadyTTL = time.Hour
+
 func xcityActressIndexReady() (bool, error) {
+	c := &xcityReadyCache
+	c.Lock()
+	defer c.Unlock()
+	if !c.checked.IsZero() && time.Since(c.checked) < xcityReadyTTL {
+		return c.ready, nil
+	}
 	q := map[string]any{
 		"size": 0,
 	}
@@ -251,7 +276,8 @@ func xcityActressIndexReady() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return r.Hits.Total.Value >= 1000, nil
+	c.ready, c.checked = r.Hits.Total.Value >= 1000, time.Now()
+	return c.ready, nil
 }
 
 func ActressSearch(input av.ActressQueryRequest) (*entity.ElasticSearchResponse[av.Actress], []av.Actress, error) {

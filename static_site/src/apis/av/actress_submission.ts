@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import axios from "axios";
 import { useMutation } from "@tanstack/react-query";
 import type { CommonResponse } from "@/apis/interfaces.ts";
@@ -10,18 +11,28 @@ import type {
   ActressSubmitRequest,
   ActressSubmitResult,
 } from "@/types/avActressSubmission.ts";
+import { loadRecaptcha, recaptchaHeaders } from "@/lib/recaptcha.ts";
 
 const apiBase = import.meta.env.VITE_API_BASE;
 
 /** 提交新增／修改：不需登入，有登入就帶上 session 讓後端記錄提交者 */
 export function useSubmitActress() {
   const { session } = useAuth();
+  // 表單頁一打開就先載入 reCAPTCHA，送出時取 token 比較快、風險分數也比較準
+  useEffect(() => {
+    void loadRecaptcha();
+  }, []);
   return useMutation({
     mutationFn: async (body: ActressSubmitRequest) => {
       const response = await axios.post<CommonResponse<ActressSubmitResult>>(
         `${apiBase}/opendata/av/actress/submissions`,
         body,
-        session ? { headers: sessionHeaders(session.encrypt_key) } : undefined,
+        {
+          headers: {
+            ...(await recaptchaHeaders("ACTRESS_SUBMIT")),
+            ...(session && sessionHeaders(session.encrypt_key)),
+          },
+        },
       );
       return response.data.data;
     },

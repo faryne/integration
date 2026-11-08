@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>joyu.fyi P2 layout mockup</title>
+<style>
+  /* joyu 配色：跟圖示同一組深紫＋粉紅，不再沿用 faryne.dev 的墨色＋青綠 */
+  :root {
+    --plum:#2b1d2e; --plum-deep:#1c1420; --pink:#ff5c8a; --pink-soft:#ffe3ec;
+    --bg:#faf7f9; --paper:#fff; --line:#ece4ea; --text:#2a1f2c; --muted:#7a6a77;
+    --chip:#f6eef3;
+  }
+  .dark {
+    --bg:#17111a; --paper:#221a25; --line:#3a2e3d; --text:#f3e6ef; --muted:#b39fb0;
+    --chip:#2e2431; --pink-soft:#4a2433;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; background:#cfc6cd; }
+  .toolbar { position:sticky; top:0; z-index:30; background:#111; color:#fff; padding:10px 16px; font-size:13px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .toolbar button { background:#3a3a3a; color:#fff; border:0; border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; }
+  .toolbar button.on { background:var(--pink); }
+  .toolbar .sep { width:1px; height:20px; background:#555; margin:0 4px; }
+  .stage { padding:24px; display:flex; overflow-x:auto; }
+  .frame { margin:0 auto; background:var(--bg); color:var(--text); border-radius:10px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.25); width:1180px; flex:0 0 auto; }
+  .frame.mobile { width:375px; }
+
+  /* 頁首 */
+  .header { background:var(--plum); color:#f3e6ef; height:56px; display:flex; align-items:center; gap:20px; padding:0 20px; position:sticky; top:0; }
+  .brand { display:flex; align-items:center; gap:8px; font-weight:800; }
+  .logo { width:28px; height:28px; border-radius:6px; background:var(--plum-deep); color:var(--pink); display:grid; place-items:center; font-size:17px; font-weight:700; border:1px solid #4a3550; }
+  .nav { display:flex; height:100%; }
+  .nav a { display:flex; align-items:center; padding:0 12px; font-size:14px; color:#e7d5e1; cursor:pointer; position:relative; white-space:nowrap; }
+  .nav a.on { color:var(--pink); }
+  .nav a.on::after { content:""; position:absolute; left:10px; right:10px; bottom:0; height:2px; background:var(--pink); border-radius:2px; }
+  .hsearch { margin-left:auto; display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.08); border:1px solid #4a3550; border-radius:8px; padding:6px 10px; width:260px; color:#b39fb0; font-size:13px; }
+  .iconbtn { width:32px; height:32px; border:1px solid #4a3550; border-radius:8px; display:grid; place-items:center; color:#e7d5e1; font-size:14px; }
+  .mobile .header { padding:0 12px; gap:8px; }
+  .mobile .brand span { display:none; }
+  .mobile .nav a { padding:0 8px; }
+  .mobile .hsearch { width:auto; padding:6px 8px; }
+  .mobile .hsearch span { display:none; }
+
+  .crumb { background:var(--paper); border-bottom:1px solid var(--line); padding:8px 20px; font-size:12px; color:var(--muted); }
+  .crumb b { color:var(--text); }
+  .url { font-family:ui-monospace,monospace; font-size:12px; background:var(--paper); border:1px dashed var(--line); border-radius:6px; padding:6px 10px; margin-bottom:16px; color:var(--muted); }
+  .page { padding:20px; }
+  .mobile .page { padding:16px 12px; }
+  .footer { background:var(--plum-deep); color:#9c8798; font-size:13px; padding:18px 20px; margin-top:24px; }
+
+  .note { background:#fff8db; color:#7a5b00; border:1px solid #f1d77a; border-radius:8px; padding:8px 12px; font-size:12px; margin-bottom:16px; }
+  .dark .note { background:#3a3218; color:#f1d77a; border-color:#6b5a1f; }
+
+  /* 共用 */
+  section { margin-bottom:28px; }
+  .sechead { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; gap:8px; }
+  .sechead h3 { margin:0; font-size:18px; }
+  .sechead small { color:var(--muted); font-weight:400; font-size:13px; margin-left:6px; }
+  .more { color:var(--pink); font-size:13px; cursor:pointer; white-space:nowrap; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font-size:13px; background:var(--chip); border:1px solid var(--line); border-radius:16px; padding:4px 10px; white-space:nowrap; cursor:pointer; }
+  .chip small { color:var(--muted); margin-left:3px; }
+  .chip.on { background:var(--pink); border-color:var(--pink); color:#fff; }
+  .photo { background:repeating-linear-gradient(45deg,#d9c9d4 0 10px,#e6d9e1 10px 20px); }
+  .dark .photo { background:repeating-linear-gradient(45deg,#3a2e3d 0 10px,#443748 10px 20px); }
+  .badge { position:absolute; top:6px; left:6px; background:var(--pink); color:#fff; font-size:11px; font-weight:700; border-radius:10px; padding:2px 7px; }
+  .paper { background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:16px; }
+
+  /* 首頁 */
+  .hero { background:linear-gradient(135deg,var(--plum),#4a2840); color:#f3e6ef; border-radius:14px; padding:32px 28px; margin-bottom:28px; }
+  .mobile .hero { padding:22px 16px; }
+  .hero h1 { margin:0 0 6px; font-size:26px; }
+  .mobile .hero h1 { font-size:21px; }
+  .hero p { margin:0 0 16px; color:#cdb5c6; font-size:14px; }
+  .bigsearch { display:flex; background:#fff; border-radius:10px; overflow:hidden; max-width:640px; }
+  .bigsearch div { flex:1; padding:13px 14px; color:#8d7a89; font-size:14px; }
+  .bigsearch button { border:0; background:var(--pink); color:#fff; font-weight:700; padding:0 20px; font-size:14px; }
+  .hero .chips { margin-top:14px; }
+  .hero .chip { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.2); color:#f3e6ef; }
+
+  .hscroll { display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; }
+  .acard { flex:0 0 148px; background:var(--paper); border:1px solid var(--line); border-radius:10px; overflow:hidden; cursor:pointer; position:relative; }
+  .acard .photo { aspect-ratio:3/4; }
+  .acard .body { padding:8px 10px 10px; font-size:13px; }
+  .acard .body b { display:block; }
+  .acard .body span { color:var(--muted); font-size:12px; }
+  .mobile .acard { flex-basis:120px; }
+
+  .bday { display:grid; grid-template-columns:repeat(8,1fr); gap:12px; }
+  .mobile .bday { grid-template-columns:repeat(4,1fr); }
+  .bday div { text-align:center; font-size:12px; cursor:pointer; }
+  .bday .photo { width:100%; aspect-ratio:1; border-radius:50%; margin-bottom:6px; border:2px solid var(--line); }
+  .bday .photo.today { border-color:var(--pink); }
+  .bday b { display:block; font-size:13px; color:var(--text); }
+  .bday span { color:var(--muted); }
+
+  .topicgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .mobile .topicgrid { grid-template-columns:1fr; }
+  .topicgrid h4 { margin:0 0 8px; font-size:14px; }
+
+  .vgrid { display:grid; grid-template-columns:repeat(6,1fr); gap:12px; }
+  .mobile .vgrid { grid-template-columns:repeat(2,1fr); }
+  .vcard { background:var(--paper); border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:12px; cursor:pointer; }
+  .vcard .photo { aspect-ratio:7/10; }
+  .vcard .body { padding:6px 8px 8px; }
+  .vcard code { font-size:11px; background:var(--chip); border-radius:4px; padding:1px 5px; }
+  .vcard p { margin:4px 0 0; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .vcard span { color:var(--muted); }
+
+  /* 女優頁 */
+  .profile { display:grid; grid-template-columns:200px 1fr; gap:24px; margin-bottom:24px; }
+  .mobile .profile { grid-template-columns:110px 1fr; gap:12px; }
+  .profile .photo { aspect-ratio:3/4; border-radius:12px; }
+  .profile h1 { margin:0; font-size:26px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .mobile .profile h1 { font-size:20px; }
+  .kana { color:var(--muted); font-size:14px; margin:4px 0 12px; }
+  .facts { display:grid; grid-template-columns:repeat(4,auto); justify-content:start; gap:6px 28px; font-size:14px; margin-bottom:12px; }
+  .mobile .facts { grid-template-columns:1fr 1fr; gap:4px 12px; font-size:13px; }
+  .facts span { color:var(--muted); font-size:12px; display:block; }
+  .rowlabel { font-size:12px; color:var(--muted); margin:10px 0 6px; }
+  .btn { display:inline-flex; align-items:center; gap:4px; border:1px solid var(--pink); color:var(--pink); background:transparent; border-radius:8px; padding:5px 12px; font-size:13px; cursor:pointer; }
+  .links a { color:var(--pink); font-size:13px; margin-right:14px; cursor:pointer; }
+  .samename { background:var(--pink-soft); border-radius:10px; padding:10px 14px; font-size:13px; margin-bottom:16px; }
+  .samename a { color:var(--pink); margin-left:8px; cursor:pointer; }
+
+  .tabs { display:flex; gap:4px; border-bottom:1px solid var(--line); margin-bottom:16px; }
+  .tabs a { padding:10px 14px; font-size:14px; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; }
+  .tabs a.on { color:var(--pink); border-color:var(--pink); font-weight:700; }
+  .filters { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:16px; }
+  .select { border:1px solid var(--line); background:var(--paper); border-radius:8px; padding:6px 10px; font-size:13px; }
+  .year { display:flex; align-items:baseline; gap:8px; margin:20px 0 10px; }
+  .year b { font-size:18px; }
+  .year span { color:var(--muted); font-size:13px; }
+  .year::after { content:""; flex:1; border-bottom:1px dashed var(--line); }
+
+  .costars { display:grid; grid-template-columns:repeat(6,1fr); gap:14px; }
+  .mobile .costars { grid-template-columns:repeat(3,1fr); }
+  .costars div { text-align:center; font-size:13px; cursor:pointer; }
+  .costars .photo { aspect-ratio:1; border-radius:50%; margin-bottom:6px; }
+  .costars span { display:block; color:var(--muted); font-size:12px; }
+
+  /* 影片頁 */
+  .vhead { display:grid; grid-template-columns:280px 1fr; gap:24px; margin-bottom:20px; }
+  .mobile .vhead { grid-template-columns:1fr; }
+  .vhead .photo { aspect-ratio:7/10; border-radius:10px; }
+  .mobile .vhead .photo { width:60%; margin:0 auto; }
+  .vhead h1 { margin:8px 0 12px; font-size:20px; line-height:1.4; }
+  .cast { display:flex; gap:12px; flex-wrap:wrap; margin:8px 0 16px; }
+  .castcard { display:flex; align-items:center; gap:10px; background:var(--paper); border:1px solid var(--line); border-radius:40px; padding:4px 14px 4px 4px; cursor:pointer; font-size:14px; }
+  .castcard .photo { width:44px; height:44px; border-radius:50%; aspect-ratio:auto; }
+  .castcard span { display:block; color:var(--muted); font-size:12px; }
+  .castcard:hover { border-color:var(--pink); }
+  .view { display:none; }
+  .view.on { display:block; }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <b style="margin-right:6px">joyu.fyi P2 mockup</b>
+  <button data-view="home" class="on">首頁</button>
+  <button data-view="search">女優搜尋 /actress</button>
+  <button data-view="actress">女優頁</button>
+  <button data-view="video">影片頁</button>
+  <span class="sep"></span>
+  <button data-size="desktop" class="on">桌機</button>
+  <button data-size="mobile">手機</button>
+  <span class="sep"></span>
+  <button data-theme="light" class="on">淺色</button>
+  <button data-theme="dark">深色</button>
+</div>
+
+<div class="stage">
+<div class="frame" id="frame">
+  <div class="header">
+    <div class="brand"><div class="logo">女</div><span>joyu.fyi</span></div>
+    <div class="nav">
+      <a data-go="home" data-nav="actress" class="on">女優</a>
+      <a>女優主題</a>
+      <a>影片</a>
+    </div>
+    <div class="hsearch">🔍 <span>名字、別名或番號</span></div>
+    <div class="iconbtn">◐</div>
+  </div>
+
+  <!-- 首頁 -->
+  <div class="view on" id="v-home">
+    <div class="page">
+      <div class="url">https://joyu.fyi/</div>
+      <div class="hero">
+        <h1>找女優、查番號</h1>
+        <p>16,474 位女優的資料與出演作品，每天更新新片。</p>
+        <div class="bigsearch"><div>輸入名字、別名，或直接貼番號（例：ABCD-123）</div><button>搜尋</button></div>
+        <div class="chips">
+          <span class="chip">巨乳</span><span class="chip">美脚</span><span class="chip">長身</span><span class="chip">ミニ系</span><span class="chip">新人</span><span class="chip">全部主題 →</span>
+        </div>
+      </div>
+
+      <section>
+        <div class="sechead"><h3>今天有新片的女優<small>11/08（日）・23 位</small></h3><span class="more">看全部新片 →</span></div>
+        <div class="hscroll" id="newActresses"></div>
+      </section>
+
+      <section>
+        <div class="sechead"><h3>本月生日<small>11 月・41 位</small></h3><span class="more">看全部 →</span></div>
+        <div class="bday" id="bdays"></div>
+      </section>
+
+      <section>
+        <div class="sechead"><h3>女優主題</h3><span class="more">全部主題 →</span></div>
+        <div class="topicgrid">
+          <div class="paper"><h4>身材</h4><div class="chips"><span class="chip">巨乳<small>2,310</small></span><span class="chip">爆乳<small>812</small></span><span class="chip">美乳<small>1,204</small></span><span class="chip">貧乳<small>430</small></span><span class="chip">美脚<small>966</small></span></div></div>
+          <div class="paper"><h4>身高</h4><div class="chips"><span class="chip">ミニ系<small>520</small></span><span class="chip">長身<small>388</small></span><span class="chip">モデル体型<small>241</small></span></div></div>
+          <div class="paper"><h4>人氣</h4><div class="chips"><span class="chip">本月最多新片<small>50</small></span><span class="chip">新人<small>96</small></span><span class="chip">復出<small>18</small></span></div></div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sechead"><h3>最新上架影片</h3><span class="more">影片搜尋 →</span></div>
+        <div class="vgrid" id="latestVideos"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 女優搜尋 -->
+  <div class="view" id="v-search">
+    <div class="crumb">joyu.fyi / <b>女優搜尋</b></div>
+    <div class="page">
+      <div class="url">https://joyu.fyi/actress?name=…</div>
+      <div class="note">現在首頁的女優搜尋列表（條件篩選＋結果卡片）原封不動搬到 /actress，只換配色，這裡不重畫。首頁的搜尋框、主題標籤點下去都會帶條件進到這頁。</div>
+      <div style="display:grid;grid-template-columns:260px 1fr;gap:16px" class="searchlayout">
+        <div class="paper" style="font-size:13px">
+          <b>搜尋條件</b>
+          <div class="select" style="margin:10px 0">關鍵字</div>
+          <div class="rowlabel">罩杯</div>
+          <div class="chips"><span class="chip">A</span><span class="chip">B</span><span class="chip on">C</span><span class="chip">D</span><span class="chip">E</span><span class="chip">F</span></div>
+          <div class="rowlabel">出生年份</div><div class="select">1995 – 2004</div>
+        </div>
+        <div><div class="vgrid" id="searchResults" style="grid-template-columns:repeat(5,1fr)"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 女優頁 -->
+  <div class="view" id="v-actress">
+    <div class="crumb">joyu.fyi / 女優 / <b>星宮みお</b></div>
+    <div class="page">
+      <div class="url">https://joyu.fyi/actress/星宮みお?xcity_id=12345</div>
+      <div class="samename">另有 1 位同名女優：<a>星宮みお（2011 年出道）</a></div>
+
+      <div class="profile">
+        <div class="photo"></div>
+        <div>
+          <h1>星宮みお <button class="btn">✎ 修改資料</button></h1>
+          <div class="kana">ほしみや みお・別名：<span class="chip">星宮美緒</span> <span class="chip">MIO</span></div>
+          <div class="facts">
+            <div><span>生日</span>1999/11/14（26 歲）</div>
+            <div><span>身高</span>158 cm</div>
+            <div><span>三圍</span>B88（F）W58 H86</div>
+            <div><span>出道</span>2019 年・作品 214 部</div>
+          </div>
+          <div class="rowlabel">主題</div>
+          <div class="chips"><span class="chip">巨乳</span><span class="chip">ミニ系</span><span class="chip">本月最多新片</span></div>
+          <div class="rowlabel">外部連結</div>
+          <div class="links"><a>X</a><a>Instagram</a><a>所屬事務所</a></div>
+        </div>
+      </div>
+
+      <div class="sechead"><h3>出演作品<small>214 部</small></h3></div>
+
+      <div class="filters">
+        <span class="select">最新優先 ▾</span>
+        <span class="select">全部發售商 ▾</span>
+        <span class="chip on">全部</span><span class="chip">單體</span><span class="chip">共演</span><span class="chip">VR</span>
+      </div>
+      <div class="note">作品依發售年份分組；原本側欄的「發售商」「影片標籤」收進篩選列，版面留給作品。</div>
+      <div id="worksByYear"></div>
+
+      <section style="margin-top:28px">
+        <div class="sechead"><h3>共演女優<small>依合作作品數</small></h3><span class="more">看全部 38 位 →</span></div>
+        <div class="costars" id="costars"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 影片頁 -->
+  <div class="view" id="v-video">
+    <div class="crumb">joyu.fyi / 影片 / <b>ABCD-401（片名示意）</b></div>
+    <div class="page">
+      <div class="url">https://joyu.fyi/video/ABCD-401</div>
+      <div class="note">影片頁維持現在的結構（封面、資料、同系列／同監督／同品牌分頁），只做一件事：把「出演女優」從「基本資料」分頁裡拉到標題下方，做成可以點的女優卡，直接連到女優頁。影片搜尋頁不改結構，只換配色。</div>
+      <div class="vhead">
+        <div class="photo"></div>
+        <div>
+          <div class="chips"><span class="chip">ABCD-401</span><span class="chip">配信日 2026/11/02</span><span class="chip">發售日 2026/11/10</span><span class="chip">120 分鐘</span></div>
+          <h1>（片名示意）夏の終わりに再会した彼女と過ごす三日間</h1>
+          <div class="rowlabel">出演女優</div>
+          <div class="cast">
+            <div class="castcard"><div class="photo"></div><div>星宮みお<span>作品 214・C</span></div></div>
+            <div class="castcard"><div class="photo"></div><div>白瀬ゆな<span>作品 88・E</span></div></div>
+          </div>
+          <button class="btn">✎ 修改資料</button>
+        </div>
+      </div>
+      <div class="tabs"><a class="on">基本資料</a><a>同系列作品</a><a>星宮みお 的其他作品</a><a>同監督作品</a><a>同品牌作品</a></div>
+      <div class="vgrid" id="related"></div>
+    </div>
+  </div>
+
+  <div class="footer">joyu.fyi</div>
+</div>
+</div>
+
+<script>
+  // 假資料：名字都是虛構的
+  const names = ["星宮みお","白瀬ゆな","橘かのん","朝倉しずく","七瀬ひより","水城あおい","桜井りこ","藤咲まい","神楽ひな","月島れな","葉山さき","小野寺ゆい"];
+  const el = (id) => document.getElementById(id);
+  el("newActresses").innerHTML = names.slice(0, 10).map((n, i) =>
+    `<div class="acard"><div class="photo"></div><span class="badge">新片 ${i % 3 + 1}</span><div class="body"><b>${n}</b><span>最新：ABCD-${300 + i}</span></div></div>`).join("");
+  el("bdays").innerHTML = names.slice(0, 8).map((n, i) =>
+    `<div><div class="photo ${i === 2 ? "today" : ""}"></div><b>${n}</b><span>11/${String(2 + i * 3).padStart(2, "0")}${i === 2 ? "・今天" : ""}</span></div>`).join("");
+  const vcard = (i) => `<div class="vcard"><div class="photo"></div><div class="body"><code>ABCD-${400 + i}</code><p>（片名示意）夏の終わりに再会した彼女と過ごす三日間</p><span>${names[i % names.length]}・11/0${(i % 8) + 1}</span></div></div>`;
+  el("latestVideos").innerHTML = [...Array(6)].map((_, i) => vcard(i)).join("");
+  el("searchResults").innerHTML = names.slice(0, 10).map((n) =>
+    `<div class="vcard"><div class="photo" style="aspect-ratio:3/4"></div><div class="body"><b>${n}</b><br><span>C・158cm</span></div></div>`).join("");
+  el("worksByYear").innerHTML = [["2026", 38], ["2025", 61], ["2024", 52]].map(([y, c], yi) =>
+    `<div class="year"><b>${y}</b><span>${c} 部</span></div><div class="vgrid">${[...Array(yi === 0 ? 6 : 6)].map((_, i) => vcard(i + yi * 6)).join("")}</div>`).join("");
+  el("related").innerHTML = [...Array(6)].map((_, i) => vcard(i + 20)).join("");
+  el("costars").innerHTML = names.slice(1, 7).map((n, i) =>
+    `<div><div class="photo"></div>${n}<span>${12 - i * 2} 部</span></div>`).join("");
+
+  // 工具列切換
+  const frame = el("frame");
+  document.querySelectorAll("[data-view]").forEach((b) => b.onclick = () => {
+    document.querySelectorAll("[data-view]").forEach((x) => x.classList.toggle("on", x === b));
+    document.querySelectorAll(".view").forEach((v) => v.classList.toggle("on", v.id === "v-" + b.dataset.view));
+  });
+  document.querySelectorAll("[data-size]").forEach((b) => b.onclick = () => {
+    document.querySelectorAll("[data-size]").forEach((x) => x.classList.toggle("on", x === b));
+    frame.classList.toggle("mobile", b.dataset.size === "mobile");
+    document.querySelectorAll(".searchlayout").forEach((s) => s.style.gridTemplateColumns = b.dataset.size === "mobile" ? "1fr" : "260px 1fr");
+    el("searchResults").style.gridTemplateColumns = b.dataset.size === "mobile" ? "repeat(2,1fr)" : "repeat(5,1fr)";
+  });
+  document.querySelectorAll("[data-theme]").forEach((b) => b.onclick = () => {
+    document.querySelectorAll("[data-theme]").forEach((x) => x.classList.toggle("on", x === b));
+    frame.classList.toggle("dark", b.dataset.theme === "dark");
+  });
+</script>
+</body>
+</html>

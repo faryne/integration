@@ -1,7 +1,8 @@
 import { Box, Container } from "@mui/material";
 
-import { siteInk } from "@/components/common/siteLayout/siteTheme.ts";
 import { JOYU_SITE_NAME } from "@/helpers/joyu.ts";
+
+import { joyuInk } from "./joyuTheme.ts";
 
 /** joyu.fyi 頁尾：只放站名。刻意不連回 faryne.dev（跟主站切割），也不放 ©（站上的作品資料不是自己的版權） */
 export function JoyuFooter() {
@@ -10,9 +11,9 @@ export function JoyuFooter() {
       component="footer"
       sx={{
         flexShrink: 0,
-        background: siteInk.footer,
-        borderTop: `1px solid ${siteInk.line}`,
-        color: siteInk.textMuted,
+        background: joyuInk.deep,
+        borderTop: `1px solid ${joyuInk.line}`,
+        color: joyuInk.textMuted,
         fontSize: 13,
       }}
     >

@@ -4,13 +4,20 @@ import type {
   ActressTopicFile,
   ActressTopicIndex,
 } from "@/types/avActressTopic.ts";
+import { isJoyuSite } from "@/helpers/joyu.ts";
 
 // 主題 JSON 每週才更新一次，CDN 也有 1 小時快取；前端在同一個瀏覽階段內不用重抓
 const TOPIC_STALE_TIME = 30 * 60 * 1000;
 
-/** 主題檔案在 CDN 上的位置（後端排程上傳到 S3 的 opendata/av/actress-topics/） */
+/**
+ * 主題檔案在 CDN 上的位置（後端排程上傳到 S3 的 opendata/av/actress-topics/）。
+ * joyu.fyi 正式站走同網域的 /cdn/ 代理（httpd_conf/nginx），網路請求裡才不會出現 cdn.faryne.dev；
+ * 本機開發沒有那層代理，直接打 CDN
+ */
 const topicsBase = () =>
-  `${String(import.meta.env.VITE_CDN_BASE ?? "").replace(/\/+$/, "")}/opendata/av/actress-topics`;
+  isJoyuSite() && !import.meta.env.DEV
+    ? "/cdn/opendata/av/actress-topics"
+    : `${String(import.meta.env.VITE_CDN_BASE ?? "").replace(/\/+$/, "")}/opendata/av/actress-topics`;
 
 /** index.json：總覽頁、主題頁（slug 對檔名）、女優頁的主題 chip 共用同一份快取；女優頁只在網址帶 ?topic= 時才讀 */
 export function useActressTopicIndex(enabled = true) {
