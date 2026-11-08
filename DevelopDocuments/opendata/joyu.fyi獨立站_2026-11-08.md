@@ -162,4 +162,8 @@
 - **root cause**：`pnpm build` 在 `vite build` 之後還會跑 `scripts/prerender.mjs`，用寫死的 faryne.dev 標題、描述、canonical、預覽圖、JSON-LD 覆寫 `dist/index.html`，另外還會產生 `/data/rates` 等主站頁面的靜態檔，把 `vite-plugins/joyuSite.ts` 換好的內容又蓋回去。本機測試時是直接跑 `vite build`，沒經過 prerender，所以沒抓到。
 - **解法**：`prerender.mjs` 在 `VITE_SITE=joyu` 時直接跳過（4cb4e739）。驗證 joyu build 時要跑完整的 `pnpm build`，不能只跑 `vite build`。
 - **狀態**：已修正，重新跑 `make build-frontend-joyu` 部署後生效。
-- **備註**：steamloom.works、galgame.tv、neko.maid.tw 的 build 也會跑同一支 prerender，原始 HTML 一樣帶 faryne.dev 的 meta。給社群爬蟲的部分有後端 SNS render 蓋過去，但沒處理到的地方還在，之後要不要處理另外評估。
+- **後續（同日已修正）**：steamloom.works、galgame.tv、neko.maid.tw 有同樣的問題，線上原始 HTML 的 canonical 是 `https://faryne.dev/`（steamloom 是更舊的 `beta.faryne.dev`），Google 可能把它們的首頁當成 faryne.dev 的重複內容。
+  - 修法：各站品牌資訊統一放在 `static_site/src/data/siteBranding.ts`，`vite-plugins/siteBranding.ts` 依 `VITE_SITE` 改寫 index.html（取代原本的 `joyuSite.ts` 和 `steamloomFaviconPlugin`）；`prerender.mjs` 只在主站 build 執行；makefile 的 galgame／nekomaid build 補上 `VITE_SITE`。
+  - galgame.tv 原本沒有站台描述，執行期會落回 faryne.dev 的描述，現在改用導覽選單上那句。
+  - galgame.tv、neko.maid.tw 還沒有自己的 favicon 和預覽圖，所以沿用主站頭像。
+  - 要重新部署 `build-frontend-galgame`、`build-frontend-nekomaid`、`build-frontend-steamloom` 才會生效。

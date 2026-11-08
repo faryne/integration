@@ -27,7 +27,7 @@ const (
 	steamloomOrigin     = "https://steamloom.works"
 	defaultDescription  = "Faryne 的個人實驗室，整理開放資料、ETF 與匯率工具、爬蟲工具、Threads 截圖工具，以及一些 side project。"
 	nekomaidDescription = "搜尋與瀏覽難以名狀的抓圖器收錄的 Pixiv、Niconico 靜畫與 TINAMI 作品索引。"
-	// steamloomDescription 跟前端 helpers/title.tsx 同一句，改的時候兩邊一起改
+	// steamloomDescription、nekomaidDescription 跟前端 static_site/src/data/siteBranding.ts 同一句，改的時候兩邊一起改
 	steamloomDescription = "SteamLoom 是故事創作與發表平台：閱讀公開連載與親友分享的作品，也能用你習慣的 AI 透過 MCP 一起寫故事。"
 	defaultImagePath     = "/faryne-icon-1024.jpg"
 	nekomaidAPIBase      = "https://faryne.dev/api/nekomaid"

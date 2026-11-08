@@ -1,25 +1,14 @@
 import { createContext, useContext, useEffect } from "react";
 
-import { isJoyuSite, JOYU_SITE_NAME } from "@/helpers/joyu.ts";
+import { FARYNE_BRANDING, SITE_BRANDING } from "@/data/siteBranding.ts";
+import { isJoyuSite } from "@/helpers/joyu.ts";
 import { isSteamLoomSite, STEAMLOOM_PATH_PREFIX } from "@/helpers/steamloom.ts";
 
-const siteName = "Faryne 的實驗室 by faryne.dev";
-const nekomaidSiteName = "難以名狀的抓圖器";
-const galgameSiteName = "galgame.tv";
-const steamloomSiteName = "SteamLoom";
-const steamloomOrigin = "https://steamloom.works";
-// 跟後端 service/sns/meta.go 的 steamloomDescription 同一句，改的時候兩邊一起改
-const steamloomDescription =
-  "SteamLoom 是故事創作與發表平台：閱讀公開連載與親友分享的作品，也能用你習慣的 AI 透過 MCP 一起寫故事。";
-// 跟後端 service/sns 的品牌預設圖卡同一張（1200×630）
-const steamloomDefaultImage = "/steamloom-og-default.jpg";
-// joyu.fyi：刻意跟主站切割，描述與預覽圖都不能帶 faryne.dev 的品牌。
-// 描述跟後端 service/sns/meta.go 的 joyuDescription、vite-plugins/joyuSite.ts 同一句，改的時候三邊一起改
-const joyuOrigin = "https://joyu.fyi";
-const joyuDescription =
-  "整理 AV 女優資料與作品索引：用名字、別名、主題找女優，查看出演作品與番號。";
-const joyuDefaultImage = "/joyu-og-default.jpg";
-const defaultCanonicalOrigin = "https://faryne.dev";
+// 各站站名、描述、預設預覽圖統一定義在 data/siteBranding.ts（build 時改寫 index.html 也用同一份）
+const { steamloom, joyu: joyuBrand, galgame, nekomaid } = SITE_BRANDING;
+const steamloomOrigin = steamloom.origin;
+const joyuOrigin = joyuBrand.origin;
+const defaultCanonicalOrigin = FARYNE_BRANDING.origin;
 // Firebase 預覽網域跟正式自訂網域會顯示同一份內容，canonical 一律指回自訂網域，
 // 避免 Google 把兩者當成重複內容各自收錄一半。
 const canonicalOriginByHost: Record<string, string> = {
@@ -51,9 +40,7 @@ function getCanonicalOrigin() {
   );
 }
 
-const defaultDescription =
-  "Faryne 的個人實驗室，整理開放資料、ETF 與匯率工具、爬蟲工具、Threads 截圖工具，以及一些 side project。";
-const defaultImage = "/faryne-icon-1024.jpg";
+const defaultDescription = FARYNE_BRANDING.description;
 
 const pageDescriptions: Record<string, string> = {
   首頁: defaultDescription,
@@ -104,28 +91,29 @@ function isSteamLoomPage() {
   );
 }
 
-function getRouteSiteName() {
+// 目前頁面屬於哪個站（站名、描述、預設預覽圖）
+function getRouteBranding() {
   if (isSteamLoomPage()) {
-    return steamloomSiteName;
+    return steamloom;
   }
   if (isJoyuSite()) {
-    return JOYU_SITE_NAME;
+    return joyuBrand;
   }
   if (
     typeof window !== "undefined" &&
     (window.location.pathname.startsWith("/nekomaid") ||
       window.location.hostname.indexOf("neko.maid.tw") >= 0)
   ) {
-    return nekomaidSiteName;
+    return nekomaid;
   }
   if (
     typeof window !== "undefined" &&
     (window.location.pathname.startsWith("/galgame") ||
       window.location.hostname.indexOf("galgame.tv") >= 0)
   ) {
-    return galgameSiteName;
+    return galgame;
   }
-  return siteName;
+  return FARYNE_BRANDING;
 }
 
 function getFullTitleForSite(page: string, currentSiteName: string) {
@@ -242,22 +230,21 @@ export function useSeo(page: string, options: SeoOptions = {}) {
   const disabled = useContext(SeoDisabledContext);
   useEffect(() => {
     if (disabled) return;
-    const currentSiteName = getRouteSiteName();
-    const steamloom = currentSiteName === steamloomSiteName;
-    const joyu = currentSiteName === JOYU_SITE_NAME;
-    const siteDescription = joyu ? joyuDescription : defaultDescription;
+    const brand = getRouteBranding();
+    const currentSiteName = brand.siteName;
+    // SteamLoom（含 faryne.dev/storyteller 巢狀模式）不套頁面描述表，預覽圖也一律指向 steamloom.works
+    const isSteamLoom = brand === steamloom;
     const title = getFullTitleForSite(page, currentSiteName);
-    const description = steamloom
-      ? (options.description ?? steamloomDescription)
-      : getDescription(page, options.description, siteDescription);
+    const description = isSteamLoom
+      ? (options.description ?? brand.description)
+      : getDescription(page, options.description, brand.description);
     const canonicalUrl = toCanonicalUrl(
       options.path ?? `${window.location.pathname}${window.location.search}`,
     );
-    const imageUrl = steamloom
-      ? toAbsoluteUrl(options.image ?? steamloomDefaultImage, steamloomOrigin)
-      : toAbsoluteUrl(
-          options.image ?? (joyu ? joyuDefaultImage : defaultImage),
-        );
+    const imageUrl = toAbsoluteUrl(
+      options.image ?? brand.ogImage,
+      isSteamLoom ? brand.origin : undefined,
+    );
     const robots = options.robots ?? "index, follow";
     const type = options.type ?? "website";
 
@@ -284,8 +271,8 @@ export function useSeo(page: string, options: SeoOptions = {}) {
       "@context": "https://schema.org",
       "@type": "WebSite",
       name: currentSiteName,
-      url: steamloom ? steamloomOrigin : getCanonicalOrigin(),
-      description: steamloom ? steamloomDescription : siteDescription,
+      url: isSteamLoom ? brand.origin : getCanonicalOrigin(),
+      description: brand.description,
       inLanguage: "zh-Hant-TW",
     });
   }, [

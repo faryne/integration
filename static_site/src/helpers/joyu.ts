@@ -2,16 +2,18 @@
 // 差別在 AV 頁面只在 joyu.fyi 上提供，faryne.dev 不再掛巢狀路由（刻意跟主站切割）：
 // 在 joyu 網域內回站內路徑；在其他網域（faryne.dev 整合後台）回完整網址，點了直接開到 joyu.fyi。
 
+import { SITE_BRANDING } from "@/data/siteBranding.ts";
+
 const joyuHosts = [
   "joyu.fyi",
   "www.joyu.fyi",
   "joyu-firebase.web.app",
   "joyu-firebase.firebaseapp.com",
-  // 本機開發用 http://joyu.localhost:5173 測獨立站（*.localhost 瀏覽器會自動解析到 127.0.0.1）
+  // 本機開發用 http://joyu.localhost:5174 測獨立站（*.localhost 瀏覽器會自動解析到 127.0.0.1）
   "joyu.localhost",
 ];
 
-export const JOYU_SITE_NAME = "joyu.fyi";
+export const JOYU_SITE_NAME = SITE_BRANDING.joyu.siteName;
 
 export function isJoyuSite() {
   if (typeof window === "undefined") {

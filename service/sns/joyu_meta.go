@@ -8,7 +8,7 @@ import "strings"
 const (
 	joyuSiteName = "joyu.fyi"
 	joyuOrigin   = "https://joyu.fyi"
-	// joyuDescription 跟前端 helpers/title.tsx、vite-plugins/joyuSite.ts 同一句，改的時候三邊一起改
+	// joyuDescription 跟前端 static_site/src/data/siteBranding.ts 同一句，改的時候兩邊一起改
 	joyuDescription      = "整理 AV 女優資料與作品索引：用名字、別名、主題找女優，查看出演作品與番號。"
 	joyuDefaultImagePath = "/joyu-og-default.jpg"
 	avPathPrefix         = "/av"
