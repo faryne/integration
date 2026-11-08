@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAVActressSearch } from "@/apis/av/actress_search.ts";
 import type { Actress } from "@/types/av.ts";
+import { joyuPath } from "@/helpers/joyu.ts";
 
 /**
  * 女優頁網址的參數，指定是哪一位（同名女優才分得開）：
@@ -24,7 +25,7 @@ export const actressPagePath = (
   target?: { domain: string; aid: number },
   suffix = "",
 ) => {
-  const path = `/av/actress/${encodeURIComponent(name)}${suffix}`;
+  const path = joyuPath(`actress/${encodeURIComponent(name)}${suffix}`);
   if (!target) return path;
   const ref = actressRefOf(target);
   const [key, value] = Object.entries(ref)[0];
@@ -87,7 +88,7 @@ export function useRoutedActress(name: string, suffix = "") {
     } else if (!refActress && byNameActress) {
       navigate(actressPagePath(name, undefined, suffix), { replace: true });
     } else if (!refActress && ref.dmm_id) {
-      navigate(`/av/actress?name=${encodeURIComponent(name)}`, {
+      navigate(joyuPath(`?name=${encodeURIComponent(name)}`), {
         replace: true,
       });
     }

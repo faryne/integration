@@ -168,3 +168,24 @@ func TestStorytellerServerAdvertisesIdentity(t *testing.T) {
 	require.Equal(t, "https://steamloom.works", result.ServerInfo.WebsiteURL)
 	require.Equal(t, "image/png", result.ServerInfo.Icons[0].MimeType)
 }
+
+// AV 工具只在 joyu.fyi/mcp：主站 /mcp 不能再列出 av_*（跟主站切割）
+func TestAVToolsOnlyOnJoyuServer(t *testing.T) {
+	toolList := func(server *Server) string {
+		list, _, err := server.HandleJSONRPC(context.Background(), []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`))
+		require.NoError(t, err)
+		require.Nil(t, list.Error)
+		return mustMarshal(t, list.Result)
+	}
+	avTools := []string{"av_video_search", "av_actress_search", "av_actress_submit", "av_actress_submission_status", "av_video_submit", "av_video_submission_status"}
+
+	joyu := toolList(NewJoyuServer("joyu-test", "test-version"))
+	for _, name := range avTools {
+		require.Contains(t, joyu, `"name":"`+name+`"`)
+	}
+	require.NotContains(t, joyu, `"name":"nekomaid_search"`)
+
+	main := toolList(NewServer("main-test", "test-version"))
+	require.NotContains(t, main, `"name":"av_`)
+	require.Contains(t, main, `"name":"nekomaid_search"`)
+}

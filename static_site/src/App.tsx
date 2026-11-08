@@ -16,21 +16,16 @@ import { StorytellerLayout } from "./layouts/StorytellerLayout.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { trackPageView } from "@/lib/analytics.ts";
 import { isGalgameSite } from "@/helpers/galgame.ts";
+import { isJoyuSite } from "@/helpers/joyu.ts";
 import { isNekomaidSite } from "@/helpers/nekomaid.ts";
 import { STORYTELLER_AI_ASSISTANT_ENABLED } from "@/data/storyteller.ts";
 import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
 import { useMaintenanceState } from "@/apis/maintenanceStore.ts";
 import { loadStorytellerProjectWorkspace } from "@/pages/storyteller/storytellerRoutePreload.ts";
-import { ParamRedirect } from "@/components/common/ParamRedirect.tsx";
-import {
-  avAdminSubmissionPath,
-  avAdminSubmissionsPath,
-  avAdminTopicsPath,
-  BACKEND_ADMIN_PATH,
-} from "@/helpers/backendAdmin.ts";
 import { backendAdminRoutes } from "@/pages/backendAdmin/routes.tsx";
 import { LegacyGalgameAdminRedirect } from "@/components/backendAdmin/LegacyGalgameAdminRedirect.tsx";
 import { NekomaidAccountGate } from "@/components/nekomaid/account/NekomaidAccountGate.tsx";
+import { joyuRoutes } from "@/routes/joyuRoutes.tsx";
 
 function formatMaintenanceRetryMessage(retryAt: string | null) {
   if (!retryAt) {
@@ -55,51 +50,6 @@ const Cv = lazy(() => import("@/pages/Cv.tsx"));
 const About = lazy(() => import("@/pages/About/index.tsx"));
 const Login = lazy(() => import("@/pages/auth/Login.tsx"));
 const EncryptedDemo = lazy(() => import("@/pages/auth/EncryptedDemo.tsx"));
-const AVVideo = lazy(() =>
-  import("@/pages/av/video.tsx").then((module) => ({
-    default: module.AVVideo,
-  })),
-);
-const AVActress = lazy(() =>
-  import("@/pages/av/actress.tsx").then((module) => ({
-    default: module.AVActress,
-  })),
-);
-const AVActressDetail = lazy(() =>
-  import("@/pages/av/actress_detail.tsx").then((module) => ({
-    default: module.AVActressDetail,
-  })),
-);
-const AVActressSubmit = lazy(() =>
-  import("@/pages/av/actress_submit.tsx").then((module) => ({
-    default: module.AVActressSubmit,
-  })),
-);
-const AVActressEdit = lazy(() =>
-  import("@/pages/av/actress_submit.tsx").then((module) => ({
-    default: module.AVActressEdit,
-  })),
-);
-const AVActressTopics = lazy(() =>
-  import("@/pages/av/actress_topics.tsx").then((module) => ({
-    default: module.AVActressTopics,
-  })),
-);
-const AVActressTopic = lazy(() =>
-  import("@/pages/av/actress_topic.tsx").then((module) => ({
-    default: module.AVActressTopic,
-  })),
-);
-const AVVideoDetail = lazy(() =>
-  import("@/pages/av/video_detail.tsx").then((module) => ({
-    default: module.AVVideoDetail,
-  })),
-);
-const AVVideoEdit = lazy(() =>
-  import("@/pages/av/video_edit.tsx").then((module) => ({
-    default: module.AVVideoEdit,
-  })),
-);
 const TwStatsIndex = lazy(() =>
   import("@/pages/opendata/twstats_index.tsx").then((module) => ({
     default: module.TwStatsIndex,
@@ -599,6 +549,8 @@ function App() {
   const standaloneGalgame = isGalgameSite();
   const standaloneNekomaid = isNekomaidSite();
   const standaloneSteamLoom = isSteamLoomSite();
+  // joyu.fyi（AV 女優資料站）只有獨立站模式，faryne.dev 不再掛 /av 路由
+  const standaloneJoyu = isJoyuSite();
   const maintenanceState = useMaintenanceState();
 
   if (maintenanceState.active) {
@@ -627,6 +579,8 @@ function App() {
               {storytellerRoutes}
             </Route>
           )}
+
+          {standaloneJoyu && joyuRoutes}
 
           {standaloneNekomaid && (
             <Route path={""} element={<NekomaidLayout />}>
@@ -713,7 +667,8 @@ function App() {
 
           {!standaloneGalgame &&
             !standaloneNekomaid &&
-            !standaloneSteamLoom && (
+            !standaloneSteamLoom &&
+            !standaloneJoyu && (
               <>
                 <Route path={"storyteller"} element={<StorytellerLayout />}>
                   {storytellerRoutes}
@@ -808,71 +763,6 @@ function App() {
                   <Route path={""} element={<LabHome />} />
                 </Route>
                 <Route path={""} element={<DefaultLayout />}>
-                  <Route
-                    path={"/av/video/:no/edit"}
-                    element={<AVVideoEdit />}
-                  />
-                  <Route path={"/av/video/:no"} element={<AVVideoDetail />} />
-                  <Route path={"/av/video"} element={<AVVideo />} />
-                  {/* 上稿、後台、主題要排在 :name 前面（靜態路徑本來就優先，排前面讀起來比較清楚） */}
-                  <Route
-                    path={"/av/actress/submit"}
-                    element={<AVActressSubmit />}
-                  />
-                  {/* 女優管理後台已搬到整合後台，舊網址（含子路徑）原樣轉過去 */}
-                  <Route
-                    path={"/av/actress/admin/*"}
-                    element={
-                      <ParamRedirect
-                        to={(p) => `${BACKEND_ADMIN_PATH}/av/${p["*"] ?? ""}`}
-                      />
-                    }
-                  />
-                  {/* 搬進後台前的舊網址 */}
-                  <Route
-                    path={"/av/actress/submissions"}
-                    element={
-                      <ParamRedirect to={() => avAdminSubmissionsPath} />
-                    }
-                  />
-                  <Route
-                    path={"/av/actress/submissions/:id"}
-                    element={
-                      <ParamRedirect
-                        to={(p) => avAdminSubmissionPath(Number(p.id))}
-                      />
-                    }
-                  />
-                  <Route
-                    path={"/av/actress/topics/manage"}
-                    element={<ParamRedirect to={() => avAdminTopicsPath} />}
-                  />
-                  <Route
-                    path={"/av/actress/topics/manage/:id"}
-                    element={
-                      <ParamRedirect
-                        to={(p) => `${avAdminTopicsPath}/${p.id}`}
-                      />
-                    }
-                  />
-                  <Route
-                    path={"/av/actress/topics"}
-                    element={<AVActressTopics />}
-                  />
-                  <Route
-                    path={"/av/actress/topics/:slug"}
-                    element={<AVActressTopic />}
-                  />
-                  <Route
-                    path={"/av/actress/:name/edit"}
-                    element={<AVActressEdit />}
-                  />
-                  <Route
-                    path={"/av/actress/:name"}
-                    element={<AVActressDetail />}
-                  />
-                  <Route path={"/av/actress"} element={<AVActress />} />
-
                   <Route
                     path={"/data/tw-stats/area/:code"}
                     element={<TwStatsArea />}

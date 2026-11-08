@@ -31,30 +31,6 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
         href: "/yandere/tags",
       },
       {
-        title: "AV 影片搜尋",
-        href: "/av/video",
-        description: "定時索引 Fanza(a.k.a. DMM) AV影片資訊",
-      },
-      {
-        title: "AV 女優搜尋",
-        href: "/av/actress",
-        description: "定時索引 AV 女優資訊",
-        // 上稿不擋登入，但有登入會記錄提交者；管理者從帳號選單進整合後台
-        requiresAuth: true,
-        subPages: [
-          { title: "女優主題", href: "/av/actress/topics" },
-          { title: "新增女優", href: "/av/actress/submit" },
-        ],
-        accountLinks: [
-          {
-            title: "後台管理",
-            href: BACKEND_ADMIN_PATH,
-            adminOnly: true,
-            badge: "backendAdmin",
-          },
-        ],
-      },
-      {
         title: "SteamLoom",
         href: "https://steamloom.works/",
         external: true,
@@ -88,6 +64,13 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
         requiresAuth: true,
         accountLinks: [
           { title: "我的最愛 ETF", href: "/data/etf/twse/favorites" },
+          // AV 搬到 joyu.fyi 後，主站剩這裡有帳號選單；整合後台入口跟著搬過來
+          {
+            title: "後台管理",
+            href: BACKEND_ADMIN_PATH,
+            adminOnly: true,
+            badge: "backendAdmin",
+          },
         ],
       },
       {

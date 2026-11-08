@@ -49,7 +49,7 @@ map "$is_social_bot:$uri" $sns_render {
 server {
     listen 80;
     listen [::]:80;
-    server_name faryne.dev www.faryne.dev neko.maid.tw steamloom.works www.steamloom.works galgame.tv www.galgame.tv;
+    server_name faryne.dev www.faryne.dev neko.maid.tw steamloom.works www.steamloom.works galgame.tv www.galgame.tv joyu.fyi www.joyu.fyi;
 
     # Enable this redirect after HTTPS certificates are ready.
     return 301 https://$host$request_uri;
@@ -112,6 +112,22 @@ server {
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # AV 頁面已搬到 joyu.fyi（見 DevelopDocuments/opendata/joyu.fyi獨立站_2026-11-08.md）：一律 301，拿掉 /av 前綴；
+    # 女優列表（/av、/av/actress）是 joyu 首頁。在這裡直接 return，不經過 location / 的爬蟲判斷，爬蟲才拿得到 301。
+    # 用 $request_uri 取路徑：保留原本的 percent-encoding（女優名字是日文）跟查詢字串；
+    # 機器是 nginx 1.10，map 不能帶 regex capture，所以用 location + if。
+    location = /av {
+        return 301 https://joyu.fyi/$is_args$args;
+    }
+    location = /av/actress {
+        return 301 https://joyu.fyi/$is_args$args;
+    }
+    location ^~ /av/ {
+        if ($request_uri ~ "^/av/(.*)$") {
+            return 301 https://joyu.fyi/$1;
+        }
     }
 
     # React/Vite SPA fallback.
@@ -312,6 +328,83 @@ server {
         proxy_ssl_server_name on;
         proxy_ssl_name steamloom-web.web.app;
         proxy_set_header Host steamloom-web.web.app;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+
+# joyu.fyi（AV 女優資料站）：結構照 steamloom.works，TLS 照 galgame.tv（Cloudflare 橘雲＋Origin CA 憑證，SSL 模式 Full (strict)）。
+# 前端本體在 Firebase Hosting（joyu-firebase.web.app），跟主站共用同一份程式碼，build 時帶 VITE_SITE=joyu。
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name joyu.fyi www.joyu.fyi;
+
+    ssl_certificate /etc/ssl/cloudflare/joyu.fyi.cert;
+    ssl_certificate_key /etc/ssl/cloudflare/joyu.fyi.pem;
+
+    # www 一律轉到不帶 www 的正式網域
+    if ($host = www.joyu.fyi) {
+        return 301 https://joyu.fyi$request_uri;
+    }
+
+    # 前端打同網域的 /api/*（瀏覽器的網路請求裡不會出現 faryne.dev）
+    location ^~ /api/ {
+        include /etc/nginx/snippets/faryne_api_proxy.conf;
+    }
+
+    include /etc/nginx/snippets/faryne_api_errors.conf;
+
+    # joyu 的頁面掛在根路徑（沒有 /av 前綴）；這裡補上 /av 前綴轉給後端，才會對到 service/sns/meta.go 裡
+    # pathCollection 的 /av/* 規則（同 @steamloom_sns 補 /storyteller）。後端依 X-Forwarded-Host 判斷是 joyu.fyi，
+    # 自己組出不含 /av 前綴、指向這個網域的 canonical/OG url。
+    location @joyu_sns {
+        rewrite ^(.*)$ /sns/av$request_uri break;
+        proxy_pass http://faryne_api;
+        proxy_set_header Host faryne.dev;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # MCP endpoint：只有 AV 工具，轉給後端 route.MCP 註冊的 /joyu-mcp（faryne.dev/mcp 已經不放 AV 工具）
+    location = /mcp {
+        rewrite ^ /joyu-mcp break;
+        proxy_pass http://faryne_api;
+        proxy_set_header Host faryne.dev;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # 前端 public/ 底下的 robots.txt 是 faryne.dev 的，joyu 的由後端產生
+    location = /robots.txt {
+        rewrite ^ /sns-seo/joyu/robots.txt break;
+        proxy_pass http://faryne_api;
+        proxy_set_header Host faryne.dev;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # 主站的 sitemap 不能出現在這個網域；joyu 的 sitemap 還沒做，先回 404
+    location = /sitemap.xml {
+        return 404;
+    }
+
+    location / {
+        error_page 418 = @joyu_sns;
+
+        if ($sns_render) {
+            return 418;
+        }
+
+        proxy_pass https://joyu-firebase.web.app;
+        proxy_ssl_server_name on;
+        proxy_ssl_name joyu-firebase.web.app;
+        proxy_set_header Host joyu-firebase.web.app;
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

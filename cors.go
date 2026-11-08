@@ -17,7 +17,7 @@ var corsExposeHeaders = []string{"X-Session-Expires-At"}
 //   - 公開協定端點（MCP、OAuth、.well-known）維持 *：靠 bearer token／PAT 驗證，瀏覽器版 MCP client 要能跨站呼叫。
 //   - 其他 API 只放行白名單（config.CORSOrigins），非 production 另外放行任何 port 的 localhost／127.0.0.1。
 //
-// 路徑是 nginx 剝掉 /api、/api-integration 前綴後的後端路徑；steamloom.works 的 /mcp 會被改寫成 /storyteller-mcp。
+// 路徑是 nginx 剝掉 /api、/api-integration 前綴後的後端路徑；steamloom.works 的 /mcp 會被改寫成 /storyteller-mcp，joyu.fyi 的改寫成 /joyu-mcp。
 func corsMiddleware() fiber.Handler {
 	public := cors.New(cors.Config{ExposeHeaders: corsExposeHeaders})
 	site := cors.New(siteCORSConfig())
@@ -47,14 +47,19 @@ func siteCORSConfig() cors.Config {
 
 // isPublicProtocolPath 判斷是否為維持 * 的公開協定端點
 func isPublicProtocolPath(path string) bool {
-	return path == "/mcp" || path == "/storyteller-mcp" ||
+	return path == "/mcp" || path == "/storyteller-mcp" || path == "/joyu-mcp" ||
 		strings.HasPrefix(path, "/storyteller-mcp/") ||
 		strings.HasPrefix(path, "/oauth/") ||
 		strings.HasPrefix(path, "/.well-known/")
 }
 
-// isLocalOrigin 判斷是否為本機開發的 origin（任何 port），本機 vite 換 port 不用改設定
+// isLocalOrigin 判斷是否為本機開發的 origin（任何 port），本機 vite 換 port 不用改設定；
+// *.localhost 是本機測獨立站模式用的（例如 joyu.localhost，見前端 helpers/joyu.ts）
 func isLocalOrigin(origin string) bool {
 	u, err := url.Parse(origin)
-	return err == nil && u.Scheme == "http" && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1")
+	if err != nil || u.Scheme != "http" {
+		return false
+	}
+	host := u.Hostname()
+	return host == "localhost" || host == "127.0.0.1" || strings.HasSuffix(host, ".localhost")
 }

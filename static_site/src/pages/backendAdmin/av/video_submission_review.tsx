@@ -44,6 +44,7 @@ import { SubmissionDiff } from "@/components/av/submission_diff.tsx";
 import { RejectDialog } from "@/components/av/submission_reject_dialog.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
+import { joyuPath } from "@/helpers/joyu.ts";
 
 const VIDEO_REJECT_REASONS = [
   "資料來源不可信",
@@ -52,7 +53,7 @@ const VIDEO_REJECT_REASONS = [
   "沒有實質變更",
 ];
 
-const videoPath = (no: string) => `/av/video/${encodeURIComponent(no)}`;
+const videoPath = (no: string) => joyuPath(`video/${encodeURIComponent(no)}`);
 
 /** 影片修改審核頁：/backend_admin/av/video-submissions/:id；權限由後台 layout 檢查 */
 export function AVVideoSubmissionReview() {

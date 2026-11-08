@@ -21,6 +21,7 @@ import { ImageViewer } from "@/components/common/ImageViewer.tsx";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
 import { videoActressPath } from "@/helpers/avActressName.ts";
+import { joyuPath } from "@/helpers/joyu.ts";
 
 export interface IVideoDetail {
   video?: Video;
@@ -54,7 +55,7 @@ export function VideoDetail(props: IVideoDetail) {
       return;
     }
     // keyPrefix 與搜尋頁的精確篩選參數同名（見 data/avVideoFilters.ts）
-    navigate(`/av/video?${keyPrefix}=${encodeURIComponent(s)}`);
+    navigate(joyuPath(`video?${keyPrefix}=${encodeURIComponent(s)}`));
   };
 
   const previewPhotos = useMemo(
@@ -230,7 +231,9 @@ export function VideoDetail(props: IVideoDetail) {
               component={RouterLink}
               startIcon={<EditOutlinedIcon />}
               sx={{ borderRadius: 1.5, px: 2 }}
-              to={`/av/video/${encodeURIComponent(video.maker_no?.trim() || video.no)}/edit`}
+              to={joyuPath(
+                `video/${encodeURIComponent(video.maker_no?.trim() || video.no)}/edit`,
+              )}
               variant="outlined"
             >
               修改資料

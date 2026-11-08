@@ -18,6 +18,8 @@ var defaultCORSAllowOrigins = []string{
 	"https://galgame-tv.web.app",
 	"https://nekomaid.web.app",
 	"https://steamloom-web.web.app",
+	"https://joyu.fyi",
+	"https://joyu-firebase.web.app",
 }
 
 // CORSOrigins 回傳一般 API 的 CORS 白名單；回傳 ["*"] 代表全開。

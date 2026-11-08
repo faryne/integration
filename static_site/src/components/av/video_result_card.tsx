@@ -3,6 +3,7 @@ import { Box, Chip, Skeleton, Stack, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
 import { AV_COVER_ASPECT_RATIO } from "@/data/avVideoCover.ts";
+import { joyuPath } from "@/helpers/joyu.ts";
 
 // 詳細頁網址優先用官方番號，沒有就用 DMM 內部番號
 const videoDetailId = (video: Video) =>
@@ -23,7 +24,7 @@ export function VideoResultCard({ video }: { video: Video }) {
     <Box
       component="button"
       disabled={!detailId}
-      onClick={() => detailId && navigate(`/av/video/${detailId}`)}
+      onClick={() => detailId && navigate(joyuPath(`video/${detailId}`))}
       sx={{
         appearance: "none",
         bgcolor: "background.paper",

@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	// AV 各頁標題都帶區塊名稱：「波多野結衣 - AV 女優搜尋 | 主站名稱」，跟前端 helpers/title.tsx 同一套
+	// AV 各頁標題都帶區塊名稱：「波多野結衣 - AV 女優搜尋 | joyu.fyi」，跟前端 helpers/title.tsx 同一套
 	avActressSection     = "AV 女優搜尋"
 	avVideoSection       = "AV 影片搜尋"
 	avVideoNotFoundTitle = "找不到影片"
@@ -47,7 +47,7 @@ func applyAvVideoMeta(meta *modelSNS.Meta, matches []string) {
 	}
 	if video == nil {
 		meta.Status = 404
-		meta.Title = fullTitle(avSectionTitle(avVideoSection, avVideoNotFoundTitle))
+		meta.Title = fullTitleForSite(avSectionTitle(avVideoSection, avVideoNotFoundTitle), meta.SiteName)
 		meta.Robots = "noindex, nofollow"
 		return
 	}
@@ -55,14 +55,14 @@ func applyAvVideoMeta(meta *modelSNS.Meta, matches []string) {
 	if code == "" {
 		code = strings.ToUpper(video.No)
 	}
-	meta.Title = fullTitle(avSectionTitle(avVideoSection, code+" "+truncateRunes(video.Title, avVideoTitleRunes)))
+	meta.Title = fullTitleForSite(avSectionTitle(avVideoSection, code+" "+truncateRunes(video.Title, avVideoTitleRunes)), meta.SiteName)
 	meta.Description = avVideoDescription(video)
 	if video.Thumb != "" {
 		meta.Image = avPackageLargeURL(video.Thumb)
 	}
 	// 用 DMM 內部番號進來、但已有官方番號（例如同步過的舊資料）：canonical 與轉址都指向官方番號網址
 	if video.MakerNo != "" && !strings.EqualFold(matches[1], video.MakerNo) {
-		meta.Canonical = absoluteURL(frontendOrigin(), "/av/video/"+video.MakerNo)
+		meta.Canonical = absoluteURL(joyuOrigin, "/video/"+video.MakerNo)
 		meta.RedirectURL = meta.Canonical
 	}
 }
@@ -74,7 +74,7 @@ func applyAvActressMeta(meta *modelSNS.Meta, matches []string) {
 	if name == "" || slices.Contains(avActressReservedPaths, name) {
 		return
 	}
-	meta.Title = fullTitle(avSectionTitle(avActressSection, name))
+	meta.Title = fullTitleForSite(avSectionTitle(avActressSection, name), meta.SiteName)
 	meta.Description = name + " 的個人資料與出演作品索引。"
 	meta.Type = "profile"
 }

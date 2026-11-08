@@ -11,9 +11,19 @@ import (
 
 const requestTimeout = 30 * time.Second
 
-var server = serviceMCP.NewServer("faryne.dev", "http")
+var (
+	server = serviceMCP.NewServer("faryne.dev", "http")
+	// joyu.fyi/mcp：只有 AV 工具（nginx 把 joyu.fyi/mcp 改寫成 /joyu-mcp）
+	joyuServer = serviceMCP.NewJoyuServer("joyu.fyi", "http")
+)
 
-func Handle(ctx fiber.Ctx) error {
+// Handle faryne.dev/mcp（galgame、nekomaid、台灣指標、匯率、VTuber 等工具）
+func Handle(ctx fiber.Ctx) error { return handle(ctx, server) }
+
+// HandleJoyu joyu.fyi/mcp（AV 女優／影片工具）
+func HandleJoyu(ctx fiber.Ctx) error { return handle(ctx, joyuServer) }
+
+func handle(ctx fiber.Ctx, server *serviceMCP.Server) error {
 	// 帶上呼叫端 IP：女優上稿等工具要依 IP 限流
 	requestCtx, cancel := context.WithTimeout(serviceMCP.WithClientIP(context.Background(), ctx.IP()), requestTimeout)
 	defer cancel()

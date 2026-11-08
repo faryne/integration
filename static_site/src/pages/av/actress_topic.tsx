@@ -45,6 +45,7 @@ import { ActressCard } from "@/components/av/actress_card.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
+import { joyuPath } from "@/helpers/joyu.ts";
 
 const PER_PAGE = 48;
 
@@ -66,7 +67,7 @@ export function AVActressTopic() {
   if (index.isSuccess && !hit) {
     return (
       <ErrorPage
-        backUrl="/av/actress/topics"
+        backUrl={joyuPath("actress/topics")}
         code={404}
         message="找不到這個主題，可能已經下架了。"
       />
@@ -76,7 +77,7 @@ export function AVActressTopic() {
   return (
     <AgeConfirmationGate
       description="AV 女優主題頁包含成人內容與成人作品資料。請確認你已年滿 18 歲後再繼續瀏覽。"
-      leaveTo="/av/actress/topics"
+      leaveTo={joyuPath("actress/topics")}
       panelTitle="AV 女優主題需要年齡確認"
     >
       {hit && file.data ? (

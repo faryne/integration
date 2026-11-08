@@ -1,0 +1,34 @@
+// joyu.fyi 頁首導覽與麵包屑共用的區塊定義；以女優為主，首頁就是女優搜尋
+export interface JoyuSection {
+  title: string;
+  href: string;
+  /** 這個區塊涵蓋的路徑（含子路徑），依序比對、先中先贏 */
+  match: (pathname: string) => boolean;
+}
+
+export const joyuSections: JoyuSection[] = [
+  {
+    title: "女優主題",
+    href: "/actress/topics",
+    match: (p) => p.startsWith("/actress/topics"),
+  },
+  {
+    title: "女優",
+    href: "/",
+    match: (p) => p === "/" || p.startsWith("/actress"),
+  },
+  { title: "影片", href: "/video", match: (p) => p.startsWith("/video") },
+];
+
+// 頁首依顯示順序排（女優、主題、影片），比對順序則是 joyuSections（主題要先於女優）
+export const joyuNavItems = ["女優", "女優主題", "影片"].map((title) =>
+  joyuSections.find((s) => s.title === title)!,
+);
+
+export const findJoyuSection = (pathname: string) =>
+  joyuSections.find((s) => s.match(pathname));
+
+// 有登記名稱的子頁，麵包屑多一層
+export const joyuSubPages: Record<string, string> = {
+  "/actress/submit": "新增女優",
+};

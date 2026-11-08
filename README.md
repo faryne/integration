@@ -42,9 +42,9 @@ curl -X POST http://localhost:8080/mcp \
 目前內建工具：
 
 - `ping`：回傳 `pong`，用於確認 MCP server 存活。
-- `av_video_search`：串接 `service/av.VideoSearch`。
-- `av_actress_search`：串接 `service/av.ActressSearch`。
 - `nekomaid_search`：串接 `service/nekomaid.SearchByRequest`。
+
+AV 女優／影片的工具（`av_video_search`、`av_actress_search`、上稿與查詢審核結果）在 joyu.fyi 的 MCP server：`POST https://joyu.fyi/mcp`（本機是 `POST /joyu-mcp`）。
 
 ## 基礎設施
 

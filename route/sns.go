@@ -14,4 +14,6 @@ func SNS(app *fiber.App) {
 	// steamloom.works 的 robots.txt／sitemap.xml（主站的放在前端 public/）
 	app.Get("/sns-seo/steamloom/robots.txt", sns.SteamLoomRobots)
 	app.Get("/sns-seo/steamloom/sitemap.xml", sns.SteamLoomSitemap)
+	// joyu.fyi 的 robots.txt（AV 女優資料站，跟主站共用前端 build）
+	app.Get("/sns-seo/joyu/robots.txt", sns.JoyuRobots)
 }

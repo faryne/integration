@@ -7,9 +7,10 @@ import type {
   ActressTopicSummary,
 } from "@/types/avActressTopic.ts";
 import { actressPagePath } from "@/helpers/avActressRef.ts";
+import { joyuPath } from "@/helpers/joyu.ts";
 
 export const actressTopicPath = (slug: string) =>
-  `/av/actress/topics/${encodeURIComponent(slug)}`;
+  joyuPath(`actress/topics/${encodeURIComponent(slug)}`);
 
 /** 主題頁卡片連到女優頁：帶這位自己的參數（同名才分得開），再加上 ?topic=，女優頁會多一行這個主題的 chip */
 export const actressTopicMemberPath = (m: ActressTopicMember, slug: string) => {

@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import fs from "fs";
 import path from "path";
 
+import { joyuSitePlugin } from "./vite-plugins/joyuSite.ts";
+
 function getPackageName(id: string) {
   const nodeModulesPath = id.split("node_modules/").pop();
 
@@ -199,7 +201,8 @@ export default defineConfig(({ mode }) => {
       // 給的網域加進這個陣列（例如 "xxxx.ngrok-free.app"）。這個網址每次
       // 重開 ngrok 都會變，是個人本機測試用的設定，不要把實際網址 commit
       // 進來。
-      allowedHosts: ["localhost"],
+      // joyu.localhost：本機測 joyu.fyi 獨立站模式（見 helpers/joyu.ts）
+      allowedHosts: ["localhost", "joyu.localhost"],
       // 固定在 5174：沒有這個設定時，port 被佔用會自動往上加（5175、5176...），
       // 每次開發 server 的網址就不固定，人工測試很難對上正確的分頁。
       // strictPort 讓它衝突時直接報錯，而不是默默換一個。
@@ -216,6 +219,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       contactEncoderPlugin(env.VITE_SECRET_KEY),
       steamloomFaviconPlugin(env.VITE_SITE === "steamloom"),
+      joyuSitePlugin(env.VITE_SITE === "joyu"),
       react({
         babel: {
           plugins: [["babel-plugin-react-compiler"]],

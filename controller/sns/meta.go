@@ -69,6 +69,18 @@ func SteamLoomRobots(ctx fiber.Ctx) error {
 	return ctx.SendString(serviceSNS.SteamLoomRobotsTxt())
 }
 
+// JoyuRobots renders robots.txt for joyu.fyi.
+// @Summary joyu.fyi robots.txt
+// @Tags SNS
+// @Produce plain
+// @Success 200 {string} string "robots.txt"
+// @Router /sns-seo/joyu/robots.txt [get]
+func JoyuRobots(ctx fiber.Ctx) error {
+	ctx.Set(fiber.HeaderContentType, fiber.MIMETextPlainCharsetUTF8)
+	ctx.Set(fiber.HeaderCacheControl, "public, max-age=3600")
+	return ctx.SendString(serviceSNS.JoyuRobotsTxt())
+}
+
 // SteamLoomSitemap renders sitemap.xml for steamloom.works.
 // @Summary SteamLoom sitemap.xml
 // @Tags SNS
