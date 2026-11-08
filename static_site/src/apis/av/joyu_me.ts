@@ -110,7 +110,11 @@ export function useToggleFollow() {
       qc.setQueryData(key, on ? [follow, ...rest] : rest);
       return { prev };
     },
-    onError: (_e, { uid }, ctx) => qc.setQueryData(followsKey(uid), ctx?.prev),
+    // 還原成送出前的清單；清單本來就沒讀到過（prev 是 undefined）時 setQueryData 不會動作，要整個拿掉讓它重讀
+    onError: (_e, { uid }, ctx) =>
+      ctx?.prev === undefined
+        ? qc.removeQueries({ queryKey: followsKey(uid) })
+        : qc.setQueryData(followsKey(uid), ctx.prev),
     onSettled: (_d, _e, { uid }) => {
       void qc.invalidateQueries({ queryKey: followsKey(uid) });
       void qc.invalidateQueries({ queryKey: feedKey(uid) });

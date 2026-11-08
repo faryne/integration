@@ -3,7 +3,6 @@ package av
 import (
 	"context"
 	"slices"
-	"strings"
 
 	avEntity "faryne.dev/model/entity/opendata/av"
 	avRepo "faryne.dev/repository/av"
@@ -39,7 +38,7 @@ func ActressVideoSummary(ctx context.Context, input avEntity.VideoQueryRequest) 
 	}
 
 	// 本人的各種名義（網址上的名字、本名、別名）都要排除；影片上的名字去掉括號別名後再比
-	self := []string{strings.TrimSpace(input.Actress)}
+	self := distinctValues(input.Actress)
 	if row := resolveActress(input.XCityID, input.ManualID, input.DMMID); row != nil {
 		self = append(append(self, row.Name), actressRowFields(*row).Aliases...)
 	}

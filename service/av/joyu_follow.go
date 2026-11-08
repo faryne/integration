@@ -29,8 +29,14 @@ var followNameKinds = []string{
 	avEntity.FollowKindDirector, avEntity.FollowKindTag,
 }
 
-// searchFollowKeys 「追蹤這個搜尋」收的條件：女優（加指定是哪一位的 ID）與各精確條件；關鍵字（模糊）、日期、頁碼不收
-var searchFollowKeys = []string{"actress", "xcity_id", "manual_id", "dmm_id", "maker", "label", "series", "director", "tag"}
+// searchFollowKeys 「追蹤這個搜尋」收的條件：關鍵字、女優（加指定是哪一位的 ID）與各精確條件；日期、頁碼不收
+var searchFollowKeys = []string{"keyword", "actress", "xcity_id", "manual_id", "dmm_id", "maker", "label", "series", "director", "tag"}
+
+// searchFollowSingleKeys 只收一個值的參數；其他（出演、發售商…、標籤）可複選
+var searchFollowSingleKeys = []string{"keyword", "xcity_id", "manual_id", "dmm_id"}
+
+// searchFollowConditionKeys 至少要有其中一個才收（只有女優 ID 沒有名字不算）
+var searchFollowConditionKeys = []string{"keyword", "actress", "maker", "label", "series", "director", "tag"}
 
 // normalizeFollow 檢查並正規化追蹤內容，同一個對象不論怎麼送來都存成同一個 value
 func normalizeFollow(kind, value string) (string, error) {
@@ -63,8 +69,9 @@ func parseActressFollow(value string) (string, int, bool) {
 	return domain, aid, true
 }
 
-// normalizeSearchFollow 只留收的條件、去掉空值，標籤去重排序，參數依名稱排序（url.Values.Encode 本來就會排）；
-// 至少要有一個精確條件，只有 ID 沒有名字的女優條件也不收
+// normalizeSearchFollow 只留收的條件、去掉空值，每個參數的值去重排序（點選順序不同也存成同一筆），
+// 參數依名稱排序（url.Values.Encode 本來就會排）；關鍵字與女優 ID 只留一個值，兩位以上出演時不存女優 ID（跟搜尋規則一致）；
+// 至少要有一個條件（searchFollowConditionKeys）
 func normalizeSearchFollow(raw string) (string, error) {
 	parsed, err := url.ParseQuery(strings.TrimPrefix(raw, "?"))
 	if err != nil {
@@ -81,14 +88,19 @@ func normalizeSearchFollow(raw string) (string, error) {
 		if len(values) == 0 {
 			continue
 		}
-		if key == "tag" {
-			slices.Sort(values)
-		} else {
+		if slices.Contains(searchFollowSingleKeys, key) {
 			values = values[:1]
+		} else {
+			slices.Sort(values)
 		}
 		out[key] = values
 	}
-	hasCondition := slices.ContainsFunc([]string{"actress", "maker", "label", "series", "director", "tag"}, func(k string) bool { return len(out[k]) > 0 })
+	if len(out["actress"]) > 1 {
+		for _, k := range []string{"xcity_id", "manual_id", "dmm_id"} {
+			delete(out, k)
+		}
+	}
+	hasCondition := slices.ContainsFunc(searchFollowConditionKeys, func(k string) bool { return len(out[k]) > 0 })
 	if !hasCondition {
 		return "", ErrFollowInvalid
 	}

@@ -49,10 +49,14 @@ func esClient() (*elasticsearch.Client, error) {
 
 func (videoIndexES) Search(_ context.Context, input av.VideoIndexQuery) (search.Page[av.RawVideo], error) {
 	page := max(input.Page, 1)
+	order := "desc"
+	if input.Sort == av.VideoSortOldest {
+		order = "asc"
+	}
 	q := map[string]any{
 		"size": videoPageSize,
 		"from": (page - 1) * videoPageSize,
-		"sort": map[string]any{"pulish_date": map[string]any{"order": "desc"}, "vod_date": map[string]any{"order": "desc"}},
+		"sort": map[string]any{"pulish_date": map[string]any{"order": order}, "vod_date": map[string]any{"order": order}},
 	}
 	applyVideoConditions(input, q)
 	if input.Shuffle {

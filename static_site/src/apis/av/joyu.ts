@@ -42,7 +42,7 @@ export function useJoyuNewActresses() {
 }
 
 export function useJoyuActressSummary(
-  params: ActressRef & { actress: string },
+  params: ActressRef & { actress: string[] },
   enabled = true,
 ) {
   return useQuery({
@@ -50,7 +50,8 @@ export function useJoyuActressSummary(
     queryFn: async () => {
       const response = await axios.get<CommonResponse<JoyuActressSummary>>(
         `${import.meta.env.VITE_API_BASE}/opendata/av/actress/summary`,
-        { params, timeout: 10000 },
+        // 陣列參數送成 actress=A（axios 預設是 actress[]=A，後端讀不到）
+        { params, paramsSerializer: { indexes: null }, timeout: 10000 },
       );
       return response.data.data;
     },

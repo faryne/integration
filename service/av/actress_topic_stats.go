@@ -49,7 +49,7 @@ func actressStatsByRow(ctx context.Context, row avEntity.DMMActress) (actressVid
 	if err != nil {
 		return actressVideoStats{}, err
 	}
-	s, err := avRepo.NewVideoIndex().DateStats(ctx, avEntity.VideoIndexQuery{Actress: &f})
+	s, err := avRepo.NewVideoIndex().DateStats(ctx, avEntity.VideoIndexQuery{Actresses: []avEntity.VideoActressFilter{f}})
 	return actressVideoStats(s), err
 }
 

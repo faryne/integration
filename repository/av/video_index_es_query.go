@@ -1,7 +1,6 @@
 package av
 
 import (
-	"slices"
 	"strings"
 	"time"
 
@@ -60,25 +59,46 @@ func applyVideoConditions(input av.VideoIndexQuery, q map[string]any) {
 		}
 	}
 	// any_tag 是聯集：全部放進一個 terms，整個條件仍在 must
-	if tags := slices.DeleteFunc(slices.Clone(input.AnyTag), func(t string) bool { return strings.TrimSpace(t) == "" }); len(tags) > 0 {
+	if tags := nonEmpty(input.AnyTag); len(tags) > 0 {
 		esdsl.SetQuery(map[string]any{"terms": map[string]any{"tags.keyword": tags}}, true, q)
 	}
-	if input.Actress != nil {
-		esdsl.SetQuery(videoActressQuery(*input.Actress), true, q)
+	// 出演：每位一個 must，也就是同時出演
+	for _, f := range input.Actresses {
+		esdsl.SetQuery(videoActressQuery(f), true, q)
 	}
-	for field, value := range map[string]string{
+	// 發售商／品牌／系列／監督：同一欄的多個值放進一個 terms（聯集），不同欄之間仍是交集
+	for field, values := range map[string][]string{
 		"makers":    input.Maker,
 		"labels":    input.Label,
 		"series":    input.Series,
 		"directors": input.Director,
 	} {
-		if value = strings.TrimSpace(value); value != "" {
-			esdsl.SetQuery(map[string]any{"term": map[string]any{field + ".keyword": value}}, true, q)
+		if values = nonEmpty(values); len(values) > 0 {
+			esdsl.SetQuery(map[string]any{"terms": map[string]any{field + ".keyword": values}}, true, q)
 		}
+	}
+	// 片長（分鐘）：有設就要有片長資料（gte 1 排除 0）
+	if input.DurationMin > 0 || input.DurationMax > 0 {
+		r := map[string]any{"gte": max(input.DurationMin, 1)}
+		if input.DurationMax > 0 {
+			r["lte"] = input.DurationMax
+		}
+		esdsl.SetQuery(map[string]any{"range": map[string]any{"duration": r}}, true, q)
 	}
 	if no := strings.TrimSpace(input.No); no != "" {
 		esdsl.SetQuery(videoNoQuery(no), true, q)
 	}
+}
+
+// nonEmpty 去頭尾空白、拿掉空值（不改原 slice）
+func nonEmpty(values []string) []string {
+	out := make([]string, 0, len(values))
+	for _, v := range values {
+		if v = strings.TrimSpace(v); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 // videoKeywordQuery 關鍵字：標題用片語比對，出演／系列／發售商／監督／品牌／標籤用 keyword 部分比對（「春咲」找得到「春咲あずみ」）。

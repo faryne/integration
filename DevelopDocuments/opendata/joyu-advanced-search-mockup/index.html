@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>joyu.fyi 進階影片搜尋 mockup</title>
+<style>
+  :root {
+    --plum:#2b1d2e; --plum-deep:#1c1420; --pink:#ff5c8a; --pink-strong:#d63a6c;
+    --bg:#faf7f9; --paper:#fff; --line:#ece4ea; --text:#2a1f2c; --muted:#7a6a77; --chip:#f6eef3; --field:#fff;
+  }
+  .dark { --bg:#17111a; --paper:#221a25; --line:#3a2e3d; --text:#f3e6ef; --muted:#b39fb0; --chip:#2e2431; --pink-strong:#ff5c8a; --field:#1c1520; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; background:#cfc6cd; }
+  .toolbar { position:sticky; top:0; z-index:40; background:#111; color:#fff; padding:10px 16px; font-size:13px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .toolbar button { background:#3a3a3a; color:#fff; border:0; border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; }
+  .toolbar button.on { background:var(--pink); }
+  .toolbar .sep { width:1px; height:20px; background:#555; margin:0 4px; }
+  .toolbar .label { color:#aaa; margin-right:2px; }
+  .stage { padding:24px; display:flex; overflow-x:auto; }
+  .frame { margin:0 auto; background:var(--bg); color:var(--text); border-radius:10px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.25); width:1180px; flex:0 0 auto; }
+  .frame.mobile { width:375px; }
+
+  .header { background:var(--plum); color:#f3e6ef; height:56px; display:flex; align-items:center; gap:18px; padding:0 20px; }
+  .brand { display:flex; align-items:center; gap:8px; font-weight:800; }
+  .logo { width:28px; height:28px; border-radius:6px; background:var(--plum-deep); color:var(--pink); display:grid; place-items:center; font-size:17px; border:1px solid #4a3550; }
+  .nav { display:flex; height:100%; }
+  .nav a { display:flex; align-items:center; padding:0 12px; font-size:14px; color:#e7d5e1; position:relative; }
+  .nav a.on { color:var(--pink); }
+  .nav a.on::after { content:""; position:absolute; left:10px; right:10px; bottom:0; height:2px; background:var(--pink); }
+  .hsearch { margin-left:auto; background:rgba(255,255,255,.08); border:1px solid #4a3550; border-radius:8px; padding:6px 10px; width:220px; color:#b39fb0; font-size:13px; }
+  .mobile .hsearch, .mobile .brand span { display:none; }
+  .mobile .header { gap:6px; padding:0 10px; }
+  .crumb { background:var(--paper); border-bottom:1px solid var(--line); padding:8px 20px; font-size:12px; color:var(--muted); }
+  .crumb b { color:var(--text); }
+  .page { padding:20px; }
+  .mobile .page { padding:16px 12px; }
+  .url { font-family:ui-monospace,monospace; font-size:12px; background:var(--paper); border:1px dashed var(--line); border-radius:6px; padding:6px 10px; margin-bottom:16px; color:var(--muted); word-break:break-all; }
+  .note { background:#fff8db; color:#7a5b00; border:1px solid #f1d77a; border-radius:8px; padding:8px 12px; font-size:12px; margin-bottom:16px; line-height:1.6; }
+  .dark .note { background:#3a3218; color:#f1d77a; border-color:#6b5a1f; }
+  h1 { margin:0 0 4px; font-size:28px; }
+
+  .layout { display:grid; grid-template-columns:340px 1fr; gap:24px; margin-top:16px; }
+  .mobile .layout { grid-template-columns:1fr; }
+  .panel { border:1px solid var(--line); border-radius:12px; padding:18px; background:var(--paper); align-self:start; }
+  .panel h3 { margin:0 0 14px; font-size:18px; }
+  .field { position:relative; border:1px solid var(--line); border-radius:8px; background:var(--field); padding:14px 10px 8px; margin-bottom:12px; min-height:42px; }
+  .field > label { position:absolute; top:-8px; left:8px; background:var(--paper); padding:0 4px; font-size:12px; color:var(--muted); }
+  .field > label em { font-style:normal; color:var(--pink-strong); margin-left:2px; }
+  .field.focus { border-color:var(--pink); box-shadow:0 0 0 1px var(--pink); }
+  .field .ph { color:var(--muted); font-size:14px; }
+  .field .val { font-size:14px; }
+  .tags { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .tag { font-size:13px; background:var(--chip); border:1px solid var(--line); border-radius:14px; padding:2px 6px 2px 10px; display:inline-flex; gap:6px; align-items:center; }
+  .tag i { font-style:normal; color:var(--muted); cursor:pointer; }
+  .caret { color:var(--muted); font-size:13px; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .dropdown { position:absolute; left:-1px; right:-1px; top:100%; margin-top:4px; background:var(--paper); border:1px solid var(--line); border-radius:8px; box-shadow:0 12px 28px rgba(0,0,0,.18); z-index:5; font-size:14px; overflow:hidden; }
+  .dropdown div { display:flex; justify-content:space-between; padding:8px 12px; }
+  .dropdown div.hl { background:rgba(255,92,138,.1); }
+  .dropdown small { color:var(--muted); }
+  .more-toggle { display:flex; justify-content:space-between; align-items:center; font-size:14px; font-weight:700; padding:6px 2px 12px; cursor:pointer; user-select:none; }
+  .more-toggle span.n { color:var(--pink-strong); font-weight:400; font-size:12px; margin-left:6px; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:4px; border:1px solid var(--pink-strong); color:var(--pink-strong); background:transparent; border-radius:8px; padding:5px 12px; font-size:13px; cursor:pointer; }
+  .btn.solid { background:var(--pink); color:#fff; border-color:var(--pink); }
+  .btn.block { width:100%; padding:9px; font-size:14px; font-weight:700; }
+
+  .facets { border-top:1px solid var(--line); margin-top:16px; padding-top:12px; }
+  .facets h4 { margin:10px 0 6px; font-size:13px; color:var(--muted); }
+  .fchip { font-size:12px; background:transparent; border:1px solid var(--line); border-radius:14px; padding:3px 9px; margin:0 4px 6px 0; display:inline-block; cursor:pointer; }
+  .fchip.on { background:var(--pink); border-color:var(--pink); color:#fff; }
+  .fchip small { opacity:.7; margin-left:3px; }
+
+  .reshead { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+  .reshead h3 { margin:0; font-size:18px; }
+  .reshead .count { color:var(--muted); font-size:13px; }
+  .select { border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:13px; background:var(--field); display:inline-flex; gap:8px; align-items:center; }
+  .active { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:12px 0 16px; }
+  .achip { font-size:12px; background:var(--chip); border:1px solid var(--line); border-radius:6px; padding:3px 6px 3px 8px; display:inline-flex; gap:6px; align-items:center; }
+  .achip.outline { background:transparent; }
+  .achip i { font-style:normal; color:var(--muted); cursor:pointer; }
+  .achip b { font-weight:400; color:var(--muted); }
+  .vgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .mobile .vgrid { grid-template-columns:repeat(2,1fr); }
+  .card { border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--paper); }
+  .photo { aspect-ratio:3/4; background:repeating-linear-gradient(45deg,#d9c9d4 0 10px,#e6d9e1 10px 20px); }
+  .dark .photo { background:repeating-linear-gradient(45deg,#3a2e3d 0 10px,#443748 10px 20px); }
+  .card .meta { padding:8px 10px; font-size:12px; }
+  .card .meta b { display:block; font-size:13px; margin:2px 0; }
+  .card .meta span { color:var(--muted); }
+  .hide { display:none !important; }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <span class="label">情境</span>
+  <button data-view="full" class="on">完整條件</button>
+  <button data-view="simple">只有關鍵字（更多條件收合）</button>
+  <button data-view="typing">出演輸入中（autocomplete）</button>
+  <span class="sep"></span>
+  <span class="label">寬度</span>
+  <button data-width="desktop" class="on">桌機</button>
+  <button data-width="mobile">手機</button>
+  <span class="sep"></span>
+  <button id="dark">深色</button>
+</div>
+
+<div class="stage">
+  <div class="frame" id="frame">
+    <div class="header">
+      <div class="brand"><div class="logo">女</div><span>joyu.fyi</span></div>
+      <div class="nav"><a>女優</a><a>女優主題</a><a class="on">影片</a></div>
+      <div class="hsearch">名字、別名或番號</div>
+    </div>
+    <div class="crumb">joyu.fyi ／ <b>影片</b></div>
+    <div class="page">
+      <div class="url" id="url"></div>
+      <div class="note" id="note"></div>
+      <h1>AV 影片搜尋</h1>
+
+      <div class="layout">
+        <!-- 搜尋條件 -->
+        <div class="panel">
+          <h3>搜尋條件</h3>
+          <div class="field"><label>關鍵字</label><span class="val" data-kw></span></div>
+
+          <div class="field" id="actressField"><label>出演<em>同時出演</em></label>
+            <div class="tags" data-multi="actress"></div>
+            <div class="dropdown hide" id="dropdown">
+              <div class="hl"><span>美園和花</span><small>412 部</small></div>
+              <div><span>美園和花（みその わか）</span><small>3 部</small></div>
+              <div><span>美園ゆう</span><small>18 部</small></div>
+            </div>
+          </div>
+          <div class="field"><label>標籤<em>全部符合</em></label><div class="tags" data-multi="tag"></div></div>
+          <div class="row2">
+            <div class="field"><label>配信日期（起）</label><span class="val" data-start></span></div>
+            <div class="field"><label>配信日期（迄）</label><span class="ph">yyyy-mm-dd</span></div>
+          </div>
+
+          <div class="more-toggle" id="moreToggle">更多條件<span class="n" id="moreCount"></span><span class="caret" id="moreCaret">▲</span></div>
+          <div id="more">
+            <div class="field"><label>發售商<em>任一</em></label><div class="tags" data-multi="maker"></div></div>
+            <div class="field"><label>品牌<em>任一</em></label><div class="tags" data-multi="label"></div></div>
+            <div class="field"><label>系列<em>任一</em></label><div class="tags" data-multi="series"></div></div>
+            <div class="field"><label>監督<em>任一</em></label><div class="tags" data-multi="director"></div></div>
+            <div class="row2">
+              <div class="field"><label>片長最短</label><span class="val" data-dmin></span></div>
+              <div class="field"><label>片長最長</label><span class="ph">分鐘</span></div>
+            </div>
+          </div>
+          <button class="btn solid block">搜尋</button>
+
+          <div class="facets">
+            <b style="font-size:14px">篩選</b>
+            <h4>標籤</h4>
+            <span class="fchip on">痴女<small>186</small></span><span class="fchip">巨乳<small>142</small></span><span class="fchip">中出し<small>120</small></span><span class="fchip">単体作品<small>98</small></span>
+            <h4>發售商</h4>
+            <span class="fchip on">ムーディーズ<small>140</small></span><span class="fchip on">エスワン<small>46</small></span><span class="fchip">プレステージ<small>12</small></span>
+            <h4>出演</h4>
+            <span class="fchip on">星宮みお<small>186</small></span><span class="fchip on">美園和花<small>186</small></span><span class="fchip">篠田ゆう<small>9</small></span>
+          </div>
+        </div>
+
+        <!-- 結果 -->
+        <div>
+          <div class="reshead">
+            <div><h3>搜尋結果</h3><div class="count" id="count"></div></div>
+            <div class="select">新到舊 ▾</div>
+          </div>
+          <div class="active" id="active"></div>
+          <div class="vgrid" id="grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 情境資料：完整條件／只有關鍵字／出演輸入中
+const full = {
+  keyword: "コスプレ", actress: ["星宮みお", "美園和花"], tag: ["痴女"], start: "2025-01-01",
+  maker: ["ムーディーズ", "エスワン"], label: [], series: [], director: [], dmin: "120",
+};
+const views = {
+  full: { ...full, more: true, typing: false, count: 186,
+    note: "出演、標籤取交集；發售商／品牌／系列／監督取聯集。「更多條件」有值時預設展開，標題旁顯示用了幾個。篩選面板的發售商、出演改成可複選。",
+  },
+  simple: { keyword: "コスプレ", actress: [], tag: [], start: "", maker: [], label: [], series: [], director: [], dmin: "", more: false, typing: false, count: 2140,
+    note: "沒用到「更多條件」時預設收合，表單只剩常用的四項。",
+  },
+  typing: { ...full, actress: ["星宮みお"], more: true, typing: true, count: 1028,
+    note: "autocomplete 沿用影片修改表單的元件與 suggest API：包含輸入字的值依作品數排序，只能挑清單裡的值（完全比對，不能自由輸入）。",
+  },
+};
+const LABEL = { actress: "出演", tag: "標籤", maker: "發售商", label: "品牌", series: "系列", director: "監督" };
+let cur = "full";
+
+function render() {
+  const v = views[cur];
+  document.getElementById("note").textContent = v.note;
+  document.querySelector("[data-kw]").textContent = v.keyword || "";
+  document.querySelector("[data-start]").innerHTML = v.start || '<span class="ph">yyyy-mm-dd</span>';
+  document.querySelector("[data-dmin]").innerHTML = v.dmin ? v.dmin + " 分" : '<span class="ph">分鐘</span>';
+  for (const k of Object.keys(LABEL)) {
+    const box = document.querySelector(`[data-multi="${k}"]`);
+    box.innerHTML = v[k].map((x) => `<span class="tag">${x}<i>✕</i></span>`).join("") +
+      (k === "actress" && v.typing ? '<span class="val">美園</span>' : "") +
+      (v[k].length === 0 && !(k === "actress" && v.typing) ? '<span class="ph">選擇…</span>' : "");
+  }
+  document.getElementById("actressField").classList.toggle("focus", v.typing);
+  document.getElementById("dropdown").classList.toggle("hide", !v.typing);
+  // 更多條件：有值時展開並顯示用了幾個
+  const used = ["maker", "label", "series", "director"].reduce((n, k) => n + v[k].length, 0) + (v.dmin ? 1 : 0);
+  document.getElementById("more").classList.toggle("hide", !v.more);
+  document.getElementById("moreCaret").textContent = v.more ? "▲" : "▼";
+  document.getElementById("moreCount").textContent = used ? `${used} 個條件` : "";
+  document.getElementById("count").textContent = `共 ${v.count.toLocaleString()} 筆資料`;
+
+  // 條件 chip：一個值一個，全部都能移除；有條件就有「追蹤這個搜尋」
+  const chips = [];
+  if (v.keyword) chips.push(`<span class="achip"><b>關鍵字</b>${v.keyword}<i>✕</i></span>`);
+  for (const k of Object.keys(LABEL)) v[k].forEach((x) => chips.push(`<span class="achip"><b>${LABEL[k]}</b>${x}<i>✕</i></span>`));
+  if (v.dmin) chips.push(`<span class="achip outline"><b>片長</b>${v.dmin} 分以上<i>✕</i></span>`);
+  if (v.start) chips.push(`<span class="achip outline"><b>開始</b>${v.start}<i>✕</i></span>`);
+  document.getElementById("active").innerHTML = '<span class="btn">♡ 追蹤這個搜尋</span>' + chips.join("");
+
+  // 網址：多值用重複參數
+  const p = new URLSearchParams();
+  if (v.keyword) p.append("keyword", v.keyword);
+  for (const k of Object.keys(LABEL)) v[k].forEach((x) => p.append(k, x));
+  if (v.start) p.append("start_date", v.start);
+  if (v.dmin) p.append("duration_min", v.dmin);
+  document.getElementById("url").textContent = "/video?" + decodeURIComponent(p.toString());
+
+  const titles = ["コスプレ痴女ハーレム 星宮みお 美園和花", "W痴女コスプレ逆3P", "コスプレ密着 120分", "痴女コス W主演", "コスプレ逆ナン", "ダブル痴女 特別編", "コスプレ温泉", "痴女2人の誘惑"];
+  document.getElementById("grid").innerHTML = titles.map((t, i) =>
+    `<div class="card"><div class="photo"></div><div class="meta"><span>MIDV-${900 - i}・2026/11/0${8 - (i % 8)}</span><b>${t}</b><span>星宮みお／美園和花</span></div></div>`).join("");
+}
+
+document.querySelectorAll("[data-view]").forEach((b) => b.onclick = () => {
+  document.querySelectorAll("[data-view]").forEach((x) => x.classList.toggle("on", x === b));
+  cur = b.dataset.view; render();
+});
+document.querySelectorAll("[data-width]").forEach((b) => b.onclick = () => {
+  document.querySelectorAll("[data-width]").forEach((x) => x.classList.toggle("on", x === b));
+  document.getElementById("frame").classList.toggle("mobile", b.dataset.width === "mobile");
+});
+document.getElementById("dark").onclick = (e) => { e.target.classList.toggle("on"); document.getElementById("frame").classList.toggle("dark"); };
+document.getElementById("moreToggle").onclick = () => { views[cur].more = !views[cur].more; render(); };
+render();
+</script>
+</body>
+</html>

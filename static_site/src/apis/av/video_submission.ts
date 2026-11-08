@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import axios from "axios";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import type { CommonResponse } from "@/apis/interfaces.ts";
 import { sessionHeaders } from "@/apis/storyteller/shared.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
@@ -10,8 +10,6 @@ import type {
   VideoSubmissionSummary,
   VideoSubmitRequest,
   VideoSubmitResult,
-  VideoTermKey,
-  VideoTermOption,
 } from "@/types/avVideoSubmission.ts";
 import { loadRecaptcha, recaptchaHeaders } from "@/lib/recaptcha.ts";
 
@@ -35,21 +33,6 @@ export function useSubmitVideo() {
             ...(session && sessionHeaders(session.encrypt_key)),
           },
         },
-      );
-      return response.data.data;
-    },
-  });
-}
-
-/** 修改表單陣列欄位的 autocomplete；後端有快取，前端也保留 10 分鐘 */
-export function useVideoTermSuggest(field: VideoTermKey, q: string) {
-  return useQuery({
-    queryKey: ["av-video-suggest", field, q],
-    staleTime: 600_000,
-    queryFn: async () => {
-      const response = await axios.get<CommonResponse<VideoTermOption[]>>(
-        `${apiBase}/opendata/av/video/suggest`,
-        { params: { field, q } },
       );
       return response.data.data;
     },

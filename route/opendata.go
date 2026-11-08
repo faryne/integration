@@ -50,10 +50,11 @@ func OpenData(app *fiber.App) {
 	// 女優上稿：不擋登入（有登入就記錄提交者），IP 限流
 	g4.Post("/actress/submissions", authsession.Optional(authService.BrandMain), opendata.AvActressSubmit)
 	g4.Get("/actress/submissions/:id", opendata.AvActressSubmissionStatus)
-	// 影片修改：同女優上稿（不擋登入、限流共用）；suggest 是修改表單陣列欄位的 autocomplete
+	// 影片修改：同女優上稿（不擋登入、限流共用）
 	g4.Post("/video/submissions", authsession.Optional(authService.BrandMain), opendata.AvVideoSubmit)
 	g4.Get("/video/submissions/:id", opendata.AvVideoSubmissionStatus)
-	g4.Get("/video/suggest", opendata.AvVideoTermSuggest)
+	// 出演／發售商…等欄位的 autocomplete（影片修改表單、影片搜尋表單共用）；搜尋頁打字頻率高，加上 CDN 快取
+	g4.Get("/video/suggest", avCache, opendata.AvVideoTermSuggest)
 
 	// 女優上稿、影片修改審核：主站登入且 users.is_admin
 	gAvAdmin := app.Group("/admin/av", authsession.New(authService.BrandMain))

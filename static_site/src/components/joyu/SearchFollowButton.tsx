@@ -8,7 +8,7 @@ import { searchFollowValue } from "@/helpers/joyuSearchFollow.ts";
 
 import { useFollowToggle } from "./useFollowToggle.ts";
 
-/** 影片搜尋頁「追蹤這個搜尋」：把目前的精確條件存成一筆追蹤；沒有精確條件時不顯示 */
+/** 影片搜尋頁「追蹤這個搜尋」：把目前的關鍵字與精確條件存成一筆追蹤；只有日期時不顯示 */
 export function SearchFollowButton({
   search,
 }: {

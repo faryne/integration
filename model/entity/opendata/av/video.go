@@ -15,23 +15,32 @@ type VideoQueryRequest struct {
 	// Tag 可複選（?tag=A&tag=B），結果需同時符合
 	Tag []string `query:"tag"`
 	// AnyTag 可複選（?any_tag=A&any_tag=B），符合其中一個就算；女優頁從有多個類型條件的主題點進來時用
-	AnyTag  []string `query:"any_tag"`
-	Actress string   `query:"actress"`
+	AnyTag []string `query:"any_tag"`
+	// Actress 出演可複選（?actress=A&actress=B），結果需同時出演（共演）
+	Actress []string `query:"actress"`
 	// 女優頁指定是哪一位（同 ActressQueryRequest）：同名女優的新影片依對照表裡的 DMM 女優 ID 分開，
-	// 對不到時退回 Actress（名字）；規則見 service/av/actress_videos.go
+	// 對不到時退回 Actress（名字）；只在剛好一位出演時生效，規則見 service/av/actress_videos.go
 	XCityID  int    `query:"xcity_id"`
 	ManualID int    `query:"manual_id"`
 	DMMID    string `query:"dmm_id"`
-	// 以下為詳細頁 chip 用的精確篩選（對 .keyword 下 term）
-	Maker    string `query:"maker"`
-	Label    string `query:"label"`
-	Series   string `query:"series"`
-	Director string `query:"director"`
-	No       string `query:"no"`
-	Page     int    `query:"page"`
+	// 以下為精確篩選（對 .keyword 比對），可複選、符合其中一個就算：一部片通常只有一個發售商／品牌，取交集一定沒結果
+	Maker    []string `query:"maker"`
+	Label    []string `query:"label"`
+	Series   []string `query:"series"`
+	Director []string `query:"director"`
+	// DurationMin／DurationMax 片長範圍（分鐘），0 表示不限；有設時沒有片長資料的影片會被排除
+	DurationMin int    `query:"duration_min"`
+	DurationMax int    `query:"duration_max"`
+	No          string `query:"no"`
+	// Sort 排序：VideoSortOldest 舊到新，其他（含空字串）新到舊
+	Sort string `query:"sort"`
+	Page int    `query:"page"`
 	// Shuffle 隨機排序（詳細頁追溯不到系列／女優時，隨機推薦近期作品用）
 	Shuffle bool `query:"shuffle"`
 }
+
+// VideoSortOldest 影片搜尋依配信日舊到新
+const VideoSortOldest = "oldest"
 
 type RawVideo struct {
 	Version string `json:"@version"`
