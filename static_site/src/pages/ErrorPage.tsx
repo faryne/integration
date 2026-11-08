@@ -3,6 +3,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useContext } from "react";
 import { galgamePath, isGalgameSite } from "@/helpers/galgame.ts";
+import { isJoyuSite } from "@/helpers/joyu.ts";
 import { isNekomaidSite, nekomaidPath } from "@/helpers/nekomaid.ts";
 import { storytellerMascotSrc } from "@/helpers/storytellerMascot.ts";
 import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
@@ -97,16 +98,19 @@ export function ErrorPage({
   const errorContent = steamloom
     ? (steamloomErrorContent[code] ?? steamloomFallbackErrorContent)
     : (errorPageContent[site][code] ?? fallbackErrorContent[site]);
-  const mascot = steamloom
-    ? {
-        src: storytellerMascotSrc(
-          "error",
-          storytellerAppearance?.appearance ?? "nocturne",
-          "512",
-        ),
-        alt: "梭梭",
-      }
-    : errorPageMascots[site];
+  // joyu.fyi 不用 faryne.dev 的看板娘（跟主站切割），只留文字；文案沿用主站的通用版本
+  const mascot = isJoyuSite()
+    ? null
+    : steamloom
+      ? {
+          src: storytellerMascotSrc(
+            "error",
+            storytellerAppearance?.appearance ?? "nocturne",
+            "512",
+          ),
+          alt: "梭梭",
+        }
+      : errorPageMascots[site];
   const buttonHref =
     backUrl ??
     (steamloom
@@ -147,17 +151,19 @@ export function ErrorPage({
         justifyContent="center"
         sx={compact ? { width: "auto" } : { width: "100%" }}
       >
-        <Box
-          component="img"
-          src={mascot.src}
-          alt={mascot.alt}
-          sx={{
-            width: compact ? { xs: 120, md: 160 } : { xs: 180, md: 260 },
-            height: compact ? { xs: 120, md: 160 } : { xs: 180, md: 260 },
-            objectFit: "contain",
-            flexShrink: 0,
-          }}
-        />
+        {mascot && (
+          <Box
+            component="img"
+            src={mascot.src}
+            alt={mascot.alt}
+            sx={{
+              width: compact ? { xs: 120, md: 160 } : { xs: 180, md: 260 },
+              height: compact ? { xs: 120, md: 160 } : { xs: 180, md: 260 },
+              objectFit: "contain",
+              flexShrink: 0,
+            }}
+          />
+        )}
 
         <Box sx={{ textAlign: { xs: "center", md: "left" } }}>
           <Typography
