@@ -20,13 +20,17 @@ type videoSearchArguments struct {
 	EndDate   string          `json:"end_date"`
 	Keyword   string          `json:"keyword"`
 	Tag       stringOrStrings `json:"tag"`
-	Actress   string          `json:"actress"`
-	Maker     string          `json:"maker"`
-	Label     string          `json:"label"`
-	Series    string          `json:"series"`
-	Director  string          `json:"director"`
-	No        string          `json:"no"`
-	Page      int             `json:"page"`
+	Actress   stringOrStrings `json:"actress"`
+	Maker     stringOrStrings `json:"maker"`
+	Label     stringOrStrings `json:"label"`
+	Series    stringOrStrings `json:"series"`
+	Director  stringOrStrings `json:"director"`
+	// DurationMin／DurationMax 片長範圍（分鐘）；Sort 為 oldest 時舊到新
+	DurationMin int    `json:"duration_min"`
+	DurationMax int    `json:"duration_max"`
+	Sort        string `json:"sort"`
+	No          string `json:"no"`
+	Page        int    `json:"page"`
 	// Facets 為 true 時結果多帶目前條件下的常見標籤／發售商／系列／出演
 	Facets bool `json:"facets"`
 }
@@ -78,27 +82,24 @@ func (s *Server) registerAVTools() {
 		Name:        "av_video_search",
 		Description: "Search AV video records by keyword, tags, actress, maker, label, series, director, video number, date, or page. Set facets=true to also get the most common tags/makers/series/actresses (with counts) under the same conditions, useful for narrowing down.",
 		InputSchema: objectSchema(map[string]interface{}{
-			"year":       integerSchema("Release year."),
-			"month":      integerSchema("Release month."),
-			"day":        integerSchema("Release day."),
-			"start_date": stringSchema("Start date in YYYY-MM-DD."),
-			"end_date":   stringSchema("End date in YYYY-MM-DD."),
-			"keyword":    stringSchema("Keyword: phrase match on title, partial (substring) match on actresses, series, makers, directors, labels and tags. Use the exact filters (actress, series, maker, ...) when the full name is known."),
-			"tag": map[string]interface{}{
-				"description": "Exact tag filter. A string, or an array of strings that must all match (AND).",
-				"anyOf": []interface{}{
-					map[string]interface{}{"type": "string"},
-					map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
-				},
-			},
-			"actress":  stringSchema("Exact actress name filter."),
-			"maker":    stringSchema("Exact maker filter."),
-			"label":    stringSchema("Exact label filter."),
-			"series":   stringSchema("Exact series filter."),
-			"director": stringSchema("Exact director filter."),
-			"facets":   map[string]interface{}{"type": "boolean", "description": "Also return facets (top tags 15, makers/series/actresses 10 each, with counts) for the same conditions. Defaults to false."},
-			"no":       stringSchema("Video number or maker number."),
-			"page":     integerSchema("Page number, defaults to 1."),
+			"year":         integerSchema("Release year."),
+			"month":        integerSchema("Release month."),
+			"day":          integerSchema("Release day."),
+			"start_date":   stringSchema("Start date in YYYY-MM-DD."),
+			"end_date":     stringSchema("End date in YYYY-MM-DD."),
+			"keyword":      stringSchema("Keyword: phrase match on title, partial (substring) match on actresses, series, makers, directors, labels and tags. Use the exact filters (actress, series, maker, ...) when the full name is known."),
+			"tag":          stringsSchema("Exact tag filter. A string, or an array of strings that must all match (AND)."),
+			"actress":      stringsSchema("Exact actress name filter. A string, or an array of names that must all appear (co-starring, AND)."),
+			"maker":        stringsSchema("Exact maker filter. A string, or an array where any one matches (OR)."),
+			"label":        stringsSchema("Exact label filter. A string, or an array where any one matches (OR)."),
+			"series":       stringsSchema("Exact series filter. A string, or an array where any one matches (OR)."),
+			"director":     stringsSchema("Exact director filter. A string, or an array where any one matches (OR)."),
+			"duration_min": integerSchema("Minimum duration in minutes. Videos without duration data are excluded when set."),
+			"duration_max": integerSchema("Maximum duration in minutes."),
+			"sort":         map[string]interface{}{"type": "string", "enum": []string{"newest", "oldest"}, "description": "Sort by release date. Defaults to newest."},
+			"facets":       map[string]interface{}{"type": "boolean", "description": "Also return facets (top tags 15, makers/series/actresses 10 each, with counts) for the same conditions. Defaults to false."},
+			"no":           stringSchema("Video number or maker number."),
+			"page":         integerSchema("Page number, defaults to 1."),
 		}, nil),
 		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
 			var args videoSearchArguments
@@ -106,18 +107,21 @@ func (s *Server) registerAVTools() {
 				return nil, err
 			}
 			req := avEntity.VideoQueryRequest{
-				Year:     args.Year,
-				Month:    args.Month,
-				Day:      args.Day,
-				Keyword:  args.Keyword,
-				Tag:      args.Tag,
-				Actress:  args.Actress,
-				Maker:    args.Maker,
-				Label:    args.Label,
-				Series:   args.Series,
-				Director: args.Director,
-				No:       args.No,
-				Page:     normalizedPage(args.Page),
+				Year:        args.Year,
+				Month:       args.Month,
+				Day:         args.Day,
+				Keyword:     args.Keyword,
+				Tag:         args.Tag,
+				Actress:     args.Actress,
+				Maker:       args.Maker,
+				Label:       args.Label,
+				Series:      args.Series,
+				Director:    args.Director,
+				DurationMin: args.DurationMin,
+				DurationMax: args.DurationMax,
+				Sort:        args.Sort,
+				No:          args.No,
+				Page:        normalizedPage(args.Page),
 			}
 			if args.StartDate != "" {
 				startDate, err := parseOnlyDate(args.StartDate)
@@ -229,6 +233,17 @@ func jsonTextResult(v interface{}) (*CallToolResult, error) {
 		return nil, err
 	}
 	return textResult(string(body)), nil
+}
+
+// stringsSchema 字串或字串陣列（搭配 stringOrStrings）
+func stringsSchema(description string) map[string]interface{} {
+	return map[string]interface{}{
+		"description": description,
+		"anyOf": []interface{}{
+			map[string]interface{}{"type": "string"},
+			map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
+		},
+	}
 }
 
 func stringSchema(description string) map[string]interface{} {

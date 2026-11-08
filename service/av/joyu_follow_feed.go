@@ -163,7 +163,7 @@ func followItem(f avEntity.JoyuFollow, actresses map[string]avEntity.DMMActress,
 		if p, ok := profiles[f.Value]; ok {
 			item.Actress = &p
 		}
-		req.Actress = row.Name
+		req.Actress = []string{row.Name}
 		params := url.Values{"actress": {row.Name}}
 		if row.Domain == avEntity.ActressDomainManual {
 			req.ManualID = row.ID
@@ -181,17 +181,18 @@ func followItem(f avEntity.JoyuFollow, actresses map[string]avEntity.DMMActress,
 		req = searchFollowRequest(params)
 		item.Label, item.SearchQuery = searchFollowLabel(params), f.Value
 	default:
+		v := []string{f.Value}
 		switch f.Kind {
 		case avEntity.FollowKindMaker:
-			req.Maker = f.Value
+			req.Maker = v
 		case avEntity.FollowKindLabel:
-			req.Label = f.Value
+			req.Label = v
 		case avEntity.FollowKindSeries:
-			req.Series = f.Value
+			req.Series = v
 		case avEntity.FollowKindDirector:
-			req.Director = f.Value
+			req.Director = v
 		case avEntity.FollowKindTag:
-			req.Tag = []string{f.Value}
+			req.Tag = v
 		default:
 			return item, req, false
 		}
@@ -204,17 +205,22 @@ func followItem(f avEntity.JoyuFollow, actresses map[string]avEntity.DMMActress,
 func searchFollowRequest(p url.Values) avEntity.VideoQueryRequest {
 	atoi := func(k string) int { n, _ := strconv.Atoi(p.Get(k)); return n }
 	return avEntity.VideoQueryRequest{
-		Actress: p.Get("actress"), XCityID: atoi("xcity_id"), ManualID: atoi("manual_id"), DMMID: p.Get("dmm_id"),
-		Maker: p.Get("maker"), Label: p.Get("label"), Series: p.Get("series"), Director: p.Get("director"), Tag: p["tag"],
+		Keyword: p.Get("keyword"), Actress: p["actress"], XCityID: atoi("xcity_id"), ManualID: atoi("manual_id"), DMMID: p.Get("dmm_id"),
+		Maker: p["maker"], Label: p["label"], Series: p["series"], Director: p["director"], Tag: p["tag"],
 	}
 }
 
-// searchFollowLabel 搜尋條件的顯示名稱：「星宮みお × MOODYZ DIVA × 痴女」
+// searchFollowLabel 搜尋條件的顯示名稱：「「cosplay」 × 星宮みお × 美園和花 × MOODYZ／S1 × 痴女」。
+// 關鍵字加引號跟標籤分得開；出演、標籤是交集，每個值各自用 × 分開；發售商等是聯集，同一欄的值用／連起來
 func searchFollowLabel(p url.Values) string {
 	var parts []string
-	for _, k := range []string{"actress", "maker", "label", "series", "director"} {
-		if v := p.Get(k); v != "" {
-			parts = append(parts, v)
+	if v := p.Get("keyword"); v != "" {
+		parts = append(parts, "「"+v+"」")
+	}
+	parts = append(parts, p["actress"]...)
+	for _, k := range []string{"maker", "label", "series", "director"} {
+		if len(p[k]) > 0 {
+			parts = append(parts, strings.Join(p[k], "／"))
 		}
 	}
 	return strings.Join(append(parts, p["tag"]...), " × ")

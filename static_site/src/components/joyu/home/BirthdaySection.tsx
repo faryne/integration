@@ -36,10 +36,11 @@ export function BirthdaySection() {
         sx={{
           display: "grid",
           gap: 1.5,
+          // minmax(0, 1fr)：1fr 的下限是內容寬度，不換行的長名字會把那一欄撐寬、大頭貼跟著變大，要固定等寬
           gridTemplateColumns: {
-            xs: "repeat(4, 1fr)",
-            sm: "repeat(6, 1fr)",
-            md: "repeat(8, 1fr)",
+            xs: "repeat(4, minmax(0, 1fr))",
+            sm: "repeat(6, minmax(0, 1fr))",
+            md: "repeat(8, minmax(0, 1fr))",
           },
         }}
       >

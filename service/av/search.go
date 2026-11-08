@@ -67,18 +67,35 @@ func VideoSearch(input av.VideoQueryRequest) (repoSearch.Page[av.RawVideo], []av
 // videoIndexQuery 把 API 的搜尋條件轉成索引查詢：女優頁指定是哪一位時改用 DMM 女優 ID 區分同名
 // （actress 是網址上的名字，本名或別名）；對不到女優就退回照 actress 名字找，「名字（別名…）」的寫法也算。
 // 搜尋與篩選統計（facets）共用，兩邊結果才會一致
+// 出演可複選（共演）：女優 ID 只在剛好一位（或只帶 ID 沒帶名字）時生效，兩位以上逐一照名字比對
 func videoIndexQuery(input av.VideoQueryRequest) (av.VideoIndexQuery, error) {
 	q := av.VideoIndexQuery{VideoQueryRequest: input}
-	if row := resolveActress(input.XCityID, input.ManualID, input.DMMID); row != nil {
-		f, err := actressVideoFilter(*row, actressPageName(*row, input.Actress))
-		if err != nil {
-			return q, err
+	names := distinctValues(input.Actress)
+	if len(names) <= 1 {
+		if row := resolveActress(input.XCityID, input.ManualID, input.DMMID); row != nil {
+			f, err := actressVideoFilter(*row, actressPageName(*row, strings.Join(names, "")))
+			if err != nil {
+				return q, err
+			}
+			q.Actresses = []av.VideoActressFilter{f}
+			return q, nil
 		}
-		q.Actress = &f
-	} else if actress := strings.TrimSpace(input.Actress); actress != "" {
-		q.Actress = &av.VideoActressFilter{Name: actress}
+	}
+	for _, name := range names {
+		q.Actresses = append(q.Actresses, av.VideoActressFilter{Name: name})
 	}
 	return q, nil
+}
+
+// distinctValues 去頭尾空白、拿掉空值與重複，保留原順序
+func distinctValues(values []string) []string {
+	out := make([]string, 0, len(values))
+	for _, v := range values {
+		if v = strings.TrimSpace(v); v != "" && !slices.Contains(out, v) {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 var fActress = func(i av.Actress) av.Actress {

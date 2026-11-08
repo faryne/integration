@@ -7,10 +7,10 @@ package av
 var ActressAliasOpeners = []string{"（", "(", " （", " ("}
 
 // VideoIndexQuery 影片搜尋條件：VideoQueryRequest 加上已解析的女優條件。
-// Actress 不為 nil 時以它為準，VideoQueryRequest 裡的 Actress／XCityID／ManualID／DMMID 不再參考
+// 出演一律看 Actresses（每位一個條件、取交集），VideoQueryRequest 裡的 Actress／XCityID／ManualID／DMMID 不再參考
 type VideoIndexQuery struct {
 	VideoQueryRequest
-	Actress *VideoActressFilter
+	Actresses []VideoActressFilter
 }
 
 // VideoActressFilter 出演者條件：名字完全相符或「名字（別名…）」，再依 DMM 女優 ID 區分同名

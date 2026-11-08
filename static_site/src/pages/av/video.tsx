@@ -5,10 +5,11 @@ import {
 import {
   Alert,
   Box,
-  Chip,
   Grid,
+  MenuItem,
   Pagination,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
 import { AV_VIDEO_SECTION, useTitle } from "@/helpers/title.tsx";
@@ -17,11 +18,6 @@ import { VideoSearch } from "@/components/av/video_search";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { useSearchParams } from "react-router-dom";
 import type { ListByPaginationRequest } from "@/apis/interfaces";
-import {
-  AV_VIDEO_EXACT_FILTERS,
-  AV_VIDEO_TAG_LABEL,
-  type AVVideoExactFilterParam,
-} from "@/data/avVideoFilters.ts";
 import {
   parseVideoSearchParams,
   videoSearchToParams,
@@ -38,7 +34,7 @@ import {
   VideoResultSkeleton,
 } from "@/components/av/video_result_card.tsx";
 import { AV_VIDEO_GRID_COLUMNS } from "@/data/avVideoCover.ts";
-import { SearchFollowButton } from "@/components/joyu/SearchFollowButton.tsx";
+import { VideoSearchChips } from "@/components/av/video_search_chips.tsx";
 
 export function AVVideo() {
   const [query, setQuery] = useSearchParams();
@@ -58,52 +54,22 @@ export function AVVideo() {
   const total = s.data?.data?.total ?? 0;
   const perPage = s.data?.data?.per_page ?? 0;
   const pageCount = perPage > 0 ? Math.ceil(total / perPage) : 0;
-  const activeExactFilters = AV_VIDEO_EXACT_FILTERS.filter(
-    ({ param }) => search[param],
-  );
-  const activeTags = search.tag ?? [];
-  const hasActiveFilter = Boolean(
-    search.keyword ||
-    search.start_date ||
-    search.end_date ||
-    activeTags.length > 0 ||
-    activeExactFilters.length > 0,
-  );
 
   const handleSearch = (input: VideoSearchRequest) => {
     setQuery(videoSearchToParams({ ...input, page: 1 }));
   };
-
   const handlePageChange = (page: number) => {
     setQuery(videoSearchToParams({ ...search, page }));
   };
 
-  // 移除單一精確篩選條件，其餘條件保留並回到第一頁
-  const removeExactFilter = (param: AVVideoExactFilterParam) => {
-    setQuery(videoSearchToParams({ ...search, [param]: undefined, page: 1 }));
-  };
-  const removeTag = (tag: string) => {
-    setQuery(
-      videoSearchToParams({
-        ...search,
-        tag: activeTags.filter((t) => t !== tag),
-        page: 1,
-      }),
-    );
-  };
-
-  // 篩選：標籤複選（加入／移除），其餘單選（再點一次取消）；一律回到第一頁
+  // 篩選：全部可複選，點了加入、已選的再點一次移除；一律回到第一頁
   const isFacetSelected = (param: FacetParam, value: string) =>
-    param === "tag" ? activeTags.includes(value) : search[param] === value;
+    (search[param] ?? []).includes(value);
   const toggleFacet = (param: FacetParam, value: string) => {
-    if (param === "tag") {
-      const tag = activeTags.includes(value)
-        ? activeTags.filter((t) => t !== value)
-        : [...activeTags, value];
-      setQuery(videoSearchToParams({ ...search, tag, page: 1 }));
-      return;
-    }
-    const next = search[param] === value ? undefined : value;
+    const current = search[param] ?? [];
+    const next = current.includes(value)
+      ? current.filter((v) => v !== value)
+      : [...current, value];
     setQuery(videoSearchToParams({ ...search, [param]: next, page: 1 }));
   };
 
@@ -138,7 +104,7 @@ export function AVVideo() {
                 AV 影片搜尋
               </Typography>
               <Typography color="text.secondary" variant="body2">
-                依關鍵字與發售日期篩選影片，點擊封面進入詳細頁。
+                依關鍵字、出演、標籤、發售商等條件篩選影片，點擊封面進入詳細頁。
               </Typography>
             </Box>
           </Stack>
@@ -197,59 +163,31 @@ export function AVVideo() {
                       : "讀取中"}
                   </Typography>
                 </Box>
-                {hasActiveFilter && (
-                  <Stack
-                    direction="row"
-                    flexWrap="wrap"
-                    gap={1}
-                    sx={{ alignItems: "center" }}
-                  >
-                    {/* 有精確條件時可以把這組條件存成追蹤（joyu 我的追蹤頁會列出它最近的新片） */}
-                    <SearchFollowButton search={search} />
-                    {search.keyword && (
-                      <Chip
-                        label={`關鍵字：${search.keyword}`}
-                        size="small"
-                        sx={{ borderRadius: 1 }}
-                      />
-                    )}
-                    {activeTags.map((tag) => (
-                      <Chip
-                        key={`tag-${tag}`}
-                        label={`${AV_VIDEO_TAG_LABEL}：${tag}`}
-                        onDelete={() => removeTag(tag)}
-                        size="small"
-                        sx={{ borderRadius: 1 }}
-                      />
-                    ))}
-                    {activeExactFilters.map(({ param, label }) => (
-                      <Chip
-                        key={param}
-                        label={`${label}：${search[param]}`}
-                        onDelete={() => removeExactFilter(param)}
-                        size="small"
-                        sx={{ borderRadius: 1 }}
-                      />
-                    ))}
-                    {search.start_date && (
-                      <Chip
-                        label={`開始：${search.start_date}`}
-                        size="small"
-                        sx={{ borderRadius: 1 }}
-                        variant="outlined"
-                      />
-                    )}
-                    {search.end_date && (
-                      <Chip
-                        label={`結束：${search.end_date}`}
-                        size="small"
-                        sx={{ borderRadius: 1 }}
-                        variant="outlined"
-                      />
-                    )}
-                  </Stack>
-                )}
+                {/* 排序：新到舊（預設）／舊到新 */}
+                <TextField
+                  onChange={(e) =>
+                    setQuery(
+                      videoSearchToParams({
+                        ...search,
+                        sort:
+                          e.target.value === "oldest" ? "oldest" : undefined,
+                        page: 1,
+                      }),
+                    )
+                  }
+                  select
+                  size="small"
+                  value={search.sort ?? "newest"}
+                >
+                  <MenuItem value="newest">新到舊</MenuItem>
+                  <MenuItem value="oldest">舊到新</MenuItem>
+                </TextField>
               </Box>
+
+              <VideoSearchChips
+                onChange={(next) => setQuery(videoSearchToParams(next))}
+                search={search}
+              />
 
               {s.isError && (
                 <Alert severity="error">搜尋資料讀取失敗，請稍後再試。</Alert>

@@ -79,7 +79,7 @@ export function AVActressDetail() {
     });
   // 一律用這位自己的 ID 查，同名的人才分得開（舊網址也一樣）
   const actressParams = {
-    actress: name,
+    actress: [name],
     ...(actress && actressRefOf(actress)),
   };
   const videoQuery = useAVVideoSearch(
@@ -87,7 +87,7 @@ export function AVActressDetail() {
       page: videoPage,
       ...actressParams,
       ...(filter.year && { year: Number(filter.year) }),
-      ...(filter.maker && { maker: filter.maker }),
+      ...(filter.maker && { maker: [filter.maker] }),
       ...(filter.tag && { tag: [filter.tag] }),
       ...(videoTab === "topic" && { any_tag: genreTags }),
     },

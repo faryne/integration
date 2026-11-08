@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Autocomplete, Chip, TextField } from "@mui/material";
 import type { VideoTermKey } from "@/types/avVideoSubmission.ts";
-import { useVideoTermSuggest } from "@/apis/av/video_submission.ts";
+import { useVideoTermSuggest } from "@/apis/av/video_suggest.ts";
 import { useDebouncedValue } from "@/helpers/useDebouncedValue.ts";
 import { renderCountOption } from "@/components/av/option_count.tsx";
 
@@ -9,8 +9,8 @@ import { renderCountOption } from "@/components/av/option_count.tsx";
 const keepOptions = (x: string[]) => x;
 
 /**
- * 影片修改表單的陣列欄位（出演、監督、系列、發售商、品牌、標籤）：多選 chip＋autocomplete。
- * 選項由後端依「包含輸入字」查影片統計、依作品數排序；freeSolo 時可以填清單外的新值（標籤不行）。
+ * 影片的陣列欄位（出演、監督、系列、發售商、品牌、標籤）：多選 chip＋autocomplete，影片修改表單與影片搜尋表單共用。
+ * 選項由後端依「包含輸入字」查影片統計、依作品數排序；freeSolo 時可以填清單外的新值（修改表單的標籤、搜尋表單全部欄位都不行）。
  * baseItems 有給時（修改模式）新加的 chip 標色，改過整欄標「已修改」並顯示原本的值
  */
 export function VideoTermAutocomplete({

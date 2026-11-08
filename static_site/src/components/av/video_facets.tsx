@@ -14,7 +14,7 @@ import type { VideoFacetBucket, VideoFacets } from "@/apis/av/video_facets.ts";
 
 const VISIBLE_COUNT = 8;
 
-// 統計欄位 → 搜尋參數；標籤可複選，其餘單選
+// 統計欄位 → 搜尋參數；全部可複選（出演、標籤取交集，發售商、系列取聯集）
 export type FacetParam = "tag" | "maker" | "series" | "actress";
 const GROUPS: { key: keyof VideoFacets; param: FacetParam; title: string }[] = [
   { key: "tags", param: "tag", title: "標籤" },

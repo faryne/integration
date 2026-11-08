@@ -16,15 +16,22 @@ export interface VideoSearchRequest extends ActressRef {
   start_date?: string;
   end_date?: string;
   keyword?: string;
-  actress?: string;
-  // 詳細頁 chip 的精確篩選；標籤可複選（交集）
+  // 出演可複選，取交集（共演）；ActressRef 的 ID 只在剛好一位時生效
+  actress?: string[];
+  // 標籤可複選（交集）
   tag?: string[];
   // 標籤聯集（符合其中一個就算）：女優頁從有類型條件的主題點進來時用
   any_tag?: string[];
-  maker?: string;
-  label?: string;
-  series?: string;
-  director?: string;
+  // 發售商／品牌／系列／監督可複選，取聯集（一部片通常只有一個）
+  maker?: string[];
+  label?: string[];
+  series?: string[];
+  director?: string[];
+  // 片長範圍（分鐘）
+  duration_min?: number;
+  duration_max?: number;
+  // 排序："oldest" 舊到新，不帶就是新到舊
+  sort?: "oldest";
   // 隨機排序（詳細頁追溯不到系列／女優時的近期推薦）；ListByPaginationRequest 已有別的 random 欄位，避開同名
   shuffle?: boolean;
   no?: string;
