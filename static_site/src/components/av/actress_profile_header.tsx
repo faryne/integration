@@ -8,6 +8,7 @@ import { ActressLinks } from "@/components/av/actress_links.tsx";
 import { ActressNames } from "@/components/av/actress_names.tsx";
 import { ActressPhoto } from "@/components/av/actress_photo.tsx";
 import { ActressTopicChip } from "@/components/av/actress_topic_chip.tsx";
+import { FollowButton } from "@/components/joyu/FollowButton.tsx";
 import {
   actressAge,
   formatActressBirth,
@@ -78,6 +79,13 @@ export function ActressProfileHeader({
           >
             {actress.name}
           </Typography>
+          {/* 追蹤這位女優：存 domain:aid，改名、同名都分得開 */}
+          <FollowButton
+            kind="actress"
+            label={actress.name}
+            size="medium"
+            value={`${actress.domain}:${actress.aid}`}
+          />
           {/* 資料有誤或缺漏時送修改單，管理者核准後才更新 */}
           <Button
             component={RouterLink}

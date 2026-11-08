@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { Box, Container, GlobalStyles, ThemeProvider } from "@mui/material";
 
+import { JoyuAuthProvider } from "@/components/joyu/auth/JoyuAuthProvider.tsx";
 import { JoyuBreadcrumbs } from "@/components/joyu/JoyuBreadcrumbs.tsx";
 import { JoyuFooter } from "@/components/joyu/JoyuFooter.tsx";
 import { JoyuHeader } from "@/components/joyu/JoyuHeader.tsx";
@@ -28,26 +29,29 @@ export function JoyuLayout() {
           body: { backgroundColor: theme.palette.background.default },
         })}
       />
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          bgcolor: "background.default",
-          color: "text.primary",
-        }}
-      >
-        <JoyuHeader />
-        <JoyuBreadcrumbs />
-        <Container
-          component="main"
-          maxWidth={false}
-          sx={{ maxWidth: 1280, flex: "1 0 auto", py: 3 }}
+      {/* joyu 自己的登入（joyu-firebase，跟主站的 AuthProvider 分開） */}
+      <JoyuAuthProvider>
+        <Box
+          sx={{
+            minHeight: "100vh",
+            display: "flex",
+            flexDirection: "column",
+            bgcolor: "background.default",
+            color: "text.primary",
+          }}
         >
-          <Outlet />
-        </Container>
-        <JoyuFooter />
-      </Box>
+          <JoyuHeader />
+          <JoyuBreadcrumbs />
+          <Container
+            component="main"
+            maxWidth={false}
+            sx={{ maxWidth: 1280, flex: "1 0 auto", py: 3 }}
+          >
+            <Outlet />
+          </Container>
+          <JoyuFooter />
+        </Box>
+      </JoyuAuthProvider>
     </ThemeProvider>
   );
 }

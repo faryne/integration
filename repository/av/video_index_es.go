@@ -120,6 +120,71 @@ func (videoIndexES) TopActresses(ctx context.Context, input av.VideoIndexQuery, 
 	return res.Aggregations.Actresses.values(), nil
 }
 
+// RecentByQueries 一個請求查完：每組條件是 filters 聚合裡的一個 filter，底下用 max 取最新配信日、top_hits 取最新幾部，
+// 追蹤再多也只打一次 ES
+func (videoIndexES) RecentByQueries(ctx context.Context, queries []av.VideoIndexQuery, perQuery int) ([]av.VideoRecent, error) {
+	out := make([]av.VideoRecent, len(queries))
+	if len(queries) == 0 {
+		return out, nil
+	}
+	filters := make(map[string]any, len(queries))
+	for i, q := range queries {
+		filters[strconv.Itoa(i)] = videoConditionQuery(q)
+	}
+	body := map[string]any{
+		"size": 0,
+		"aggs": map[string]any{"recent": map[string]any{
+			"filters": map[string]any{"filters": filters},
+			"aggs": map[string]any{
+				"last": esDateAggs()["last"],
+				"top": map[string]any{"top_hits": map[string]any{
+					"size": perQuery,
+					"sort": []any{map[string]any{"vod_date": map[string]any{"order": "desc"}}},
+				}},
+			},
+		}},
+	}
+	var res struct {
+		Aggregations struct {
+			Recent struct {
+				Buckets map[string]struct {
+					DocCount int       `json:"doc_count"`
+					Last     esDateAgg `json:"last"`
+					Top      struct {
+						Hits struct {
+							Hits []struct {
+								Source av.RawVideo `json:"_source"`
+							} `json:"hits"`
+						} `json:"hits"`
+					} `json:"top"`
+				} `json:"buckets"`
+			} `json:"recent"`
+		} `json:"aggregations"`
+	}
+	if err := esdsl.Raw(ctx, videoIndexName(), body, &res); err != nil {
+		return nil, err
+	}
+	for i := range queries {
+		b := res.Aggregations.Recent.Buckets[strconv.Itoa(i)]
+		r := av.VideoRecent{Count: b.DocCount, Last: b.Last.ValueAsString}
+		for _, h := range b.Top.Hits.Hits {
+			r.Videos = append(r.Videos, h.Source)
+		}
+		out[i] = r
+	}
+	return out, nil
+}
+
+// videoConditionQuery 把一組搜尋條件轉成單一個 ES query（給 filters 聚合用）；沒有任何條件時是 match_all
+func videoConditionQuery(input av.VideoIndexQuery) map[string]any {
+	q := map[string]any{}
+	applyVideoConditions(input, q)
+	if query, ok := q["query"].(map[string]any); ok {
+		return query
+	}
+	return map[string]any{"match_all": map[string]any{}}
+}
+
 // esDateAgg min／max 聚合的結果；沒有影片時 value_as_string 不存在，維持空字串
 type esDateAgg struct {
 	ValueAsString string `json:"value_as_string"`

@@ -6,6 +6,7 @@ import { ColorModeMenu } from "@/components/common/siteLayout/ColorModeMenu.tsx"
 import { SITE_HEADER_HEIGHT } from "@/components/common/siteLayout/siteTheme.ts";
 import { JOYU_SITE_NAME, joyuPath } from "@/helpers/joyu.ts";
 
+import { JoyuAccountMenu } from "./auth/JoyuAccountMenu.tsx";
 import { JoyuSearchBox } from "./JoyuSearchBox.tsx";
 import { findJoyuSection, joyuNavItems } from "./joyuNavigation.ts";
 import { joyuInk } from "./joyuTheme.ts";
@@ -13,7 +14,7 @@ import { joyuInk } from "./joyuTheme.ts";
 /**
  * joyu.fyi 頁首：深紫底＋粉紅強調（joyu 自己的配色）；三個區塊在手機上也直接排開。
  * 搜尋框桌機直接輸入（番號到影片頁、名字到女優搜尋），手機只放圖示連到女優搜尋。
- * 目前不提供登入（之後做社群功能時才接 joyu-firebase 的 Auth），所以沒有帳號選單。
+ * 帳號區是 joyu-firebase 的登入（Google＋匿名），見 components/joyu/auth。
  */
 export function JoyuHeader() {
   const { pathname } = useLocation();
@@ -120,6 +121,7 @@ export function JoyuHeader() {
           >
             <SearchIcon fontSize="small" />
           </IconButton>
+          <JoyuAccountMenu />
           <ColorModeMenu />
         </Box>
       </Container>

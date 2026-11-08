@@ -21,7 +21,8 @@ export function ActressTopicChip() {
     <Stack
       direction="row"
       gap={1}
-      sx={{ alignItems: "center", justifyContent: "center" }}
+      // 靠左：跟女優頁頂端資料區對齊（舊版側欄卡片才是置中）
+      sx={{ alignItems: "center" }}
     >
       <Typography color="text.secondary" variant="caption">
         主題

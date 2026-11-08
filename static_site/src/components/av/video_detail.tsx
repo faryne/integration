@@ -1,14 +1,6 @@
 import type { Video } from "@/types/av.ts";
-import {
-  Button,
-  Chip,
-  Stack,
-  Typography,
-  Box,
-  Divider,
-  Skeleton,
-} from "@mui/material";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { Button, Chip, Stack, Typography, Box, Skeleton } from "@mui/material";
+import { Link as RouterLink } from "react-router-dom";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
@@ -17,11 +9,10 @@ import type { VideoSyncResult } from "@/apis/av/video_sync.ts";
 import { VideoDetailTabs } from "@/components/av/video_detail_tabs.tsx";
 import { VideoSyncButton } from "@/components/av/video_sync_button.tsx";
 import { VideoCast } from "@/components/av/video_cast.tsx";
-import { VideoLinksRow } from "@/components/av/video_links_row.tsx";
+import { VideoMetaRows } from "@/components/av/video_meta_rows.tsx";
 import { ImageViewer } from "@/components/common/ImageViewer.tsx";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
-import { videoActressPath } from "@/helpers/avActressName.ts";
 import { joyuPath } from "@/helpers/joyu.ts";
 
 export interface IVideoDetail {
@@ -33,31 +24,12 @@ export interface IVideoDetail {
 }
 
 export function VideoDetail(props: IVideoDetail) {
-  const navigate = useNavigate();
   const video = props.video || null;
-  const labels = video ? video.labels.filter((l) => l !== "") : [];
-  const actresses = video ? video.actresses.filter((a) => a !== "") : [];
-  const makers = video ? video?.makers.filter((m) => m !== "") : [];
-  const series = video ? video.series.filter((s) => s !== "") : [];
-  const directors = video ? video?.directors.filter((d) => d !== "") : [];
-  const tags = video ? video.tags.filter((t) => t !== "") : [];
   const displayMakerNo = video?.maker_no?.trim() ?? "";
   // 沒有官方番號的舊資料顯示 DMM 內部番號
   const displayCode = displayMakerNo || video?.no.toUpperCase() || "";
 
   useBreadcrumbTail(video ? `${displayCode} ${video.title}` : undefined);
-
-  const chipClick = (s: string, keyPrefix: string) => {
-    if (keyPrefix === "actress") {
-      // chip 照 DMM 原文顯示，連結規則見 videoActressPath
-      navigate(
-        videoActressPath(s, video?.actress_ids?.[video.actresses.indexOf(s)]),
-      );
-      return;
-    }
-    // keyPrefix 與搜尋頁的精確篩選參數同名（見 data/avVideoFilters.ts）
-    navigate(joyuPath(`video?${keyPrefix}=${encodeURIComponent(s)}`));
-  };
 
   const previewPhotos = useMemo(
     () =>
@@ -67,37 +39,6 @@ export function VideoDetail(props: IVideoDetail) {
       })),
     [video?.images],
   );
-
-  const renderChips = (items: string[], keyPrefix: string) =>
-    items.map((o) => (
-      <Chip
-        key={`${keyPrefix}-${o}`}
-        label={o}
-        clickable
-        onClick={() => chipClick(o, keyPrefix)}
-        sx={{
-          borderRadius: 1.5,
-          bgcolor: "rgba(25, 118, 210, 0.08)",
-          borderColor: "rgba(25, 118, 210, 0.22)",
-          color: "primary.dark",
-          fontWeight: 500,
-          "&:hover": {
-            bgcolor: "rgba(25, 118, 210, 0.14)",
-          },
-        }}
-        variant="outlined"
-      />
-    ));
-
-  // 沒資料的欄位整列不顯示
-  const infoRows = [
-    { label: "發售商", items: makers, keyPrefix: "maker" },
-    { label: "品牌", items: labels, keyPrefix: "label" },
-    { label: "系列", items: series, keyPrefix: "series" },
-    { label: "出演", items: actresses, keyPrefix: "actress" },
-    { label: "監督", items: directors, keyPrefix: "director" },
-    { label: "標籤", items: tags, keyPrefix: "tag" },
-  ].filter((row) => row.items.length > 0);
 
   if (!video) {
     return (
@@ -204,6 +145,7 @@ export function VideoDetail(props: IVideoDetail) {
               actresses={video.actresses}
               actressIds={video.actress_ids}
             />
+            <VideoMetaRows video={video} />
           </Stack>
 
           <Stack direction="row" flexWrap="wrap" gap={1}>
@@ -247,46 +189,8 @@ export function VideoDetail(props: IVideoDetail) {
         </Stack>
       </Box>
 
-      {/* 基本資料與相關作品用 tab 切換；key 讓換片時回到基本資料 */}
-      <VideoDetailTabs
-        key={video.no}
-        video={video}
-        info={
-          <Box
-            sx={{
-              border: "1px solid",
-              borderColor: "divider",
-              borderRadius: 2,
-              overflow: "hidden",
-            }}
-          >
-            {infoRows.map((row, index) => (
-              <Box key={row.keyPrefix}>
-                {index > 0 && <Divider />}
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: { xs: "64px 1fr", sm: "96px 1fr" },
-                    gap: { xs: 1, sm: 2 },
-                    alignItems: "start",
-                    px: { xs: 2, md: 2.5 },
-                    py: 1.75,
-                    textAlign: "left",
-                  }}
-                >
-                  <Typography color="text.secondary" fontWeight={700}>
-                    {row.label}
-                  </Typography>
-                  <Stack direction="row" flexWrap="wrap" gap={1}>
-                    {renderChips(row.items, row.keyPrefix)}
-                  </Stack>
-                </Box>
-              </Box>
-            ))}
-            <VideoLinksRow divider={infoRows.length > 0} links={video.links} />
-          </Box>
-        }
-      />
+      {/* 相關作品用 tab 切換（「基本資料」表格已拿掉，資料改在標題下方）；key 讓換片時回到第一個 tab */}
+      <VideoDetailTabs key={video.no} video={video} />
 
       {video.images.length > 0 && (
         <Stack spacing={2} sx={{ textAlign: "left" }}>

@@ -12,6 +12,10 @@ const lazyNamed = <K extends string>(
 ) => lazy(() => load().then((m) => ({ default: m[name] })));
 
 const JoyuHome = lazyNamed(() => import("@/pages/joyu/Home.tsx"), "JoyuHome");
+const JoyuMyFollows = lazyNamed(
+  () => import("@/pages/joyu/MyFollows.tsx"),
+  "JoyuMyFollows",
+);
 const AVActress = lazyNamed(
   () => import("@/pages/av/actress.tsx"),
   "AVActress",
@@ -59,6 +63,7 @@ export const joyuRoutes = (
     <Route path={"/video"} element={<AVVideo />} />
     <Route path={"/video/:no/edit"} element={<AVVideoEdit />} />
     <Route path={"/video/:no"} element={<AVVideoDetail />} />
+    <Route path={"/me/follows"} element={<JoyuMyFollows />} />
     <Route path={"*"} element={<ErrorPage code={404} />} />
   </Route>
 );

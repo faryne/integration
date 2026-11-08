@@ -28,6 +28,13 @@ type VideoStats struct {
 	First, Last string
 }
 
+// VideoRecent 一組條件的部數、最新配信日（yyyy/MM/dd）與最新幾部影片（joyu 我的追蹤頁）
+type VideoRecent struct {
+	Count  int
+	Last   string
+	Videos []RawVideo
+}
+
 // VideoActressStats 依出演者名字分組的統計；Name 是影片上的原始寫法（可能帶括號別名）
 type VideoActressStats struct {
 	Name string

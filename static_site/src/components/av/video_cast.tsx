@@ -3,6 +3,7 @@ import { Box, Stack, Typography } from "@mui/material";
 
 import { useJoyuActressesByNames } from "@/apis/av/joyu.ts";
 import { ActressPhoto } from "@/components/av/actress_photo.tsx";
+import { FollowButton } from "@/components/joyu/FollowButton.tsx";
 import { actressBaseName, videoActressPath } from "@/helpers/avActressName.ts";
 import type { Actress } from "@/types/av.ts";
 
@@ -32,7 +33,7 @@ function CastCard({
         display: "flex",
         gap: 1.25,
         pl: 0.5,
-        pr: 1.75,
+        pr: 1,
         py: 0.5,
         textDecoration: "none",
         "&:hover": { borderColor: "primary.main" },
@@ -58,6 +59,14 @@ function CastCard({
           </Typography>
         )}
       </Box>
+      {/* 對得到唯一一位女優才能追蹤（要存 domain:aid）；FollowButton 會擋掉點擊，不會跟著卡片跳頁 */}
+      {actress && (
+        <FollowButton
+          kind="actress"
+          label={name}
+          value={`${actress.domain}:${actress.aid}`}
+        />
+      )}
     </Box>
   );
 }
