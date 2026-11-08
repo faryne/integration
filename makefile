@@ -19,13 +19,13 @@ build-frontend:
 
 build-frontend-galgame:
 	cd static_site; \
-	VITE_API_BASE=https://galgame.tv/api pnpm build && \
+	VITE_SITE=galgame VITE_API_BASE=https://galgame.tv/api pnpm build && \
 	pnpm deploy:galgame && \
 	cd ..
 
 build-frontend-nekomaid:
 	cd static_site; \
-	VITE_API_BASE=https://neko.maid.tw/api pnpm build && \
+	VITE_SITE=nekomaid VITE_API_BASE=https://neko.maid.tw/api pnpm build && \
 	pnpm deploy:nekomaid && \
 	cd ..
 
@@ -35,7 +35,7 @@ build-frontend-steamloom:
 	pnpm deploy:steamloom && \
 	cd ..
 
-# joyu.fyi（AV 女優資料站）：VITE_SITE=joyu 讓 index.html 換成 joyu 的品牌並拔掉 AdSense（見 vite-plugins/joyuSite.ts）
+# 獨立站的 VITE_SITE 讓 index.html 換成該站品牌、跳過主站的 prerender（見 vite-plugins/siteBranding.ts）；joyu 另外會拔掉 AdSense
 build-frontend-joyu:
 	cd static_site; \
 	VITE_SITE=joyu VITE_API_BASE=https://joyu.fyi/api pnpm build && \
