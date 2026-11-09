@@ -33,7 +33,11 @@ export function relatedVideoTabs(video: Video): RelatedTab[] {
   const tabs: RelatedTab[] = [];
   const series = firstNonEmpty(video.series);
   if (series)
-    tabs.push({ key: "series", label: "同系列作品", filter: { series: [series] } });
+    tabs.push({
+      key: "series",
+      label: "同系列作品",
+      filter: { series: [series] },
+    });
 
   const actresses = [
     ...new Set(video.actresses.filter((a) => a.trim() !== "")),
@@ -48,10 +52,18 @@ export function relatedVideoTabs(video: Video): RelatedTab[] {
 
   const director = firstNonEmpty(video.directors);
   if (director)
-    tabs.push({ key: "director", label: "同監督作品", filter: { director: [director] } });
+    tabs.push({
+      key: "director",
+      label: "同監督作品",
+      filter: { director: [director] },
+    });
   const label = firstNonEmpty(video.labels);
   if (label)
-    tabs.push({ key: "label", label: "同品牌作品", filter: { label: [label] } });
+    tabs.push({
+      key: "label",
+      label: "同品牌作品",
+      filter: { label: [label] },
+    });
 
   if (tabs.length === 0) {
     tabs.push({

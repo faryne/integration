@@ -49,14 +49,10 @@ func esClient() (*elasticsearch.Client, error) {
 
 func (videoIndexES) Search(_ context.Context, input av.VideoIndexQuery) (search.Page[av.RawVideo], error) {
 	page := max(input.Page, 1)
-	order := "desc"
-	if input.Sort == av.VideoSortOldest {
-		order = "asc"
-	}
 	q := map[string]any{
 		"size": videoPageSize,
 		"from": (page - 1) * videoPageSize,
-		"sort": map[string]any{"pulish_date": map[string]any{"order": order}, "vod_date": map[string]any{"order": order}},
+		"sort": videoSort(input.Sort),
 	}
 	applyVideoConditions(input, q)
 	if input.Shuffle {
@@ -126,7 +122,7 @@ func (videoIndexES) TopActresses(ctx context.Context, input av.VideoIndexQuery, 
 
 // RecentByQueries 一個請求查完：每組條件是 filters 聚合裡的一個 filter，底下用 max 取最新配信日、top_hits 取最新幾部，
 // 追蹤再多也只打一次 ES
-func (videoIndexES) RecentByQueries(ctx context.Context, queries []av.VideoIndexQuery, perQuery int) ([]av.VideoRecent, error) {
+func (videoIndexES) RecentByQueries(ctx context.Context, queries []av.VideoIndexQuery, perQuery int, soonestFirst bool) ([]av.VideoRecent, error) {
 	out := make([]av.VideoRecent, len(queries))
 	if len(queries) == 0 {
 		return out, nil
@@ -143,7 +139,7 @@ func (videoIndexES) RecentByQueries(ctx context.Context, queries []av.VideoIndex
 				"last": esDateAggs()["last"],
 				"top": map[string]any{"top_hits": map[string]any{
 					"size": perQuery,
-					"sort": []any{map[string]any{"vod_date": map[string]any{"order": "desc"}}},
+					"sort": []any{map[string]any{"vod_date": map[string]any{"order": map[bool]string{true: "asc", false: "desc"}[soonestFirst]}}},
 				}},
 			},
 		}},
@@ -175,6 +171,53 @@ func (videoIndexES) RecentByQueries(ctx context.Context, queries []av.VideoIndex
 			r.Videos = append(r.Videos, h.Source)
 		}
 		out[i] = r
+	}
+	return out, nil
+}
+
+// videoSort 搜尋排序：
+//   - 預設新到舊、VideoSortOldest 舊到新（舊資料的配信日欄位有 pulish_date 錯字，沿用原本兩個欄位一起排）
+//   - VideoSortSoonest 配信日近的在前，同一天依 DMM 收藏數（即將發售頁）
+//   - VideoSortPopular 依 DMM 收藏數（首頁「下週發售」）
+//
+// bookmark_count 只有預約索引有，加 unmapped_type 才不會在影片索引上報錯
+func videoSort(sort string) []any {
+	bookmark := map[string]any{"bookmark_count": map[string]any{"order": "desc", "unmapped_type": "integer"}}
+	switch sort {
+	case av.VideoSortSoonest:
+		return []any{map[string]any{"vod_date": map[string]any{"order": "asc"}}, bookmark}
+	case av.VideoSortPopular:
+		return []any{bookmark, map[string]any{"vod_date": map[string]any{"order": "asc"}}}
+	}
+	order := "desc"
+	if sort == av.VideoSortOldest {
+		order = "asc"
+	}
+	return []any{map[string]any{"pulish_date": map[string]any{"order": order}}, map[string]any{"vod_date": map[string]any{"order": order}}}
+}
+
+// CountByDate 符合條件的影片依配信日（yyyy-MM-dd）計數，日期由舊到新（即將發售頁的日期列）
+func (videoIndexES) CountByDate(ctx context.Context, input av.VideoIndexQuery) ([]av.VideoDateCount, error) {
+	q := map[string]any{"size": 0, "aggs": map[string]any{"days": map[string]any{"date_histogram": map[string]any{
+		"field": "vod_date", "calendar_interval": "day", "format": "yyyy-MM-dd", "min_doc_count": 1,
+	}}}}
+	applyVideoConditions(input, q)
+	var res struct {
+		Aggregations struct {
+			Days struct {
+				Buckets []struct {
+					Key      string `json:"key_as_string"`
+					DocCount int    `json:"doc_count"`
+				} `json:"buckets"`
+			} `json:"days"`
+		} `json:"aggregations"`
+	}
+	if err := esdsl.Raw(ctx, videoIndexName(), q, &res); err != nil {
+		return nil, err
+	}
+	out := make([]av.VideoDateCount, 0, len(res.Aggregations.Days.Buckets))
+	for _, b := range res.Aggregations.Days.Buckets {
+		out = append(out, av.VideoDateCount{Date: b.Key, Count: b.DocCount})
 	}
 	return out, nil
 }
@@ -222,17 +265,15 @@ func (videoIndexES) DateStats(ctx context.Context, input av.VideoIndexQuery) (av
 
 // StatsByActress 以 actresses.keyword 跑 composite aggregation（分頁）
 func (videoIndexES) StatsByActress(ctx context.Context, f av.VideoStatsFilter, withDates bool) ([]av.VideoActressStats, error) {
-	var filter map[string]any
-	if f.Tag != "" || f.ExcludeTag != "" {
-		b := map[string]any{}
-		if f.Tag != "" {
-			b["filter"] = []any{map[string]any{"term": map[string]any{"tags.keyword": f.Tag}}}
-		}
-		if f.ExcludeTag != "" {
-			b["must_not"] = []any{map[string]any{"term": map[string]any{"tags.keyword": f.ExcludeTag}}}
-		}
-		filter = map[string]any{"bool": b}
+	// 只算已配信的（預約作品也在同一個索引）
+	b := map[string]any{"filter": []any{releasedQuery()}}
+	if f.Tag != "" {
+		b["filter"] = append(b["filter"].([]any), map[string]any{"term": map[string]any{"tags.keyword": f.Tag}})
 	}
+	if f.ExcludeTag != "" {
+		b["must_not"] = []any{map[string]any{"term": map[string]any{"tags.keyword": f.ExcludeTag}}}
+	}
+	filter := map[string]any{"bool": b}
 	var out []av.VideoActressStats
 	var after map[string]any
 	for {
@@ -244,10 +285,7 @@ func (videoIndexES) StatsByActress(ctx context.Context, f av.VideoStatsFilter, w
 		if withDates {
 			agg["aggs"] = esDateAggs()
 		}
-		body := map[string]any{"size": 0, "aggs": map[string]any{"a": agg}}
-		if filter != nil {
-			body["query"] = filter
-		}
+		body := map[string]any{"size": 0, "query": filter, "aggs": map[string]any{"a": agg}}
 		var res struct {
 			Aggregations struct {
 				A struct {

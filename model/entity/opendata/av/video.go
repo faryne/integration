@@ -32,15 +32,22 @@ type VideoQueryRequest struct {
 	DurationMin int    `query:"duration_min"`
 	DurationMax int    `query:"duration_max"`
 	No          string `query:"no"`
-	// Sort 排序：VideoSortOldest 舊到新，其他（含空字串）新到舊
+	// Sort 排序：空字串新到舊，其他見 VideoSortOldest／VideoSortSoonest／VideoSortPopular
 	Sort string `query:"sort"`
 	Page int    `query:"page"`
 	// Shuffle 隨機排序（詳細頁追溯不到系列／女優時，隨機推薦近期作品用）
 	Shuffle bool `query:"shuffle"`
 }
 
-// VideoSortOldest 影片搜尋依配信日舊到新
-const VideoSortOldest = "oldest"
+// 影片搜尋的排序（VideoQueryRequest.Sort）；空字串是依配信日新到舊
+const (
+	// VideoSortOldest 配信日舊到新
+	VideoSortOldest = "oldest"
+	// VideoSortSoonest 配信日近的在前、同一天依 DMM 收藏數（即將發售）
+	VideoSortSoonest = "soonest"
+	// VideoSortPopular 依 DMM 收藏數（即將發售：下週發售）
+	VideoSortPopular = "popular"
+)
 
 type RawVideo struct {
 	Version string `json:"@version"`
@@ -67,6 +74,8 @@ type RawVideo struct {
 	Timestamp   time.Time     `json:"@timestamp"`
 	MakerNo     string        `json:"maker_no"`
 	IsOrphan    bool          `json:"is_orphan"`
+	// ReleaseStatus 預約作品（即將發售索引）是 PRE_ORDER；影片索引的文件沒有這個欄位
+	ReleaseStatus string `json:"release_status"`
 	// Links 核准過的參考連結（影片修改審核）；DMM 沒有這個欄位
 	Links []ActressLink `json:"links"`
 }
@@ -96,6 +105,8 @@ type CleanVideo struct {
 	IsOrphan bool `json:"is_orphan,omitempty"`
 	// Links 參考連結，詳細頁「基本資料」最後一列
 	Links []ActressLink `json:"links"`
+	// ReleaseStatus 預約作品是 PRE_ORDER（影片頁顯示「預約中」、不顯示相關作品）；已配信的是空字串
+	ReleaseStatus string `json:"release_status,omitempty"`
 }
 
 // VideoFacetBucket 篩選統計的一個值與筆數

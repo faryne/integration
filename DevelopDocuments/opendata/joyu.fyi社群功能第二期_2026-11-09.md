@@ -316,3 +316,62 @@ DELETE /joyu/me/marks/:no
   - Root cause：React Compiler 把 onClick 閉包裡的 `confirmDelete!.id` 當成記憶化的依賴，在 render 時就去讀；`confirmDelete` 一開始是 `undefined`。非空斷言只騙得過 TypeScript，騙不過 compiler。
   - 解法：在閉包裡先 `if (!confirmDelete) return;` 再解構。之後寫 handler 時，不要對可能是 `undefined` 的 state 用 `!.屬性`。
   - 狀態：已修正。
+
+### 即將發售（2026-11-09，分支 `feat/joyu-upcoming`）
+
+> 做法改過一次：原本放在獨立的預約索引（`dmmvideos_upcoming`），使用者覺得兩個池子之間的交接太麻煩（配信日到了要從預約那邊移走、影片頁要備援、要另外建索引），改成**跟已配信的放在同一個池子**（MySQL `dmm`＋影片索引），即將發售就是撈配信日在未來的片。第三節「做法」第 1 點作廢，以這裡為準。
+
+- **寫入**
+  - 排程 `av-upcoming-sync`（每天 05:30；手動 `-cmd av-upcoming-sync -days N` 可以縮短天數）抓 DMM 未來 30 天的預約清單（`dmm.ListUpcoming`，`excludeUndelivered: false`），明細沿用 `FetchVideo`。
+  - 寫入跟每日同步走同一條路：`persistVideos` 寫 MySQL `dmm` 再寫影片索引。文件多三個欄位：`release_status`（`PRE_ORDER`）、`bookmark_count`、`fetched_at`。
+  - 配信當天，每日同步用同一個番號覆寫同一筆，這三個欄位跟著消失，**已上市的不用刪**。
+  - 寫入保護沿用每日同步的 `videoWritesAllowed`：只有正式環境、或 `DMM_VIDEO_INDEX` 換成測試索引時才寫。
+- **DMM 的 `releaseStatus` 不可靠**（2026-11-09 探測）
+  - 同一天的預約作品，有的清單和明細都是 `PRE_ORDER`，有的是空字串。
+  - 所以 `release_status` 由排程依配信日自己設：配信日在明天以後就是 `PRE_ORDER`。
+  - 「排程寫過、還沒被每日同步覆寫」的作品改用 `fetched_at` 辨識（`VideoIndex.PreOrders`）。
+- **重抓與清理**
+  - 清單上新出現的抓明細。
+  - 抓過的 7 天內不重抓；3 天內配信的超過一天就重抓；清單上的配信日跟索引裡不同（改期但仍在範圍內）也重抓。
+  - 排程寫過、這次清單上卻沒有的，用番號重抓明細：
+    - DMM 回新日期就覆寫，這是改期。
+    - 查無就從影片索引刪除，這是取消。MySQL `dmm` 那一列留著，沒有影響。
+    - 配信日是今天的不管，交給當天 10:00 的同步覆寫。
+    - 改期到範圍外的不管，進到範圍內會再出現在清單上。
+  - 任何一天的清單抓不到就整個中止；清單一部都沒有時，不重抓也不刪。
+- **查詢**
+  - `applyVideoConditions` 加上配信狀態，所有走它的查詢（搜尋、篩選統計、女優頁統計、我的追蹤、MCP）預設**只看已配信的**：
+    - 已配信用 `must_not` 排除「配信日 ≥ 明天」（日本時間），沒有 vod_date 的舊資料不受影響。
+    - `VideoIndexQuery.Upcoming` 為 true 時只看「配信日 ≥ 明天」。
+    - 依番號查單部（影片頁）兩者都查得到，所以影片頁不用備援。
+  - `StatsByActress`（女優主題統計）不走 `applyVideoConditions`，另外加上同一個已配信條件。
+  - 驗證：全部 599,135、波多野結衣 4,457、兩位共演 898、女優摘要，數字都跟改之前一樣。
+  - 新增的查詢介面：
+    - `CountByDate`：日期列。
+    - `SearchAny`：我追蹤的。
+    - `RecentByQueries(soonestFirst)`：我的追蹤頁。
+    - `PreOrders`、`Delete`：排程用。
+  - 排序：
+    - `soonest`：配信日近的在前，同一天依 DMM 收藏數。
+    - `popular`：依 DMM 收藏數。
+    - `bookmark_count` 帶 `unmapped_type`。
+  - 影片索引是預設的 dynamic mapping，三個新欄位會在正式環境第一次寫入時自動建立。
+  - API 跟原本一樣：
+    - 公開：`/opendata/av/upcoming`、`/opendata/av/upcoming/dates`。
+    - 個人：`/joyu/me/upcoming`。
+- **前端**
+  - 與獨立索引版本相同：即將發售頁、首頁下週發售、女優頁即將發售列、我的追蹤頁合併、卡片標示、影片頁預約標示。
+  - `isUpcoming` 同時看 `release_status` 與配信日，配信當天每日同步還沒覆寫前不會顯示成「預約中」。
+- **沒做**：MCP 的 `upcoming` 參數。
+- **本機驗證**（測試索引 `dmmvideos_test_upcoming`，mapping 複製自正式影片索引）
+  - 抓兩天：80 部，60 秒；再跑全部沿用，5 秒；80 部都是 `PRE_ORDER`。
+  - 模擬四種情況，都如預期：
+    - 改期但仍在範圍內：改回 DMM 的日期。
+    - 範圍內和已過期、DMM 查無：刪除。
+    - 配信日是今天：保留。
+    - 改期到範圍外：保留。
+  - 一般搜尋只看得到已配信的，即將發售與依番號查單部都查得到預約作品；畫面也看過。
+  - 測完刪除測試索引、本機 MySQL 寫入的 80 列，以及暫時的後端設定。
+- **部署**
+  - 不用 migration，也不用新的 env。
+  - 排程第一次執行時，大約要抓兩三千部明細，寫進 MySQL `dmm` 與影片索引；想提早有資料，可以手動跑 `-cmd av-upcoming-sync`。

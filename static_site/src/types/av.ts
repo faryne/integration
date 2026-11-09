@@ -18,6 +18,8 @@ export interface Video {
   duration?: number;
   // 同步資料確定失敗（DMM 已查無、沒有官方番號），不再顯示同步按鈕
   is_orphan?: boolean;
+  // 預約作品（即將發售）是 "PRE_ORDER"；已配信的沒有這個欄位
+  release_status?: string;
   // 核准過的參考連結（影片修改審核）；舊後端沒有這個欄位
   links?: ActressLink[] | null;
   tags: string[];

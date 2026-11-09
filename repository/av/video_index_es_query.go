@@ -88,6 +88,25 @@ func applyVideoConditions(input av.VideoIndexQuery, q map[string]any) {
 	if no := strings.TrimSpace(input.No); no != "" {
 		esdsl.SetQuery(videoNoQuery(no), true, q)
 	}
+	// 配信狀態：預約作品跟已配信的放在同一個索引。依番號查單部（影片頁）不限；
+	// 即將發售只要配信日在明天（日本時間）以後；其他一律只看已配信的
+	switch {
+	case strings.TrimSpace(input.No) != "":
+	case input.Upcoming:
+		esdsl.SetQuery(map[string]any{"range": map[string]any{"vod_date": map[string]any{"gte": jstTomorrow()}}}, true, q)
+	default:
+		esdsl.SetQuery(releasedQuery(), true, q)
+	}
+}
+
+// jstTomorrow 日本時間的明天（yyyy/MM/dd）：DMM 的配信日是日本日期
+func jstTomorrow() string {
+	return time.Now().In(time.FixedZone("JST", 9*60*60)).AddDate(0, 0, 1).Format("2006/01/02")
+}
+
+// releasedQuery 已配信：用 must_not 排除配信日在明天以後的，沒有 vod_date 的舊資料才不會被一起排除
+func releasedQuery() map[string]any {
+	return map[string]any{"bool": map[string]any{"must_not": map[string]any{"range": map[string]any{"vod_date": map[string]any{"gte": jstTomorrow()}}}}}
 }
 
 // nonEmpty 去頭尾空白、拿掉空值（不改原 slice）

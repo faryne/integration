@@ -13,6 +13,7 @@ import { VideoMarkButtons } from "@/components/joyu/marks/VideoMarkButtons.tsx";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
 import { joyuPath } from "@/helpers/joyu.ts";
+import { isUpcoming, shortDate } from "@/helpers/upcoming.ts";
 
 export interface IVideoDetail {
   video?: Video;
@@ -39,6 +40,7 @@ export function VideoDetail(props: IVideoDetail) {
       </Stack>
     );
   }
+  const upcoming = isUpcoming(video);
 
   return (
     <Stack spacing={4}>
@@ -101,6 +103,14 @@ export function VideoDetail(props: IVideoDetail) {
                   }}
                 />
               )}
+              {upcoming && (
+                <Chip
+                  color="primary"
+                  label={`預約中・${shortDate(video.vod_date)} 配信`}
+                  size="small"
+                  sx={{ borderRadius: 1, fontWeight: 700 }}
+                />
+              )}
               {[
                 video.vod_date && `配信日 ${video.vod_date}`,
                 video.publish_date && `發售日 ${video.publish_date}`,
@@ -140,44 +150,47 @@ export function VideoDetail(props: IVideoDetail) {
             <VideoMetaRows video={video} />
           </Stack>
 
-          <Stack direction="row" flexWrap="wrap" gap={1}>
-            {video.maker_no ? (
-              <Button
-                endIcon={<OpenInNewIcon />}
-                onClick={() =>
-                  window.open(
-                    `https://missav.ws/${video.maker_no}`,
-                    "_blank",
-                    "noopener,noreferrer",
-                  )
-                }
-                startIcon={<PlayCircleOutlineIcon />}
-                sx={{ borderRadius: 1.5, px: 2 }}
-                variant="contained"
-              >
-                MissAV
-              </Button>
-            ) : (
-              <VideoSyncButton
-                no={video.no}
-                orphan={!!video.is_orphan}
-                onOrphaned={() => props.onOrphaned?.()}
-                onSynced={async (r) => props.onSynced?.(r)}
-              />
-            )}
-            {/* 送出修改等管理者審核；orphan 片也可以，官方番號正是靠這裡補 */}
-            <Button
-              component={RouterLink}
-              startIcon={<EditOutlinedIcon />}
-              sx={{ borderRadius: 1.5, px: 2 }}
-              to={joyuPath(
-                `video/${encodeURIComponent(video.maker_no?.trim() || video.no)}/edit`,
+          {/* 預約作品（即將發售）還沒配信：沒有播放連結、不能同步也不能送修改 */}
+          {!upcoming && (
+            <Stack direction="row" flexWrap="wrap" gap={1}>
+              {video.maker_no ? (
+                <Button
+                  endIcon={<OpenInNewIcon />}
+                  onClick={() =>
+                    window.open(
+                      `https://missav.ws/${video.maker_no}`,
+                      "_blank",
+                      "noopener,noreferrer",
+                    )
+                  }
+                  startIcon={<PlayCircleOutlineIcon />}
+                  sx={{ borderRadius: 1.5, px: 2 }}
+                  variant="contained"
+                >
+                  MissAV
+                </Button>
+              ) : (
+                <VideoSyncButton
+                  no={video.no}
+                  orphan={!!video.is_orphan}
+                  onOrphaned={() => props.onOrphaned?.()}
+                  onSynced={async (r) => props.onSynced?.(r)}
+                />
               )}
-              variant="outlined"
-            >
-              修改資料
-            </Button>
-          </Stack>
+              {/* 送出修改等管理者審核；orphan 片也可以，官方番號正是靠這裡補 */}
+              <Button
+                component={RouterLink}
+                startIcon={<EditOutlinedIcon />}
+                sx={{ borderRadius: 1.5, px: 2 }}
+                to={joyuPath(
+                  `video/${encodeURIComponent(video.maker_no?.trim() || video.no)}/edit`,
+                )}
+                variant="outlined"
+              >
+                修改資料
+              </Button>
+            </Stack>
+          )}
         </Stack>
       </Box>
 

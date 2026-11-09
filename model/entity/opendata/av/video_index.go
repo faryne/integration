@@ -11,6 +11,8 @@ var ActressAliasOpeners = []string{"（", "(", " （", " ("}
 type VideoIndexQuery struct {
 	VideoQueryRequest
 	Actresses []VideoActressFilter
+	// Upcoming 只查即將發售（配信日在明天以後的預約作品）；false 時只查已配信的。依番號查單部（No）時兩者都查得到
+	Upcoming bool
 }
 
 // VideoActressFilter 出演者條件：名字完全相符或「名字（別名…）」，再依 DMM 女優 ID 區分同名
@@ -45,4 +47,18 @@ type VideoActressStats struct {
 type VideoStatsFilter struct {
 	Tag        string // 必須有這個標籤
 	ExcludeTag string // 不能有這個標籤
+}
+
+// VideoPreOrder 即將發售排程寫入、還沒被每日同步覆寫的一部（有 fetched_at）：判斷要不要重抓明細用
+type VideoPreOrder struct {
+	Vid       int    `json:"vid"`
+	No        string `json:"no"`
+	VodDate   string `json:"vod_date"`
+	FetchedAt string `json:"fetched_at"`
+}
+
+// VideoDateCount 某一天（yyyy-MM-dd）的影片部數
+type VideoDateCount struct {
+	Date  string `json:"date"`
+	Count int    `json:"count"`
 }

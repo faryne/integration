@@ -38,3 +38,23 @@ func TestApplyVideoConditionsMultiValues(t *testing.T) {
 		t.Fatalf("want one actress condition per name, got %d: %s", n, body)
 	}
 }
+
+// 配信狀態：預設只看已配信的（must_not 未來，沒有配信日的舊資料不受影響）；Upcoming 只看明天以後；依番號查單部兩者都查得到
+func TestApplyVideoConditionsReleaseState(t *testing.T) {
+	body := func(in av.VideoIndexQuery) string {
+		q := map[string]any{}
+		applyVideoConditions(in, q)
+		b, _ := json.Marshal(q)
+		return string(b)
+	}
+	future := `"vod_date":{"gte":"` + jstTomorrow() + `"}`
+	if s := body(av.VideoIndexQuery{}); !strings.Contains(s, `"must_not":{"range":{`+future) {
+		t.Fatalf("default should exclude future videos: %s", s)
+	}
+	if s := body(av.VideoIndexQuery{Upcoming: true}); !strings.Contains(s, `{"range":{`+future+`}}`) || strings.Contains(s, "must_not") {
+		t.Fatalf("upcoming should only include future videos: %s", s)
+	}
+	if s := body(av.VideoIndexQuery{VideoQueryRequest: av.VideoQueryRequest{No: "SDAM-186"}}); strings.Contains(s, future) {
+		t.Fatalf("lookup by number should not filter release state: %s", s)
+	}
+}
