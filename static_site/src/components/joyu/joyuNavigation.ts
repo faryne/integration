@@ -19,7 +19,16 @@ export const joyuSections: JoyuSection[] = [
   },
   { title: "影片", href: "/video", match: (p) => p.startsWith("/video") },
   // 不在頁首導覽裡（從帳號選單進），只用在麵包屑
-  { title: "我的追蹤", href: "/me/follows", match: (p) => p.startsWith("/me") },
+  {
+    title: "我的追蹤",
+    href: "/me/follows",
+    match: (p) => p.startsWith("/me/follows"),
+  },
+  {
+    title: "我的片單",
+    href: "/me/videos",
+    match: (p) => p.startsWith("/me/videos"),
+  },
 ];
 
 // 頁首依顯示順序排（女優、主題、影片），比對順序則是 joyuSections（主題要先於女優）

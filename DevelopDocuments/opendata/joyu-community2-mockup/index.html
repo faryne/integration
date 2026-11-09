@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>joyu.fyi 社群功能第二期 mockup</title>
+<style>
+  :root {
+    --plum:#2b1d2e; --plum-deep:#1c1420; --pink:#ff5c8a; --pink-strong:#d63a6c; --gold:#f5b301;
+    --bg:#faf7f9; --paper:#fff; --line:#ece4ea; --text:#2a1f2c; --muted:#7a6a77; --chip:#f6eef3; --field:#fff;
+  }
+  .dark { --bg:#17111a; --paper:#221a25; --line:#3a2e3d; --text:#f3e6ef; --muted:#b39fb0; --chip:#2e2431; --pink-strong:#ff5c8a; --field:#1c1520; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; background:#cfc6cd; }
+  .toolbar { position:sticky; top:0; z-index:40; background:#111; color:#fff; padding:10px 16px; font-size:13px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .toolbar button { background:#3a3a3a; color:#fff; border:0; border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; }
+  .toolbar button.on { background:var(--pink); }
+  .toolbar .sep { width:1px; height:20px; background:#555; margin:0 4px; }
+  .toolbar .label { color:#aaa; margin-right:2px; }
+  .stage { padding:24px; display:flex; overflow-x:auto; }
+  .frame { margin:0 auto; background:var(--bg); color:var(--text); border-radius:10px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.25); width:1180px; flex:0 0 auto; }
+  .frame.mobile { width:375px; }
+  .header { background:var(--plum); color:#f3e6ef; height:56px; display:flex; align-items:center; gap:18px; padding:0 20px; }
+  .brand { display:flex; align-items:center; gap:8px; font-weight:800; }
+  .logo { width:28px; height:28px; border-radius:6px; background:var(--plum-deep); color:var(--pink); display:grid; place-items:center; font-size:17px; border:1px solid #4a3550; }
+  .nav { display:flex; height:100%; }
+  .nav a { display:flex; align-items:center; padding:0 12px; font-size:14px; color:#e7d5e1; position:relative; white-space:nowrap; }
+  .nav a.on { color:var(--pink); }
+  .nav a.on::after { content:""; position:absolute; left:10px; right:10px; bottom:0; height:2px; background:var(--pink); }
+  .nav a .new { font-size:10px; background:var(--pink); color:#fff; border-radius:8px; padding:0 5px; margin-left:4px; }
+  .hright { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .hsearch { background:rgba(255,255,255,.08); border:1px solid #4a3550; border-radius:8px; padding:6px 10px; width:200px; color:#b39fb0; font-size:13px; }
+  .avatar { width:32px; height:32px; border-radius:50%; background:#4a3550; display:grid; place-items:center; color:#e7d5e1; font-size:14px; }
+  .mobile .hsearch, .mobile .brand span { display:none; }
+  .mobile .header { gap:4px; padding:0 8px; }
+  .mobile .nav a { padding:0 6px; font-size:13px; }
+  .crumb { background:var(--paper); border-bottom:1px solid var(--line); padding:8px 20px; font-size:12px; color:var(--muted); }
+  .crumb b { color:var(--text); }
+  .page { padding:20px; }
+  .mobile .page { padding:16px 12px; }
+  .note { background:#fff8db; color:#7a5b00; border:1px solid #f1d77a; border-radius:8px; padding:8px 12px; font-size:12px; margin-bottom:16px; line-height:1.6; }
+  .dark .note { background:#3a3218; color:#f1d77a; border-color:#6b5a1f; }
+  h1 { margin:0 0 6px; font-size:24px; }
+  h2 { margin:0 0 10px; font-size:18px; }
+  .muted { color:var(--muted); }
+  .btn { display:inline-flex; align-items:center; gap:4px; border:1px solid var(--line); color:var(--text); background:var(--paper); border-radius:8px; padding:6px 12px; font-size:13px; cursor:pointer; user-select:none; }
+  .btn.on { background:var(--pink); border-color:var(--pink); color:#fff; }
+  .btn.solid { background:var(--pink); color:#fff; border-color:var(--pink); }
+  .btn.ghost { border-color:transparent; background:transparent; color:var(--muted); padding:2px 6px; font-size:12px; }
+  .btn.danger { border-color:#d32f2f; color:#d32f2f; }
+  .chip { font-size:12px; background:var(--chip); border:1px solid var(--line); border-radius:14px; padding:3px 9px; display:inline-flex; gap:4px; align-items:center; cursor:pointer; }
+  .chip.on { background:var(--pink); border-color:var(--pink); color:#fff; }
+  .photo { background:repeating-linear-gradient(45deg,#d9c9d4 0 10px,#e6d9e1 10px 20px); }
+  .dark .photo { background:repeating-linear-gradient(45deg,#3a2e3d 0 10px,#443748 10px 20px); }
+
+  /* 影片頁 */
+  .vtop { display:grid; grid-template-columns:320px 1fr; gap:24px; }
+  .mobile .vtop { grid-template-columns:1fr; }
+  .cover { aspect-ratio:3/4; border-radius:10px; }
+  .marks { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:12px 0; }
+  .stars { display:inline-flex; gap:2px; font-size:20px; cursor:pointer; color:#c9bcc6; }
+  .stars span.on { color:var(--gold); }
+  .summary { font-size:13px; color:var(--muted); }
+  .summary b { color:var(--text); }
+  .meta { font-size:13px; line-height:2; }
+  .meta b { display:inline-block; width:56px; color:var(--muted); font-weight:400; }
+  .tabs { display:flex; gap:4px; border-bottom:1px solid var(--line); margin:24px 0 16px; overflow-x:auto; }
+  .tabs a { padding:10px 14px; font-size:14px; white-space:nowrap; cursor:pointer; color:var(--muted); }
+  .tabs a.on { color:var(--pink-strong); border-bottom:2px solid var(--pink); font-weight:700; }
+
+  /* 討論 */
+  .composer { border:1px solid var(--line); border-radius:10px; background:var(--paper); padding:12px; margin-bottom:16px; }
+  .composer textarea { width:100%; min-height:80px; border:1px solid var(--line); border-radius:8px; background:var(--field); color:var(--text); padding:10px; font:inherit; font-size:14px; resize:vertical; }
+  .composer .bar { display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:8px; flex-wrap:wrap; }
+  .who { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .badge { font-size:10px; border:1px solid var(--line); border-radius:4px; padding:0 4px; color:var(--muted); }
+  .badge.g { border-color:#5b8def; color:#5b8def; }
+  .comment { border-bottom:1px solid var(--line); padding:12px 2px; }
+  .comment .head { display:flex; gap:8px; align-items:center; font-size:13px; }
+  .comment .head b { font-size:14px; }
+  .comment .head .time { color:var(--muted); font-size:12px; }
+  .comment .body { font-size:14px; line-height:1.7; margin:6px 0 2px; }
+  .comment .body blockquote { margin:4px 0; padding:2px 10px; border-left:3px solid var(--line); color:var(--muted); }
+  .comment .body code { background:var(--chip); border-radius:4px; padding:1px 4px; font-size:13px; }
+  .comment .body a { color:var(--pink-strong); }
+  .comment .replyto { font-size:12px; color:var(--muted); cursor:pointer; }
+  .comment.deleted .body { color:var(--muted); font-style:italic; }
+  .comment .acts { display:flex; gap:4px; }
+  .err { font-size:12px; color:#d32f2f; margin-top:6px; }
+
+  /* 卡片 */
+  .vgrid { display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:12px; }
+  .mobile .vgrid { grid-template-columns:repeat(2, minmax(0,1fr)); }
+  .card { border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--paper); position:relative; }
+  .card .photo { aspect-ratio:3/4; }
+  .card .m { padding:6px 8px; font-size:12px; }
+  .card .m b { display:block; font-size:12px; margin:2px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tagc { position:absolute; top:6px; left:6px; font-size:11px; border-radius:4px; padding:1px 6px; color:#fff; }
+  .tagc.want { background:#7a4a8a; } .tagc.watched { background:#2e7d32; }
+  .date { position:absolute; top:6px; right:6px; font-size:11px; border-radius:4px; padding:1px 6px; background:rgba(0,0,0,.65); color:#fff; }
+  .hot { color:var(--pink-strong); }
+  .day { margin:18px 0 8px; display:flex; align-items:baseline; gap:8px; }
+  .day h3 { margin:0; font-size:16px; }
+
+  /* 後台 */
+  .admin { background:#f4f5f7; color:#222; }
+  .dark .admin { background:#1b1d21; color:#ddd; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; }
+  .replies { margin:8px 0 0 18px; padding-left:12px; border-left:2px solid var(--line); }
+  .replies .comment { border-bottom:0; padding:8px 0; }
+  .more-replies { font-size:12px; color:var(--pink-strong); cursor:pointer; margin:4px 0 0 30px; }
+  .carousel { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding-bottom:6px; }
+  .carousel .card { flex:0 0 150px; scroll-snap-align:start; }
+  .uptag { position:absolute; left:6px; bottom:56px; font-size:11px; border-radius:4px; padding:1px 6px; background:var(--pink); color:#fff; }
+  .field { border:1px solid var(--line); border-radius:8px; padding:10px; background:var(--field); font-size:14px; }
+  .hide { display:none !important; }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <span class="label">畫面</span>
+  <button data-view="video" class="on">影片頁：片單＋討論</button>
+  <button data-view="videoAnon">影片頁：匿名第一次留言</button>
+  <button data-view="actress">女優頁：討論區塊</button>
+  <button data-view="list">我的片單</button>
+  <button data-view="upcoming">即將發售</button>
+  <button data-view="follow">我的追蹤：即將發售列</button>
+  <button data-view="profile">個人資料</button>
+  <button data-view="admin">後台：留言管理</button>
+  <span class="sep"></span>
+  <button data-width="desktop" class="on">桌機</button>
+  <button data-width="mobile">手機</button>
+  <span class="sep"></span>
+  <button id="dark">深色</button>
+</div>
+
+<div class="stage"><div class="frame" id="frame">
+  <div class="header" id="siteHeader">
+    <div class="brand"><div class="logo">女</div><span>joyu.fyi</span></div>
+    <div class="nav"><a>女優</a><a>女優主題</a><a data-nav="video">影片</a><a data-nav="upcoming">即將發售</a></div>
+    <div class="hright"><div class="hsearch">名字、別名或番號</div><div class="avatar">訪</div></div>
+  </div>
+  <div class="crumb" id="crumb"></div>
+  <div class="page">
+    <div class="note" id="note"></div>
+
+    <!-- 影片頁 -->
+    <div data-sec="video videoAnon">
+      <div class="vtop">
+        <div class="cover photo"></div>
+        <div>
+          <h1>MIDV-900 コスプレ痴女ハーレム 星宮みお 美園和花</h1>
+          <div class="muted" style="font-size:13px">2026/11/06 配信・150 分</div>
+          <div class="marks">
+            <span class="btn" id="btnWant">♡ 想看</span>
+            <span class="btn" id="btnWatched">✓ 看過</span>
+            <span class="stars" id="stars"></span>
+            <span class="summary">想看 <b>128</b>・看過 <b>46</b>・<b>★4.2</b>（12 人）</span>
+          </div>
+          <div class="meta">
+            <div><b>出演</b>星宮みお／美園和花</div>
+            <div><b>發售商</b>ムーディーズ</div>
+            <div><b>標籤</b>痴女・コスプレ・ハーレム</div>
+          </div>
+        </div>
+      </div>
+      <div class="tabs"><a>圖片預覽</a><a class="on">討論（5）</a><a>同系列作品</a><a>星宮みお 的其他作品</a></div>
+      <div class="discussion"></div>
+    </div>
+
+    <!-- 女優頁 -->
+    <div data-sec="actress">
+      <div style="display:flex;gap:16px;align-items:center;margin-bottom:16px">
+        <div class="photo" style="width:96px;height:96px;border-radius:50%"></div>
+        <div><h1 style="margin:0">星宮みお ♡</h1><div class="muted" style="font-size:13px">作品 412 部・出道 2021</div>
+          <div style="margin-top:6px"><span class="chip">💬 5 則討論</span></div></div>
+      </div>
+      <div class="tabs"><a>全部作品</a><a>依年份</a><a class="on">討論（5）</a></div>
+      <div class="discussion"></div>
+    </div>
+
+    <!-- 我的片單 -->
+    <div data-sec="list">
+      <h1>我的片單</h1>
+      <div style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap;align-items:center">
+        <span class="chip">想看 38</span><span class="chip on">看過 21</span>
+        <span class="sep" style="width:1px;height:18px;background:var(--line)"></span>
+        <span class="chip on">全部</span><span class="chip">★5</span><span class="chip">★4</span><span class="chip">★3 以下</span><span class="chip">未評分</span>
+        <span style="margin-left:auto" class="btn">加入時間 ▾</span>
+      </div>
+      <div class="vgrid" id="listGrid"></div>
+    </div>
+
+    <!-- 即將發售 -->
+    <div data-sec="upcoming">
+      <h1>即將發售</h1>
+      <div style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap">
+        <span class="chip on">全部</span><span class="chip">我追蹤的</span>
+        <span style="margin-left:auto"></span><span class="chip on">7 天</span><span class="chip">30 天</span>
+      </div>
+      <div id="upcomingDays"></div>
+    </div>
+
+    <!-- 我的追蹤 -->
+    <div data-sec="follow">
+      <h1>我的追蹤 <small class="muted" style="font-size:13px;font-weight:400">12 / 500</small></h1>
+      <div style="border:1px solid var(--line);border-radius:12px;background:var(--paper);padding:14px;margin-top:12px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><span class="chip">女優</span><b>星宮みお</b><span class="hot" style="font-size:13px">♥</span><span class="muted" style="font-size:13px">3 部新片＋2 部即將發售</span></div>
+        <div class="carousel" id="followNew"></div>
+      </div>
+    </div>
+
+    <!-- 個人資料 -->
+    <div data-sec="profile">
+      <h1>個人資料</h1>
+      <div style="border:1px solid var(--line);border-radius:12px;background:var(--paper);padding:16px;max-width:520px;margin-top:12px">
+        <div class="muted" style="font-size:12px;margin-bottom:4px">登入方式</div>
+        <div style="margin-bottom:14px">Google <span class="badge g">Google</span></div>
+        <div class="muted" style="font-size:12px;margin-bottom:4px">暱稱（討論版顯示的名字）</div>
+        <div style="display:flex;gap:8px"><div class="field" style="flex:1">みお推し</div><span class="btn solid">儲存</span></div>
+      </div>
+      <div style="border:1px solid #d32f2f55;border-radius:12px;background:var(--paper);padding:16px;max-width:520px;margin-top:16px;display:flex;justify-content:space-between;align-items:center">
+        <div><b>刪除帳號</b><div class="muted" style="font-size:12px">刪除所有追蹤、片單與帳號，無法復原；留言會保留並顯示為「已刪除的帳號」</div></div>
+        <span class="btn danger">刪除帳號</span>
+      </div>
+    </div>
+
+    <!-- 後台 -->
+    <div data-sec="admin">
+      <h1>joyu 留言管理</h1>
+      <div style="display:flex;gap:8px;margin:12px 0"><span class="chip on">被檢舉的 3</span><span class="chip">最新的</span><span class="chip">封鎖名單</span></div>
+      <table>
+        <thead><tr><th>留言</th><th>位置</th><th>留言者</th><th>IP</th><th>檢舉</th><th></th></tr></thead>
+        <tbody id="adminRows"></tbody>
+      </table>
+    </div>
+  </div>
+</div></div>
+
+<script>
+const notes = {
+  video: "片單按鈕在標題下方：想看／看過互斥，看過之後才出現星星（直接點星星也會自動變成看過）。統計少於 3 人評分不顯示平均。討論是影片頁的分頁，留言＋一層回覆；不能編輯、不能刪除；網址只顯示純文字。",
+  videoAnon: "還沒登入的人第一次留言：送出時自動建立匿名帳號並過 reCAPTCHA（隱形）。匿名帳號固定顯示「訪客-xxxx」，用 Google 登入後才能改暱稱。含 HTML 或圖片語法時直接擋下並說明。",
+  actress: "女優頁的討論改成作品區的分頁「討論（N）」，頂端另有「💬 N 則討論」chip，點了切到討論分頁；別名頁共用同一個討論版。",
+  list: "我的片單（/me/videos）：想看／看過分頁，看過可依評分篩選。卡片左上角的小標在全站影片卡片都會出現。",
+  upcoming: "即將發售（/upcoming）：資料來自每日抓的 DMM 預約作品（未來 30 天），依配信日分組；同一天依 DMM 收藏數排序，但不顯示數字。可以切成只看自己追蹤的。",
+  follow: "我的追蹤頁：預約作品跟新片放在同一列（預約的排前面、標「即將發售・日期」），片數多時左右滑動（carousel），不另外開一列。",
+  profile: "個人資料頁（/me/profile）：Google 帳號可以改暱稱；匿名帳號固定顯示「訪客-xxxx」，這裡只顯示登入方式與「用 Google 登入」。刪除帳號從我的追蹤頁搬到這裡。",
+  admin: "後台（faryne.dev/backend_admin）：被檢舉的與最新的留言，可刪除、封鎖 uid 或 IP（1 天／7 天／永久）。",
+};
+const crumbs = { profile:"<b>個人資料</b>", video:"影片 ／ <b>MIDV-900</b>", videoAnon:"影片 ／ <b>MIDV-900</b>", actress:"女優 ／ <b>星宮みお</b>", list:"<b>我的片單</b>", upcoming:"<b>即將發售</b>", follow:"<b>我的追蹤</b>", admin:"後台 ／ AV ／ <b>joyu 留言</b>" };
+let cur = "video", mark = "watched", rating = 4;
+
+const comments = [
+  { id:5, name:"みお推し", g:true, time:"3 分鐘前", body:"コスプレ衣裝的部分**超用心**，第二幕的護士服完全是我的菜",
+    replies:[
+      { name:"訪客-7f2c", g:false, time:"1 小時前", body:"同意，不過片長 150 分有點拖" },
+      { name:"みお推し", g:true, time:"40 分鐘前", body:"@訪客-7f2c 前半段可以快轉沒關係 XD" },
+    ], more:4 },
+  { id:3, name:"已刪除的帳號", g:null, time:"昨天", body:"結尾那段我看了三次" },
+  { id:2, name:"訪客-a1b2", g:false, time:"2 天前", adminDeleted:true },
+  { id:1, name:"AV研究部", g:true, time:"3 天前", body:"跟 `MIDV-812` 同一個監督，風格很像。影評在 https://example.com/review （網址不會變成連結）\n- 和花的部分偏少\n- 結尾的 4P 值得" },
+];
+const md = (s) => s.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>")
+  .split("\n").map((l) => l.startsWith("> ") ? `<blockquote>${l.slice(2)}</blockquote>` : l.startsWith("- ") ? `• ${l.slice(2)}<br>` : l + "<br>").join("");
+
+function badge(g) { return g === null ? "" : `<span class="badge ${g ? "g" : ""}">${g ? "Google" : "匿名"}</span>`; }
+function commentHTML(c, top) {
+  return `<div class="comment ${c.adminDeleted ? "deleted" : ""}">
+    <div class="head"><b>${c.name}</b>${badge(c.g)}<span class="time">${c.time}</span>
+      <span style="margin-left:auto" class="acts">${c.adminDeleted ? "" : '<span class="btn ghost">↪ 回覆</span><span class="btn ghost">檢舉</span>'}</span></div>
+    <div class="body">${c.adminDeleted ? "此留言已被管理員刪除" : md(c.body)}</div>
+    ${top && c.replies ? `<div class="replies">${c.replies.map((r) => commentHTML(r, false)).join("")}</div>` : ""}
+    ${top && c.more ? `<div class="more-replies">顯示全部 ${c.more + 2} 則回覆</div>` : ""}</div>`;
+}
+function discussionHTML(anon) {
+  const composer = `<div class="composer">
+    <textarea placeholder="寫點什麼…（支援 Markdown，不支援 HTML、圖片與連結）">${anon ? '好看！<img src="x">' : ""}</textarea>
+    ${anon ? '<div class="err">不支援 HTML 與圖片</div>' : ""}
+    <div class="bar">
+      <div class="who">以 <b>訪客-3c4d</b> <span class="badge">匿名</span> 身分留言${anon ? "" : '・<a style="color:var(--pink-strong);cursor:pointer">用 Google 登入改暱稱</a>'}</div>
+      <span class="btn solid">送出</span>
+    </div></div>`;
+  return composer + comments.map((c) => commentHTML(c, true)).join("") + '<div style="text-align:center;padding:12px"><span class="btn">更多留言</span></div>';
+}
+
+function card(i, extra = "") {
+  return `<div class="card"><div class="photo"></div>${extra}<div class="m"><span class="muted">MIDV-${900 - i}</span><b>コスプレ痴女ハーレム ${i + 1}</b><span class="muted">星宮みお</span></div></div>`;
+}
+
+function render() {
+  document.getElementById("note").textContent = notes[cur];
+  document.getElementById("crumb").innerHTML = "joyu.fyi ／ " + crumbs[cur];
+  document.querySelectorAll("[data-sec]").forEach((el) => el.classList.toggle("hide", !el.dataset.sec.split(" ").includes(cur)));
+  document.getElementById("siteHeader").classList.toggle("hide", cur === "admin");
+  document.querySelectorAll("[data-nav]").forEach((a) => a.classList.toggle("on", (cur.startsWith("video") && a.dataset.nav === "video") || a.dataset.nav === cur));
+  document.querySelector("[data-nav=upcoming]").innerHTML = "即將發售";
+  document.querySelectorAll(".discussion").forEach((d) => (d.innerHTML = discussionHTML(cur === "videoAnon")));
+
+  // 片單按鈕與星星
+  document.getElementById("btnWant").classList.toggle("on", mark === "want");
+  document.getElementById("btnWatched").classList.toggle("on", mark === "watched");
+  document.getElementById("stars").innerHTML = [1, 2, 3, 4, 5].map((n) => `<span data-star="${n}" class="${n <= rating && mark === "watched" ? "on" : ""}">★</span>`).join("");
+  document.querySelectorAll("[data-star]").forEach((s) => (s.onclick = () => { const n = +s.dataset.star; mark = "watched"; rating = rating === n ? 0 : n; render(); }));
+
+  document.getElementById("listGrid").innerHTML = Array.from({ length: 12 }, (_, i) => card(i, `<span class="tagc watched">看過 ★${5 - (i % 3)}</span>`)).join("");
+  const days = [["11/13（五）", 6], ["11/14（六）", 4], ["11/18（三）", 6]];
+  document.getElementById("upcomingDays").innerHTML = days.map(([d, n], k) =>
+    `<div class="day"><h3>${d}</h3><span class="muted" style="font-size:12px">${n * 23} 部</span></div><div class="vgrid">${Array.from({ length: n }, (_, i) =>
+      card(i + k * 6, `<span class="date">${d.slice(0, 5)}</span>${i === 0 ? '<span class="tagc want">想看</span>' : ""}`)).join("")}</div>`).join("");
+  document.getElementById("followNew").innerHTML = [card(8, '<span class="uptag">即將發售・12/04</span>'), card(7, '<span class="uptag">即將發售・11/20</span>'), ...Array.from({ length: 6 }, (_, i) => card(i))].join("");
+  const rows = [
+    ["看我主頁有更多 → http://spam.example", "video:midv00900", "訪客-9a9a（匿名）", "203.0.113.24", 4],
+    ["（貼某人的本名與住址）", "actress:xcity:22105", "訪客-1b2c（匿名）", "198.51.100.7", 2],
+    ["這部根本垃圾", "video:snos00511", "AV研究部（Google）", "192.0.2.10", 1],
+  ];
+  document.getElementById("adminRows").innerHTML = rows.map((r) => `<tr><td>${r[0]}</td><td><code>${r[1]}</code></td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td>
+    <td style="white-space:nowrap"><span class="btn danger">刪除</span> <span class="btn">封鎖 uid</span> <span class="btn">封鎖 IP</span></td></tr>`).join("");
+}
+
+document.getElementById("btnWant").onclick = () => { mark = mark === "want" ? "" : "want"; render(); };
+document.getElementById("btnWatched").onclick = () => { mark = mark === "watched" ? "" : "watched"; render(); };
+document.querySelectorAll("[data-view]").forEach((b) => (b.onclick = () => {
+  document.querySelectorAll("[data-view]").forEach((x) => x.classList.toggle("on", x === b)); cur = b.dataset.view; render();
+}));
+document.querySelectorAll("[data-width]").forEach((b) => (b.onclick = () => {
+  document.querySelectorAll("[data-width]").forEach((x) => x.classList.toggle("on", x === b));
+  document.getElementById("frame").classList.toggle("mobile", b.dataset.width === "mobile");
+}));
+document.getElementById("dark").onclick = (e) => { e.target.classList.toggle("on"); document.getElementById("frame").classList.toggle("dark"); };
+render();
+</script>
+</body>
+</html>

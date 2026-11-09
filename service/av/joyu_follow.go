@@ -140,15 +140,21 @@ func RemoveJoyuFollow(uid string, req avEntity.JoyuFollowRequest) error {
 	return avRepo.NewJoyuFollow().Remove(uid, req.Kind, value)
 }
 
-// MergeJoyuFollows 匿名帳號升級時遇到既有的 Google 帳號：把匿名帳號的追蹤搬過去（重複的略過）
-func MergeJoyuFollows(fromUID, toUID string) error {
+// MergeJoyuAccountData 匿名帳號升級時遇到既有的 Google 帳號：把匿名帳號的追蹤與片單搬過去（重複的以 Google 帳號原有的為準）
+func MergeJoyuAccountData(fromUID, toUID string) error {
 	if fromUID == "" || fromUID == toUID {
 		return nil
 	}
-	return avRepo.NewJoyuFollow().MoveAll(fromUID, toUID)
+	if err := avRepo.NewJoyuFollow().MoveAll(fromUID, toUID); err != nil {
+		return err
+	}
+	return avRepo.NewJoyuVideoMark().MoveAll(fromUID, toUID)
 }
 
-// DeleteJoyuAccountData 刪除帳號：刪掉這個 uid 的全部追蹤；Firebase 帳號由前端呼叫 user.delete() 刪
+// DeleteJoyuAccountData 刪除帳號：刪掉這個 uid 的全部追蹤與片單；Firebase 帳號由前端呼叫 user.delete() 刪
 func DeleteJoyuAccountData(uid string) error {
-	return avRepo.NewJoyuFollow().DeleteByUID(uid)
+	if err := avRepo.NewJoyuFollow().DeleteByUID(uid); err != nil {
+		return err
+	}
+	return avRepo.NewJoyuVideoMark().DeleteByUID(uid)
 }

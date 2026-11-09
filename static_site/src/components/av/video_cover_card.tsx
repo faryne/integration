@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { AV_COVER_ASPECT_RATIO } from "@/data/avVideoCover.ts";
 import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
 import { joyuPath } from "@/helpers/joyu.ts";
+import { VideoMarkBadge } from "@/components/joyu/marks/VideoMarkBadge.tsx";
 
 /** 直式封面卡片：封面＋番號＋兩行標題，相關作品等橫向列表用 */
 export function VideoCoverCard({ video }: { video: Video }) {
@@ -19,20 +20,24 @@ export function VideoCoverCard({ video }: { video: Video }) {
         "&:hover img": { transform: "translateY(-2px)" },
       }}
     >
-      <AvCoverImage
-        src={video.thumb}
-        alt={video.title}
-        loading="lazy"
-        sx={{
-          aspectRatio: AV_COVER_ASPECT_RATIO,
-          bgcolor: "grey.200",
-          borderRadius: 1,
-          display: "block",
-          objectFit: "cover",
-          transition: "transform 160ms ease",
-          width: "100%",
-        }}
-      />
+      {/* 包一層 relative 給片單小標定位 */}
+      <Box sx={{ position: "relative" }}>
+        <AvCoverImage
+          src={video.thumb}
+          alt={video.title}
+          loading="lazy"
+          sx={{
+            aspectRatio: AV_COVER_ASPECT_RATIO,
+            bgcolor: "grey.200",
+            borderRadius: 1,
+            display: "block",
+            objectFit: "cover",
+            transition: "transform 160ms ease",
+            width: "100%",
+          }}
+        />
+        <VideoMarkBadge videoNo={video.no} />
+      </Box>
       <Typography sx={{ fontSize: 12, fontWeight: 700, mt: 0.75 }}>
         {code}
       </Typography>

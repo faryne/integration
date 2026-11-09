@@ -9,6 +9,7 @@ import { VideoDetailTabs } from "@/components/av/video_detail_tabs.tsx";
 import { VideoSyncButton } from "@/components/av/video_sync_button.tsx";
 import { VideoCast } from "@/components/av/video_cast.tsx";
 import { VideoMetaRows } from "@/components/av/video_meta_rows.tsx";
+import { VideoMarkButtons } from "@/components/joyu/marks/VideoMarkButtons.tsx";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
 import { joyuPath } from "@/helpers/joyu.ts";
@@ -130,6 +131,8 @@ export function VideoDetail(props: IVideoDetail) {
             >
               {video.title}
             </Typography>
+            {/* 片單：想看／看過＋評分與全站統計 */}
+            <VideoMarkButtons videoNo={video.no} />
             <VideoCast
               actresses={video.actresses}
               actressIds={video.actress_ids}

@@ -162,3 +162,15 @@
 
 ### 本機環境備註
 - 本機資料庫記錄了一支這個目錄裡沒有的 migration（`20260918100000-add_actor_to_storyteller_versions.sql`），`make mig-up` 會拒絕產生計畫；這次是在本機 MySQL 容器直接執行新表的 SQL（`CREATE TABLE IF NOT EXISTS`，之後正常跑 migration 不會衝突）。
+
+## 已知 Bug 記錄
+
+### 剛簽發的 Firebase token 被後端拒絕（2026-11-09 修正）
+- **現象**：沒登入的人第一次按愛心或想看時，系統會當場建立匿名帳號，但第一下必定失敗（401「登入已失效，請重新登入」），重新整理後再按才會成功。2026-11-08 本機測試時偶發過一次，2026-11-09 測片單時穩定重現。
+- **Root cause**：
+  - `service/auth.VerifyFirebaseIDToken` 用的是 `golang-jwt/jwt/v4` 的 `RegisteredClaims.Valid()`，檢查 `iat` 時不容許任何時鐘誤差。
+  - 剛簽發的 token，`iat` 就是 Google 那邊的「現在」。伺服器時鐘只要慢一點點，就會被判成「還沒生效」。
+  - 前端遇到 401 會強制換新 token 重試，但換來的也是剛簽發的，所以重試一樣失敗。
+  - 舊 token 回 200、強制換新的 token 立刻回 401，可以穩定重現。
+- **解法**：在 `firebaseClaims` 覆寫 `Valid()`，exp／iat／nbf 都容許 5 分鐘誤差（比照 Firebase Admin SDK），並加上測試 `TestFirebaseClaimsValidClockSkew`。這個函式是主站、SteamLoom、joyu 共用的，三邊都會受惠。
+- **狀態**：已修正（分支 `feat/joyu-video-marks`）。

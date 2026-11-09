@@ -35,7 +35,7 @@ const loginErrorMessage = (e: unknown) => {
 
 /**
  * joyu 頁首的帳號區：沒登入或匿名時有「登入」（匿名會升級成 Google 帳號，追蹤保留）；
- * 有帳號（含匿名）時多一個頭像選單：我的追蹤、登出
+ * 有帳號（含匿名）時多一個頭像選單：我的追蹤、我的片單、登出
  */
 export function JoyuAccountMenu() {
   const { user, loading, loginWithGoogle, logout } = useJoyuAuth();
@@ -101,6 +101,13 @@ export function JoyuAccountMenu() {
           to={joyuPath("me/follows")}
         >
           我的追蹤
+        </MenuItem>
+        <MenuItem
+          component={RouterLink}
+          onClick={() => setAnchor(null)}
+          to={joyuPath("me/videos")}
+        >
+          我的片單
         </MenuItem>
         {user?.isAnonymous ? (
           <MenuItem onClick={() => void login()}>用 Google 登入</MenuItem>

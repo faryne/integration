@@ -36,7 +36,7 @@ export interface JoyuFeed {
   quiet: JoyuFollowItem[];
 }
 
-async function joyuApi<T>(
+export async function joyuApi<T>(
   method: Method,
   path: string,
   options: { data?: unknown; params?: unknown; token?: string } = {},
