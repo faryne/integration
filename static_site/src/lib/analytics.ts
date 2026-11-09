@@ -1,4 +1,4 @@
-const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID?.trim();
+import { measurementId } from "@/lib/analyticsConfig.ts";
 
 type GtagCommand = "config" | "event" | "js";
 type GtagArguments = [GtagCommand, ...unknown[]];
@@ -18,8 +18,10 @@ export function initializeAnalytics() {
   }
 
   window.dataLayer = window.dataLayer || [];
-  window.gtag = (...args: GtagArguments) => {
-    window.dataLayer.push(args);
+  // gtag.js 需要原始 arguments 物件，展開成 Array 會讓命令無法正確處理。
+  window.gtag = function () {
+    // eslint-disable-next-line prefer-rest-params
+    window.dataLayer.push(arguments);
   };
   window.gtag("js", new Date());
   window.gtag("config", measurementId, {
