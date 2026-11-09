@@ -5,22 +5,13 @@ import type { JoyuActressItem } from "@/apis/av/joyu.ts";
 import { ActressPhoto } from "@/components/av/actress_photo.tsx";
 import { joyuActressLink } from "@/helpers/joyuActressLink.ts";
 
-/** 女優頁「共演女優」：依合作作品數排序；沒有共演（全是單體作品）時整個不顯示 */
+/** 女優頁「共演女優」分頁的內容：依合作作品數排序；沒有共演（全是單體作品）時不顯示（分頁也不會出現） */
 export function ActressCoStars({ items }: { items?: JoyuActressItem[] }) {
   if (!items?.length) return null;
   return (
     <Box component="section" sx={{ textAlign: "left" }}>
-      <Typography
-        component="h2"
-        sx={{ fontSize: 18, fontWeight: 800, mb: 1.5 }}
-      >
-        共演女優
-        <Box
-          component="span"
-          sx={{ color: "text.secondary", fontSize: 13, fontWeight: 400, ml: 1 }}
-        >
-          依合作作品數
-        </Box>
+      <Typography color="text.secondary" sx={{ fontSize: 13, mb: 1.5 }}>
+        依合作作品數
       </Typography>
       <Box
         sx={{
