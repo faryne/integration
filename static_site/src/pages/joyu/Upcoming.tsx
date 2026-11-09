@@ -83,10 +83,19 @@ export function JoyuUpcoming() {
     () => Object.fromEntries(dateList.map((d) => [d.date, `${d.count} 部`])),
     [dateList],
   );
+  // 網址有指定日期（範圍內）就照著顯示，沒有作品就是空的；沒指定才預設第一個有作品的日子
+  const minDate = dayjs(jstDatePlus(1));
+  const maxDate = dayjs(jstDatePlus(UPCOMING_DAYS));
+  const rawDate = params.get("date") ?? "";
+  const requested = dayjs(rawDate);
   const date =
-    dateList.find((d) => d.date === params.get("date"))?.date ??
-    dateList[0]?.date;
-  const count = dateList.find((d) => d.date === date)?.count;
+    /^\d{4}-\d{2}-\d{2}$/.test(rawDate) &&
+    requested.isValid() &&
+    !requested.isBefore(minDate, "day") &&
+    !requested.isAfter(maxDate, "day")
+      ? requested.format("YYYY-MM-DD")
+      : dateList[0]?.date;
+  const count = dateList.find((d) => d.date === date)?.count ?? 0;
   const list = useUpcoming(
     date
       ? {
@@ -144,8 +153,8 @@ export function JoyuUpcoming() {
                   hideYearNav
                   initialMonth={date ? dayjs(date) : undefined}
                   marks={marks}
-                  maxDate={dayjs(jstDatePlus(UPCOMING_DAYS))}
-                  minDate={dayjs(jstDatePlus(1))}
+                  maxDate={maxDate}
+                  minDate={minDate}
                   onClick={(d) => update({ date: d.format("YYYY-MM-DD") })}
                   selectedDate={date}
                 />
@@ -157,7 +166,7 @@ export function JoyuUpcoming() {
             {!mine && date && (
               <Typography sx={{ fontSize: 18, fontWeight: 800 }}>
                 {dayLabel(date)}
-                {count !== undefined && (
+                {count > 0 && (
                   <Box
                     component="span"
                     sx={{
