@@ -14,11 +14,13 @@ import { CommentSection } from "@/components/joyu/comments/CommentSection.tsx";
 import type { Actress } from "@/types/av.ts";
 
 /**
- * 女優頁（P2）：同名提示 → 頂端基本資料 → 「作品／討論」分頁 → 共演女優。
- * 討論放在作品旁邊的分頁（網址 ?view=comments），頂端另有討論數 chip，點了切過來並捲到分頁列；
+ * 女優頁（P2）：同名提示 → 頂端基本資料 → 「作品／共演女優／討論」分頁。
+ * 共演女優（?view=costars，有共演才出現）、討論（?view=comments）都是作品旁邊的分頁；頂端另有討論數 chip，點了切過來並捲到分頁列；
  * 討論版以 domain:aid 為 key，別名頁共用同一個。
  * 資料（女優、影片、facets、summary）都由頁面（pages/av/actress_detail.tsx）查好傳進來，這裡只負責排版
  */
+type View = "works" | "costars" | "comments";
+
 export function ActressDetail({
   actress,
   pageName,
@@ -38,12 +40,19 @@ export function ActressDetail({
   const tabsRef = useRef<HTMLDivElement>(null);
   const target = actress ? `actress:${actress.domain}:${actress.aid}` : "";
   const commentCount = useComments(target).data?.count ?? 0;
-  const view = params.get("view") === "comments" ? "comments" : "works";
-  const setView = (next: "works" | "comments") =>
+  const coStars = summary?.co_stars ?? [];
+  // 分頁：作品（預設）／共演女優（有共演才出現）／討論；存在網址 ?view=costars|comments
+  const requestedView = params.get("view");
+  const view: View =
+    requestedView === "comments" ||
+    (requestedView === "costars" && coStars.length > 0)
+      ? requestedView
+      : "works";
+  const setView = (next: View) =>
     setParams((prev) => {
       const p = new URLSearchParams(prev);
-      if (next === "comments") p.set("view", "comments");
-      else p.delete("view");
+      if (next === "works") p.delete("view");
+      else p.set("view", next);
       return p;
     });
   if (!actress) return null;
@@ -66,7 +75,7 @@ export function ActressDetail({
       />
       <Box>
         <Tabs
-          onChange={(_, v: "works" | "comments") => setView(v)}
+          onChange={(_, v: View) => setView(v)}
           ref={tabsRef}
           sx={{
             borderBottom: 1,
@@ -77,6 +86,9 @@ export function ActressDetail({
           value={view}
         >
           <Tab label="作品" value="works" />
+          {coStars.length > 0 && (
+            <Tab label={`共演女優（${coStars.length}）`} value="costars" />
+          )}
           <Tab
             label={commentCount ? `討論（${commentCount}）` : "討論"}
             value="comments"
@@ -84,6 +96,8 @@ export function ActressDetail({
         </Tabs>
         {view === "comments" ? (
           <CommentSection target={target} />
+        ) : view === "costars" ? (
+          <ActressCoStars items={coStars} />
         ) : (
           <>
             {/* 這個名義未來 30 天的預約作品（沒有就不顯示） */}
@@ -98,7 +112,6 @@ export function ActressDetail({
           </>
         )}
       </Box>
-      <ActressCoStars items={summary?.co_stars} />
     </Stack>
   );
 }
