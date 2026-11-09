@@ -29,6 +29,8 @@ func TestParseTWSEHistoryDivRow(t *testing.T) {
 	require.Equal(t, "2024-02-21", share.PayableDate)
 	require.Equal(t, 3.5, share.Share)
 	require.Equal(t, "1900-01-01", share.FilledDate)
+	require.EqualValues(t, -1, share.FilledDays)
+	require.EqualValues(t, -1, share.FilledTradeDays)
 }
 
 func TestParseTWSEHistoryDivRowAllowsNilDistribution(t *testing.T) {

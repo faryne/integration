@@ -467,7 +467,8 @@ func getTWSEHistoryDivByCode(code string) ([]etf.Share, error) {
 	params := url.Values{}
 	params.Add("stkNo", code)
 	params.Add("startDate", "20050101")
-	params.Add("endData", time.Now().Format("20060102"))
+	// 預告除息日可能在未來，查詢區間需涵蓋前端的即將除息日期。
+	params.Add("endDate", time.Now().AddDate(1, 0, 0).Format("20060102"))
 	r, err := sendRequest[ResponseData](http.MethodGet, ETFShareUrl, params, nil)
 	if err != nil {
 		return out, err
@@ -533,11 +534,13 @@ func parseTWSEHistoryDivRow(code string, row []any) (etf.Share, bool) {
 	}
 
 	return etf.Share{
-		ExDate:      exDate,
-		PayableDate: payableDate,
-		Share:       distribution,
-		Code:        code,
-		FilledDate:  time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.DateOnly),
+		ExDate:          exDate,
+		PayableDate:     payableDate,
+		Share:           distribution,
+		Code:            code,
+		FilledDate:      time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.DateOnly),
+		FilledDays:      -1,
+		FilledTradeDays: -1,
 	}, true
 }
 
@@ -581,11 +584,13 @@ func getOTCHistoryDivByCode(code string) ([]etf.Share, error) {
 			continue
 		}
 		share := etf.Share{
-			ExDate:      d1,
-			PayableDate: d2,
-			Share:       amount.InexactFloat64(),
-			Code:        code,
-			FilledDate:  time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.DateOnly),
+			ExDate:          d1,
+			PayableDate:     d2,
+			Share:           amount.InexactFloat64(),
+			Code:            code,
+			FilledDate:      time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.DateOnly),
+			FilledDays:      -1,
+			FilledTradeDays: -1,
 		}
 		if isDuplicateShareDate(out, share) {
 			fmt.Printf("skip duplicate ETF share date, code: %s, ex_date: %s, payable_date: %s\n", code, share.ExDate, share.PayableDate)

@@ -543,6 +543,13 @@ const EtfDashboard: React.FC = () => {
     selectedDate.format("YYYY-MM-DD"),
     isDividendTab,
   );
+  const [apiErrorNotice, setApiErrorNotice] = useState("");
+  // API 失敗時同步顯示 SNACK，避免錯誤只出現在目前未捲動到的內容區塊。
+  useEffect(() => {
+    if (isDividendTab && queryExShare.isError)
+      setApiErrorNotice("除息資料載入失敗，請稍後再試。");
+    else if (query.isError) setApiErrorNotice("ETF 資料載入失敗，請稍後再試。");
+  }, [query.isError, queryExShare.isError, isDividendTab]);
   const activeCategoryLabel =
     filters.find((filter) => filter.value === category)?.label ?? "全部";
   const activeStrategyLabel =
@@ -658,7 +665,7 @@ const EtfDashboard: React.FC = () => {
           {dateTabValues.map((tab, index) => (
             <Tab
               key={index}
-              label={`${tab.label}除權 (${tab.date.format("YYYY-MM-DD")})`}
+              label={`${tab.label}除息 (${tab.date.format("YYYY-MM-DD")})`}
             />
           ))}
         </Tabs>
@@ -1011,6 +1018,15 @@ const EtfDashboard: React.FC = () => {
         onClose={() => setShareNotice("")}
         message={shareNotice}
       />
+      <Snackbar
+        open={!!apiErrorNotice}
+        autoHideDuration={6000}
+        onClose={() => setApiErrorNotice("")}
+      >
+        <Alert severity="error" onClose={() => setApiErrorNotice("")}>
+          {apiErrorNotice}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
@@ -1076,6 +1092,7 @@ const DividendTable = ({
       ) : (
         <EtfTableList
           data={data}
+          showPendingShare
           onClick={onClick}
           favoritedCodes={favoritedCodes}
           onToggleFavorite={onToggleFavorite}
@@ -1089,14 +1106,14 @@ const EtfTableList = ({
   data,
   density = "full",
   onClick,
-  noDataText,
+  showPendingShare = false,
   favoritedCodes,
   onToggleFavorite,
 }: {
   data: TwseEtfInfo[];
   density?: TableDensity;
   onClick?: (etfCode: string) => void;
-  noDataText?: string;
+  showPendingShare?: boolean;
   favoritedCodes?: Set<string>;
   onToggleFavorite?: (etfCode: string) => void;
 }) => {
@@ -1186,7 +1203,7 @@ const EtfTableList = ({
                   }
                   onClick={() => handleRequestSort("ex_date")}
                 >
-                  除權息日期
+                  除息日期
                 </TableSortLabel>
               </TableCell>
             )}
@@ -1241,7 +1258,7 @@ const EtfTableList = ({
                     }
                     onClick={() => handleRequestSort("total_ex_count")}
                   >
-                    除權息次數
+                    除息次數
                   </TableSortLabel>
                 </TableCell>
                 <TableCell
@@ -1453,10 +1470,12 @@ const EtfTableList = ({
                   align="right"
                   sx={{ color: "success.main", fontWeight: "bold" }}
                 >
-                  {/* 假設 API 有提供這個欄位，若無則顯示預留字 */}
+                  {/* 預告除息可能尚未公告金額，只在日期 tab 顯示「待公布」。 */}
                   {etf.share && etf.share > 0
                     ? `$${etf.share.toFixed(4)}`
-                    : "--"}
+                    : showPendingShare
+                      ? "待公布"
+                      : "--"}
                 </TableCell>
                 {!isCompact && (
                   <>
@@ -1590,7 +1609,7 @@ const EtfTableList = ({
           ) : (
             <TableRow>
               <TableCell colSpan={columnCount} align="center" sx={{ py: 3 }}>
-                {noDataText ?? "期間內無即將除權之 ETF"}
+                期間內無即將除息之 ETF
               </TableCell>
             </TableRow>
           )}

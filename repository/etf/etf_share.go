@@ -97,7 +97,7 @@ SELECT
 		-1
 	) as ex_ticker_price
 FROM ` + (&etf.Share{}).TableName() + ` as o
-WHERE yield_rate = 0 AND ex_date < NOW()
+WHERE yield_rate = 0 AND ex_date < NOW() AND o.share > 0
 ORDER BY ex_date DESC
 `
 	err := inst.GetDB().Raw(sql).Scan(&out).Error
@@ -127,7 +127,7 @@ SELECT
     ) AS filled_date,
 	(SELECT close FROM ` + (&etf.Ticker{}).TableName() + ` WHERE code = o.code AND ticker_date > o.ex_date AND close > o.ex_ticker_price ORDER BY ticker_date ASC LIMIT 1) AS filled_ticker_price 
 FROM ` + (&etf.Share{}).TableName() + ` as o
-WHERE filled_days = -1 AND ex_date < NOW()
+WHERE filled_days = -1 AND ex_date < NOW() AND o.share > 0
 ORDER BY ex_date DESC
 `
 	err := inst.GetDB().Raw(sql).Scan(&out).Error
@@ -172,10 +172,10 @@ FROM (
 	SELECT 
 		o.code,
 		count(1) as success_fill_count,
-		(SELECT count(1) FROM etf_shares WHERE code = o.code) as total_ex_count,
+		(SELECT count(1) FROM etf_shares WHERE code = o.code AND ex_date <= CURDATE() AND share > 0) as total_ex_count,
 		  SUM(filled_days) as filled_days
 	FROM ` + (&etf.Share{}).TableName() + ` o
-	WHERE filled_days != -1
+	WHERE o.filled_days != -1 AND o.ex_date <= CURDATE() AND o.share > 0
 	GROUP BY o.code
 ) as tmp
 `

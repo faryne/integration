@@ -61,7 +61,7 @@ func (inst *RepositoryETFCode) UpdateETFCodeBatchWinRate(etfs []etf.ETF) error {
 	return res.Error
 }
 
-func (inst *RepositoryETFCode) getCodeCommonSql() string {
+func (inst *RepositoryETFCode) getCodeCommonSql(shareCondition string) string {
 	return "" +
 		"SELECT " +
 		"	c.code, c.name, c.company, c.target, c.market, c.publish_date, " +
@@ -79,47 +79,40 @@ func (inst *RepositoryETFCode) getCodeCommonSql() string {
 		" 	c.ma20_bias_rate " +
 		"FROM " + (&etf.ETF{}).TableName() + " as c " +
 		// 部署機是 MySQL 5.7，不支援 ROW_NUMBER() OVER(...)（8.0 才有），
-		// 改用 correlated subquery 依 id 取每檔 ETF 最新一筆 share > 0 的紀錄，
+		// 改用 correlated subquery 依 id 取每檔 ETF 符合條件的最新紀錄，
 		// 確保 ex_date/share/payable_date 保證來自同一列，且 id 唯一不會重複列。
 		"LEFT JOIN " + (&etf.Share{}).TableName() + " as tmp ON tmp.id = (" +
 		"	SELECT s2.id FROM " + (&etf.Share{}).TableName() + " as s2 " +
-		"	WHERE s2.code = c.code AND s2.share > 0 " +
+		"	WHERE s2.code = c.code AND " + shareCondition + " " +
 		"	ORDER BY s2.ex_date DESC, s2.id DESC LIMIT 1" +
 		")"
 }
 func (inst *RepositoryETFCode) GetAllETF() ([]etf.ETF, error) {
 	var out []etf.ETF
 
-	err := inst.GetDB().Raw(inst.getCodeCommonSql()).Scan(&out).Error
+	err := inst.GetDB().Raw(inst.getCodeCommonSql("s2.share > 0")).Scan(&out).Error
 	return out, err
 }
 
 func (inst *RepositoryETFCode) GetETFByCode(code string) (*etf.ETF, error) {
 	var out etf.ETF
-	sql := inst.getCodeCommonSql() + " WHERE c.code = ?"
+	sql := inst.getCodeCommonSql("s2.share > 0") + " WHERE c.code = ?"
 	err := inst.GetDB().Raw(sql, code).First(&out).Error
 	return &out, err
 }
 
 func (inst *RepositoryETFCode) GetUpcomingExETFByDate(date string) ([]etf.ETF, error) {
 	var out = make([]etf.ETF, 0)
-	sql := inst.getCodeCommonSql() + " WHERE tmp.ex_date = ?"
-	err := inst.GetDB().
-		Raw(sql, date).
-		Order("c.code ASC").
-		Scan(&out).
-		Error
+	// 預告除息金額可能尚未公布（share = 0），依日期找事件而非依金額找。
+	sql := inst.getCodeCommonSql("s2.ex_date = ?") + " WHERE tmp.id IS NOT NULL ORDER BY c.code ASC"
+	err := inst.GetDB().Raw(sql, date).Scan(&out).Error
 	return out, err
 }
 
 func (inst *RepositoryETFCode) GetUpcomingExETFByDateRange(startDate, endDate string) ([]etf.ETF, error) {
 	var out = make([]etf.ETF, 0)
-	sql := inst.getCodeCommonSql() + " WHERE tmp.ex_date >= ? AND tmp.ex_date <= ?"
-	err := inst.GetDB().
-		Raw(sql, startDate, endDate).
-		Order("c.ex_date DESC").
-		Scan(&out).
-		Error
+	sql := inst.getCodeCommonSql("s2.ex_date >= ? AND s2.ex_date <= ?") + " WHERE tmp.id IS NOT NULL ORDER BY tmp.ex_date DESC, c.code ASC"
+	err := inst.GetDB().Raw(sql, startDate, endDate).Scan(&out).Error
 	return out, err
 }
 
