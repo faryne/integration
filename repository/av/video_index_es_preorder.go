@@ -20,7 +20,7 @@ func (videoIndexES) PreOrders(ctx context.Context) (map[string]av.VideoPreOrder,
 	if err != nil {
 		return nil, err
 	}
-	body := `{"size":10000,"_source":["vid","no","vod_date","fetched_at"],"query":{"exists":{"field":"fetched_at"}}}`
+	body := `{"size":10000,"_source":["vid","no","vod_date","fetched_at","thumb"],"query":{"exists":{"field":"fetched_at"}}}`
 	resp, err := es.Search(es.Search.WithContext(ctx), es.Search.WithIndex(videoIndexName()), es.Search.WithBody(strings.NewReader(body)))
 	if err != nil {
 		return nil, err

@@ -4,6 +4,13 @@
 // 小於這個寬度的 ps 視為舊作低解析封面，改用 pl 右側裁切
 export const AV_COVER_LOW_RES_WIDTH = 400;
 
+/**
+ * DMM 還沒放封面時，封面網址回 404，內容是一張固定 90×122 的 NOW PRINTING 圖（瀏覽器照樣會畫出來），
+ * ps／pt／pl 都是同一張；載入後用尺寸認出它
+ */
+export const isAvCoverPlaceholder = (img: HTMLImageElement) =>
+  img.naturalWidth === 90 && img.naturalHeight === 122;
+
 const COVER_SUFFIX = /p[st]\.jpg$/;
 
 /** 封面網址換成同路徑的 pl.jpg；不是 DMM 慣例格式就回傳 null */

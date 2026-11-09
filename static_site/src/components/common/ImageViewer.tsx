@@ -35,12 +35,17 @@ export interface ImageViewerPhoto {
   url: string;
 }
 
+// preload="nearby" 時，目前這張前後各預讀幾張（往後多一張：通常是往下一張翻）
+const NEARBY_BEFORE = 1;
+const NEARBY_AFTER = 2;
+
 export function ImageViewer({
   children,
   initialIndex = 0,
   onImageError,
   onIndexChange,
   photos,
+  preload = "all",
   title,
 }: {
   children?: ReactNode;
@@ -48,6 +53,9 @@ export function ImageViewer({
   onImageError?: () => void;
   onIndexChange?: (index: number) => void;
   photos: ImageViewerPhoto[];
+  // all：一開始就在背景預讀全部大圖（漫畫、圖集一路翻下去用）；
+  // nearby：只預讀目前這張附近幾張，翻到哪載到哪（AV 影片頁預設就停在圖片預覽，避免一進頁面就抓二十幾張大圖）
+  preload?: "all" | "nearby";
   title: string;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -60,9 +68,8 @@ export function ImageViewer({
   const [naturalWidths, setNaturalWidths] = useState<number[]>([]);
   const [puzzleOpen, setPuzzleOpen] = useState(false);
   const [slideEntered, setSlideEntered] = useState(false);
-  const [slideTransition, setSlideTransition] = useState<SlideTransition | null>(
-    null,
-  );
+  const [slideTransition, setSlideTransition] =
+    useState<SlideTransition | null>(null);
   const [viewportSize, setViewportSize] = useState({ height: 0, width: 0 });
   const imageStageRef = useRef<HTMLDivElement | null>(null);
   const thumbnailRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -70,6 +77,9 @@ export function ImageViewer({
   const suppressClickRef = useRef(false);
   const renderedErrorNotifiedRef = useRef(false);
   const currentIndexRef = useRef(0);
+  // preload="nearby" 用：已經送出請求的張數，與送出某一張的函式（由預讀 effect 設定，換一批圖片時重設）
+  const requestedRef = useRef<Set<number>>(new Set());
+  const loadPhotoRef = useRef<((index: number) => void) | null>(null);
   // 圖片來源是簽了時效的 url，背景重新整理只是換掉 query string，用不含
   // query 的路徑當作「這批圖片是不是同一份作品」的依據，避免每次換簽名網址
   // 都被誤判成新的作品而把目前看到第幾張的位置歸零。
@@ -89,7 +99,8 @@ export function ImageViewer({
   const canGoNext = currentIndex < photos.length - 1;
   // 只等目前這張圖準備好就能顯示畫面，不用整批（可能 40 幾張）都載完，
   // 其餘照片繼續在背景預讀。
-  const currentPhotoReady = photos.length > 0 && (loadedFlags[currentIndex] ?? false);
+  const currentPhotoReady =
+    photos.length > 0 && (loadedFlags[currentIndex] ?? false);
   const canPlayPuzzle =
     expanded &&
     currentNaturalWidth > 0 &&
@@ -109,11 +120,12 @@ export function ImageViewer({
     const direction: 1 | -1 = normalized > currentIndex ? 1 : -1;
     const stage = imageStageRef.current;
     const stageStyle = stage ? window.getComputedStyle(stage) : null;
-    const maxWidth = stage && stageStyle
-      ? stage.clientWidth -
-        parseFloat(stageStyle.paddingLeft) -
-        parseFloat(stageStyle.paddingRight)
-      : 0;
+    const maxWidth =
+      stage && stageStyle
+        ? stage.clientWidth -
+          parseFloat(stageStyle.paddingLeft) -
+          parseFloat(stageStyle.paddingRight)
+        : 0;
     setSlideTransition({
       direction,
       index: currentIndex,
@@ -203,14 +215,12 @@ export function ImageViewer({
     // 路徑相同、只有簽名 query string 不同，代表這只是背景換了一批新的簽名
     // 網址（同一份作品），此時保留使用者目前看到第幾張，不要跳回第一張。
     const identity = photos.map((photo) => photo.url.split("?")[0]).join("|");
-    const isSamePhotoSet = identity !== "" && identity === photoIdentityRef.current;
+    const isSamePhotoSet =
+      identity !== "" && identity === photoIdentityRef.current;
     photoIdentityRef.current = identity;
     const priorityIndex = photos.length
       ? Math.min(
-          Math.max(
-            isSamePhotoSet ? currentIndexRef.current : initialIndex,
-            0,
-          ),
+          Math.max(isSamePhotoSet ? currentIndexRef.current : initialIndex, 0),
           photos.length - 1,
         )
       : 0;
@@ -251,14 +261,18 @@ export function ImageViewer({
     // 這樣長篇漫畫不用等全部載完才看得到畫面。
     const loadOrder = [
       priorityIndex,
-      ...photos.map((_, index) => index).filter((index) => index !== priorityIndex),
+      ...photos
+        .map((_, index) => index)
+        .filter((index) => index !== priorityIndex),
     ];
-    loadOrder.forEach((index) => {
+    requestedRef.current = new Set();
+    const loadPhoto = (index: number) => {
       const photo = photos[index];
       const url = photo?.url;
-      if (!url) {
+      if (!url || requestedRef.current.has(index)) {
         return;
       }
+      requestedRef.current.add(index);
       const markLoaded = () => {
         if (!cancelled) {
           setNaturalWidths((widths) => {
@@ -289,12 +303,39 @@ export function ImageViewer({
         markLoaded();
       };
       image.src = url;
-    });
+    };
+    loadPhotoRef.current = loadPhoto;
+    // nearby 只先送目前這張附近的，其餘等翻到附近時由下面的 effect 補送
+    loadOrder
+      .filter(
+        (index) =>
+          preload === "all" ||
+          (index >= priorityIndex - NEARBY_BEFORE &&
+            index <= priorityIndex + NEARBY_AFTER),
+      )
+      .forEach(loadPhoto);
 
     return () => {
       cancelled = true;
+      loadPhotoRef.current = null;
     };
-  }, [initialIndex, onImageError, photos]);
+  }, [initialIndex, onImageError, photos, preload]);
+
+  // preload="nearby"：翻到哪，就補送那張前後幾張的請求（已經送過的會略過）
+  useEffect(() => {
+    if (preload !== "nearby") {
+      return;
+    }
+    for (
+      let index = currentIndex - NEARBY_BEFORE;
+      index <= currentIndex + NEARBY_AFTER;
+      index++
+    ) {
+      if (index >= 0 && index < photos.length) {
+        loadPhotoRef.current?.(index);
+      }
+    }
+  }, [currentIndex, photos.length, preload]);
 
   useEffect(() => {
     const updateViewportSize = () => {
@@ -598,8 +639,12 @@ export function ImageViewer({
                           component="img"
                           src={slideTransition.photo.url}
                           alt={`${title} ${slideTransition.index + 1}`}
-                          width={naturalWidths[slideTransition.index] || undefined}
-                          height={naturalHeights[slideTransition.index] || undefined}
+                          width={
+                            naturalWidths[slideTransition.index] || undefined
+                          }
+                          height={
+                            naturalHeights[slideTransition.index] || undefined
+                          }
                           onError={handleRenderedImageError}
                           sx={{
                             borderRadius: 1,

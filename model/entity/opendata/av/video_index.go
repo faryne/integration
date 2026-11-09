@@ -55,6 +55,8 @@ type VideoPreOrder struct {
 	No        string `json:"no"`
 	VodDate   string `json:"vod_date"`
 	FetchedAt string `json:"fetched_at"`
+	// Thumb 空字串表示 DMM 還沒放封面（排程每天重抓一次，放上了就會補上）
+	Thumb string `json:"thumb"`
 }
 
 // VideoDateCount 某一天（yyyy-MM-dd）的影片部數

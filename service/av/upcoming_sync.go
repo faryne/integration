@@ -19,7 +19,7 @@ import (
 // 即將發售（joyu.fyi）：每天抓 DMM 未來 30 天的預約作品，跟已配信的一樣寫進 MySQL dmm＋影片索引（persistVideos），
 // 帶 release_status = PRE_ORDER（依配信日設）與 fetched_at；配信當天每日同步用同一個番號覆寫同一筆，這兩個欄位跟著消失，不用另外刪。
 // 規格見 DevelopDocuments/opendata/joyu.fyi社群功能第二期_2026-11-09.md 第三節
-//   - 清單上新出現的抓明細；抓過的 7 天內不重抓，剩 3 天內配信的超過一天就重抓（預約作品常改標題、改日期）
+//   - 清單上新出現的抓明細；抓過的 7 天內不重抓，剩 3 天內配信的、還沒有封面的超過一天就重抓（預約作品常改標題、改日期、晚放封面）
 //   - 排程寫過（有 fetched_at）、這次清單上卻沒有的（取消或改期）：用番號重抓明細，DMM 回新日期就覆寫，查無才刪除。
 //     配信日是今天的不管（由當天 10:00 的同步覆寫）；改期到範圍外的不管（進到範圍內會再出現在清單上）
 //   - 只在正式環境、或 DMM_VIDEO_INDEX 換成測試索引時寫入（跟每日同步同一道檢查）
@@ -53,7 +53,8 @@ func needUpcomingRefetch(doc avEntity.VideoPreOrder, vodDate, now time.Time) boo
 		return true
 	}
 	age := now.Sub(fetched)
-	return age > upcomingRefetchAfter || (vodDate.Sub(now) < upcomingSoonWithin && age > upcomingSoonRefetch)
+	// 還沒有封面的每天重抓一次：DMM 放上封面後隔天就會出現
+	return age > upcomingRefetchAfter || ((vodDate.Sub(now) < upcomingSoonWithin || doc.Thumb == "") && age > upcomingSoonRefetch)
 }
 
 // SyncUpcomingVideos 同步明天起 days 天。任何一天的清單抓不到就整個中止，避免 DMM 暫時出錯時把預約作品誤判成取消
@@ -141,6 +142,10 @@ func SyncUpcomingVideos(ctx context.Context, days int) (UpcomingSyncResult, erro
 			continue
 		}
 		v.BookmarkCount, v.FetchedAt = bookmark, now.Format(time.RFC3339)
+		// DMM 還沒放封面時封面網址回 404（內容是 NOW PRINTING 圖）：存空字串，前端改顯示替代區塊
+		if !dmm.CoverExists(v.Thumb) {
+			v.Thumb = ""
+		}
 		// 依配信日判斷是否預約中（DMM 的 releaseStatus 不可靠）；重抓後發現已經配信的就不標
 		if vod, err := time.ParseInLocation("2006/01/02", v.VodDate, jst); err == nil && vod.After(today) {
 			v.ReleaseStatus = dmm.ReleaseStatusPreOrder
