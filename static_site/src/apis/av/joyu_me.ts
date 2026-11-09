@@ -39,7 +39,13 @@ export interface JoyuFeed {
 export async function joyuApi<T>(
   method: Method,
   path: string,
-  options: { data?: unknown; params?: unknown; token?: string } = {},
+  options: {
+    data?: unknown;
+    params?: unknown;
+    token?: string;
+    // 額外的 header（例：匿名帳號留言時的 X-Recaptcha-Token）
+    headers?: Record<string, string>;
+  } = {},
 ) {
   const call = async (forceRefresh: boolean) => {
     const user = getJoyuAuth()?.auth.currentUser;
@@ -50,7 +56,7 @@ export async function joyuApi<T>(
       url: `${import.meta.env.VITE_API_BASE}/joyu/me${path}`,
       data: options.data,
       params: options.params,
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { ...options.headers, Authorization: `Bearer ${token}` },
       timeout: 15000,
     });
     return res.data.data;

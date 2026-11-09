@@ -25,6 +25,8 @@ import (
 const (
 	ActionActressSubmit = "ACTRESS_SUBMIT"
 	ActionVideoSubmit   = "VIDEO_SUBMIT"
+	// ActionJoyuComment 討論版留言（只有匿名帳號要驗）
+	ActionJoyuComment = "JOYU_COMMENT"
 )
 
 const siteverifyURL = "https://www.google.com/recaptcha/api/siteverify"

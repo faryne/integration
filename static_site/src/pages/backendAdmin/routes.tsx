@@ -54,6 +54,11 @@ const AVSubmissionReview = lazy(() =>
     default: m.AVActressSubmissionReview,
   })),
 );
+const JoyuAdminComments = lazy(() =>
+  import("@/pages/backendAdmin/av/joyu_comments.tsx").then((m) => ({
+    default: m.JoyuAdminComments,
+  })),
+);
 const AVVideoSubmissions = lazy(() =>
   import("@/pages/backendAdmin/av/video_submissions.tsx").then((m) => ({
     default: m.AVVideoSubmissions,
@@ -108,6 +113,7 @@ export const backendAdminRoutes = (
         element={<AVVideoSubmissionReview />}
       />
       <Route path={"topics"} element={<AVTopicManage />} />
+      <Route path={"comments"} element={<JoyuAdminComments />} />
       {/* :id 為 new 時是新增 */}
       <Route path={"topics/:id"} element={<AVTopicEdit />} />
     </Route>

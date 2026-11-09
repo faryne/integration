@@ -45,6 +45,9 @@ func OpenData(app *fiber.App) {
 	g4.Get("/home/new-actresses", avCache, opendata.AvNewActresses)
 	g4.Get("/actress/summary", avCache, opendata.AvActressSummary)
 	g4.Get("/actress/by-names", avCache, opendata.AvActressesByNames)
+	// 討論版（公開、no-store：剛送出的留言要馬上看得到）
+	g4.Get("/comments", opendata.AvComments)
+	g4.Get("/comments/:id/replies", opendata.AvCommentReplies)
 	// 影片頁的片單統計（想看／看過／評分）：剛按完的人前端會帶 _fresh 繞過快取
 	g4.Get("/video/:no/marks-summary", avCache, opendata.AvVideoMarkSummary)
 	// 詳細頁「同步資料」：用 DMM 內部番號重抓單一作品（IP＋作品冷卻限流）

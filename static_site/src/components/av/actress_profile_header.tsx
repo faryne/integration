@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import { Box, Button, Stack, Typography } from "@mui/material";
+import { Box, Button, Chip, Stack, Typography } from "@mui/material";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 
 import type { JoyuActressSummary } from "@/apis/av/joyu.ts";
@@ -38,10 +39,15 @@ export function ActressProfileHeader({
   actress,
   pageName,
   summary,
+  commentCount = 0,
+  onOpenComments,
 }: {
   actress: Actress;
   pageName: string;
   summary?: JoyuActressSummary;
+  // 討論版留言數；有留言時顯示「💬 N 則討論」，點了切到討論分頁
+  commentCount?: number;
+  onOpenComments?: () => void;
 }) {
   const birth = formatActressBirth(actress);
   const age = actressAge(actress);
@@ -125,6 +131,18 @@ export function ActressProfileHeader({
           </Fact>
         </Box>
         <ActressTopicChip />
+        {commentCount > 0 && onOpenComments && (
+          <Box>
+            <Chip
+              clickable
+              icon={<ChatBubbleOutlineIcon />}
+              label={`${commentCount.toLocaleString()} 則討論`}
+              onClick={onOpenComments}
+              size="small"
+              variant="outlined"
+            />
+          </Box>
+        )}
         <ActressLinks links={actress.links} />
       </Stack>
     </Box>

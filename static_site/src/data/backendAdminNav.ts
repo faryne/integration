@@ -4,6 +4,7 @@ import {
   avAdminVideoSubmissionsPath,
   BACKEND_ADMIN_PATH,
   galgameAdminPath,
+  joyuAdminCommentsPath,
   nekomaidAdminPath,
 } from "@/helpers/backendAdmin.ts";
 
@@ -64,6 +65,7 @@ export const backendAdminNav: BackendAdminNavGroup[] = [
         badge: "avVideoSubmissions",
       },
       { label: "女優主題", href: avAdminTopicsPath },
+      { label: "joyu 留言", href: joyuAdminCommentsPath },
     ],
   },
   {

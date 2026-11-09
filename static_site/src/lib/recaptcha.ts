@@ -7,7 +7,8 @@ const siteKey = import.meta.env.VITE_JOYU_RECAPTCHA_SITE_KEY as
   string | undefined;
 
 /** action 名稱要跟後端 service/recaptcha 的常數一致 */
-export type RecaptchaAction = "ACTRESS_SUBMIT" | "VIDEO_SUBMIT";
+export type RecaptchaAction =
+  "ACTRESS_SUBMIT" | "VIDEO_SUBMIT" | "JOYU_COMMENT";
 
 interface Grecaptcha {
   enterprise: {

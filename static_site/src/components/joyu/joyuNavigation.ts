@@ -29,6 +29,11 @@ export const joyuSections: JoyuSection[] = [
     href: "/me/videos",
     match: (p) => p.startsWith("/me/videos"),
   },
+  {
+    title: "個人資料",
+    href: "/me/profile",
+    match: (p) => p.startsWith("/me/profile"),
+  },
 ];
 
 // 頁首依顯示順序排（女優、主題、影片），比對順序則是 joyuSections（主題要先於女優）

@@ -1,25 +1,8 @@
-import { useState } from "react";
-import {
-  Link as RouterLink,
-  useNavigate,
-  useSearchParams,
-} from "react-router-dom";
-import {
-  Box,
-  Button,
-  Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Skeleton,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Link as RouterLink, useSearchParams } from "react-router-dom";
+import { Box, Button, Chip, Skeleton, Stack, Typography } from "@mui/material";
 
 import { useJoyuFeed, type FollowKind } from "@/apis/av/joyu_me.ts";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
-import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { useJoyuAuth } from "@/components/joyu/auth/JoyuAuthContext.ts";
 import { FollowButton } from "@/components/joyu/FollowButton.tsx";
 import { FollowSection } from "@/components/joyu/follows/FollowSection.tsx";
@@ -36,20 +19,17 @@ const DAYS = [7, 14, 30];
 /**
  * joyu 我的追蹤（/me/follows）：「追蹤動態」和「管理追蹤」合成一頁。
  * 每個追蹤一區，列出最近 N 天的新片（後端依最新配信日排好）；區塊標題旁的愛心就是取消追蹤；
- * 這段期間沒有新片的收在下面；最下面是刪除帳號。類型、天數存在網址（?days=14&kind=tag）
+ * 這段期間沒有新片的收在下面（刪除帳號在個人資料頁）。類型、天數存在網址（?days=14&kind=tag）
  */
 export function JoyuMyFollows() {
   useTitle("我的追蹤");
-  const navigate = useNavigate();
-  const { user, loading, deleteAccount } = useJoyuAuth();
+  const { user, loading } = useJoyuAuth();
   const [params, setParams] = useSearchParams();
   const days = DAYS.includes(Number(params.get("days")))
     ? Number(params.get("days"))
     : 14;
   const kind = (params.get("kind") ?? "") as FollowKind | "";
   const feed = useJoyuFeed(user?.uid, days);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [error, setError] = useState("");
 
   const setParam = (key: string, value?: string) =>
     setParams((prev) => {
@@ -66,16 +46,6 @@ export function JoyuMyFollows() {
     kind ? items.filter((f) => f.kind === kind) : items;
   const sections = pick(data?.sections ?? []);
   const quiet = pick(data?.quiet ?? []);
-
-  const doDelete = async () => {
-    setConfirmDelete(false);
-    try {
-      await deleteAccount();
-      navigate(joyuPath(""));
-    } catch {
-      setError("刪除帳號失敗，請稍後再試");
-    }
-  };
 
   const empty = !loading && (!user || (data && all.length === 0));
 
@@ -239,57 +209,7 @@ export function JoyuMyFollows() {
             )}
           </>
         )}
-
-        {user && (
-          <Stack
-            direction="row"
-            sx={{
-              alignItems: "center",
-              border: "1px solid",
-              borderColor: "error.light",
-              borderRadius: 3,
-              gap: 2,
-              justifyContent: "space-between",
-              p: 2,
-            }}
-          >
-            <Box>
-              <Typography sx={{ fontWeight: 700 }}>刪除帳號</Typography>
-              <Typography color="text.secondary" sx={{ fontSize: 13 }}>
-                刪除所有追蹤與帳號，無法復原
-              </Typography>
-            </Box>
-            <Button
-              color="error"
-              onClick={() => setConfirmDelete(true)}
-              variant="outlined"
-            >
-              刪除帳號
-            </Button>
-          </Stack>
-        )}
       </Stack>
-
-      <Dialog onClose={() => setConfirmDelete(false)} open={confirmDelete}>
-        <DialogTitle>刪除帳號？</DialogTitle>
-        <DialogContent>所有追蹤和這個帳號都會被刪除，無法復原。</DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmDelete(false)}>取消</Button>
-          <Button
-            color="error"
-            onClick={() => void doDelete()}
-            variant="contained"
-          >
-            刪除
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <CustomSnackbar
-        message={error}
-        onClose={() => setError("")}
-        open={!!error}
-        severity="error"
-      />
     </AgeConfirmationGate>
   );
 }
