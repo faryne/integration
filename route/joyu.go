@@ -15,6 +15,11 @@ func Joyu(app *fiber.App) {
 	g.Put("/follows", joyu.Follow)
 	g.Delete("/follows", joyu.Unfollow)
 	g.Get("/feed", joyu.Feed)
+	// 片單：想看／看過＋評分
+	g.Get("/marks", joyu.Marks)
+	g.Get("/marks/videos", joyu.MarkedVideos)
+	g.Put("/marks/:no", joyu.SetMark)
+	g.Delete("/marks/:no", joyu.RemoveMark)
 	g.Post("/merge", joyu.Merge)
 	g.Delete("", joyu.DeleteAccount)
 }

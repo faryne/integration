@@ -37,6 +37,25 @@ type firebaseClaims struct {
 	jwt.RegisteredClaims
 }
 
+// firebaseClockSkew 驗證 token 時間（exp／iat／nbf）容許的時鐘誤差，比照 Firebase Admin SDK 的 5 分鐘
+const firebaseClockSkew = 5 * time.Minute
+
+// Valid 覆寫 RegisteredClaims 的時間檢查（jwt/v4 沒有 leeway 設定）：
+// 剛簽發的 token iat 就是 Google 那邊的「現在」，伺服器時鐘只要慢一點點就會被判成「還沒生效」。
+// 建立匿名帳號、剛登入後的第一個請求一定拿到新 token，重試時強制換新也一樣，會一直 401
+func (c firebaseClaims) Valid() error {
+	now := time.Now()
+	switch {
+	case !c.VerifyExpiresAt(now.Add(-firebaseClockSkew), true):
+		return errors.New("Firebase token is expired")
+	case !c.VerifyIssuedAt(now.Add(firebaseClockSkew), true):
+		return errors.New("Firebase token used before issued")
+	case !c.VerifyNotBefore(now.Add(firebaseClockSkew), false):
+		return errors.New("Firebase token is not valid yet")
+	}
+	return nil
+}
+
 type certCache struct {
 	keys      map[string]*rsa.PublicKey
 	expiresAt time.Time

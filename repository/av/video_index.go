@@ -20,6 +20,9 @@ type VideoIndex interface {
 	// RecentByQueries 每組條件各自的部數、最新配信日與最新 perQuery 部（依配信日由新到舊）；日期範圍由呼叫端放在條件裡。
 	// 回傳順序跟 queries 一樣（joyu 我的追蹤頁：每個追蹤一組條件）
 	RecentByQueries(ctx context.Context, queries []av.VideoIndexQuery, perQuery int) ([]av.VideoRecent, error)
+	// FindByNos 依 DMM 內部番號取影片（大小寫都認，找不到的不會出現在結果裡）。
+	// byDate 為 true 時依配信日由新到舊、一頁 30 筆；否則一次回傳全部、順序不定（joyu 片單頁）
+	FindByNos(ctx context.Context, nos []string, page int, byDate bool) (search.Page[av.RawVideo], error)
 	// DateStats 符合條件的影片部數與最早／最晚配信日
 	DateStats(ctx context.Context, q av.VideoIndexQuery) (av.VideoStats, error)
 	// StatsByActress 全部影片依出演者名字分組統計；withDates 才算最早／最晚配信日

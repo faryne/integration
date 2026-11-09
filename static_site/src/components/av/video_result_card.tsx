@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
 import { AV_COVER_ASPECT_RATIO } from "@/data/avVideoCover.ts";
 import { joyuPath } from "@/helpers/joyu.ts";
+import { VideoMarkBadge } from "@/components/joyu/marks/VideoMarkBadge.tsx";
 
 // 詳細頁網址優先用官方番號，沒有就用 DMM 內部番號
 const videoDetailId = (video: Video) =>
@@ -59,9 +60,11 @@ export function VideoResultCard({ video }: { video: Video }) {
           aspectRatio: AV_COVER_ASPECT_RATIO,
           bgcolor: "grey.100",
           overflow: "hidden",
+          position: "relative",
           width: "100%",
         }}
       >
+        <VideoMarkBadge videoNo={video.no} />
         <AvCoverImage
           src={video.thumb}
           alt={video.title}

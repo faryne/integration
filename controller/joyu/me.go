@@ -102,7 +102,7 @@ func Feed(ctx fiber.Ctx) error {
 	return output.Success(feed)
 }
 
-// Merge 匿名帳號升級時遇到既有的 Google 帳號：把匿名帳號的追蹤搬到目前登入的帳號
+// Merge 匿名帳號升級時遇到既有的 Google 帳號：把匿名帳號的追蹤與片單搬到目前登入的帳號
 // @Summary Merge follows from an anonymous account
 // @Tags Joyu
 // @Accept json
@@ -123,13 +123,13 @@ func Merge(ctx fiber.Ctx) error {
 	if err != nil || anon.Provider != "anonymous" || current.Provider == "anonymous" {
 		return output.New(http.StatusBadRequest, "", nil, "無法合併這個帳號")
 	}
-	if err := av.MergeJoyuFollows(anon.UID, current.UID); err != nil {
+	if err := av.MergeJoyuAccountData(anon.UID, current.UID); err != nil {
 		return output.FromError(err)
 	}
 	return output.Success(nil)
 }
 
-// DeleteAccount 刪除帳號的資料（全部追蹤）；Firebase 帳號由前端接著呼叫 user.delete() 刪
+// DeleteAccount 刪除帳號的資料（全部追蹤與片單）；Firebase 帳號由前端接著呼叫 user.delete() 刪
 // @Summary Delete account data
 // @Tags Joyu
 // @Produce json

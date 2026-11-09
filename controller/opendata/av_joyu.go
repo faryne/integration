@@ -69,3 +69,20 @@ func AvActressesByNames(ctx fiber.Ctx) error {
 	}
 	return output.Success(out)
 }
+
+// AvVideoMarkSummary joyu.fyi 影片頁的片單統計
+// @Summary Want / watched counts and rating of a video
+// @Description 評分人數少於 3 人時 rating_avg 為 null
+// @Tags OpenData AV
+// @Produce json
+// @Param no path string true "DMM content id"
+// @Success 200 {object} output.CommonOutput
+// @Failure 400 {object} output.CommonOutput
+// @Router /opendata/av/video/{no}/marks-summary [get]
+func AvVideoMarkSummary(ctx fiber.Ctx) error {
+	out, err := av.JoyuMarkSummary(ctx.Params("no"))
+	if err != nil {
+		return output.FromError(err)
+	}
+	return output.Success(out)
+}
