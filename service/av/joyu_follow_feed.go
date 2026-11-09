@@ -15,8 +15,8 @@ import (
 	"faryne.dev/service/search"
 )
 
-// joyu.fyi「我的追蹤」頁：每個追蹤是一組影片搜尋條件，查最近 N 天（日本時間，含今天）的新片。
-// 有新片的追蹤依最新配信日排序，每個最多附 feedPerFollow 部；沒有新片的（含女優資料已被刪掉的）另外列出
+// joyu.fyi「我的追蹤」頁：每個追蹤是一組影片搜尋條件，查最近 N 天（日本時間，含今天）的新片，以及未來 30 天的預約作品。
+// 有新片或預約作品的追蹤依最新配信日排序，各最多附 feedPerFollow 部；兩者都沒有的（含女優資料已被刪掉的）另外列出
 
 const feedPerFollow = 6
 
@@ -41,6 +41,9 @@ type JoyuFeedSection struct {
 	Count  int                   `json:"count"`
 	Last   string                `json:"last"`
 	Videos []avEntity.CleanVideo `json:"videos"`
+	// 同一組條件的預約作品（未來 30 天，配信日近的在前）：前端跟新片放同一列並標「即將發售」
+	UpcomingCount int                   `json:"upcoming_count"`
+	Upcoming      []avEntity.CleanVideo `json:"upcoming"`
 }
 
 type JoyuFeed struct {
@@ -70,9 +73,10 @@ func JoyuFollowFeed(ctx context.Context, uid string, days int) (*JoyuFeed, error
 		return nil, err
 	}
 
-	// 每個追蹤轉成一組搜尋條件；查不了的（女優資料不在、搜尋條件壞掉）直接放進 quiet
+	// 每個追蹤轉成兩組搜尋條件（最近 N 天的新片、未來 30 天的預約作品）；查不了的（女優資料不在、搜尋條件壞掉）直接放進 quiet
+	upStart, upEnd := upcomingWindow()
 	var items []JoyuFollowItem
-	var queries []avEntity.VideoIndexQuery
+	var queries, upQueries []avEntity.VideoIndexQuery
 	for _, f := range follows {
 		item, req, ok := followItem(f, actresses, profiles)
 		if !ok {
@@ -84,25 +88,40 @@ func JoyuFollowFeed(ctx context.Context, uid string, days int) (*JoyuFeed, error
 		if err != nil {
 			return nil, err
 		}
+		req.StartDate, req.EndDate = &upStart, &upEnd
+		uq, err := videoIndexQuery(req)
+		if err != nil {
+			return nil, err
+		}
+		uq.Upcoming = true
 		items = append(items, item)
-		queries = append(queries, q)
+		queries, upQueries = append(queries, q), append(upQueries, uq)
 	}
-	recent, err := avRepo.NewVideoIndex().RecentByQueries(ctx, queries, feedPerFollow)
+	recent, err := avRepo.NewVideoIndex().RecentByQueries(ctx, queries, feedPerFollow, false)
+	if err != nil {
+		return nil, err
+	}
+	upcoming, err := avRepo.NewVideoIndex().RecentByQueries(ctx, upQueries, feedPerFollow, true)
 	if err != nil {
 		return nil, err
 	}
 	for i, r := range recent {
-		if r.Count == 0 {
+		u := upcoming[i]
+		if r.Count == 0 && u.Count == 0 {
 			out.Quiet = append(out.Quiet, items[i])
 			continue
 		}
-		sec := JoyuFeedSection{JoyuFollowItem: items[i], Count: r.Count, Last: r.Last, Videos: make([]avEntity.CleanVideo, 0, len(r.Videos))}
+		sec := JoyuFeedSection{JoyuFollowItem: items[i], Count: r.Count, Last: r.Last, UpcomingCount: u.Count,
+			Videos: make([]avEntity.CleanVideo, 0, len(r.Videos)), Upcoming: make([]avEntity.CleanVideo, 0, len(u.Videos))}
 		for _, v := range r.Videos {
 			sec.Videos = append(sec.Videos, fVideo(v))
 		}
+		for _, v := range u.Videos {
+			sec.Upcoming = append(sec.Upcoming, fVideo(v))
+		}
 		out.Sections = append(out.Sections, sec)
 	}
-	// 最新配信日新的在前；同一天維持追蹤的先後
+	// 最新配信日新的在前（只有預約作品的排最後）；同一天維持追蹤的先後
 	sort.SliceStable(out.Sections, func(i, j int) bool { return out.Sections[i].Last > out.Sections[j].Last })
 	return out, nil
 }

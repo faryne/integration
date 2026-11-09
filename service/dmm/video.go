@@ -894,6 +894,14 @@ type DmmVideoBody struct {
 	// ActressIDs DMM 女優 ID，順序與 Actresses 一致（明細沒給 id 的那格是空字串）；2026-10-30 之前同步的影片沒有這個欄位
 	ActressIDs []string        `json:"actress_ids"`
 	Images     []DmmVideoImage `json:"images"`
+	// 以下三個只有即將發售排程寫入的作品有；配信後每日同步整份覆寫時就會消失
+	// ReleaseStatus 排程依配信日自己設：配信日在明天以後是 PRE_ORDER。
+	// 不照抄 DMM 的 releaseStatus：同一天的預約作品有的是 PRE_ORDER、有的是空字串，不可靠
+	ReleaseStatus string `json:"release_status,omitempty"`
+	// BookmarkCount DMM 收藏數（即將發售排程從預約清單帶過來），只拿來排序、不顯示
+	BookmarkCount int `json:"bookmark_count,omitempty"`
+	// FetchedAt 即將發售排程抓明細的時間（RFC3339），判斷要不要重抓
+	FetchedAt string `json:"fetched_at,omitempty"`
 }
 
 type DmmVideoImage struct {

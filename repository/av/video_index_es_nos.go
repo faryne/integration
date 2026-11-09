@@ -36,3 +36,28 @@ func (videoIndexES) FindByNos(_ context.Context, nos []string, page int, byDate 
 	}
 	return out, nil
 }
+
+// SearchAny 每組條件轉成一個 query 放進 should（符合任一組就算），一次查完
+func (videoIndexES) SearchAny(_ context.Context, queries []av.VideoIndexQuery, page int, sort string) (search.Page[av.RawVideo], error) {
+	if len(queries) == 0 {
+		return search.Page[av.RawVideo]{}, nil
+	}
+	should := make([]map[string]any, 0, len(queries))
+	for _, q := range queries {
+		should = append(should, videoConditionQuery(q))
+	}
+	page = max(page, 1)
+	q := map[string]any{
+		"size": videoPageSize, "from": (page - 1) * videoPageSize, "sort": videoSort(sort),
+		"query": map[string]any{"bool": map[string]any{"should": should, "minimum_should_match": 1}},
+	}
+	r, _, err := esdsl.Search[av.RawVideo, av.RawVideo](videoIndexName(), q)
+	if err != nil {
+		return search.Page[av.RawVideo]{}, err
+	}
+	out := search.Page[av.RawVideo]{Total: r.Hits.Total.Value, Hits: make([]search.Hit[av.RawVideo], 0, len(r.Hits.Hits))}
+	for _, h := range r.Hits.Hits {
+		out.Hits = append(out.Hits, search.Hit[av.RawVideo]{ID: h.Id, Source: h.Source})
+	}
+	return out, nil
+}

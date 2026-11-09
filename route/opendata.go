@@ -45,6 +45,9 @@ func OpenData(app *fiber.App) {
 	g4.Get("/home/new-actresses", avCache, opendata.AvNewActresses)
 	g4.Get("/actress/summary", avCache, opendata.AvActressSummary)
 	g4.Get("/actress/by-names", avCache, opendata.AvActressesByNames)
+	// 即將發售（DMM 預約作品，每日排程更新）
+	g4.Get("/upcoming", avCache, opendata.AvUpcoming)
+	g4.Get("/upcoming/dates", avCache, opendata.AvUpcomingDates)
 	// 討論版（公開、no-store：剛送出的留言要馬上看得到）
 	g4.Get("/comments", opendata.AvComments)
 	g4.Get("/comments/:id/replies", opendata.AvCommentReplies)

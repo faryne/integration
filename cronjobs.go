@@ -272,6 +272,16 @@ var cronJobs = map[string]cronGroup{
 				},
 			},
 			{
+				// joyu.fyi 即將發售：DMM 未來 30 天的預約作品寫進預約索引（DMM_UPCOMING_INDEX）；
+				// 非正式環境要把索引名稱換成含 test 的才會寫入，否則直接回錯誤
+				Name:     "av-upcoming-sync",
+				Schedule: "30 5 * * *",
+				Enabled:  true,
+				Handler: func() {
+					avService.RunUpcomingSyncCron(commandParams.Value("days"))
+				},
+			},
+			{
 				// 每週產生女優主題 JSON 上傳 S3（排在週三 xcity 同步之後）；非 production 只寫本機 tmp/actress-topics/
 				Name:     "av-actress-topics",
 				Schedule: "30 4 * * 4",

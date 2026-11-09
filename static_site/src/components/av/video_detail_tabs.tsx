@@ -8,6 +8,7 @@ import {
 import { RelatedVideoPanel } from "@/components/av/video_related.tsx";
 import { ImageViewer } from "@/components/common/ImageViewer.tsx";
 import { useComments } from "@/apis/av/joyu_comments.ts";
+import { isUpcoming } from "@/helpers/upcoming.ts";
 import { CommentSection } from "@/components/joyu/comments/CommentSection.tsx";
 
 // 圖片預覽、討論 tab 的 key；其餘 tab 的 key 來自 relatedVideoTabs
@@ -42,7 +43,8 @@ export function VideoDetailTabs({ video }: { video: Video }) {
         key: COMMENTS_KEY,
         label: commentCount ? `討論（${commentCount}）` : "討論",
       },
-      ...relatedVideoTabs(video),
+      // 預約作品還沒配信，不列相關作品
+      ...(isUpcoming(video) ? [] : relatedVideoTabs(video)),
     ],
     [video, photos.length, commentCount],
   );

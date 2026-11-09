@@ -27,6 +27,9 @@ export interface JoyuFeedSection extends JoyuFollowItem {
   count: number;
   last: string;
   videos: Video[];
+  // 同一組條件的預約作品（未來 30 天，配信日近的在前）
+  upcoming_count: number;
+  upcoming: Video[];
 }
 
 export interface JoyuFeed {

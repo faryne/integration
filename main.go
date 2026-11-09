@@ -51,6 +51,7 @@ var commandParams = commandParameter.Registry{
 	"csvFile":         commandParameter.New("path to a pipe-delimited eroge brand CSV file", nil),
 	"dayFrom":         commandParameter.New("start date in YYYY-MM-DD format", commandParameter.Date),
 	"dayTo":           commandParameter.New("end date in YYYY-MM-DD format (inclusive)", commandParameter.Date),
+	"days":            commandParameter.New("number of days ahead for av-upcoming-sync (default 30; smaller for local testing)", nil),
 	"ncccKey":         commandParameter.New("single NCCC data set key, e.g. gender", nil),
 	"searchIndexName": commandParameter.New("optional Elasticsearch index name for storyteller search; defaults to STORYTELLER_SEARCH_INDEX", nil),
 	"playlist":        commandParameter.New("public YouTube playlist URL or ID", nil),

@@ -8,6 +8,8 @@ import { ActressCoStars } from "@/components/av/actress_co_stars.tsx";
 import { ActressProfileHeader } from "@/components/av/actress_profile_header.tsx";
 import { ActressSameNames } from "@/components/av/actress_same_names.tsx";
 import { ActressWorks } from "@/components/av/actress_works.tsx";
+import { ActressUpcoming } from "@/components/av/actress_upcoming.tsx";
+import { actressRefOf } from "@/helpers/avActressRef.ts";
 import { CommentSection } from "@/components/joyu/comments/CommentSection.tsx";
 import type { Actress } from "@/types/av.ts";
 
@@ -83,11 +85,17 @@ export function ActressDetail({
         {view === "comments" ? (
           <CommentSection target={target} />
         ) : (
-          <ActressWorks
-            {...works}
-            pageName={pageName}
-            realName={actress.name}
-          />
+          <>
+            {/* 這個名義未來 30 天的預約作品（沒有就不顯示） */}
+            <ActressUpcoming
+              params={{ actress: [pageName], ...actressRefOf(actress) }}
+            />
+            <ActressWorks
+              {...works}
+              pageName={pageName}
+              realName={actress.name}
+            />
+          </>
         )}
       </Box>
       <ActressCoStars items={summary?.co_stars} />

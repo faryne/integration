@@ -28,6 +28,8 @@ var fVideo = func(i av.RawVideo) av.CleanVideo {
 		Duration: i.Duration,
 		MakerNo:  i.MakerNo,
 		IsOrphan: i.IsOrphan,
+		// 預約作品（即將發售索引）才有
+		ReleaseStatus: i.ReleaseStatus,
 	}
 	if i.PublishDate != nil {
 		if publishDate, ok := i.PublishDate.(string); ok {
@@ -57,6 +59,7 @@ func VideoSearch(input av.VideoQueryRequest) (repoSearch.Page[av.RawVideo], []av
 	if err != nil {
 		return page, nil, err
 	}
+
 	rows := make([]av.CleanVideo, 0, len(page.Hits))
 	for _, h := range page.Hits {
 		rows = append(rows, fVideo(h.Source))

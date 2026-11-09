@@ -17,6 +17,8 @@ func Joyu(app *fiber.App) {
 	g.Put("/follows", joyu.Follow)
 	g.Delete("/follows", joyu.Unfollow)
 	g.Get("/feed", joyu.Feed)
+	// 即將發售頁「我追蹤的」
+	g.Get("/upcoming", joyu.MyUpcoming)
 	// 片單：想看／看過＋評分
 	g.Get("/marks", joyu.Marks)
 	g.Get("/marks/videos", joyu.MarkedVideos)

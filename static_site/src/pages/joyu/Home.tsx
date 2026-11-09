@@ -5,6 +5,7 @@ import { BirthdaySection } from "@/components/joyu/home/BirthdaySection.tsx";
 import { FollowedActressesSection } from "@/components/joyu/home/FollowedActressesSection.tsx";
 import { JoyuHero } from "@/components/joyu/home/JoyuHero.tsx";
 import { LatestVideosSection } from "@/components/joyu/home/LatestVideosSection.tsx";
+import { UpcomingSection } from "@/components/joyu/home/UpcomingSection.tsx";
 import { NewActressesSection } from "@/components/joyu/home/NewActressesSection.tsx";
 import { TopicsSection } from "@/components/joyu/home/TopicsSection.tsx";
 import { useTitle } from "@/helpers/title.tsx";
@@ -28,6 +29,7 @@ export function JoyuHome() {
         <NewActressesSection />
         <BirthdaySection />
         <TopicsSection />
+        <UpcomingSection />
         <LatestVideosSection />
       </Stack>
     </AgeConfirmationGate>

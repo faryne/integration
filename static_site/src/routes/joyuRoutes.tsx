@@ -16,6 +16,10 @@ const JoyuMyFollows = lazyNamed(
   () => import("@/pages/joyu/MyFollows.tsx"),
   "JoyuMyFollows",
 );
+const JoyuUpcoming = lazyNamed(
+  () => import("@/pages/joyu/Upcoming.tsx"),
+  "JoyuUpcoming",
+);
 const JoyuMyProfile = lazyNamed(
   () => import("@/pages/joyu/MyProfile.tsx"),
   "JoyuMyProfile",
@@ -71,6 +75,7 @@ export const joyuRoutes = (
     <Route path={"/video"} element={<AVVideo />} />
     <Route path={"/video/:no/edit"} element={<AVVideoEdit />} />
     <Route path={"/video/:no"} element={<AVVideoDetail />} />
+    <Route path={"/upcoming"} element={<JoyuUpcoming />} />
     <Route path={"/me/follows"} element={<JoyuMyFollows />} />
     <Route path={"/me/videos"} element={<JoyuMyVideos />} />
     <Route path={"/me/profile"} element={<JoyuMyProfile />} />
