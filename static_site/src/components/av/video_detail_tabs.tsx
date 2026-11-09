@@ -75,7 +75,7 @@ export function VideoDetailTabs({ video }: { video: Video }) {
           filter={current.filter}
         />
       ) : (
-        <ImageViewer photos={photos} title={video.title} />
+        <ImageViewer photos={photos} preload="nearby" title={video.title} />
       )}
     </Box>
   );

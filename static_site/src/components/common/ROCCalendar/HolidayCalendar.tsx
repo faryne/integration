@@ -38,6 +38,15 @@ export interface HolidayCalendarProps {
   isROCYear?: boolean;
   // 一開始顯示哪個月，預設今天所在月份
   initialMonth?: Dayjs;
+  // 一般資料模式：每天顯示一段文字（key 是 YYYY-MM-DD，例：「65 部」），不套放假／補班樣式（joyu 即將發售）
+  marks?: Record<string, string>;
+  // 由外部指定選取的日期（YYYY-MM-DD）；沒給時由元件自己記
+  selectedDate?: string;
+  // 可選的日期範圍（含頭尾），範圍外的停用
+  minDate?: Dayjs;
+  maxDate?: Dayjs;
+  // 隱藏「上一年／下一年」按鈕（範圍只有一兩個月時用不到）
+  hideYearNav?: boolean;
 }
 
 // 每一格的樣式：放假紅底、週末要上班（補班）黃底；沒有資料的週末只把日期標紅（萬年曆慣例）
@@ -63,11 +72,17 @@ export function HolidayCalendar({
   disabledDates,
   isROCYear = false,
   initialMonth,
+  marks,
+  selectedDate,
+  minDate,
+  maxDate,
+  hideYearNav = false,
 }: HolidayCalendarProps) {
   const [month, setMonth] = useState(() =>
     (initialMonth ?? today()).startOf("month"),
   );
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selfSelected, setSelected] = useState<string | null>(null);
+  const selected = selectedDate ?? selfSelected;
   const index = useMemo(() => indexHolidayCalendarData(data), [data]);
   const disabledKeys = useMemo(
     () => new Set((disabledDates ?? []).map(dateKey)),
@@ -76,9 +91,15 @@ export function HolidayCalendar({
   const todayKey = dateKey(today());
   const hasData = index.size > 0;
 
+  // 停用：指定的日期，或在 minDate／maxDate 範圍外
+  const isDisabled = (date: Dayjs) =>
+    disabledKeys.has(dateKey(date)) ||
+    (!!minDate && date.isBefore(minDate, "day")) ||
+    (!!maxDate && date.isAfter(maxDate, "day"));
+
   function handleClick(date: Dayjs) {
     const key = dateKey(date);
-    if (disabledKeys.has(key)) return;
+    if (isDisabled(date)) return;
     setSelected(key);
     // 點到前後月的日期，順便切過去
     if (!date.isSame(month, "month")) setMonth(date.startOf("month"));
@@ -122,7 +143,8 @@ export function HolidayCalendar({
         }}
       >
         <Stack direction="row" alignItems="center" spacing={0.25}>
-          {navButton("上一年", -1, "year", <KeyboardDoubleArrowLeftIcon />)}
+          {!hideYearNav &&
+            navButton("上一年", -1, "year", <KeyboardDoubleArrowLeftIcon />)}
           {navButton("上個月", -1, "month", <ChevronLeftIcon />)}
           <Typography
             component="h2"
@@ -137,7 +159,8 @@ export function HolidayCalendar({
             {yearLabel(month.year(), isROCYear)} {month.month() + 1} 月
           </Typography>
           {navButton("下個月", 1, "month", <ChevronRightIcon />)}
-          {navButton("下一年", 1, "year", <KeyboardDoubleArrowRightIcon />)}
+          {!hideYearNav &&
+            navButton("下一年", 1, "year", <KeyboardDoubleArrowRightIcon />)}
         </Stack>
         {hasData && <HolidayCalendarLegend />}
         <Button
@@ -189,8 +212,12 @@ export function HolidayCalendar({
         {monthGrid(month).map((date) => {
           const key = dateKey(date);
           const info = index.get(key);
-          const disabled = disabledKeys.has(key);
-          const makeup = Boolean(info && !info.isHoliday && isWeekend(date));
+          const disabled = isDisabled(date);
+          // 一般資料模式不套補班
+          const makeup = Boolean(
+            !marks && info && !info.isHoliday && isWeekend(date),
+          );
+          const mark = marks?.[key];
           return (
             <Box
               key={key}
@@ -205,7 +232,7 @@ export function HolidayCalendar({
                 ...dayCellSx(theme, {
                   holiday: Boolean(info?.isHoliday),
                   makeup,
-                  weekendNoData: !info && isWeekend(date),
+                  weekendNoData: !marks && !info && isWeekend(date),
                 }),
                 position: "relative",
                 display: "flex",
@@ -278,6 +305,20 @@ export function HolidayCalendar({
                   }}
                 >
                   補班
+                </Box>
+              )}
+              {mark && (
+                <Box
+                  component="span"
+                  sx={{
+                    color: "primary.main",
+                    fontSize: { xs: 10, sm: 12 },
+                    fontWeight: 800,
+                    lineHeight: 1.35,
+                    textAlign: { xs: "center", sm: "left" },
+                  }}
+                >
+                  {mark}
                 </Box>
               )}
               {info?.note && (
