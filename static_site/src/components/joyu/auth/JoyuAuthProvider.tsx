@@ -18,6 +18,7 @@ import {
   mergeAnonymousFollows,
 } from "@/apis/av/joyu_me.ts";
 import { MARKS_KEY_PREFIX } from "@/apis/av/joyu_marks.ts";
+import { PROFILE_KEY_PREFIX } from "@/apis/av/joyu_comments.ts";
 import { getJoyuAuth, joyuGoogleProvider } from "@/lib/joyuFirebase.ts";
 
 import { JoyuAuthContext } from "./JoyuAuthContext.ts";
@@ -77,6 +78,7 @@ export function JoyuAuthProvider({ children }: { children: ReactNode }) {
       await mergeAnonymousFollows(anonymousToken);
       await qc.invalidateQueries({ queryKey: ["joyu/follows"] });
       await qc.invalidateQueries({ queryKey: [MARKS_KEY_PREFIX] });
+      await qc.invalidateQueries({ queryKey: [PROFILE_KEY_PREFIX] });
     }
   };
 
@@ -85,6 +87,7 @@ export function JoyuAuthProvider({ children }: { children: ReactNode }) {
     qc.removeQueries({ queryKey: ["joyu/follows"] });
     qc.removeQueries({ queryKey: ["joyu/feed"] });
     qc.removeQueries({ queryKey: [MARKS_KEY_PREFIX] });
+    qc.removeQueries({ queryKey: [PROFILE_KEY_PREFIX] });
   };
 
   const ensureUser = async () => {
@@ -108,6 +111,7 @@ export function JoyuAuthProvider({ children }: { children: ReactNode }) {
     qc.removeQueries({ queryKey: ["joyu/follows"] });
     qc.removeQueries({ queryKey: ["joyu/feed"] });
     qc.removeQueries({ queryKey: [MARKS_KEY_PREFIX] });
+    qc.removeQueries({ queryKey: [PROFILE_KEY_PREFIX] });
   };
 
   return (

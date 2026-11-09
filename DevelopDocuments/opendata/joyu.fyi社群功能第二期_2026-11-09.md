@@ -277,3 +277,42 @@ DELETE /joyu/me/marks/:no
 
 ### 順手修的 bug：剛簽發的 Firebase token 被後端拒絕
 見 `joyu.fyi社群功能第一期_2026-11-08.md` 的「已知 Bug 記錄」。
+
+### 討論版（2026-11-09，分支 `feat/joyu-comments`）
+- 後端：
+  - migration `20261109120000-create_joyu_comments.sql`，四張表：`joyu_users`、`joyu_comments`、`joyu_comment_reports`、`joyu_bans`。
+  - repository：`joyu_comment.go`、`joyu_user.go`、`joyu_ban.go`，讀取一律走 primary。
+  - service：
+    - `joyu_comment_body.go`：內容檢查、留言位置解析、顯示名稱。
+    - `joyu_comment.go`：列表、回覆、送出、檢舉、暱稱。
+    - `joyu_comment_admin.go`：後台管理。
+  - HTML 判斷是 `</?[a-z!][^>]*>`，`<` 後面要緊接字母、`/` 或 `!`，所以「a < b 而且 c > d」這種數學式不會誤判。
+  - 送出順序：內容檢查 → 封鎖檢查 → 匿名帳號驗 reCAPTCHA（action `JOYU_COMMENT`）→ uid／IP 頻率限制。頻率限制在 Redis 出錯時放行並記 log。
+  - 回覆別人的回覆時，掛在同一則頂層留言下，並記下 `reply_to_uid`；前端顯示時在內文前加「@名字」。
+  - 匿名升級時遇到既有帳號（`MergeJoyuAccountData`），留言、被回覆對象、檢舉都改掛到正式帳號。刪帳號時 `joyu_users` 標記刪除、暱稱清空，留言保留。
+  - 路由：
+    - 公開：`/opendata/av/comments`、`/opendata/av/comments/:id/replies`（no-store）。
+    - 個人：`/joyu/me/comments`、`/joyu/me/comments/:id/report`、`/joyu/me/profile`。
+    - 後台：`/admin/joyu/*`（主站 session，service 裡檢查管理員）。
+- 前端：
+  - `components/joyu/comments/`：`CommentSection`、`CommentThread`、`CommentItem`、`CommentComposer`、`CommentMarkdown`。
+    - `CommentMarkdown` 不掛 rehype-raw 並加 `skipHtml`。`a` 一律顯示成純文字（`[文字](網址)` 變成「文字（網址）」），`img` 只留替代文字，標題變一般段落，表格攤平。
+    - 段落套 `white-space: pre-line`，按 Enter 就是換行。
+  - 影片頁：`VideoDetailTabs` 在圖片預覽後面加「討論（N）」。
+  - 女優頁：`ActressDetail` 加「作品／討論（N）」分頁（`?view=comments`），頂端資料區的討論數 chip 點了會切過去並捲到分頁列。
+  - `pages/joyu/MyProfile.tsx`（`/me/profile`）：暱稱只限 Google 帳號修改；「刪除帳號」從我的追蹤頁搬到這裡。
+  - 後台 `pages/backendAdmin/av/joyu_comments.tsx`（`/backend_admin/av/comments`）：被檢舉的、最新的、封鎖名單三個分頁籤。
+- 本機驗證：
+  - 沒帶 reCAPTCHA token 的匿名留言回 400；帶真的 token 就能留言。
+  - 20 秒內再留回 429；HTML 回 400；跨影片回覆回 404。
+  - 回覆別人的回覆時帶 @；同一人重複檢舉只算一次；匿名帳號改暱稱回 403。
+  - 從畫面測過：Markdown 顯示（沒有 `<a>`、連結藏不住）、回覆、檢舉、女優頁的 chip 與分頁、個人資料頁、刪帳號後留言改顯示「已刪除的帳號」。
+  - 後台：非管理員回 403；暫時把本機測試帳號設成管理員後，列表、刪除（前台變成佔位）、封鎖（被封鎖的帳號留言回 403）、解除封鎖都正常，測完已改回。
+  - 測試資料都已刪除。
+
+### 已知 Bug 記錄
+- **React Compiler 在 render 時讀取 onClick 裡的 `x!.id`**（2026-11-09，開發中發現）
+  - 現象：後台留言管理頁一打開就整頁白掉，console 顯示 `Cannot read properties of undefined (reading 'id')`。
+  - Root cause：React Compiler 把 onClick 閉包裡的 `confirmDelete!.id` 當成記憶化的依賴，在 render 時就去讀；`confirmDelete` 一開始是 `undefined`。非空斷言只騙得過 TypeScript，騙不過 compiler。
+  - 解法：在閉包裡先 `if (!confirmDelete) return;` 再解構。之後寫 handler 時，不要對可能是 `undefined` 的 state 用 `!.屬性`。
+  - 狀態：已修正。

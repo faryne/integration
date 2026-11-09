@@ -16,6 +16,9 @@ export const avAdminTopicsPath = `${BACKEND_ADMIN_PATH}/av/topics`;
 export const avAdminTopicPath = (id: number | "new") =>
   `${avAdminTopicsPath}/${id}`;
 
+// joyu.fyi 討論版留言管理（被檢舉的／最新的、封鎖名單）
+export const joyuAdminCommentsPath = `${BACKEND_ADMIN_PATH}/av/comments`;
+
 // neko.maid.tw 管理：禁抓名單、版權申告審核
 export const nekomaidAdminPath = (page: "forbidden" | "claims") =>
   `${BACKEND_ADMIN_PATH}/nekomaid/${page}`;

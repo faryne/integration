@@ -2,8 +2,10 @@ package route
 
 import (
 	"faryne.dev/controller/joyu"
+	"faryne.dev/middleware/authsession"
 	"faryne.dev/middleware/httpcache"
 	"faryne.dev/middleware/joyuauth"
+	authService "faryne.dev/service/auth"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -20,6 +22,19 @@ func Joyu(app *fiber.App) {
 	g.Get("/marks/videos", joyu.MarkedVideos)
 	g.Put("/marks/:no", joyu.SetMark)
 	g.Delete("/marks/:no", joyu.RemoveMark)
+	// 討論版：送出留言、檢舉；個人資料（暱稱）
+	g.Post("/comments", joyu.PostComment)
+	g.Post("/comments/:id/report", joyu.ReportComment)
+	g.Get("/profile", joyu.Profile)
+	g.Put("/profile", joyu.SetProfile)
 	g.Post("/merge", joyu.Merge)
 	g.Delete("", joyu.DeleteAccount)
+
+	// 討論版的後台管理：主站登入且 users.is_admin（service 裡檢查）
+	admin := app.Group("/admin/joyu", httpcache.NoStoreByDefault(), authsession.New(authService.BrandMain))
+	admin.Get("/comments", joyu.AdminComments)
+	admin.Delete("/comments/:id", joyu.AdminDeleteComment)
+	admin.Get("/bans", joyu.AdminBans)
+	admin.Post("/bans", joyu.AdminBan)
+	admin.Delete("/bans/:id", joyu.AdminLiftBan)
 }
