@@ -34,7 +34,7 @@ func GenerateNeighborStatisticsFiles() error {
 	if err != nil {
 		return fmt.Errorf("mysql neighbor summary: %w", err)
 	}
-	indexSummary, err := neighborIndexSummary(ctx)
+	indexSummary, err := neighborIndexSummary(ctx, neighborIndexName)
 	if err != nil {
 		return err
 	}

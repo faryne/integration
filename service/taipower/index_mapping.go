@@ -11,21 +11,23 @@ import (
 	"faryne.dev/service/client"
 )
 
-const neighborKeyMapping = `{"properties":{"cityarea_key":{"type":"keyword"},"unit_key":{"type":"keyword"},"purpose_key":{"type":"keyword"},"normalization_version":{"type":"keyword"},"purpose_rule_version":{"type":"keyword"}}}`
+const neighborKeyProperties = `"cityarea_key":{"type":"keyword"},"unit_key":{"type":"keyword"},"purpose_key":{"type":"keyword"},"normalization_version":{"type":"keyword"},"purpose_rule_version":{"type":"keyword"}`
+const neighborKeyMapping = `{"properties":{` + neighborKeyProperties + `}}`
+const neighborRebuildMapping = `{"mappings":{"properties":{"cash":{"type":"double"},` + neighborKeyProperties + `}}}`
 
 // ensureNeighborIndexMapping 在寫入衍生欄位前明確設定 keyword mapping。
-func ensureNeighborIndexMapping(ctx context.Context) error {
+func ensureNeighborIndexMapping(ctx context.Context, indexName string) error {
 	es := client.GetElasticSearch(enum.ESDefault)
 	if es == nil {
 		return fmt.Errorf("elasticsearch client is not initialized")
 	}
-	exists, err := es.Indices.Exists([]string{neighborIndexName}, es.Indices.Exists.WithContext(ctx))
+	exists, err := es.Indices.Exists([]string{indexName}, es.Indices.Exists.WithContext(ctx))
 	if err != nil {
 		return err
 	}
 	defer exists.Body.Close()
 	if exists.StatusCode == http.StatusNotFound {
-		response, err := es.Indices.Create(neighborIndexName, es.Indices.Create.WithContext(ctx), es.Indices.Create.WithBody(bytes.NewBufferString(`{"mappings":`+neighborKeyMapping+`}`)))
+		response, err := es.Indices.Create(indexName, es.Indices.Create.WithContext(ctx), es.Indices.Create.WithBody(bytes.NewBufferString(neighborRebuildMapping)))
 		if err != nil {
 			return err
 		}
@@ -40,7 +42,7 @@ func ensureNeighborIndexMapping(ctx context.Context) error {
 		body, _ := io.ReadAll(exists.Body)
 		return fmt.Errorf("check neighbor index: %s", body)
 	}
-	response, err := es.Indices.PutMapping(bytes.NewBufferString(neighborKeyMapping), es.Indices.PutMapping.WithContext(ctx), es.Indices.PutMapping.WithIndex(neighborIndexName))
+	response, err := es.Indices.PutMapping(bytes.NewBufferString(neighborKeyMapping), es.Indices.PutMapping.WithContext(ctx), es.Indices.PutMapping.WithIndex(indexName))
 	if err != nil {
 		return err
 	}

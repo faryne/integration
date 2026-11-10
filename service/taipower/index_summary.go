@@ -36,16 +36,13 @@ type neighborIndexSummaryResponse struct {
 }
 
 // neighborIndexSummary 取得索引的總筆數、總額及最新月份供資料守恆檢查。
-func neighborIndexSummary(ctx context.Context) (taipowerRepo.NeighborSummary, error) {
+func neighborIndexSummary(ctx context.Context, indexName string) (taipowerRepo.NeighborSummary, error) {
 	query := map[string]any{
 		"size": 1, "track_total_hits": true, "_source": []string{"obj_year", "obj_month"},
 		"sort": []map[string]string{{"obj_year": "desc"}, {"obj_month": "desc"}},
 		"aggs": map[string]any{
-			"total_cash": map[string]any{"sum": map[string]any{"field": "cash"}},
-			"current_rules": map[string]any{"filter": map[string]any{"bool": map[string]any{"must": []map[string]any{
-				{"term": map[string]any{"normalization_version": neighborNormalizationVersion}},
-				{"term": map[string]any{"purpose_rule_version": neighborPurposeRuleVersion}},
-			}}}},
+			"total_cash":    map[string]any{"sum": map[string]any{"field": "cash"}},
+			"current_rules": map[string]any{"filter": neighborCurrentRulesFilter()},
 		},
 	}
 	var body bytes.Buffer
@@ -56,7 +53,7 @@ func neighborIndexSummary(ctx context.Context) (taipowerRepo.NeighborSummary, er
 	if es == nil {
 		return taipowerRepo.NeighborSummary{}, fmt.Errorf("elasticsearch client is not initialized")
 	}
-	response, err := es.Search(es.Search.WithContext(ctx), es.Search.WithIndex(neighborIndexName), es.Search.WithBody(&body))
+	response, err := es.Search(es.Search.WithContext(ctx), es.Search.WithIndex(indexName), es.Search.WithBody(&body))
 	if err != nil {
 		return taipowerRepo.NeighborSummary{}, err
 	}

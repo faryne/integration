@@ -211,7 +211,8 @@ func (s *NeighborService) saveNeighbors(items []taipower.Neighbor) error {
 	return nil
 }
 
-func (s *NeighborService) SyncAllToElasticsearch() error {
+// SyncAllToElasticsearch 從主庫分批回填指定索引，供驗證後切換 alias。
+func (s *NeighborService) SyncAllToElasticsearch(indexName string) error {
 	var afterID uint
 	for {
 		items, err := s.repo.GetBatch(afterID, fullSyncBatchSize)
@@ -221,7 +222,7 @@ func (s *NeighborService) SyncAllToElasticsearch() error {
 		if len(items) == 0 {
 			return nil
 		}
-		if err := indexNeighbors(context.Background(), items); err != nil {
+		if err := indexNeighborsToIndex(context.Background(), indexName, items); err != nil {
 			return fmt.Errorf("index batch after id %d: %w", afterID, err)
 		}
 		afterID = items[len(items)-1].ID

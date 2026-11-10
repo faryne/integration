@@ -1,6 +1,7 @@
 package taipower
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -81,9 +82,21 @@ func RunNeighborBackfillSync() error {
 // RunNeighborFullIndexSync 在分類或名稱規則升版後重建索引與統計。
 func RunNeighborFullIndexSync() error {
 	return taipowerRepo.NewNeighborRepository().WithSyncLock(func() error {
-		if err := NewNeighborService().SyncAllToElasticsearch(); err != nil {
+		indexName, err := createNeighborRebuildIndex(context.Background())
+		if err != nil {
 			return err
 		}
+		log.Logger().Info("Taipower neighbor rebuild index created", zap.String("index", indexName))
+		if err := NewNeighborService().SyncAllToElasticsearch(indexName); err != nil {
+			return err
+		}
+		if err := validateNeighborRebuildIndex(context.Background(), indexName); err != nil {
+			return err
+		}
+		if err := promoteNeighborRebuildIndex(context.Background(), indexName); err != nil {
+			return err
+		}
+		log.Logger().Info("Taipower neighbor index promoted", zap.String("index", indexName))
 		return GenerateNeighborStatisticsFiles()
 	})
 }

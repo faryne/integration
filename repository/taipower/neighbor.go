@@ -1,6 +1,7 @@
 package taipower
 
 import (
+	"context"
 	"fmt"
 
 	taipowerModel "faryne.dev/model/entity/opendata/taipower"
@@ -8,6 +9,7 @@ import (
 	"faryne.dev/service/client"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"gorm.io/plugin/dbresolver"
 )
 
 type NeighborRepository struct {
@@ -47,7 +49,8 @@ func (r *NeighborRepository) Upsert(item *taipowerModel.Neighbor) error {
 
 func (r *NeighborRepository) GetBatch(afterID uint, limit int) ([]taipowerModel.Neighbor, error) {
 	var items []taipowerModel.Neighbor
-	err := r.db.
+	// 同步作業需與剛寫入的主庫資料一致，不能從可能落後的 replica 回填索引。
+	err := r.db.Clauses(dbresolver.Write).
 		Where("id > ?", afterID).
 		Order("id ASC").
 		Limit(limit).
@@ -59,7 +62,7 @@ func (r *NeighborRepository) GetBatch(afterID uint, limit int) ([]taipowerModel.
 // Summary 用於發布前比對 MySQL 與搜尋索引，不查個別敏感摘要。
 func (r *NeighborRepository) Summary() (NeighborSummary, error) {
 	var summary NeighborSummary
-	err := r.db.Model(&taipowerModel.Neighbor{}).
+	err := r.db.Clauses(dbresolver.Write).Model(&taipowerModel.Neighbor{}).
 		Select("COUNT(*) AS count, COALESCE(SUM(cash), 0) AS total_cash, COALESCE(MAX(obj_year * 100 + obj_month), 0) AS latest_month").
 		Scan(&summary).Error
 	return summary, err
@@ -67,23 +70,32 @@ func (r *NeighborRepository) Summary() (NeighborSummary, error) {
 
 // WithSyncLock 以同一條 MySQL 連線持有 advisory lock，避免排程與手動回補同時發布。
 func (r *NeighborRepository) WithSyncLock(run func() error) error {
-	return r.db.Connection(func(conn *gorm.DB) error {
-		var acquired int
-		if err := conn.Raw("SELECT GET_LOCK(?, 0)", "taipower_neighbor_sync").Scan(&acquired).Error; err != nil {
-			return err
-		}
-		if acquired != 1 {
-			return fmt.Errorf("taipower neighbor sync is already running")
-		}
-		defer conn.Exec("DO RELEASE_LOCK(?)", "taipower_neighbor_sync")
-		return run()
-	})
+	// GORM 的 Raw callback 會重新選擇連線池；直接持有 primary 的 sql.Conn 才能確保鎖在同一連線上釋放。
+	db, err := r.db.DB()
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	var acquired int
+	if err := conn.QueryRowContext(ctx, "SELECT GET_LOCK(?, 0)", "taipower_neighbor_sync").Scan(&acquired); err != nil {
+		return err
+	}
+	if acquired != 1 {
+		return fmt.Errorf("taipower neighbor sync is already running")
+	}
+	defer conn.ExecContext(ctx, "DO RELEASE_LOCK(?)", "taipower_neighbor_sync")
+	return run()
 }
 
 // RevisionCandidates 僅提供同月份來源項次碰撞線索，不自動合併核准案。
 func (r *NeighborRepository) RevisionCandidates(from, to int) ([]NeighborRevisionCandidate, error) {
 	var rows []NeighborRevisionCandidate
-	err := r.db.Model(&taipowerModel.Neighbor{}).
+	err := r.db.Clauses(dbresolver.Write).Model(&taipowerModel.Neighbor{}).
 		Select("obj_year, obj_month, obj_month_id, COUNT(*) AS count").
 		Where("obj_year * 100 + obj_month BETWEEN ? AND ?", from, to).
 		Group("obj_year, obj_month, obj_month_id").Having("COUNT(*) > 1").

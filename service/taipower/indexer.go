@@ -26,6 +26,10 @@ type neighborBulkResponse struct {
 }
 
 func indexNeighbors(ctx context.Context, items []taipower.Neighbor) error {
+	return indexNeighborsToIndex(ctx, neighborIndexName, items)
+}
+
+func indexNeighborsToIndex(ctx context.Context, indexName string, items []taipower.Neighbor) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -34,7 +38,7 @@ func indexNeighbors(ctx context.Context, items []taipower.Neighbor) error {
 	if es == nil {
 		return fmt.Errorf("elasticsearch client is not initialized")
 	}
-	if err := ensureNeighborIndexMapping(ctx); err != nil {
+	if err := ensureNeighborIndexMapping(ctx, indexName); err != nil {
 		return err
 	}
 
@@ -48,7 +52,7 @@ func indexNeighbors(ctx context.Context, items []taipower.Neighbor) error {
 		item.PurposeRuleVersion = neighborPurposeRuleVersion
 		meta := map[string]any{
 			"index": map[string]any{
-				"_index": neighborIndexName,
+				"_index": indexName,
 				"_id":    strconv.FormatUint(uint64(item.ID), 10),
 			},
 		}
@@ -75,7 +79,7 @@ func indexNeighbors(ctx context.Context, items []taipower.Neighbor) error {
 		return err
 	}
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return fmt.Errorf("bulk index %s failed: status=%s body=%s", neighborIndexName, resp.Status(), responseBody)
+		return fmt.Errorf("bulk index %s failed: status=%s body=%s", indexName, resp.Status(), responseBody)
 	}
 
 	var result neighborBulkResponse
@@ -90,7 +94,7 @@ func indexNeighbors(ctx context.Context, items []taipower.Neighbor) error {
 			if item.Status >= http.StatusMultipleChoices {
 				return fmt.Errorf(
 					"bulk index %s document %s failed: status=%d error=%v",
-					neighborIndexName,
+					indexName,
 					item.ID,
 					item.Status,
 					item.Error,
@@ -98,5 +102,5 @@ func indexNeighbors(ctx context.Context, items []taipower.Neighbor) error {
 			}
 		}
 	}
-	return fmt.Errorf("bulk index %s failed with unknown item error", neighborIndexName)
+	return fmt.Errorf("bulk index %s failed with unknown item error", indexName)
 }
