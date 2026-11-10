@@ -18,4 +18,5 @@ func TestUnitKey(t *testing.T) {
 	require.Equal(t, "臺中市龍井區公所", unitKey("台中市龍井區公所"))
 	require.Equal(t, "臺中市龍井區公所", unitKey("臺中市龍井區公所"))
 	require.Equal(t, "台灣電力公司", unitKey("台灣電力公司"))
+	require.Equal(t, unknownUnitKey, unitKey("  "))
 }

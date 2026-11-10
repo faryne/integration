@@ -37,14 +37,27 @@ func NewNeighborRepository() *NeighborRepository {
 }
 
 func (r *NeighborRepository) Upsert(item *taipowerModel.Neighbor) error {
-	return r.db.Clauses(clause.OnConflict{
+	if err := r.db.Clauses(clause.OnConflict{
 		DoUpdates: clause.Assignments(map[string]any{
 			"id":              gorm.Expr("LAST_INSERT_ID(id)"),
 			"obj_month_id":    item.ObjMonthID,
 			"apply_reason":    item.ApplyReason,
 			"source_cityarea": item.SourceCityArea,
 		}),
-	}).Create(item).Error
+	}).Create(item).Error; err != nil {
+		return err
+	}
+	if item.ID != 0 {
+		return nil
+	}
+	// 命中唯一鍵時 GORM 未必回填既有 ID；索引前從 primary 查回，避免寫出 _id=0。
+	var row struct{ ID uint }
+	if err := r.db.Clauses(dbresolver.Write).Model(&taipowerModel.Neighbor{}).
+		Select("id").Where("duplicate_hash = ?", item.DuplicateHash).Take(&row).Error; err != nil {
+		return err
+	}
+	item.ID = row.ID
+	return nil
 }
 
 func (r *NeighborRepository) GetBatch(afterID uint, limit int) ([]taipowerModel.Neighbor, error) {

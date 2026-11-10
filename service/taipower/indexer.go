@@ -33,6 +33,11 @@ func indexNeighborsToIndex(ctx context.Context, indexName string, items []taipow
 	if len(items) == 0 {
 		return nil
 	}
+	for _, item := range items {
+		if item.ID == 0 {
+			return fmt.Errorf("cannot index neighbor without MySQL id: month=%04d-%02d source_row=%d", item.ObjYear, item.ObjMonth, item.ObjMonthID)
+		}
+	}
 
 	es := client.GetElasticSearch(enum.ESDefault)
 	if es == nil {

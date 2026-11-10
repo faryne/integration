@@ -3,8 +3,9 @@ package taipower
 import "strings"
 
 const (
-	neighborNormalizationVersion = "1"
+	neighborNormalizationVersion = "2"
 	unknownCityAreaKey           = "未辨識行政區"
+	unknownUnitKey               = "未提供受捐助單位"
 )
 
 var unitCityNameReplacer = strings.NewReplacer(
@@ -23,7 +24,11 @@ func cityAreaKey(cityArea, unit string) string {
 	return strings.ReplaceAll(name, "台", "臺")
 }
 
-// unitKey 只統一單位名稱中的縣市異體字，不更動其他「台」字。
+// unitKey 統一單位名稱中的縣市異體字；空白名稱另歸入未提供桶，避免統計漏算。
 func unitKey(unit string) string {
-	return unitCityNameReplacer.Replace(strings.TrimSpace(unit))
+	name := strings.TrimSpace(unit)
+	if name == "" {
+		return unknownUnitKey
+	}
+	return unitCityNameReplacer.Replace(name)
 }
