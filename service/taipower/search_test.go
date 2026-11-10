@@ -1,6 +1,7 @@
 package taipower
 
 import (
+	"encoding/json"
 	"testing"
 
 	taipowerModel "faryne.dev/model/entity/opendata/taipower"
@@ -93,9 +94,20 @@ func TestParseYearMonthUsesGregorianYear(t *testing.T) {
 func TestBuildNeighborSearchQueryIncludesCityAreaAndUnit(t *testing.T) {
 	query, err := buildNeighborSearchQuery(
 		taipowerModel.NeighborSearchRequest{},
-		NeighborSearchFilter{CityArea: "高雄市", Unit: "測試單位"},
+		NeighborSearchFilter{CityArea: "台中市龍井區", Unit: "台中市龍井區公所"},
 	)
 
 	require.NoError(t, err)
 	require.NotNil(t, query["query"])
+	encoded, err := json.Marshal(query)
+	require.NoError(t, err)
+	require.Contains(t, string(encoded), `"cityarea_key":"臺中市龍井區"`)
+	require.Contains(t, string(encoded), `"unit_key":"臺中市龍井區公所"`)
+}
+
+func TestBuildNeighborSearchQueryValidatesPurpose(t *testing.T) {
+	_, err := buildNeighborSearchQuery(taipowerModel.NeighborSearchRequest{Purpose: "energy"}, NeighborSearchFilter{})
+	require.NoError(t, err)
+	_, err = buildNeighborSearchQuery(taipowerModel.NeighborSearchRequest{Purpose: "invalid"}, NeighborSearchFilter{})
+	require.Error(t, err)
 }

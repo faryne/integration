@@ -33,6 +33,7 @@ func TestParseNeighbors(t *testing.T) {
 	require.Len(t, items, 1)
 	require.Equal(t, 1, items[0].ObjMonthID)
 	require.Equal(t, "高雄市路竹區", items[0].CityArea)
+	require.Equal(t, "高雄市路竹區", *items[0].SourceCityArea)
 	require.Equal(t, 1230.5, items[0].Cash)
 	require.Equal(t, 2026, items[0].ObjYear)
 	require.Equal(t, 5, items[0].ObjMonth)
@@ -60,10 +61,11 @@ func TestParseNeighborsNormalizesCityAreaBeforeHashing(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, "彰化縣鹿港鎮", items[0].CityArea)
+	require.Equal(t, "鹿港鎮", *items[0].SourceCityArea)
 	require.Equal(t, neighborDuplicateHash(items[0]), items[0].DuplicateHash)
 }
 
-func TestParseNeighborsSkipsInvalidCityArea(t *testing.T) {
+func TestParseNeighborsRetainsInvalidCityArea(t *testing.T) {
 	text := func(value string) crawler.SelectorResponse {
 		return crawler.SelectorResponse{Text: &value}
 	}
@@ -83,7 +85,8 @@ func TestParseNeighborsSkipsInvalidCityArea(t *testing.T) {
 	items, err := parseNeighbors(resp, 2026, 5, time.Now())
 
 	require.NoError(t, err)
-	require.Empty(t, items)
+	require.Len(t, items, 1)
+	require.Equal(t, unknownCityAreaKey, cityAreaKey(items[0].CityArea, items[0].Unit))
 }
 
 func TestParseNeighborsSkipsEmptyPlaceholderRow(t *testing.T) {

@@ -23,6 +23,7 @@ import (
 // @Param costFrom query number false "Minimum cost"
 // @Param costTo query number false "Maximum cost"
 // @Param sort query string false "date_desc, cash_asc, or cash_desc"
+// @Param purpose query string false "social_aid, education, community, public_facilities, energy, or unclassified"
 // @Param page query int false "Page number"
 // @Param per_page query int false "Items per page, maximum 100"
 // @Success 200 {object} output.CommonOutput

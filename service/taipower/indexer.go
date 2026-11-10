@@ -34,10 +34,18 @@ func indexNeighbors(ctx context.Context, items []taipower.Neighbor) error {
 	if es == nil {
 		return fmt.Errorf("elasticsearch client is not initialized")
 	}
+	if err := ensureNeighborIndexMapping(ctx); err != nil {
+		return err
+	}
 
 	var body bytes.Buffer
 	encoder := json.NewEncoder(&body)
 	for _, item := range items {
+		item.CityAreaKey = cityAreaKey(item.CityArea, item.Unit)
+		item.UnitKey = unitKey(item.Unit)
+		item.PurposeKey = classifyPurpose(item.Summary)
+		item.NormalizationVersion = neighborNormalizationVersion
+		item.PurposeRuleVersion = neighborPurposeRuleVersion
 		meta := map[string]any{
 			"index": map[string]any{
 				"_index": neighborIndexName,

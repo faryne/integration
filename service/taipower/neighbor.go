@@ -280,30 +280,29 @@ func parseNeighbors(resp map[string]any, year int, month int, now time.Time) ([]
 		if err != nil {
 			continue
 		}
-		cityArea := neighborText(data, "cityarea")
+		sourceCityArea := neighborText(data, "cityarea")
+		cityArea := sourceCityArea
 		unit := neighborText(data, "unit")
 		summary := neighborText(data, "summary")
 		if cityArea == "" || unit == "" || summary == "" {
 			continue
 		}
 		cityArea = normalizeCityArea(cityArea, unit)
-		if !isValidCityArea(cityArea) {
-			continue
-		}
 		cash, err := strconv.ParseFloat(strings.ReplaceAll(neighborText(data, "cash"), ",", ""), 64)
 		if err != nil {
 			return nil, fmt.Errorf("parse cash for item %d: %w", id, err)
 		}
 		item := taipower.Neighbor{
-			ObjMonthID:  id,
-			CityArea:    cityArea,
-			Unit:        unit,
-			Summary:     summary,
-			ApplyReason: neighborText(data, "apply_reason"),
-			Cash:        cash,
-			ObjYear:     year,
-			ObjMonth:    month,
-			CreatedOn:   now,
+			ObjMonthID:     id,
+			CityArea:       cityArea,
+			SourceCityArea: &sourceCityArea,
+			Unit:           unit,
+			Summary:        summary,
+			ApplyReason:    neighborText(data, "apply_reason"),
+			Cash:           cash,
+			ObjYear:        year,
+			ObjMonth:       month,
+			CreatedOn:      now,
 		}
 		item.DuplicateHash = neighborDuplicateHash(item)
 		items = append(items, item)

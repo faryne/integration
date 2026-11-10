@@ -10,14 +10,9 @@ import (
 	"sort"
 	"time"
 
-	"faryne.dev/config"
 	taipowerModel "faryne.dev/model/entity/opendata/taipower"
 	"faryne.dev/model/enum"
 	"faryne.dev/service/client"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 const (
@@ -32,7 +27,6 @@ type neighborStatisticResponse struct {
 			Buckets  []struct {
 				Key struct {
 					Name string `json:"name"`
-					Unit string `json:"unit"`
 					Year int    `json:"year"`
 				} `json:"key"`
 				TotalCash struct {
@@ -58,15 +52,9 @@ func NeighborStatistics(groupBy string) (*taipowerModel.NeighborStatisticsOutput
 		}
 		for _, bucket := range response.Aggregations.Grouped.Buckets {
 			name := bucket.Key.Name
-			if groupBy == "cityarea" {
-				name = normalizeCityArea(name, bucket.Key.Unit)
-				if !isValidCityArea(name) {
-					continue
-				}
-			}
 			if _, ok := yearTotals[name]; !ok {
 				yearTotals[name] = make(map[int]float64)
-				queryNames[name] = bucket.Key.Name
+				queryNames[name] = name
 			}
 			yearTotals[name][bucket.Key.Year] += bucket.TotalCash.Value
 		}
@@ -115,53 +103,6 @@ func NeighborStatistics(groupBy string) (*taipowerModel.NeighborStatisticsOutput
 	}, nil
 }
 
-func GenerateNeighborStatisticsFiles() error {
-	ctx := context.Background()
-	s3Client, err := newStatisticsS3Client(ctx)
-	if err != nil {
-		return err
-	}
-	for _, groupBy := range []string{"unit", "cityarea"} {
-		result, err := NeighborStatistics(groupBy)
-		if err != nil {
-			return fmt.Errorf("generate %s statistics: %w", groupBy, err)
-		}
-		content, err := json.MarshalIndent(result, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal %s statistics: %w", groupBy, err)
-		}
-		key := fmt.Sprintf("%s/%s.json", statisticsObjectPrefix, groupBy)
-		if _, err := s3Client.PutObject(ctx, &s3.PutObjectInput{
-			Bucket:       aws.String(config.EnvConfig().S3Bucket),
-			Key:          aws.String(key),
-			Body:         bytes.NewReader(content),
-			ContentType:  aws.String("application/json; charset=utf-8"),
-			CacheControl: aws.String("public, max-age=3600"),
-		}); err != nil {
-			return fmt.Errorf("upload %s: %w", key, err)
-		}
-	}
-	return nil
-}
-
-func newStatisticsS3Client(ctx context.Context) (*s3.Client, error) {
-	cfg := config.EnvConfig()
-	credentialsProvider := credentials.NewStaticCredentialsProvider(
-		cfg.S3AccessKey,
-		cfg.S3SecretKey,
-		"",
-	)
-	awsCfg, err := awsconfig.LoadDefaultConfig(
-		ctx,
-		awsconfig.WithRegion(cfg.S3Region),
-		awsconfig.WithCredentialsProvider(credentialsProvider),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("load AWS config: %w", err)
-	}
-	return s3.NewFromConfig(awsCfg), nil
-}
-
 func ValidateNeighborStatisticGroup(groupBy string) error {
 	if groupBy != "unit" && groupBy != "cityarea" {
 		return fmt.Errorf("groupBy must be unit or cityarea")
@@ -171,12 +112,7 @@ func ValidateNeighborStatisticGroup(groupBy string) error {
 
 func fetchNeighborStatisticPage(groupBy string, after map[string]any) (*neighborStatisticResponse, error) {
 	sources := []map[string]any{
-		{"name": map[string]any{"terms": map[string]any{"field": groupBy + ".keyword"}}},
-	}
-	if groupBy == "cityarea" {
-		sources = append(sources, map[string]any{
-			"unit": map[string]any{"terms": map[string]any{"field": "unit.keyword"}},
-		})
+		{"name": map[string]any{"terms": map[string]any{"field": groupBy + "_key"}}},
 	}
 	sources = append(sources, map[string]any{
 		"year": map[string]any{"terms": map[string]any{"field": "obj_year"}},

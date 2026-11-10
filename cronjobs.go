@@ -451,11 +451,21 @@ var cronJobs = map[string]cronGroup{
 		Enabled: true,
 		Jobs: []cronJobConfig{
 			{
+				Name:     "taipower-neighbor-recent-sync",
+				Schedule: "CRON_TZ=Asia/Taipei 30 4 * * 1",
+				Enabled:  true,
+				Handler: func() {
+					if err := taipower.RunNeighborRecentSync(); err != nil {
+						log.Logger().Error("Taipower neighbor recent sync failed: " + err.Error())
+					}
+				},
+			},
+			{
 				Name:     "taipower-neighbor-backfill",
 				Schedule: "",
 				Enabled:  true,
 				Handler: func() {
-					if err := taipower.NewNeighborService().Backfill(); err != nil {
+					if err := taipower.RunNeighborBackfillSync(); err != nil {
 						log.Logger().Error("Taipower neighbor backfill failed: " + err.Error())
 					}
 				},
@@ -465,7 +475,7 @@ var cronJobs = map[string]cronGroup{
 				Schedule: "",
 				Enabled:  true,
 				Handler: func() {
-					if _, err := taipower.NewNeighborService().CrawlPreviousMonth(); err != nil {
+					if err := taipower.RunNeighborPreviousMonthSync(); err != nil {
 						log.Logger().Error("Taipower neighbor monthly crawl failed: " + err.Error())
 					}
 				},
@@ -475,7 +485,7 @@ var cronJobs = map[string]cronGroup{
 				Schedule: "",
 				Enabled:  true,
 				Handler: func() {
-					if err := taipower.NewNeighborService().CrawlRange(
+					if err := taipower.RunNeighborRangeSync(
 						commandParams.Value("yearMonthFrom"),
 						commandParams.Value("yearMonthTo"),
 					); err != nil {
@@ -488,7 +498,7 @@ var cronJobs = map[string]cronGroup{
 				Schedule: "",
 				Enabled:  true,
 				Handler: func() {
-					if err := taipower.NewNeighborService().SyncAllToElasticsearch(); err != nil {
+					if err := taipower.RunNeighborFullIndexSync(); err != nil {
 						log.Logger().Error("Taipower neighbor Elasticsearch sync failed: " + err.Error())
 					}
 				},
@@ -498,7 +508,7 @@ var cronJobs = map[string]cronGroup{
 				Schedule: "",
 				Enabled:  true,
 				Handler: func() {
-					if err := taipower.GenerateNeighborStatisticsFiles(); err != nil {
+					if err := taipower.RunNeighborStatisticsPublish(); err != nil {
 						log.Logger().Error("Taipower neighbor statistics generation failed: " + err.Error())
 					}
 				},

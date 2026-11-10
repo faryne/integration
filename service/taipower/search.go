@@ -88,10 +88,16 @@ func buildNeighborSearchQuery(
 	}
 
 	if cityArea := strings.TrimSpace(filter.CityArea); cityArea != "" {
-		search.SetQuery(exactTextQuery("cityarea", cityArea), true, query)
+		search.SetQuery(map[string]any{"term": map[string]any{"cityarea_key": cityAreaKey(cityArea, "")}}, true, query)
 	}
 	if unit := strings.TrimSpace(filter.Unit); unit != "" {
-		search.SetQuery(exactTextQuery("unit", unit), true, query)
+		search.SetQuery(map[string]any{"term": map[string]any{"unit_key": unitKey(unit)}}, true, query)
+	}
+	if purpose := strings.TrimSpace(input.Purpose); purpose != "" {
+		if !validPurpose(purpose) {
+			return nil, fmt.Errorf("purpose is invalid")
+		}
+		search.SetQuery(map[string]any{"term": map[string]any{"purpose_key": purpose}}, true, query)
 	}
 
 	if filter.Year > 0 {
@@ -224,18 +230,6 @@ func parseYearMonth(value string) (int, error) {
 		return 0, fmt.Errorf("must use YYYY-MM format")
 	}
 	return parsed.Year()*100 + int(parsed.Month()), nil
-}
-
-func exactTextQuery(field string, value string) map[string]any {
-	return map[string]any{
-		"bool": map[string]any{
-			"should": []map[string]any{
-				{"term": map[string]any{field + ".keyword": value}},
-				{"match_phrase": map[string]any{field: value}},
-			},
-			"minimum_should_match": 1,
-		},
-	}
 }
 
 func monthRangeQuery(condition map[string]any) map[string]any {
