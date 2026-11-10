@@ -111,3 +111,11 @@ func TestBuildNeighborSearchQueryValidatesPurpose(t *testing.T) {
 	_, err = buildNeighborSearchQuery(taipowerModel.NeighborSearchRequest{Purpose: "invalid"}, NeighborSearchFilter{})
 	require.Error(t, err)
 }
+
+func TestBuildNeighborSearchQueryKeepsCountyWidePath(t *testing.T) {
+	query, err := buildNeighborSearchQuery(taipowerModel.NeighborSearchRequest{}, NeighborSearchFilter{CityArea: "台中市"})
+	require.NoError(t, err)
+	encoded, err := json.Marshal(query)
+	require.NoError(t, err)
+	require.Contains(t, string(encoded), `"prefix":{"cityarea_key":"臺中市"}`)
+}

@@ -14,8 +14,13 @@ import {
   Typography,
 } from "@mui/material";
 import { Link as RouterLink, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 
-import { useTaipowerNeighborStatistics } from "@/apis/opendata/taipower.ts";
+import {
+  useTaipowerNeighborManifest,
+  useTaipowerNeighborStatistics,
+} from "@/apis/opendata/taipower.ts";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { TaipowerDataDisclaimer } from "@/components/taipower/TaipowerDataDisclaimer.tsx";
 import { TaipowerNeighborBreadcrumb } from "@/components/taipower/TaipowerNeighborBreadcrumb.tsx";
 import { integerToFinancialChinese } from "@/helpers/chineseNumber.ts";
@@ -34,7 +39,15 @@ export default function TaipowerNeighborStatisticsPage() {
     ? "unit"
     : "cityarea";
   const label = groupBy === "unit" ? "受捐助單位" : "行政區";
-  const query = useTaipowerNeighborStatistics(groupBy);
+  const manifest = useTaipowerNeighborManifest();
+  const query = useTaipowerNeighborStatistics(
+    groupBy,
+    manifest.data?.files[groupBy],
+  );
+  const isError = manifest.isError || query.isError;
+  const isLoading = manifest.isPending || query.isPending;
+  const [errorOpen, setErrorOpen] = useState(false);
+  useEffect(() => setErrorOpen(isError), [isError]);
   const rows = query.data?.data ?? [];
   const visibleRows = groupBy === "unit" ? rows.slice(0, 100) : rows;
   const years = Array.from(
@@ -57,16 +70,25 @@ export default function TaipowerNeighborStatisticsPage() {
           <Typography color="text.secondary" mt={1}>
             依全部年度累計金額排序，表格金額均已由千元換算為新台幣元。
           </Typography>
-          {query.data?.generated_at && (
+          {manifest.data && (
             <Typography variant="caption" color="text.secondary">
               統計資料產生時間：
-              {new Date(query.data.generated_at).toLocaleString("zh-TW")}
+              {new Date(manifest.data.generated_at).toLocaleString("zh-TW")}
+              ／來源最新月份：{manifest.data.source_latest_month || "未提供"}
+            </Typography>
+          )}
+          {manifest.data?.source_latest_month.startsWith(
+            String(new Date().getFullYear()),
+          ) && (
+            <Typography variant="caption" color="text.secondary">
+              當年度資料尚未完整。
             </Typography>
           )}
         </Paper>
 
-        {query.isError && <Alert severity="error">統計資料載入失敗。</Alert>}
-        {query.isLoading ? (
+        {isError ? (
+          <Alert severity="error">統計資料載入失敗。</Alert>
+        ) : isLoading ? (
           <Box sx={{ display: "grid", placeItems: "center", py: 8 }}>
             <CircularProgress />
           </Box>
@@ -137,6 +159,12 @@ export default function TaipowerNeighborStatisticsPage() {
         )}
       </Stack>
       <TaipowerDataDisclaimer />
+      <CustomSnackbar
+        open={errorOpen}
+        severity="error"
+        message="統計資料載入失敗。"
+        onClose={() => setErrorOpen(false)}
+      />
     </Box>
   );
 }

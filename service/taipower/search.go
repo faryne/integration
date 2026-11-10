@@ -88,7 +88,11 @@ func buildNeighborSearchQuery(
 	}
 
 	if cityArea := strings.TrimSpace(filter.CityArea); cityArea != "" {
-		search.SetQuery(map[string]any{"term": map[string]any{"cityarea_key": cityAreaKey(cityArea, "")}}, true, query)
+		condition := map[string]any{"term": map[string]any{"cityarea_key": cityAreaKey(cityArea, "")}}
+		if findCountyCity(cityArea) == cityArea {
+			condition = map[string]any{"prefix": map[string]any{"cityarea_key": strings.ReplaceAll(cityArea, "台", "臺")}}
+		}
+		search.SetQuery(condition, true, query)
 	}
 	if unit := strings.TrimSpace(filter.Unit); unit != "" {
 		search.SetQuery(map[string]any{"term": map[string]any{"unit_key": unitKey(unit)}}, true, query)

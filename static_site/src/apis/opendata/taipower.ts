@@ -7,6 +7,8 @@ import type {
   TaipowerNeighborPagination,
   TaipowerNeighborSearch,
   TaipowerNeighborStatistics,
+  TaipowerNeighborManifest,
+  TaipowerPurposeStatistics,
   TaipowerStatisticGroup,
 } from "@/types/taipower.ts";
 
@@ -41,16 +43,43 @@ export function useTaipowerNeighbors(
   });
 }
 
-export function useTaipowerNeighborStatistics(groupBy: TaipowerStatisticGroup) {
+const cdnBase = String(import.meta.env.VITE_CDN_BASE ?? "").replace(/\/+$/, "");
+
+export function useTaipowerNeighborManifest() {
   return useQuery({
-    queryKey: ["taipower-neighbor-statistics", groupBy],
+    queryKey: ["taipower-neighbor-manifest"],
     queryFn: async () => {
-      const cdnBase = String(import.meta.env.VITE_CDN_BASE ?? "").replace(
-        /\/+$/,
-        "",
+      const response = await axios.get<TaipowerNeighborManifest>(
+        `${cdnBase}/taipower/neighbor/manifest.json`,
       );
+      return response.data;
+    },
+  });
+}
+
+export function useTaipowerNeighborStatistics(
+  groupBy: TaipowerStatisticGroup,
+  file?: string,
+) {
+  return useQuery({
+    queryKey: ["taipower-neighbor-statistics", groupBy, file],
+    enabled: !!file,
+    queryFn: async () => {
       const response = await axios.get<TaipowerNeighborStatistics>(
-        `${cdnBase}/taipower/neighbor/${groupBy}.json`,
+        `${cdnBase}/${file}`,
+      );
+      return response.data;
+    },
+  });
+}
+
+export function useTaipowerPurposeStatistics(file?: string) {
+  return useQuery({
+    queryKey: ["taipower-neighbor-purpose", file],
+    enabled: !!file,
+    queryFn: async () => {
+      const response = await axios.get<TaipowerPurposeStatistics>(
+        `${cdnBase}/${file}`,
       );
       return response.data;
     },

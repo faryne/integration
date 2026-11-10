@@ -18,7 +18,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import MapIcon from "@mui/icons-material/Map";
 import SearchIcon from "@mui/icons-material/Search";
 import AddIcon from "@mui/icons-material/Add";
 import { useEffect, useMemo, useState } from "react";
@@ -32,9 +31,15 @@ import { useTaipowerNeighbors } from "@/apis/opendata/taipower.ts";
 import { TaipowerDataDisclaimer } from "@/components/taipower/TaipowerDataDisclaimer.tsx";
 import { EsCursorPagination } from "@/components/common/EsCursorPagination.tsx";
 import { TaipowerNeighborBreadcrumb } from "@/components/taipower/TaipowerNeighborBreadcrumb.tsx";
+import { TaipowerNeighborNavigation } from "@/components/taipower/TaipowerNeighborNavigation.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { taipowerPurposeDetails } from "@/helpers/taipowerPurpose.ts";
 import { integerToChinese } from "@/helpers/chineseNumber.ts";
 import { useTitle } from "@/helpers/title.tsx";
-import type { TaipowerNeighborSearch } from "@/types/taipower.ts";
+import type {
+  TaipowerNeighborSearch,
+  TaipowerPurposeKey,
+} from "@/types/taipower.ts";
 import { heroBackground } from "@/components/common/siteLayout/siteTheme.ts";
 
 const basePath = "/data/taipower/neighbor";
@@ -46,6 +51,7 @@ function parseNumber(value: string | null) {
 }
 
 function searchFromParams(params: URLSearchParams): TaipowerNeighborSearch {
+  const purpose = params.get("purpose");
   return {
     keyword: params.get("keyword")?.trim() || undefined,
     yearMonths:
@@ -61,6 +67,10 @@ function searchFromParams(params: URLSearchParams): TaipowerNeighborSearch {
     sort:
       params.get("sort") === "cash_asc" || params.get("sort") === "cash_desc"
         ? (params.get("sort") as "cash_asc" | "cash_desc")
+        : undefined,
+    purpose:
+      purpose && purpose in taipowerPurposeDetails
+        ? (purpose as TaipowerPurposeKey)
         : undefined,
     page: 1,
     per_page: 30,
@@ -96,6 +106,8 @@ export default function TaipowerNeighborPage() {
       ? ({ type: "unit", value: unit } as const)
       : ({ type: "all" } as const);
   const query = useTaipowerNeighbors(search, scope);
+  const [errorOpen, setErrorOpen] = useState(false);
+  useEffect(() => setErrorOpen(query.isError), [query.isError]);
   const pagination = query.data?.data;
   const totalAmount = Math.round((pagination?.total_cash ?? 0) * 1000);
 
@@ -185,33 +197,9 @@ export default function TaipowerNeighborPage() {
                 </Typography>
                 <Typography color="text.secondary">{scopedTitle}</Typography>
               </Box>
-              <Button
-                component={RouterLink}
-                to={`${basePath}/map`}
-                startIcon={<MapIcon />}
-                variant="outlined"
-                sx={{ alignSelf: "flex-start" }}
-              >
-                從台灣地圖查詢
-              </Button>
             </Stack>
 
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-              <Button
-                component={RouterLink}
-                to={`${basePath}/cityarea`}
-                variant="outlined"
-              >
-                行政區年度統計
-              </Button>
-              <Button
-                component={RouterLink}
-                to={`${basePath}/unit`}
-                variant="outlined"
-              >
-                受捐助單位年度統計
-              </Button>
-            </Stack>
+            <TaipowerNeighborNavigation />
 
             {(cityarea || unit) && (
               <Button
@@ -224,6 +212,22 @@ export default function TaipowerNeighborPage() {
             )}
           </Stack>
         </Paper>
+
+        {search.purpose && (
+          <Chip
+            label={`用途：${taipowerPurposeDetails[search.purpose].label}`}
+            onDelete={() =>
+              setParams(
+                toSearchParams({
+                  ...search,
+                  purpose: undefined,
+                  cursor: undefined,
+                }),
+              )
+            }
+            sx={{ alignSelf: "flex-start" }}
+          />
+        )}
 
         <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
           <Stack spacing={2}>
@@ -464,6 +468,12 @@ export default function TaipowerNeighborPage() {
         )}
       </Stack>
       <TaipowerDataDisclaimer />
+      <CustomSnackbar
+        open={errorOpen}
+        severity="error"
+        message="資料載入失敗，請確認查詢條件後再試。"
+        onClose={() => setErrorOpen(false)}
+      />
     </Box>
   );
 }
