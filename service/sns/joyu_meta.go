@@ -1,6 +1,10 @@
 package sns
 
-import "strings"
+import (
+	"strings"
+
+	avService "faryne.dev/service/av"
+)
 
 // joyu.fyi（AV 女優資料站）：AV 頁面從 faryne.dev/av/* 搬到獨立網域，網址拿掉 /av 前綴，女優列表當首頁。
 // nginx 把 joyu.fyi 的爬蟲請求轉給後端時會補上 /av 前綴（同 steamloom 補 /storyteller），
@@ -8,7 +12,8 @@ import "strings"
 // P2（2026-11-08）起首頁是入口頁，女優搜尋列表在 /actress。
 const (
 	joyuSiteName = "joyu.fyi"
-	joyuOrigin   = "https://joyu.fyi"
+	// joyuOrigin 跟 MCP 搜尋結果的連結共用同一個常數（service/av/joyu_url.go）
+	joyuOrigin = avService.JoyuOrigin
 	// joyuDescription 跟前端 static_site/src/data/siteBranding.ts 同一句，改的時候兩邊一起改
 	joyuDescription      = "整理 AV 女優資料與作品索引：用名字、別名、主題找女優，查看出演作品與番號。"
 	joyuDefaultImagePath = "/joyu-og-default.jpg"

@@ -82,7 +82,7 @@ type searchResult struct {
 func (s *Server) registerAVTools() {
 	_ = s.RegisterTool(Tool{
 		Name:        "av_video_search",
-		Description: "Search AV video records by keyword, tags, actress, maker, label, series, director, video number, date, or page. Set facets=true to also get the most common tags/makers/series/actresses (with counts) under the same conditions, useful for narrowing down.",
+		Description: "Search AV video records by keyword, tags, actress, maker, label, series, director, video number, date, or page. Set facets=true to also get the most common tags/makers/series/actresses (with counts) under the same conditions, useful for narrowing down. Each video includes url, its page on joyu.fyi; cite it when answering.",
 		InputSchema: objectSchema(map[string]interface{}{
 			"year":         integerSchema("Release year."),
 			"month":        integerSchema("Release month."),
@@ -147,7 +147,7 @@ func (s *Server) registerAVTools() {
 			if err != nil {
 				return nil, err
 			}
-			result := searchResult{Total: r.Total, Page: req.Page, Data: rows}
+			result := searchResult{Total: r.Total, Page: req.Page, Data: withVideoLinks(rows)}
 			if args.Facets {
 				facets, err := avService.VideoFacets(req)
 				if err != nil {
@@ -161,7 +161,7 @@ func (s *Server) registerAVTools() {
 
 	_ = s.RegisterTool(Tool{
 		Name:        "av_actress_search",
-		Description: "Search AV actress records by name, measurements, birthday, cup, blood type, or page.",
+		Description: "Search AV actress records by name, measurements, birthday, cup, blood type, or page. Each actress includes url, her page on joyu.fyi; cite it when answering.",
 		InputSchema: objectSchema(map[string]interface{}{
 			"cup":         stringSchema("Single cup filter, e.g. \"A\"."),
 			"cups":        stringArraySchema("Multiple cups, matches any of them, e.g. [\"A\", \"B\", \"D\"]. Can be combined with cup."),
@@ -203,7 +203,7 @@ func (s *Server) registerAVTools() {
 			return jsonTextResult(searchResult{
 				Total: r.Hits.Total.Value,
 				Page:  req.Page,
-				Data:  rows,
+				Data:  withActressLinks(rows),
 			})
 		},
 	})
