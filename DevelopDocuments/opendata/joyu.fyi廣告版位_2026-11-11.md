@@ -1,6 +1,6 @@
 # joyu.fyi 廣告版位（adultforce）＋被擋時的站內推廣
 
-> 狀態：已實作（branch `feat/joyu-ads`），adultforce 嵌入碼待補
+> 狀態：已實作（`feat/joyu-ads`、`feat/joyu-ad-units`），廣告總開關已開、廣告網址待補
 > Mockup：`DevelopDocuments/opendata/joyu-ads-mockup/index.html`
 
 ## 範圍
@@ -57,8 +57,10 @@ components/common/promo/
   AdSlot.tsx          // 版位外框：尺寸、狀態機、被擋判定；廣告 provider 與推廣 source 都由 props 注入
   HousePromo.tsx      // 推廣卡片的共用版面（kicker／標題／數字／頭像／連結）
   types.ts            // AdProvider、HouseSource 介面
+  units.ts            // AdUnit（廠商的一個 zone）、iframe／script loader、依權重挑單元的 unitsProvider
 components/joyu/promo/
-  slotProvider.ts     // AdProvider 實作（目前預計 adultforce；換廣告商只改這支）
+  slotProvider.ts     // 依版位名稱取 provider（總開關＋本機開關）
+data/joyuAdUnits.ts   // joyu 廣告設定：總開關、版位名稱、各版位的廣告單元
   actressTopicSource.ts // HouseSource 實作（之後再加 videoTopicSource）
 ```
 
@@ -76,7 +78,7 @@ components/joyu/promo/
 
 ## 需要使用者提供
 
-- adultforce 的嵌入碼，以及兩個尺寸各自的 zone id；確認是 script 插入還是 iframe。
+- 各廠商的嵌入碼（兩個尺寸各一），填進 `data/joyuAdUnits.ts`；確認是 script 插入還是 iframe。
 
 ## User story
 
@@ -92,7 +94,7 @@ components/joyu/promo/
   - `AdSlot.tsx`：依 md 斷點選尺寸，跨斷點時以 `key` 整格重建；provider reject 或 3 秒後容器沒有可見子元素 → blocked。
   - `HousePromo.tsx`：整格 RouterLink，`box-sizing: border-box`（joyu 沒有全域 border-box，不加會變 326×102）。
 - joyu：`static_site/src/components/joyu/promo/`
-  - `slotProvider.ts`（檔名不綁廠商，換廣告商只改這支）：讀 `VITE_JOYU_AD_FRAME_DESKTOP`／`VITE_JOYU_AD_FRAME_MOBILE`（iframe src），先 `fetch(no-cors)` 探測網路層有沒有被擋再插 iframe；本機要 `VITE_JOYU_ADS=1` 才載。**拿到實際嵌入碼後只需改這支。**
+  - `slotProvider.ts`：依版位名稱取 provider；本機要 `VITE_JOYU_ADS=1` 才載真廣告。
   - `actressTopicSource.ts`：index.json → 推廣卡片，只收有頭像的主題。
   - `JoyuAdSlot.tsx`：非 joyu 網域回傳 null。
 - 版位：`pages/joyu/Home.tsx`（slot 0、1）、`components/av/actress_detail.tsx`、`components/av/video_detail.tsx`。
@@ -101,9 +103,22 @@ components/joyu/promo/
 ### 部署注意
 
 - 前後端都要部署；部署後**手動跑一次女優主題排程**（`-cmd av-actress-topics`），index.json 才會有 `preview`。在那之前推廣內容是空的，版位整格收起（沒設廣告網址時等於看不到任何東西，屬預期）。
-- adultforce 嵌入網址設在 build 時的 `.env`：`VITE_JOYU_AD_FRAME_DESKTOP`、`VITE_JOYU_AD_FRAME_MOBILE`。
+- 廣告網址填在 `static_site/src/data/joyuAdUnits.ts`（進 repo，不放 `.env`），改完重新部署前端。
 
 ### 驗證
 
 - 本機用正式 index.json 補上 preview 的假 CDN 驗證：首頁兩格主題不同；PC 728×90（6 頭像＋看主題）、手機 300×100（3 頭像、文字與頭像不重疊）；女優頁、影片頁版位在 tabs 正上方；faryne.dev 的 `/av` 頁不出現。
 - **未驗證**：真的 adultforce 廣告載入／被擋的切換（沒有嵌入碼）。
+
+## 多廠商／多單元設定（2026-11-11 第二輪）
+
+原本每個尺寸一個 env 變數，只撐得住單一廠商；改成 repo 內的設定檔 `static_site/src/data/joyuAdUnits.ts`：
+
+- `JOYU_ADS_ENABLED`：總開關（目前 `true`）。關掉時全部版位只放站內推廣。
+- `JOYU_AD_PLACEMENTS`：`home-1`、`home-2`、`actress`、`video`；`<JoyuAdSlot placement=… />` 依名稱取廣告，也用順序錯開推廣內容。
+- `DEFAULT_UNITS`：沒個別設定的版位共用；`PLACEMENT_UNITS` 可覆寫個別版位。
+- `AdUnit`：`vendor`、`type`（`iframe`／`script`）、`src.desktop`／`src.mobile`、`attrs`（script 要帶的 data-* 等）、`weight`（同版位多單元依權重隨機）。
+- 某尺寸沒填網址的單元不會在那個尺寸出現；一個版位完全沒有可用單元時直接放站內推廣（不等 3 秒）。
+- 嵌入網址不是機密，進 repo；`.env` 只剩本機的 `VITE_JOYU_ADS=1` 開關。
+- script 型嵌入要用 async 版本；`document.write` 的舊式嵌入碼在 SPA 裡不能用。
+- 驗證：在瀏覽器直接 import `units.ts` 測過：沒有單元／沒有網址時 provider 是 undefined、iframe 正常插入（728 寬）、iframe 網址被擋時 reject、沒有該尺寸時 reject、script 載入失敗時 reject。
