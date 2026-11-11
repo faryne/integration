@@ -23,13 +23,17 @@ type Status = "loading" | "loaded" | "blocked";
 /**
  * 版位：先佔好固定高度，載入外部廣告；廣告被擋或沒填單時改放站內推廣（不顯示「廣告」、不要求關 adblock）。
  * provider 沒給＝不載廣告直接放站內推廣；推廣內容讀完是空的就整格收起。
- * slot：同一頁第幾個版位，用來錯開推廣內容
+ * slot：同一頁第幾個版位，用來錯開推廣內容；size：固定尺寸（例：PC 側欄放 300×100），不給就依斷點自動選
  */
-export function AdSlot(props: SlotProps) {
+export function AdSlot({
+  size: fixed,
+  ...props
+}: SlotProps & { size?: PromoSize }) {
   const theme = useTheme();
-  const size: PromoSize = useMediaQuery(theme.breakpoints.up("md"))
+  const auto: PromoSize = useMediaQuery(theme.breakpoints.up("md"))
     ? "desktop"
     : "mobile";
+  const size = fixed ?? auto;
   // 跨過斷點（轉橫、拉視窗）時整格重來，換成另一個尺寸的廣告
   return <SlotBody key={size} size={size} {...props} />;
 }

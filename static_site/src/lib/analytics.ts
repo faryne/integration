@@ -52,3 +52,15 @@ export function trackPageView(path: string) {
     page_title: document.title,
   });
 }
+
+/** 送自訂事件（例：首頁版面切換、評分）；沒設定 GA 時不做事 */
+export function trackEvent(name: string, params: Record<string, unknown> = {}) {
+  if (!measurementId) {
+    return;
+  }
+  initializeAnalytics();
+  if (!initialized) {
+    return;
+  }
+  window.gtag("event", name, params);
+}

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>joyu.fyi 首頁一屏版 mockup</title>
+<style>
+  :root {
+    --plum:#2b1d2e; --pink:#ff5c8a; --bg:#17111a; --paper:#221a25; --line:#3a2e3d;
+    --text:#f3e6ef; --muted:#b39fb0; --chip:#2e2431;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#0e0a10; font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; color:var(--text); }
+  .toolbar { position:sticky; top:0; z-index:20; display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:8px 12px; background:#000; font-size:12px; }
+  .toolbar button { background:var(--chip); color:var(--text); border:0; border-radius:6px; padding:5px 10px; cursor:pointer; }
+  .toolbar button.on { background:var(--pink); }
+  .toolbar .sep { width:1px; height:18px; background:#444; margin:0 4px; }
+  .stage { padding:20px; display:flex; justify-content:center; }
+  .frame { position:relative; background:var(--bg); border-radius:10px; overflow:hidden; flex:0 0 auto; }
+  /* 第一屏底線：這條線以上就是不用捲動看得到的範圍 */
+  .fold { position:absolute; left:0; right:0; border-top:2px dashed #3fd28a; z-index:10; pointer-events:none; }
+  .fold span { position:absolute; right:8px; top:-20px; background:#3fd28a; color:#000; font-size:11px; padding:1px 6px; border-radius:4px; }
+
+  .header { background:var(--plum); height:60px; display:flex; align-items:center; gap:18px; padding:0 24px; border-bottom:1px solid var(--line); font-size:14px; }
+  .header b { color:var(--pink); }
+  .header .search { margin-left:auto; width:280px; height:34px; border-radius:6px; background:var(--bg); border:1px solid var(--line); color:var(--muted); font-size:13px; display:flex; align-items:center; padding:0 10px; }
+  .m .header { height:56px; padding:0 14px; gap:12px; }
+  .m .header .nav { display:none; }
+  .m .header .search { width:auto; flex:1; }
+
+  .page { padding:16px 24px 24px; }
+  .m .page { padding:8px 12px 20px; }
+  .quick { display:flex; gap:6px; overflow:hidden; margin-bottom:14px; }
+  .quick span { flex:0 0 auto; border:1px solid var(--line); border-radius:999px; padding:4px 10px; font-size:12px; }
+  .quick span.all { color:var(--pink); border-color:var(--pink); }
+
+  .grid { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:20px; align-items:start; }
+  .m .grid { grid-template-columns:1fr; gap:14px; }
+  .col { display:flex; flex-direction:column; gap:16px; min-width:0; }
+  .m .col { gap:10px; }
+  .sec h2 { display:flex; align-items:baseline; gap:8px; font-size:16px; margin:0 0 8px; }
+  .m .sec h2 { font-size:15px; margin-bottom:4px; }
+  .sec h2 small { font-size:12px; color:var(--muted); font-weight:400; }
+  .sec h2 a { margin-left:auto; font-size:12px; color:var(--pink); font-weight:400; }
+  .row { display:flex; gap:10px; overflow:hidden; }
+  .m .row { gap:8px; }
+
+  .ph { background:repeating-linear-gradient(45deg,#2a2030 0 8px,#32263a 8px 16px); }
+  .acard { flex:0 0 104px; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--paper); }
+  .acard .ph { aspect-ratio:3/4; }
+  .acard div.t { padding:5px 7px; font-size:12px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .acard div.t small { display:block; color:var(--pink); font-weight:400; font-size:11px; }
+  .m .acard { flex-basis:80px; }
+  .m .acard div.t { padding:4px 6px; font-size:11px; }
+  /* 手機：頂端主題快捷列拿掉（下面就有女優主題區） */
+  .m .quick { display:none; }
+
+  .tabs { display:flex; gap:6px; margin-bottom:8px; overflow:hidden; }
+  .tabs span { flex:0 0 auto; border:1px solid var(--line); border-radius:999px; padding:3px 10px; font-size:12px; }
+  .tabs span.on { background:var(--pink); border-color:var(--pink); }
+  .vcard { flex:0 0 136px; }
+  .vcard .ph { aspect-ratio:3/4.2; border-radius:6px; }
+  .vcard div.t { font-size:11px; color:var(--muted); margin-top:4px; line-height:1.35; height:30px; overflow:hidden; }
+  .vcard div.t b { color:var(--text); display:block; }
+  .m .vcard { flex-basis:100px; }
+
+  .slot { display:flex; justify-content:center; }
+  .slot .box { border:1px solid var(--line); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:12px; background:var(--paper); }
+
+  .bday { display:flex; flex-direction:column; gap:6px; }
+  .bday .r { display:flex; align-items:center; gap:10px; font-size:13px; }
+  .bday .av { width:40px; height:40px; border-radius:50%; flex:0 0 auto; border:2px solid var(--pink); }
+  .bday .r small { margin-left:auto; color:var(--muted); font-size:11px; }
+  .m .bday { flex-direction:row; overflow:hidden; gap:10px; }
+  .m .bday .r { flex-direction:column; flex:0 0 64px; gap:4px; font-size:11px; text-align:center; }
+  .m .bday .r small { margin:0; }
+  .m .bday .av { width:46px; height:46px; }
+  .m .bday .r { flex-basis:58px; }
+
+  .topics { display:flex; flex-wrap:wrap; gap:6px; }
+  .topics span { border:1px solid var(--line); border-radius:999px; padding:3px 9px; font-size:12px; }
+  .topics span b { color:var(--pink); font-weight:400; margin-left:3px; }
+  .m .topics { flex-wrap:nowrap; overflow:hidden; }
+  .m .topics span { flex:0 0 auto; }
+
+  .note { max-width:980px; margin:0 auto 30px; font-size:13px; color:var(--muted); line-height:1.7; padding:0 20px; }
+  .note b { color:var(--text); }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  螢幕
+  <button data-v="1366x768" class="on">筆電 1366×768</button>
+  <button data-v="1440x900">1440×900</button>
+  <button data-v="1920x1080">1920×1080</button>
+  <span class="sep"></span>
+  <button data-v="390x664">iPhone（可視 390×664）</button>
+  <button data-v="360x640">小 Android（360×640）</button>
+  <span class="sep"></span>
+  <button data-login="1" class="on">已登入且有追蹤新片</button>
+  <button data-login="0">未登入／沒有追蹤新片</button>
+</div>
+<div class="stage"><div class="frame" id="frame"></div></div>
+<div class="note" id="note"></div>
+
+<script>
+// 視窗可視高度（瀏覽器網址列、分頁列扣掉後）：PC 抓 -100、手機用實際可視高
+const VIEWS = {
+  "1366x768": { w:1366, fold:668 },
+  "1440x900": { w:1440, fold:800 },
+  "1920x1080": { w:1920, fold:980 },
+  "390x664": { w:390, fold:664, m:true },
+  "360x640": { w:360, fold:640, m:true },
+};
+const NAMES = ["一条みお","乙アリス","五芭","千葉優花","小那海あや","尾崎えりか","武藤なみ","北谷ゆり","桃尻うらら","夏目藍果"];
+const TOPICS = [["近期活躍",612],["巨乳",1243],["美乳",930],["嬌小",823],["細腰",402],["高挑",311],["11 月壽星",94],["人妻",862],["女子校生",93],["新人",318],["模特兒身材",430],["蜜桃臀",221]];
+
+let login = true, view = "1366x768";
+function render(key = view) {
+  view = key;
+  const v = VIEWS[key];
+  const f = document.getElementById("frame");
+  f.className = "frame" + (v.m ? " m" : "");
+  f.style.width = v.w + "px";
+  // PC：左欄＝今天有新片＋新片＋728 版位；右欄＝近期生日＋女優主題＋300×100 版位
+  // 手機：單欄，每區只放一排可橫向滑動的卡片，版位放在第一屏之後
+  const actress = `<section class="sec"><h2>今天有新片的女優 <small>11/11・30 位</small><a>看全部 →</a></h2>
+    <div class="row">${NAMES.map((n,i)=>`<div class="acard"><div class="ph"></div><div class="t">${n}<small>新片 ${i%3+1} 部</small></div></div>`).join("")}</div></section>`;
+  const videos = `<section class="sec"><h2>新片<a>影片搜尋 →</a></h2>
+    <div class="tabs">${login ? '<span class="on">追蹤的女優・7 天 9</span><span>新上架</span>' : '<span class="on">新上架</span>'}<span>明天 11/12・47</span><span>後天 11/13・191</span><span>之後 11/14～18・255</span></div>
+    <div class="row">${Array.from({length:10},(_,i)=>`<div class="vcard"><div class="ph"></div><div class="t"><b>ABCD-${100+i}</b>作品標題作品標題作品標題</div></div>`).join("")}</div></section>`;
+  const bday = `<section class="sec"><h2>近期生日 <small>今天 4 位</small><a>11 月壽星 →</a></h2>
+    <div class="bday">${NAMES.slice(0, v.m ? 8 : 6).map((n,i)=>`<div class="r"><div class="av ph"></div>${n}<small>${i<4?"今天":"11/"+(12+i)}</small></div>`).join("")}</div></section>`;
+  const topics = `<section class="sec"><h2>女優主題<a>全部主題 →</a></h2>
+    <div class="topics">${TOPICS.map(([t,c])=>`<span>${t}<b>${c}</b></span>`).join("")}</div></section>`;
+  const ad = (w,h) => `<div class="slot"><div class="box" style="width:${w}px;height:${h}px">版位 ${w}×${h}（被擋時換女優主題推廣）</div></div>`;
+
+  const body = v.m
+    ? `<div class="col">${actress}${videos}${bday}${topics}${ad(300,100)}</div>`
+    : `<div class="grid"><div class="col">${actress}${videos}${ad(728,90)}</div><div class="col">${bday}${topics}${ad(300,100)}</div></div>`;
+
+  f.innerHTML = `<div class="header"><span><b>女</b> joyu.fyi</span><span class="nav">女優　女優主題　影片　即將發售</span><div class="search">名字、別名或番號</div></div>
+    <div class="page"><div class="quick">${["近期活躍","巨乳","美乳","嬌小","細腰","高挑"].map(t=>`<span>${t}</span>`).join("")}<span class="all">全部主題 →</span></div>${body}</div>
+    <div class="fold" style="top:${v.fold}px"><span>第一屏底線（${v.fold}px）</span></div>`;
+
+  // 量每個區塊的底部是否在第一屏內
+  const res = [...f.querySelectorAll("section, .slot")].map(s => {
+    const top = s.getBoundingClientRect().top - f.getBoundingClientRect().top;
+    const bottom = top + s.getBoundingClientRect().height;
+    const name = s.querySelector("h2")?.childNodes[0].textContent.trim() ?? "版位";
+    return `${name}：${bottom <= v.fold ? "✅ 完整" : top + 40 <= v.fold ? "🟡 看得到開頭" : "❌ 在下面"}`;
+  });
+  document.getElementById("note").innerHTML = `<b>${key}</b>　頁面總高 ${f.scrollHeight}px。<br>${res.join("　")}<br><br>` +
+    (v.m
+      ? "「你追蹤的女優新片」併進新片區塊當第一個分頁（有登入且有新片時預設）。<br>手機：搜尋框收進頁首、拿掉頂端主題快捷列；每區只留一排可橫向滑動（女優卡、影片封面、生日頭像、主題 chip），「看全部」到完整頁。版位移到第一屏之後。"
+      : "「你追蹤的女優新片」併進新片區塊當第一個分頁：有登入且最近 7 天有新片時預設停在這頁，否則不顯示這個分頁、預設新上架。<br>PC：拿掉大搜尋區（頁首已有同功能的搜尋框，可直接打番號），改成一排主題快捷 chip；左欄今天有新片＋新片（只放一排）＋728 版位；右欄近期生日（列表）＋女優主題（chip）＋300×100 版位。");
+}
+document.querySelector(".toolbar").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.login) {
+    login = b.dataset.login === "1";
+    document.querySelectorAll("[data-login]").forEach(x => x.classList.toggle("on", x === b));
+    return render();
+  }
+  document.querySelectorAll("[data-v]").forEach(x => x.classList.toggle("on", x === b));
+  render(b.dataset.v);
+});
+render("1366x768");
+</script>
+</body>
+</html>

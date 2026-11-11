@@ -1,37 +1,30 @@
 import { Box } from "@mui/material";
 
-import { useJoyuFeed } from "@/apis/av/joyu_me.ts";
 import { VideoCoverCard } from "@/components/av/video_cover_card.tsx";
-import { useJoyuAuth } from "@/components/joyu/auth/JoyuAuthContext.ts";
 import { joyuPath } from "@/helpers/joyu.ts";
-import type { Video } from "@/types/av.ts";
 
 import { HomeSection } from "./HomeSection.tsx";
+import {
+  FOLLOWED_DAYS,
+  useFollowedActressVideos,
+} from "./useFollowedActressVideos.ts";
 
 // 首頁只放一排
 const LIMIT = 6;
 
 /**
- * 首頁最上面「你追蹤的女優新片」：最近 7 天、只取女優類型的追蹤（標籤這類量大的條件不放首頁），
- * 把各女優的新片合在一起依配信日排、同一部只留一次。沒有追蹤女優或這週都沒新片就不顯示
+ * 原版面首頁最上面「你追蹤的女優新片」（一屏版改成「新片」區塊的第一個分頁）。
+ * 沒有追蹤女優或這週都沒新片就不顯示
  */
 export function FollowedActressesSection() {
-  const { user } = useJoyuAuth();
-  const feed = useJoyuFeed(user?.uid, 7);
-  const seen = new Set<string>();
-  const videos = (feed.data?.sections ?? [])
-    .filter((s) => s.kind === "actress")
-    .flatMap((s) => s.videos)
-    .filter((v: Video) => !seen.has(v.no) && !!seen.add(v.no))
-    .sort((a, b) => b.vod_date.localeCompare(a.vod_date))
-    .slice(0, LIMIT);
+  const { videos } = useFollowedActressVideos(LIMIT);
   if (videos.length === 0) return null;
 
   return (
     <HomeSection
       title="你追蹤的女優新片"
-      note="最近 7 天"
-      moreTo={joyuPath("me/follows?kind=actress&days=7")}
+      note={`最近 ${FOLLOWED_DAYS} 天`}
+      moreTo={joyuPath(`me/follows?kind=actress&days=${FOLLOWED_DAYS}`)}
       moreLabel="我的追蹤"
     >
       <Box

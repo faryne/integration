@@ -11,7 +11,14 @@ import { UpcomingBadge } from "@/components/av/upcoming_badge.tsx";
  * 直式封面卡片：封面＋番號＋兩行標題，相關作品等橫向列表用。
  * 預約作品（即將發售）在封面右上角標「即將發售・11/20」
  */
-export function VideoCoverCard({ video }: { video: Video }) {
+export function VideoCoverCard({
+  video,
+  titleLines = 2,
+}: {
+  video: Video;
+  /** 標題最多顯示幾行；可依斷點給（一屏版首頁：手機 0＝只留番號、PC 1 行） */
+  titleLines?: number | { xs: number; md: number };
+}) {
   const code = video.maker_no || video.no.toUpperCase();
   return (
     <Box
@@ -49,8 +56,17 @@ export function VideoCoverCard({ video }: { video: Video }) {
       <Typography
         sx={{
           WebkitBoxOrient: "vertical",
-          WebkitLineClamp: 2,
-          display: "-webkit-box",
+          WebkitLineClamp: titleLines,
+          // 行數 0 就整個不顯示
+          display:
+            typeof titleLines === "number"
+              ? titleLines > 0
+                ? "-webkit-box"
+                : "none"
+              : {
+                  xs: titleLines.xs > 0 ? "-webkit-box" : "none",
+                  md: titleLines.md > 0 ? "-webkit-box" : "none",
+                },
           fontSize: 12,
           overflow: "hidden",
         }}
