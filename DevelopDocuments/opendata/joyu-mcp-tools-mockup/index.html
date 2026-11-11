@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>joyu.fyi MCP 工具頁 mockup</title>
+<style>
+  :root {
+    --plum:#2b1d2e; --pink:#ff5c8a; --bg:#17111a; --paper:#221a25; --line:#3a2e3d;
+    --text:#f3e6ef; --muted:#b39fb0; --chip:#2e2431; --code:#120d14;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#0e0a10; font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; color:var(--text); }
+  .toolbar { position:sticky; top:0; z-index:5; display:flex; gap:8px; align-items:center; padding:8px 12px; background:#000; font-size:12px; }
+  .toolbar button { background:var(--chip); color:var(--text); border:0; border-radius:6px; padding:5px 10px; cursor:pointer; }
+  .toolbar button.on { background:var(--pink); }
+  .stage { padding:20px; display:flex; justify-content:center; }
+  .frame { background:var(--bg); border-radius:10px; overflow:hidden; width:1180px; }
+  .frame.mobile { width:390px; }
+  .header { background:var(--plum); height:56px; display:flex; align-items:center; gap:18px; padding:0 20px; border-bottom:1px solid var(--line); font-size:14px; }
+  .header .brand { font-weight:800; } .header .brand b { color:var(--pink); }
+  .mobile .header .nav { display:none; }
+  .crumb { padding:8px 20px; font-size:12px; color:var(--muted); }
+  .crumb a { color:var(--muted); }
+  main { padding:8px 20px 32px; display:flex; flex-direction:column; gap:28px; max-width:980px; }
+  .mobile main { padding:8px 16px 28px; }
+  h1 { font-size:24px; margin:0; }
+  h2 { font-size:18px; margin:0 0 12px; }
+  .endpoint { display:flex; align-items:center; gap:8px; background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .endpoint code { flex:1; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .btn { background:var(--pink); color:#fff; border:0; border-radius:6px; padding:6px 12px; font-size:13px; cursor:pointer; white-space:nowrap; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .tab { background:transparent; color:var(--text); border:1px solid var(--line); border-radius:999px; padding:5px 12px; font-size:13px; cursor:pointer; }
+  .tab.on { background:var(--pink); border-color:var(--pink); }
+  .guide { background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:14px; font-size:14px; line-height:1.7; }
+  .guide ol { margin:0; padding-left:20px; }
+  pre { margin:0; background:var(--code); border-radius:6px; padding:10px 12px; font-size:13px; overflow-x:auto; position:relative; }
+  /* 複製按鈕放在指令下方靠右，不蓋住可橫向捲動的指令 */
+  .cmd { display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
+  .cmd pre { align-self:stretch; }
+  .group { margin-bottom:22px; }
+  .group h3 { font-size:15px; color:var(--muted); margin:0 0 8px; font-weight:600; }
+  .cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; align-items:start; }
+  .mobile .cards { grid-template-columns:1fr; }
+  .card { background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:14px; display:flex; flex-direction:column; gap:6px; }
+  .card .title { font-weight:800; font-size:15px; }
+  .card code.name { font-size:12px; color:var(--pink); }
+  .card .desc { font-size:13px; color:var(--muted); line-height:1.6; }
+  .toggle { align-self:flex-start; background:none; border:0; color:var(--pink); font-size:13px; padding:0; cursor:pointer; }
+  table { width:100%; border-collapse:collapse; font-size:12px; margin-top:4px; }
+  th, td { text-align:left; padding:6px 6px; border-top:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; }
+  td code { color:var(--text); }
+  .req { color:var(--pink); }
+  .mobile table .col-type { display:none; }
+  .footer { border-top:1px solid var(--line); padding:14px 20px; font-size:12px; color:var(--muted); display:flex; gap:16px; }
+  .footer .hl { color:var(--pink); outline:1px dashed var(--pink); outline-offset:3px; }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  寬度
+  <button data-w="desktop" class="on">PC</button>
+  <button data-w="mobile">手機</button>
+</div>
+<div class="stage">
+  <div class="frame" id="frame">
+    <div class="header"><span class="brand"><b>女</b> joyu.fyi</span><span class="nav">女優　女優主題　影片　即將發售</span></div>
+    <div class="crumb"><a>首頁</a> › MCP 工具</div>
+    <main>
+      <h1>MCP 工具</h1>
+
+      <section>
+        <h2>連線網址</h2>
+        <div class="endpoint"><code>https://joyu.fyi/mcp</code><button class="btn">複製</button></div>
+      </section>
+
+      <section>
+        <h2>連線方式</h2>
+        <div class="tabs" id="guideTabs"></div>
+        <div class="guide" id="guide"></div>
+      </section>
+
+      <section>
+        <h2>工具</h2>
+        <div id="groups"></div>
+      </section>
+    </main>
+    <div class="footer"><span>joyu.fyi</span><span class="hl">MCP 工具</span></div>
+  </div>
+</div>
+
+<script>
+// 連線方式：joyu 不用身分驗證，每個服務一段
+const URL_ = "https://joyu.fyi/mcp";
+const GUIDES = [
+  { key:"claude", label:"Claude", html:`<ol><li>設定 › 連接器 › 新增自訂連接器</li><li>名稱填 joyu，網址貼上 <code>${URL_}</code></li></ol>` },
+  { key:"chatgpt", label:"ChatGPT", html:`<ol><li>設定 › 應用程式與連接器 › 進階設定，開啟開發者模式</li><li>建立連接器，網址貼上 <code>${URL_}</code>，驗證選「無」</li></ol>` },
+  { key:"claude-code", label:"Claude Code", pre:`claude mcp add --transport http joyu ${URL_}` },
+  { key:"codex", label:"Codex", pre:`codex mcp add joyu --url ${URL_}` },
+  { key:"other", label:"其他", pre:JSON.stringify({ mcpServers:{ joyu:{ url:URL_ } } }, null, 2) },
+];
+let guide = "claude";
+function renderGuide() {
+  document.getElementById("guideTabs").innerHTML = GUIDES.map(g => `<button class="tab ${g.key===guide?"on":""}" data-g="${g.key}">${g.label}</button>`).join("");
+  const g = GUIDES.find(g => g.key === guide);
+  document.getElementById("guide").innerHTML = g.pre ? `<div class="cmd"><pre>${g.pre.replace(/</g,"&lt;")}</pre><button class="btn">複製</button></div>` : g.html;
+}
+
+// 前端對照表：中文名稱、說明、分組；沒有對照的工具進「其他」並顯示英文描述
+const META = {
+  av_video_search: { group:"搜尋", title:"影片搜尋", desc:"依關鍵字、女優、標籤、品牌、系列、監督、番號、日期、片長搜尋影片；可順便回傳常見標籤／品牌統計。" },
+  av_actress_search: { group:"搜尋", title:"女優搜尋", desc:"依名字、身高、三圍、罩杯、生日、血型搜尋女優。" },
+  av_actress_submit: { group:"上稿", title:"女優上稿", desc:"新增女優或修改既有女優資料，送管理員審核。" },
+  av_video_submit: { group:"上稿", title:"影片修改", desc:"修改影片資料，送管理員審核。" },
+  av_actress_submission_status: { group:"查審核結果", title:"女優上稿結果", desc:"用上稿編號查審核狀態。" },
+  av_video_submission_status: { group:"查審核結果", title:"影片修改結果", desc:"用上稿編號查審核狀態。" },
+};
+const GROUP_ORDER = ["搜尋", "上稿", "查審核結果", "其他"];
+const open = new Set();
+let tools = [];
+
+const typeOf = s => s.enum ? `enum（${s.enum.join("／")}）` : s.oneOf || s.anyOf ? "string／array" : s.type ?? "";
+function renderTools() {
+  const groups = {};
+  tools.filter(t => t.name !== "ping").forEach(t => {
+    const m = META[t.name] ?? { group:"其他", title:t.name, desc:t.description };
+    (groups[m.group] ??= []).push({ t, m });
+  });
+  document.getElementById("groups").innerHTML = GROUP_ORDER.filter(g => groups[g]).map(g => `
+    <div class="group"><h3>${g}</h3><div class="cards">${groups[g].map(({ t, m }) => {
+      const props = Object.entries(t.inputSchema.properties ?? {});
+      const req = t.inputSchema.required ?? [];
+      const table = open.has(t.name) ? `<table><tr><th>參數</th><th class="col-type">型別</th><th>說明</th></tr>${props.map(([k, s]) =>
+        `<tr><td><code>${k}</code>${req.includes(k) ? ' <span class="req">必填</span>' : ""}</td><td class="col-type">${typeOf(s)}</td><td>${s.description ?? ""}</td></tr>`).join("")}</table>` : "";
+      return `<div class="card"><span class="title">${m.title}</span><code class="name">${t.name}</code><span class="desc">${m.desc}</span>
+        ${props.length ? `<button class="toggle" data-t="${t.name}">${open.has(t.name) ? "收合參數" : `參數（${props.length}）`}</button>` : ""}${table}</div>`;
+    }).join("")}</div></div>`).join("");
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.g) { guide = b.dataset.g; renderGuide(); }
+  if (b.dataset.t) { open.has(b.dataset.t) ? open.delete(b.dataset.t) : open.add(b.dataset.t); renderTools(); }
+  if (b.dataset.w) {
+    document.querySelectorAll("[data-w]").forEach(x => x.classList.toggle("on", x === b));
+    document.getElementById("frame").className = "frame " + (b.dataset.w === "mobile" ? "mobile" : "");
+  }
+});
+
+renderGuide();
+// 工具清單：本機後端 tools/list 的實際回應（mockup 用檔案代替即時呼叫）
+fetch("tools.json").then(r => r.json()).then(d => { tools = d.result.tools; open.add("av_video_search"); renderTools(); });
+</script>
+</body>
+</html>

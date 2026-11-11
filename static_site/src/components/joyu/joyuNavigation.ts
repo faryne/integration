@@ -39,6 +39,12 @@ export const joyuSections: JoyuSection[] = [
     href: "/me/profile",
     match: (p) => p.startsWith("/me/profile"),
   },
+  // 從頁尾進
+  {
+    title: "MCP 工具",
+    href: "/mcp-tools",
+    match: (p) => p.startsWith("/mcp-tools"),
+  },
 ];
 
 // 頁首依顯示順序排（女優、主題、影片、即將發售），比對順序則是 joyuSections（主題要先於女優）
