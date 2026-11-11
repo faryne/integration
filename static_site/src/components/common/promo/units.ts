@@ -16,9 +16,14 @@ export interface AdUnit {
   weight?: number;
 }
 
-// 先用 no-cors 探一下：被 adblock 從網路層擋掉時 fetch 會直接 reject（iframe 被擋不會觸發 onerror）
+// 先用 no-cors 探一下廣告主機：被 adblock 從網路層擋掉時 fetch 會直接 reject（iframe 被擋不會觸發 onerror）。
+// 只打主機根網址、不打廣告網址本身，免得多算一次曝光（被廣告商當成無效流量）；
+// adblock 清單多半是整個網域擋（||adtng.com^），探根網址就測得出來
 const probe = (src: string) =>
-  fetch(src, { mode: "no-cors", cache: "no-store" });
+  fetch(`${new URL(src, location.href).origin}/`, {
+    mode: "no-cors",
+    cache: "no-store",
+  });
 
 /** 各嵌入方式的載入方法；載入失敗（被擋）要 reject，版位會改放站內推廣 */
 const LOADERS: Record<
