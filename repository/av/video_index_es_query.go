@@ -88,11 +88,11 @@ func applyVideoConditions(input av.VideoIndexQuery, q map[string]any) {
 	if no := strings.TrimSpace(input.No); no != "" {
 		esdsl.SetQuery(videoNoQuery(no), true, q)
 	}
-	// 配信狀態：預約作品跟已配信的放在同一個索引。依番號查單部（影片頁）不限；
-	// 即將發售只要配信日在明天（日本時間）以後；其他一律只看已配信的
+	// 配信狀態：預約作品跟已配信的放在同一個索引。依番號查單部（影片頁）與 release=all 不限；
+	// 即將發售（Upcoming 或 release=upcoming）只要配信日在明天（日本時間）以後；其他一律只看已配信的
 	switch {
-	case strings.TrimSpace(input.No) != "":
-	case input.Upcoming:
+	case strings.TrimSpace(input.No) != "", input.Release == av.VideoReleaseAll:
+	case input.Upcoming, input.Release == av.VideoReleaseUpcoming:
 		esdsl.SetQuery(map[string]any{"range": map[string]any{"vod_date": map[string]any{"gte": jstTomorrow()}}}, true, q)
 	default:
 		esdsl.SetQuery(releasedQuery(), true, q)

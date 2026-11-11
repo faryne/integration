@@ -29,8 +29,10 @@ type videoSearchArguments struct {
 	DurationMin int    `json:"duration_min"`
 	DurationMax int    `json:"duration_max"`
 	Sort        string `json:"sort"`
-	No          string `json:"no"`
-	Page        int    `json:"page"`
+	// Release 配信狀態：空字串已配信、upcoming 即將發售、all 全部
+	Release string `json:"release"`
+	No      string `json:"no"`
+	Page    int    `json:"page"`
 	// Facets 為 true 時結果多帶目前條件下的常見標籤／發售商／系列／出演
 	Facets bool `json:"facets"`
 }
@@ -97,6 +99,7 @@ func (s *Server) registerAVTools() {
 			"duration_min": integerSchema("Minimum duration in minutes. Videos without duration data are excluded when set."),
 			"duration_max": integerSchema("Maximum duration in minutes."),
 			"sort":         map[string]interface{}{"type": "string", "enum": []string{"newest", "oldest"}, "description": "Sort by release date. Defaults to newest."},
+			"release":      map[string]interface{}{"type": "string", "enum": []string{"released", "upcoming", "all"}, "description": "Release state. released (default): already on sale; upcoming: pre-orders with a future release date (next 30 days); all: both."},
 			"facets":       map[string]interface{}{"type": "boolean", "description": "Also return facets (top tags 15, makers/series/actresses 10 each, with counts) for the same conditions. Defaults to false."},
 			"no":           stringSchema("Video number or maker number."),
 			"page":         integerSchema("Page number, defaults to 1."),
@@ -120,8 +123,10 @@ func (s *Server) registerAVTools() {
 				DurationMin: args.DurationMin,
 				DurationMax: args.DurationMax,
 				Sort:        args.Sort,
-				No:          args.No,
-				Page:        normalizedPage(args.Page),
+				// released 跟不帶一樣（只看已配信的）
+				Release: map[bool]string{true: "", false: args.Release}[args.Release == "released"],
+				No:      args.No,
+				Page:    normalizedPage(args.Page),
 			}
 			if args.StartDate != "" {
 				startDate, err := parseOnlyDate(args.StartDate)

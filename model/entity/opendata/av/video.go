@@ -34,7 +34,9 @@ type VideoQueryRequest struct {
 	No          string `query:"no"`
 	// Sort 排序：空字串新到舊，其他見 VideoSortOldest／VideoSortSoonest／VideoSortPopular
 	Sort string `query:"sort"`
-	Page int    `query:"page"`
+	// Release 配信狀態：空字串只看已配信的（預設），VideoReleaseUpcoming 只看即將發售，VideoReleaseAll 兩者都要
+	Release string `query:"release"`
+	Page    int    `query:"page"`
 	// Shuffle 隨機排序（詳細頁追溯不到系列／女優時，隨機推薦近期作品用）
 	Shuffle bool `query:"shuffle"`
 }
@@ -47,6 +49,12 @@ const (
 	VideoSortSoonest = "soonest"
 	// VideoSortPopular 依 DMM 收藏數（即將發售：下週發售）
 	VideoSortPopular = "popular"
+)
+
+// 影片搜尋的配信狀態（VideoQueryRequest.Release）；空字串是只看已配信的
+const (
+	VideoReleaseUpcoming = "upcoming"
+	VideoReleaseAll      = "all"
 )
 
 type RawVideo struct {

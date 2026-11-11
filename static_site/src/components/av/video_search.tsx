@@ -1,5 +1,5 @@
 import type { VideoSearchRequest } from "@/apis/av/video_search.ts";
-import { Button, Collapse, Stack, TextField } from "@mui/material";
+import { Button, Collapse, MenuItem, Stack, TextField } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -10,6 +10,7 @@ import {
   AV_VIDEO_EXACT_FILTERS,
   AV_VIDEO_MATCH_HINT,
   AV_VIDEO_PRIMARY_FILTERS,
+  AV_VIDEO_RELEASE_OPTIONS,
 } from "@/data/avVideoFilters.ts";
 import { VideoTermAutocomplete } from "@/components/av/video_term_autocomplete.tsx";
 
@@ -27,6 +28,7 @@ const secondary = AV_VIDEO_EXACT_FILTERS.filter(
 
 // 「更多條件」裡用了幾個（每個值算一個、片長算一個）：有值時預設展開，收合時標題旁顯示
 const secondaryCount = (req: VideoSearchRequest) =>
+  (req.release ? 1 : 0) +
   secondary.reduce((n, { param }) => n + (req[param]?.length ?? 0), 0) +
   (req.duration_min || req.duration_max ? 1 : 0);
 
@@ -164,6 +166,25 @@ export function VideoSearch(props: IVideoSearch) {
       </Button>
       <Collapse in={moreOpen} sx={{ mt: "0 !important" }}>
         <Stack spacing={2} sx={{ pt: 1 }}>
+          {/* 配信狀態：預設只看已配信的，可改看即將發售（預約作品）或全部 */}
+          <TextField
+            label="配信狀態"
+            onChange={(e) =>
+              set(
+                "release",
+                (e.target.value || undefined) as VideoSearchRequest["release"],
+              )
+            }
+            select
+            size="small"
+            value={req.release ?? ""}
+          >
+            {AV_VIDEO_RELEASE_OPTIONS.map((o) => (
+              <MenuItem key={o.value} value={o.value}>
+                {o.label}
+              </MenuItem>
+            ))}
+          </TextField>
           {secondary.map(renderFilter)}
           <Stack direction="row" spacing={1}>
             {renderDuration("duration_min", "片長最短")}
