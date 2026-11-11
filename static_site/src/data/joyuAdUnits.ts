@@ -16,14 +16,24 @@ export const JOYU_AD_PLACEMENTS = [
 export type JoyuAdPlacement = (typeof JOYU_AD_PLACEMENTS)[number];
 
 /** 沒有個別設定的版位都用這組 */
+// adultforce 的嵌入碼都是 a.adtng.com/get/<spot id>?ata=faryne 的 iframe（ata 是帳號代碼，原樣帶著）；
+// 嵌入碼給的是 //a.adtng.com，這裡固定寫 https。
+// 同一組 PC／手機各一個 spot；只有單一尺寸的 spot 只會在那個尺寸出現
+const adtng = (spot: number) => `https://a.adtng.com/get/${spot}?ata=faryne`;
+
 const DEFAULT_UNITS: AdUnit[] = [
-  // 範例（網址拿到後再填）：
-  // {
-  //   vendor: "adultforce",
-  //   type: "iframe",
-  //   src: { desktop: "https://…728x90…", mobile: "https://…300x100…" },
-  //   weight: 1,
-  // },
+  {
+    vendor: "adultforce",
+    type: "iframe",
+    src: { desktop: adtng(10001811), mobile: adtng(10001817) },
+  },
+  {
+    vendor: "adultforce",
+    type: "iframe",
+    src: { desktop: adtng(10002801), mobile: adtng(10002802) },
+  },
+  // 只有手機尺寸
+  { vendor: "adultforce", type: "iframe", src: { mobile: adtng(10001814) } },
 ];
 
 /** 個別版位要掛不同廣告時才加；沒列的版位用 DEFAULT_UNITS */

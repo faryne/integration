@@ -1,6 +1,6 @@
 # joyu.fyi 廣告版位（adultforce）＋被擋時的站內推廣
 
-> 狀態：已實作（`feat/joyu-ads`、`feat/joyu-ad-units`），廣告總開關已開、廣告網址待補
+> 狀態：已實作（`feat/joyu-ads`、`feat/joyu-ad-units`、`feat/joyu-ad-adtng`），adultforce 廣告已填入
 > Mockup：`DevelopDocuments/opendata/joyu-ads-mockup/index.html`
 
 ## 範圍
@@ -122,3 +122,13 @@ data/joyuAdUnits.ts   // joyu 廣告設定：總開關、版位名稱、各版�
 - 嵌入網址不是機密，進 repo；`.env` 只剩本機的 `VITE_JOYU_ADS=1` 開關。
 - script 型嵌入要用 async 版本；`document.write` 的舊式嵌入碼在 SPA 裡不能用。
 - 驗證：在瀏覽器直接 import `units.ts` 測過：沒有單元／沒有網址時 provider 是 undefined、iframe 正常插入（728 寬）、iframe 網址被擋時 reject、沒有該尺寸時 reject、script 載入失敗時 reject。
+
+## 填入 adultforce 廣告（2026-11-11 第三輪）
+
+- 嵌入碼都是 `a.adtng.com/get/<spot id>?ata=faryne` 的 iframe（`ata` 是帳號代碼），寫在 `DEFAULT_UNITS`，四個版位共用：
+  - 10001811（728×90）＋10001817（300×100）
+  - 10002801（728×90）＋10002802（300×100）
+  - 10001814（只有 300×100，只在手機出現）
+- 嵌入碼給的是 `//a.adtng.com`，設定檔固定寫 `https`。
+- **試探改打主機根網址**：原本 `fetch(no-cors)` 打的是廣告網址本身，會讓廣告伺服器多算一次曝光（可能被當成無效流量）；改成只打 `https://a.adtng.com/`。adblock 清單多半整個網域擋，一樣測得出來。
+- 驗證：在瀏覽器確認設定檔讀出的網址與試探網址正確。**刻意沒有在本機載真廣告**，避免自己產生曝光；要看實際效果可在本機設 `VITE_JOYU_ADS=1`（會算曝光），或部署後到正式站看。
