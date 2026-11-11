@@ -20,6 +20,10 @@ const JoyuUpcoming = lazyNamed(
   () => import("@/pages/joyu/Upcoming.tsx"),
   "JoyuUpcoming",
 );
+const JoyuMcpTools = lazyNamed(
+  () => import("@/pages/joyu/McpTools.tsx"),
+  "JoyuMcpTools",
+);
 const JoyuMyProfile = lazyNamed(
   () => import("@/pages/joyu/MyProfile.tsx"),
   "JoyuMyProfile",
@@ -79,6 +83,8 @@ export const joyuRoutes = (
     <Route path={"/me/follows"} element={<JoyuMyFollows />} />
     <Route path={"/me/videos"} element={<JoyuMyVideos />} />
     <Route path={"/me/profile"} element={<JoyuMyProfile />} />
+    {/* 不能用 /mcp：nginx 會把 joyu.fyi/mcp 的請求全部轉給後端 */}
+    <Route path={"/mcp-tools"} element={<JoyuMcpTools />} />
     <Route path={"*"} element={<ErrorPage code={404} />} />
   </Route>
 );
