@@ -38,12 +38,18 @@ export function joyuPath(path = "") {
 // DMM 內部番號（h_237nact00198）不會被當成番號，會進女優搜尋
 const videoCodePattern = /^([A-Za-z]{2,6})-?(\d{2,5})$/;
 
+/** 輸入的是番號就回統一格式（大寫加連字號，例如 ABCD-123），不是就回 undefined */
+export function joyuVideoCode(input: string) {
+  const code = input.trim().match(videoCodePattern);
+  return code ? `${code[1].toUpperCase()}-${code[2]}` : undefined;
+}
+
 /** 首頁與頁首搜尋框：番號直接到影片頁（統一成大寫加連字號），其他當女優名字到女優搜尋 */
 export function joyuSearchPath(input: string) {
   const text = input.trim();
-  const code = text.match(videoCodePattern);
+  const code = joyuVideoCode(text);
   if (code) {
-    return joyuPath(`video/${code[1].toUpperCase()}-${code[2]}`);
+    return joyuPath(`video/${code}`);
   }
   return joyuPath(
     text ? `actress?name=${encodeURIComponent(text)}` : "actress",
