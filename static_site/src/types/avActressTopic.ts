@@ -12,6 +12,14 @@ export interface ActressTopicSummary {
   summary?: string;
   /** 有類型條件的主題才有（全部類型條件）；女優頁從這個主題點進來時每個類型各一個「該類型作品」tab */
   genre_tags?: string[];
+  /** 出演數前幾名、有照片的女優（joyu 版位被擋時的主題推廣頭像）；舊的 index.json 沒有 */
+  preview?: ActressTopicPreview[];
+}
+
+export interface ActressTopicPreview {
+  aid: number;
+  name: string;
+  photo: string;
 }
 
 export interface ActressTopicGroup {

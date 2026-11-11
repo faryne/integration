@@ -4,6 +4,7 @@ import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { BirthdaySection } from "@/components/joyu/home/BirthdaySection.tsx";
 import { FollowedActressesSection } from "@/components/joyu/home/FollowedActressesSection.tsx";
 import { JoyuHero } from "@/components/joyu/home/JoyuHero.tsx";
+import { JoyuAdSlot } from "@/components/joyu/promo/JoyuAdSlot.tsx";
 import { LatestVideosSection } from "@/components/joyu/home/LatestVideosSection.tsx";
 import { UpcomingSection } from "@/components/joyu/home/UpcomingSection.tsx";
 import { NewActressesSection } from "@/components/joyu/home/NewActressesSection.tsx";
@@ -27,8 +28,11 @@ export function JoyuHome() {
         <FollowedActressesSection />
         <JoyuHero />
         <NewActressesSection />
+        {/* 版位兩格：今天有新片的女優之後、女優主題之後；slot 讓兩格推廣不同主題 */}
+        <JoyuAdSlot slot={0} />
         <BirthdaySection />
         <TopicsSection />
+        <JoyuAdSlot slot={1} />
         <UpcomingSection />
         <LatestVideosSection />
       </Stack>

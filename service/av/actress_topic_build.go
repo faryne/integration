@@ -40,8 +40,26 @@ func (b *topicBuilder) add(group, slug, label, file, summary, defaultSort string
 	if len(genreTags) > 0 {
 		genreTag = genreTags[0]
 	}
-	b.groups[group] = append(b.groups[group], avEntity.ActressTopicSummary{Slug: slug, Label: label, Count: len(members), File: file, Summary: summary, GenreTags: genreTags})
+	b.groups[group] = append(b.groups[group], avEntity.ActressTopicSummary{Slug: slug, Label: label, Count: len(members), File: file, Summary: summary, GenreTags: genreTags, Preview: topicPreview(members)})
 	b.files[file] = avEntity.ActressTopicFile{Slug: slug, Label: label, GeneratedAt: b.now.Format(time.RFC3339), DefaultSort: defaultSort, GenreTag: genreTag, Actresses: members}
+}
+
+// topicPreviewSize index.json 每個主題帶幾張頭像（PC 版位最多放 6 張）
+const topicPreviewSize = 6
+
+// topicPreview 出演數最多、有照片的前 topicPreviewSize 位；複製一份再排，不動到主題檔原本的順序
+func topicPreview(members []avEntity.ActressTopicMember) []avEntity.ActressTopicPreview {
+	sorted := slices.SortedStableFunc(slices.Values(members), func(a, c avEntity.ActressTopicMember) int { return cmp.Compare(c.VideoCount, a.VideoCount) })
+	out := make([]avEntity.ActressTopicPreview, 0, topicPreviewSize)
+	for _, m := range sorted {
+		if m.Photo == "" {
+			continue
+		}
+		if out = append(out, avEntity.ActressTopicPreview{AID: m.AID, Name: m.Name, Photo: m.Photo}); len(out) == topicPreviewSize {
+			break
+		}
+	}
+	return out
 }
 
 func (b *topicBuilder) result() actressTopicSet {

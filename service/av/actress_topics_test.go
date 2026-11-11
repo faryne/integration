@@ -2,6 +2,7 @@ package av
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 	"time"
@@ -175,5 +176,23 @@ func TestNormalizeActressTopic(t *testing.T) {
 		if _, err := normalizeActressTopic(r); !errors.Is(err, ErrActressTopicInvalid) {
 			t.Errorf("%s: expected invalid, got %v", name, err)
 		}
+	}
+}
+
+func TestTopicPreview(t *testing.T) {
+	var members []avEntity.ActressTopicMember
+	for i := range 9 {
+		photo := fmt.Sprintf("p%d.jpg", i)
+		if i == 8 {
+			photo = "" // 出演最多但沒照片，要略過
+		}
+		members = append(members, avEntity.ActressTopicMember{AID: i, Photo: photo, VideoCount: i})
+	}
+	got := topicPreview(members)
+	if len(got) != topicPreviewSize || got[0].AID != 7 || got[5].AID != 2 {
+		t.Fatalf("topicPreview = %+v", got)
+	}
+	if members[0].AID != 0 {
+		t.Fatal("topicPreview 不應改動原本的順序")
 	}
 }
