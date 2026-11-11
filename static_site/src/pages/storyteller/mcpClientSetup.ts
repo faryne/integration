@@ -9,10 +9,14 @@
 
 import { apiBase } from "@/apis/storyteller/shared.ts";
 import { isSteamLoomSite } from "@/helpers/steamloom.ts";
+import { isLocalSiteHost } from "@/helpers/localSiteHost.ts";
 
 // MCP endpoint 是給外部工具（Codex、Claude 等）直接連線用，兩個網域各自有 nginx 對應規則，
 // 這裡照網域顯示對的網址。舊網址 faryne.dev/api-integration/storyteller-mcp 永久保留，已設定好的 client 不用改。
-export const mcpEndpoint = isSteamLoomSite()
+// 本機的 steamloom.localhost 不是正式網域，跟 faryne.dev／本機一樣走 API base，不要指到正式機
+const brandedHost = isSteamLoomSite() && !isLocalSiteHost();
+
+export const mcpEndpoint = brandedHost
   ? "https://steamloom.works/mcp"
   : "https://faryne.dev/api/storyteller-mcp";
 
@@ -22,7 +26,7 @@ export const oauthMcpEndpoint = "https://steamloom.works/mcp";
 // Skill 的公開網址（後端 GET /storyteller-mcp/skill.md／skill.zip）。steamloom.works 的 nginx 會把整個
 // /mcp 前綴改寫成 /storyteller-mcp，所以品牌網址是 steamloom.works/mcp/skill.md。
 // faryne.dev 與本機開發則走 API base 底下的 /storyteller-mcp。
-const skillBase = isSteamLoomSite()
+const skillBase = brandedHost
   ? "https://steamloom.works/mcp"
   : `${apiBase}/storyteller-mcp`;
 export const mcpSkillMarkdownUrl = `${skillBase}/skill.md`;
