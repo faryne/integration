@@ -11,6 +11,7 @@ import { ActressWorks } from "@/components/av/actress_works.tsx";
 import { ActressUpcoming } from "@/components/av/actress_upcoming.tsx";
 import { actressRefOf } from "@/helpers/avActressRef.ts";
 import { CommentSection } from "@/components/joyu/comments/CommentSection.tsx";
+import { JoyuAdSlot } from "@/components/joyu/promo/JoyuAdSlot.tsx";
 import type { Actress } from "@/types/av.ts";
 
 /**
@@ -73,6 +74,8 @@ export function ActressDetail({
         pageName={pageName}
         summary={summary}
       />
+      {/* joyu 版位：頂端資料與分頁之間 */}
+      <JoyuAdSlot />
       <Box>
         <Tabs
           onChange={(_, v: View) => setView(v)}

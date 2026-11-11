@@ -47,6 +47,15 @@ type ActressTopicSummary struct {
 	Summary string `json:"summary,omitempty"`
 	// GenreTags 主題的全部類型條件（類型主題就是標籤本身）；女優頁從這個主題點進來時，每個類型各開一個「該類型作品」的 tab
 	GenreTags []string `json:"genre_tags,omitempty"`
+	// Preview 出演數前幾名、有照片的女優；joyu 被 adblock 擋掉的版位改放主題推廣時顯示頭像，免得為了幾張臉去抓整份主題檔
+	Preview []ActressTopicPreview `json:"preview,omitempty"`
+}
+
+// ActressTopicPreview index.json 裡主題推廣用的女優頭像
+type ActressTopicPreview struct {
+	AID   int    `json:"aid"`
+	Name  string `json:"name"`
+	Photo string `json:"photo"`
 }
 
 // ActressTopicFile 單一主題的檔案；排序與分頁都由前端處理

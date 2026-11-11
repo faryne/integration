@@ -10,6 +10,7 @@ import { VideoSyncButton } from "@/components/av/video_sync_button.tsx";
 import { VideoCast } from "@/components/av/video_cast.tsx";
 import { VideoMetaRows } from "@/components/av/video_meta_rows.tsx";
 import { VideoMarkButtons } from "@/components/joyu/marks/VideoMarkButtons.tsx";
+import { JoyuAdSlot } from "@/components/joyu/promo/JoyuAdSlot.tsx";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
 import { joyuPath } from "@/helpers/joyu.ts";
@@ -193,6 +194,9 @@ export function VideoDetail(props: IVideoDetail) {
           )}
         </Stack>
       </Box>
+
+      {/* joyu 版位：封面／資訊區與分頁之間 */}
+      <JoyuAdSlot />
 
       {/* 圖片預覽與相關作品用 tab 切換（有圖片時預設停在圖片預覽）；key 讓換片時回到第一個 tab */}
       <VideoDetailTabs key={video.no} video={video} />
