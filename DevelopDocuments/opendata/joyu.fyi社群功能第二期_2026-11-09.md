@@ -392,3 +392,17 @@ DELETE /joyu/me/marks/:no
 - **`/upcoming` 改用共通日曆**
   - `HolidayCalendar` 新增一般資料模式：`marks`（每天一段文字）、`selectedDate`、`minDate`／`maxDate`、`hideYearNav`。帶 `marks` 時不套補班樣式，也不把沒資料的週末標紅。ETF 頁沒帶這些參數，行為不變。
   - 版面：桌機日曆在左（捲動時固定）、作品在右；手機上下排。原本的 7 天／30 天切換拿掉，日曆一次看得到整個月。
+
+### 即將發售併入影片搜尋（2026-11-11，分支 `feat/joyu-video-search-release`）
+- 影片搜尋新增 `release` 參數（`VideoQueryRequest.Release`）：
+  - 不帶：只看已配信的，跟原本一樣。
+  - `upcoming`：只看即將發售，等同 `Upcoming`。
+  - `all`：兩者都要。
+  - 條件只改 `applyVideoConditions` 一處，篩選統計會跟著一起生效。
+- MCP `av_video_search` 新增 `release`（`released`／`upcoming`／`all`）。
+- 前端：
+  - 影片搜尋的「更多條件」新增「配信狀態」下拉，預設已配信；網址是 `?release=`，條件列有可移除的 chip。
+  - 「即將發售・M/D」標示抽成 `components/av/upcoming_badge.tsx`，搜尋結果卡片（`VideoResultCard`）與封面卡片（`VideoCoverCard`）共用。
+- 「追蹤這個搜尋」不存 `release`：我的追蹤頁本來就會一起列出預約作品。
+- 驗證：已配信 599,306 加即將發售 1,508，等於全部的 600,814；即將發售的篩選統計只算預約作品；移除 chip 後回到已配信。
+- 不做：X／Instagram 內容擷取。API 限制多，使用者決定放棄（2026-11-11）。

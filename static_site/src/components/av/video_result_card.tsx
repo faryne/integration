@@ -5,6 +5,7 @@ import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
 import { AV_COVER_ASPECT_RATIO } from "@/data/avVideoCover.ts";
 import { joyuPath } from "@/helpers/joyu.ts";
 import { VideoMarkBadge } from "@/components/joyu/marks/VideoMarkBadge.tsx";
+import { UpcomingBadge } from "@/components/av/upcoming_badge.tsx";
 
 // 詳細頁網址優先用官方番號，沒有就用 DMM 內部番號
 const videoDetailId = (video: Video) =>
@@ -65,6 +66,7 @@ export function VideoResultCard({ video }: { video: Video }) {
         }}
       >
         <VideoMarkBadge videoNo={video.no} />
+        <UpcomingBadge video={video} />
         <AvCoverImage
           src={video.thumb}
           alt={video.title}

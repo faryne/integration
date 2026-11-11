@@ -5,7 +5,7 @@ import { AV_COVER_ASPECT_RATIO } from "@/data/avVideoCover.ts";
 import { AvCoverImage } from "@/components/av/av_cover_image.tsx";
 import { joyuPath } from "@/helpers/joyu.ts";
 import { VideoMarkBadge } from "@/components/joyu/marks/VideoMarkBadge.tsx";
-import { isUpcoming, shortDate } from "@/helpers/upcoming.ts";
+import { UpcomingBadge } from "@/components/av/upcoming_badge.tsx";
 
 /**
  * 直式封面卡片：封面＋番號＋兩行標題，相關作品等橫向列表用。
@@ -41,26 +41,7 @@ export function VideoCoverCard({ video }: { video: Video }) {
           }}
         />
         <VideoMarkBadge videoNo={video.no} />
-        {isUpcoming(video) && (
-          <Box
-            component="span"
-            sx={{
-              bgcolor: "primary.main",
-              borderRadius: 0.75,
-              color: "primary.contrastText",
-              fontSize: 11,
-              fontWeight: 700,
-              lineHeight: 1.6,
-              pointerEvents: "none",
-              position: "absolute",
-              px: 0.75,
-              right: 6,
-              top: 6,
-            }}
-          >
-            即將發售・{shortDate(video.vod_date)}
-          </Box>
-        )}
+        <UpcomingBadge video={video} />
       </Box>
       <Typography sx={{ fontSize: 12, fontWeight: 700, mt: 0.75 }}>
         {code}

@@ -1,7 +1,10 @@
 import { Chip, Stack } from "@mui/material";
 import type { VideoSearchRequest } from "@/apis/av/video_search.ts";
 import type { ListByPaginationRequest } from "@/apis/interfaces";
-import { AV_VIDEO_EXACT_FILTERS } from "@/data/avVideoFilters.ts";
+import {
+  AV_VIDEO_EXACT_FILTERS,
+  AV_VIDEO_RELEASE_OPTIONS,
+} from "@/data/avVideoFilters.ts";
 import { SearchFollowButton } from "@/components/joyu/SearchFollowButton.tsx";
 
 type Search = ListByPaginationRequest<VideoSearchRequest>;
@@ -12,6 +15,7 @@ const hasVideoSearchCondition = (s: Search) =>
     s.keyword ||
     s.start_date ||
     s.end_date ||
+    s.release ||
     s.duration_min ||
     s.duration_max ||
     AV_VIDEO_EXACT_FILTERS.some(({ param }) => s[param]?.length),
@@ -69,6 +73,13 @@ export function VideoSearchChips({
           ),
         ),
       )}
+      {search.release &&
+        chip(
+          "release",
+          `配信狀態：${AV_VIDEO_RELEASE_OPTIONS.find((o) => o.value === search.release)?.label}`,
+          () => drop({ release: undefined }),
+          true,
+        )}
       {(search.duration_min || search.duration_max) &&
         chip(
           "duration",

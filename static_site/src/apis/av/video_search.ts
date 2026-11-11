@@ -32,6 +32,8 @@ export interface VideoSearchRequest extends ActressRef {
   duration_max?: number;
   // 排序："oldest" 舊到新，不帶就是新到舊；即將發售另有 "soonest"（配信日近的在前）、"popular"（DMM 收藏數，不顯示數字）
   sort?: "oldest" | "soonest" | "popular";
+  // 配信狀態：不帶只看已配信的；"upcoming" 只看即將發售（預約作品）、"all" 兩者都要
+  release?: "upcoming" | "all";
   // 隨機排序（詳細頁追溯不到系列／女優時的近期推薦）；ListByPaginationRequest 已有別的 random 欄位，避開同名
   shuffle?: boolean;
   no?: string;

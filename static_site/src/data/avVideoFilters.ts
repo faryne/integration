@@ -35,3 +35,10 @@ export const AV_VIDEO_PRIMARY_FILTERS: AVVideoExactFilterParam[] = [
   "actress",
   "tag",
 ];
+
+// 影片搜尋的配信狀態（網址 ?release=）：預約作品跟已配信的在同一個池子，預設只看已配信的
+export const AV_VIDEO_RELEASE_OPTIONS = [
+  { value: "", label: "已配信" },
+  { value: "upcoming", label: "即將發售" },
+  { value: "all", label: "全部" },
+] as const;

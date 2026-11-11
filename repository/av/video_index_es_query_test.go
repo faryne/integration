@@ -57,4 +57,11 @@ func TestApplyVideoConditionsReleaseState(t *testing.T) {
 	if s := body(av.VideoIndexQuery{VideoQueryRequest: av.VideoQueryRequest{No: "SDAM-186"}}); strings.Contains(s, future) {
 		t.Fatalf("lookup by number should not filter release state: %s", s)
 	}
+	// 影片搜尋的 release 參數：upcoming 跟 Upcoming 一樣、all 不限
+	if s := body(av.VideoIndexQuery{VideoQueryRequest: av.VideoQueryRequest{Release: av.VideoReleaseUpcoming}}); !strings.Contains(s, `{"range":{`+future+`}}`) || strings.Contains(s, "must_not") {
+		t.Fatalf("release=upcoming should only include future videos: %s", s)
+	}
+	if s := body(av.VideoIndexQuery{VideoQueryRequest: av.VideoQueryRequest{Release: av.VideoReleaseAll}}); strings.Contains(s, future) {
+		t.Fatalf("release=all should not filter release state: %s", s)
+	}
 }

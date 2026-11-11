@@ -32,6 +32,8 @@ export const parseVideoSearchParams = (
   if (durationMin) search.duration_min = durationMin;
   if (durationMax) search.duration_max = durationMax;
   if (query.get("sort") === "oldest") search.sort = "oldest";
+  const release = query.get("release");
+  if (release === "upcoming" || release === "all") search.release = release;
 
   for (const { param } of AV_VIDEO_EXACT_FILTERS) {
     const values = distinct(query.getAll(param));
@@ -63,6 +65,7 @@ export const videoSearchToParams = (
   if (search.duration_max)
     query.set("duration_max", String(search.duration_max));
   if (search.sort === "oldest") query.set("sort", "oldest");
+  if (search.release) query.set("release", search.release);
   for (const { param } of AV_VIDEO_EXACT_FILTERS) {
     for (const v of distinct(search[param] ?? [])) query.append(param, v);
   }
