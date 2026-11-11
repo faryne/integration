@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"time"
 
@@ -263,9 +264,19 @@ var cronJobs = map[string]cronGroup{
 				Handler:  avService.RunMarkDelistedVideosOrphan,
 			},
 			{
-				// 先同步當天作品，同步完再把當天上架清單前 10 筆發到 Telegram；可用 -dayFrom 指定日期
+				// 早上先同步一次當天作品（不發通知），當天的片早點進站；可用 -dayFrom 指定日期
+				Name:     "av-dmm-video-sync-today",
+				Schedule: "0 5 * * *",
+				Enabled:  true,
+				Handler: func() {
+					avService.RunDMMVideoSync(cmp.Or(commandParams.Value("dayFrom"), time.Now().Format(time.DateOnly)), "")
+				},
+			},
+			{
+				// 當天最後一次：再同步當天作品（補白天陸續上架的），同步完把當天上架清單前 10 筆發到 Telegram；
+				// 隔天 03:50 的 av-dmm-video-sync 會再補整天一次。可用 -dayFrom 指定日期
 				Name:     "av-dmm-video-notify",
-				Schedule: "0 10 * * *",
+				Schedule: "0 22 * * *",
 				Enabled:  true,
 				Handler: func() {
 					avService.RunDMMVideoSyncAndNotify(commandParams.Value("dayFrom"))
