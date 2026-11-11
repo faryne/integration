@@ -1,4 +1,5 @@
 import { isGalgameSite } from "@/helpers/galgame.ts";
+import { isLocalSiteHost, localMainOrigin } from "@/helpers/localSiteHost.ts";
 
 // 整合後台（faryne.dev/backend_admin）的路徑：後台內所有連結一律從這裡組
 export const BACKEND_ADMIN_PATH = "/backend_admin";
@@ -33,6 +34,11 @@ export type GalgameAdminPage =
 export const galgameAdminPath = (page: GalgameAdminPage) =>
   `${BACKEND_ADMIN_PATH}/galgame/${page}`;
 
-/** galgame.tv 是另一個網域，從那邊進後台要連回主站（本機開發走 /galgame 巢狀模式，維持站內路徑） */
+/**
+ * galgame.tv 是另一個網域，從那邊進後台要連回主站；本機的 galgame.localhost 連回本機主站
+ * （本機 /galgame 巢狀模式維持站內路徑）
+ */
 export const backendAdminUrl = (path: string) =>
-  isGalgameSite() ? `https://faryne.dev${path}` : path;
+  isGalgameSite()
+    ? `${isLocalSiteHost() ? localMainOrigin() : "https://faryne.dev"}${path}`
+    : path;

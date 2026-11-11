@@ -19,6 +19,8 @@ export function isNekomaidSite() {
     "nekomaid.web.app",
     "nekomaid.firebaseapp.com",
     "neko.maid.tw",
+    // 本機用 http://neko.localhost:5174 測獨立站（見 helpers/localSiteHost.ts）
+    "neko.localhost",
   ].includes(window.location.hostname);
 }
 

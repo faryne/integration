@@ -28,7 +28,11 @@ const canonicalOriginByHost: Record<string, string> = {
   "www.joyu.fyi": joyuOrigin,
   "joyu-firebase.web.app": joyuOrigin,
   "joyu-firebase.firebaseapp.com": joyuOrigin,
+  // 本機的獨立站網域（見 helpers/localSiteHost.ts）也指回正式網域
   "joyu.localhost": joyuOrigin,
+  "galgame.localhost": "https://galgame.tv",
+  "neko.localhost": "https://neko.maid.tw",
+  "steamloom.localhost": steamloomOrigin,
 };
 
 function getCanonicalOrigin() {

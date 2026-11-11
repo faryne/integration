@@ -12,6 +12,8 @@ export function isGalgameSite() {
     "www.galgame.tv",
     "galgame-tv.web.app",
     "galgame-tv.firebaseapp.com",
+    // 本機用 http://galgame.localhost:5174 測獨立站（見 helpers/localSiteHost.ts）
+    "galgame.localhost",
   ].includes(window.location.hostname);
 }
 

@@ -107,7 +107,9 @@ function toBase64Url(value: Uint8Array) {
 function encryptContact(value: string, key: string) {
   const input = new TextEncoder().encode(value);
   const keyBytes = new TextEncoder().encode(key || "faryne.dev");
-  const encrypted = input.map((byte, index) => byte ^ keyBytes[index % keyBytes.length]);
+  const encrypted = input.map(
+    (byte, index) => byte ^ keyBytes[index % keyBytes.length],
+  );
 
   return `v1.${toBase64Url(encrypted)}`;
 }
@@ -163,8 +165,14 @@ export default defineConfig(({ mode }) => {
       // 給的網域加進這個陣列（例如 "xxxx.ngrok-free.app"）。這個網址每次
       // 重開 ngrok 都會變，是個人本機測試用的設定，不要把實際網址 commit
       // 進來。
-      // joyu.localhost：本機測 joyu.fyi 獨立站模式（見 helpers/joyu.ts）
-      allowedHosts: ["localhost", "joyu.localhost"],
+      // *.localhost：本機測各獨立站模式（見 helpers/localSiteHost.ts）
+      allowedHosts: [
+        "localhost",
+        "joyu.localhost",
+        "galgame.localhost",
+        "neko.localhost",
+        "steamloom.localhost",
+      ],
       // 固定在 5174：沒有這個設定時，port 被佔用會自動往上加（5175、5176...），
       // 每次開發 server 的網址就不固定，人工測試很難對上正確的分頁。
       // strictPort 讓它衝突時直接報錯，而不是默默換一個。

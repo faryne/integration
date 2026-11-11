@@ -10,6 +10,8 @@ const steamloomHosts = [
   "steamloom-web.web.app",
   "steamloom-web.firebaseapp.com",
   "site.steamloom.works",
+  // 本機用 http://steamloom.localhost:5174 測獨立站（見 helpers/localSiteHost.ts）
+  "steamloom.localhost",
 ];
 
 export function isSteamLoomSite() {
