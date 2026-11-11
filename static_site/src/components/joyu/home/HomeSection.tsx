@@ -8,12 +8,15 @@ export function HomeSection({
   note,
   moreTo,
   moreLabel = "看全部",
+  dense,
   children,
 }: {
   title: string;
   note?: string;
   moreTo?: string;
   moreLabel?: string;
+  /** 一屏版首頁用：標題小一號、跟內容距離縮短 */
+  dense?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -23,11 +26,14 @@ export function HomeSection({
         sx={{
           alignItems: "baseline",
           justifyContent: "space-between",
-          mb: 1.5,
+          mb: dense ? { xs: 0.5, md: 0.75 } : 1.5,
           gap: 1,
         }}
       >
-        <Typography component="h2" sx={{ fontSize: 18, fontWeight: 800 }}>
+        <Typography
+          component="h2"
+          sx={{ fontSize: dense ? 16 : 18, fontWeight: 800 }}
+        >
           {title}
           {note && (
             <Box

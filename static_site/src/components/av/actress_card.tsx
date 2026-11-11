@@ -12,12 +12,15 @@ export function ActressCard({
   photo,
   to,
   rank,
+  dense,
   children,
 }: {
   name: string;
   photo?: string;
   to: string;
   rank?: number;
+  /** 窄卡片用（一屏版首頁）：名字區塊的留白與字級縮小 */
+  dense?: boolean;
   children?: ReactNode;
 }) {
   return (
@@ -83,9 +86,10 @@ export function ActressCard({
           sx={{ height: "100%", width: "100%" }}
         />
       </Box>
-      <Stack spacing={0.75} sx={{ p: 1.5 }}>
+      <Stack spacing={dense ? 0.25 : 0.75} sx={{ p: dense ? 0.75 : 1.5 }}>
         <Typography
           sx={{
+            fontSize: dense ? 12 : undefined,
             fontWeight: 800,
             letterSpacing: 0,
             lineHeight: 1.3,

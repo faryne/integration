@@ -1,10 +1,11 @@
-import { Box, Skeleton, Typography } from "@mui/material";
+import { Skeleton, Typography } from "@mui/material";
 
 import { useJoyuNewActresses } from "@/apis/av/joyu.ts";
 import { ActressCard } from "@/components/av/actress_card.tsx";
 import { joyuPath } from "@/helpers/joyu.ts";
 
 import { ErrorSnack } from "./ErrorSnack.tsx";
+import { HomeRow } from "./HomeRow.tsx";
 import { HomeSection } from "./HomeSection.tsx";
 import { joyuActressLink } from "@/helpers/joyuActressLink.ts";
 
@@ -18,48 +19,50 @@ const dayLabel = (date: string) => {
   return `${String(m).padStart(2, "0")}/${String(d).padStart(2, "0")}（${w}）`;
 };
 
-/** 首頁「今天有新片的女優」：橫向捲動的女優卡；今天還沒新片時後端回最近一天，標題旁顯示實際日期 */
-export function NewActressesSection() {
+/**
+ * 首頁「今天有新片的女優」：橫向捲動的女優卡；今天還沒新片時後端回最近一天，標題旁顯示實際日期。
+ * compact：一屏版首頁用，卡片縮小
+ */
+export function NewActressesSection({ compact }: { compact?: boolean }) {
   const q = useJoyuNewActresses();
   const items = q.data?.actresses ?? [];
   if (q.isSuccess && items.length === 0) return null;
 
   return (
     <HomeSection
+      dense={compact}
       title="今天有新片的女優"
       note={q.data ? `${dayLabel(q.data.date)}・${items.length} 位` : undefined}
       moreTo={joyuPath("video")}
       moreLabel="看全部新片"
     >
-      <Box sx={{ display: "flex", gap: 1.5, overflowX: "auto", pb: 1 }}>
+      {/* 一屏版卡片縮小；原版面維持原尺寸 */}
+      <HomeRow item={compact ? { xs: 72, md: 96 } : { xs: 120, md: 148 }}>
         {q.isPending
           ? Array.from({ length: 8 }, (_, i) => (
               <Skeleton
                 key={i}
                 variant="rounded"
-                sx={{ flex: "0 0 148px", height: 250 }}
+                sx={{ height: compact ? 160 : 250 }}
               />
             ))
           : items.map((item) => (
-              <Box
+              <ActressCard
+                dense={compact}
                 key={item.name}
-                sx={{ flex: { xs: "0 0 120px", md: "0 0 148px" } }}
+                name={item.name}
+                photo={item.actress?.photo}
+                to={joyuActressLink(item)}
               >
-                <ActressCard
-                  name={item.name}
-                  photo={item.actress?.photo}
-                  to={joyuActressLink(item)}
+                <Typography
+                  color="primary"
+                  sx={{ fontSize: compact ? 11 : 12, fontWeight: 700 }}
                 >
-                  <Typography
-                    color="primary"
-                    sx={{ fontSize: 12, fontWeight: 700 }}
-                  >
-                    新片 {item.count} 部
-                  </Typography>
-                </ActressCard>
-              </Box>
+                  新片 {item.count} 部
+                </Typography>
+              </ActressCard>
             ))}
-      </Box>
+      </HomeRow>
       <ErrorSnack open={q.isError} message="新片女優讀取失敗，請稍後再試" />
     </HomeSection>
   );

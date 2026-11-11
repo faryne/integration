@@ -9,11 +9,15 @@ import { ErrorSnack } from "./ErrorSnack.tsx";
 import { HomeSection } from "./HomeSection.tsx";
 import { HOME_TOPIC_GROUPS } from "./homeTopicGroups.ts";
 
-// 每個分組在首頁只放人數最多的幾個，完整清單在主題總覽頁
+// 每個分組在首頁只放人數最多的幾個，完整清單在主題總覽頁；一屏版不分組，全部混在一起取人數最多的幾個
 const TOPICS_PER_GROUP = 8;
+const COMPACT_TOPICS = 14;
 
-/** 首頁「女優主題」：首頁那幾組各一張卡，列出人數最多的主題 */
-export function TopicsSection() {
+/**
+ * 首頁「女優主題」：首頁那幾組各一張卡，列出人數最多的主題。
+ * compact：一屏版首頁用，不分組只放一串 chip（PC 換行、手機一排橫向滑動）
+ */
+export function TopicsSection({ compact }: { compact?: boolean }) {
   const index = useActressTopicIndex();
   const groups = (index.data?.groups ?? []).filter((g) =>
     HOME_TOPIC_GROUPS.includes(g.key),
@@ -21,49 +25,84 @@ export function TopicsSection() {
 
   return (
     <HomeSection
+      dense={compact}
       title="女優主題"
       moreTo={joyuPath("actress/topics")}
       moreLabel="全部主題"
     >
-      <Box
-        sx={{
-          display: "grid",
-          gap: 1.5,
-          gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
-        }}
-      >
-        {index.isPending
-          ? Array.from({ length: 3 }, (_, i) => (
-              <Skeleton key={i} variant="rounded" height={120} />
-            ))
-          : groups.map((g) => (
-              <Paper
-                key={g.key}
-                variant="outlined"
-                sx={{ borderRadius: 3, p: 2 }}
-              >
-                <Typography sx={{ fontSize: 14, fontWeight: 800, mb: 1 }}>
-                  {g.label}
-                </Typography>
-                <Stack direction="row" flexWrap="wrap" gap={0.75} useFlexGap>
-                  {[...g.topics]
-                    .sort((a, b) => b.count - a.count)
-                    .slice(0, TOPICS_PER_GROUP)
-                    .map((t) => (
-                      <Chip
-                        key={t.slug}
-                        clickable
-                        component={RouterLink}
-                        to={actressTopicPath(t.slug)}
-                        label={`${t.label} ${t.count.toLocaleString()}`}
-                        size="small"
-                        variant="outlined"
-                      />
-                    ))}
-                </Stack>
-              </Paper>
-            ))}
-      </Box>
+      {compact ? (
+        <Stack
+          direction="row"
+          gap={0.75}
+          sx={{
+            flexWrap: { xs: "nowrap", md: "wrap" },
+            overflowX: { xs: "auto", md: "visible" },
+            pb: { xs: 0.5, md: 0 },
+          }}
+          useFlexGap
+        >
+          {index.isPending
+            ? Array.from({ length: 8 }, (_, i) => (
+                <Skeleton key={i} variant="rounded" width={72} height={24} />
+              ))
+            : groups
+                .flatMap((g) => g.topics)
+                .sort((a, b) => b.count - a.count)
+                .slice(0, COMPACT_TOPICS)
+                .map((t) => (
+                  <Chip
+                    clickable
+                    component={RouterLink}
+                    key={t.slug}
+                    label={`${t.label} ${t.count.toLocaleString()}`}
+                    size="small"
+                    sx={{ flexShrink: 0 }}
+                    to={actressTopicPath(t.slug)}
+                    variant="outlined"
+                  />
+                ))}
+        </Stack>
+      ) : (
+        <Box
+          sx={{
+            display: "grid",
+            gap: 1.5,
+            gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
+          }}
+        >
+          {index.isPending
+            ? Array.from({ length: 3 }, (_, i) => (
+                <Skeleton key={i} variant="rounded" height={120} />
+              ))
+            : groups.map((g) => (
+                <Paper
+                  key={g.key}
+                  variant="outlined"
+                  sx={{ borderRadius: 3, p: 2 }}
+                >
+                  <Typography sx={{ fontSize: 14, fontWeight: 800, mb: 1 }}>
+                    {g.label}
+                  </Typography>
+                  <Stack direction="row" flexWrap="wrap" gap={0.75} useFlexGap>
+                    {[...g.topics]
+                      .sort((a, b) => b.count - a.count)
+                      .slice(0, TOPICS_PER_GROUP)
+                      .map((t) => (
+                        <Chip
+                          key={t.slug}
+                          clickable
+                          component={RouterLink}
+                          to={actressTopicPath(t.slug)}
+                          label={`${t.label} ${t.count.toLocaleString()}`}
+                          size="small"
+                          variant="outlined"
+                        />
+                      ))}
+                  </Stack>
+                </Paper>
+              ))}
+        </Box>
+      )}
       <ErrorSnack open={index.isError} message="主題資料讀取失敗，請稍後再試" />
     </HomeSection>
   );
