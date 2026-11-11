@@ -25,9 +25,37 @@ const (
 // errVideoDetailsMostlyFailed 清單抓得到、明細卻過半失敗，視同被擋；不然整段日期會顯示成功但其實是空的
 var errVideoDetailsMostlyFailed = errors.New("over half of video details failed, possibly blocked by DMM")
 
-// RunDMMVideoSync 排程每天同步前一天的配信作品；手動執行可用 -dayFrom／-dayTo（含）回補區間。
+// VideoSyncSchedule av-dmm-video-sync 的排程：03 點補前一天整天，05、22 點同步當天，
+// 22 點是當天最後一次，同步完才發 TG 通知（10 點後陸續上架的片當天就進站，隔天凌晨再補一次不會漏）
+var VideoSyncSchedule = fmt.Sprintf("0 3,%d,%d * * *", videoSyncTodayFromHour, videoNotifyHour)
+
+const (
+	videoSyncTodayFromHour = 5  // 這個整點之前跑＝補前一天，之後＝同步當天
+	videoNotifyHour        = 22 // 當天最後一次同步，同步完才發通知
+)
+
+// RunDMMVideoSync 排程與手動共用入口。沒帶 dayFrom 時依現在整點決定：05 點前補前一天，之後同步當天，22 點同步完發通知
+// （cron 在同一個 process 裡共用命令列參數，三個時段分不出來，所以靠整點判斷）。
+// 手動執行可用 -dayFrom／-dayTo（含）回補區間，-notify 1 會在同步完發 dayFrom 那天的通知。
+// 通知裡的片在網站上一定查得到；同步失敗仍照常發通知（失敗另有 TG 告警）
+func RunDMMVideoSync(dayFrom, dayTo string, notify bool) {
+	if dayFrom == "" {
+		now := time.Now()
+		day := now
+		if now.Hour() < videoSyncTodayFromHour {
+			day = now.AddDate(0, 0, -1)
+		}
+		dayFrom, notify = day.Format(time.DateOnly), notify || now.Hour() == videoNotifyHour
+	}
+	syncDMMVideoRange(dayFrom, dayTo)
+	if notify {
+		RunDMMVideoDailyNotify(dayFrom)
+	}
+}
+
+// syncDMMVideoRange 同步 dayFrom～dayTo（含；沒帶 dayTo 就只跑 dayFrom）的配信作品。
 // 單日失敗不中斷其他日期，但連續失敗 videoSyncMaxFailStreak 天就中止；最後有失敗的日期就發 TG 告警。
-func RunDMMVideoSync(dayFrom, dayTo string) {
+func syncDMMVideoRange(dayFrom, dayTo string) {
 	from, to, err := videoSyncRange(dayFrom, dayTo)
 	if err != nil {
 		log.Logger().Error("DMM video sync invalid range: " + err.Error())
@@ -81,13 +109,8 @@ func RunDMMVideoSync(dayFrom, dayTo string) {
 	}
 }
 
-// videoSyncRange 沒帶參數＝前一天（跟原本 PHP dmm:daily-published 一樣）；只帶 dayFrom＝只跑那一天
+// videoSyncRange 只帶 dayFrom＝只跑那一天
 func videoSyncRange(dayFrom, dayTo string) (time.Time, time.Time, error) {
-	if dayFrom == "" {
-		y := time.Now().AddDate(0, 0, -1)
-		y = time.Date(y.Year(), y.Month(), y.Day(), 0, 0, 0, 0, time.Local)
-		return y, y, nil
-	}
 	if dayTo == "" {
 		dayTo = dayFrom
 	}
@@ -105,24 +128,9 @@ func videoSyncRange(dayFrom, dayTo string) (time.Time, time.Time, error) {
 	return from, to, nil
 }
 
-// RunDMMVideoSyncAndNotify 每日通知排程：先同步當天的作品，同步完才發 TG 通知，
-// 通知裡的片在網站上一定查得到（不用等隔天 03:50 的前一天同步）。
-// 一天約 80～150 部、同步約 1 分鐘，通知會比排程時間晚一點；同步失敗仍照常發通知（失敗另有 TG 告警）。
-// 手動 -cmd 也走同一個流程，全部跑完程式才結束
-func RunDMMVideoSyncAndNotify(day string) {
-	if day == "" {
-		day = time.Now().Format(time.DateOnly)
-	}
-	RunDMMVideoSync(day, day)
-	RunDMMVideoDailyNotify(day)
-}
-
-// RunDMMVideoDailyNotify 把當天（或 -dayFrom 指定日）上架清單前 10 筆發到 TG，取代 PHP dmm:daily；
+// RunDMMVideoDailyNotify 把 day 的上架清單前 10 筆發到 TG，取代 PHP dmm:daily；
 // 跟 PHP 版一樣先發文字清單，再補一組封面相簿
 func RunDMMVideoDailyNotify(day string) {
-	if day == "" {
-		day = time.Now().Format(time.DateOnly)
-	}
 	ctx := context.Background()
 	msg, photos, err := buildVideoNotifyMessage(day)
 	if err != nil {

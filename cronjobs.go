@@ -1,7 +1,6 @@
 package main
 
 import (
-	"cmp"
 	"context"
 	"time"
 
@@ -248,12 +247,13 @@ var cronJobs = map[string]cronGroup{
 				Handler:  avService.SyncDMMActressAliasesCron,
 			},
 			{
-				// 前一天配信作品寫入 MySQL dmm＋ES dmmvideos；回補用 -dayFrom／-dayTo（含）
+				// 配信作品寫入 MySQL dmm＋ES dmmvideos：03 點補前一天、05／22 點同步當天，22 點同步完把當天清單前 10 筆發到 TG。
+				// 時段與判斷見 avService.VideoSyncSchedule；回補用 -dayFrom／-dayTo（含），-notify 1 會發 dayFrom 那天的通知
 				Name:     "av-dmm-video-sync",
-				Schedule: "50 3 * * *",
+				Schedule: avService.VideoSyncSchedule,
 				Enabled:  true,
 				Handler: func() {
-					avService.RunDMMVideoSync(commandParams.Value("dayFrom"), commandParams.Value("dayTo"))
+					avService.RunDMMVideoSync(commandParams.Value("dayFrom"), commandParams.Value("dayTo"), commandParams.Value("notify") != "")
 				},
 			},
 			{
@@ -262,25 +262,6 @@ var cronJobs = map[string]cronGroup{
 				Schedule: "",
 				Enabled:  true,
 				Handler:  avService.RunMarkDelistedVideosOrphan,
-			},
-			{
-				// 早上先同步一次當天作品（不發通知），當天的片早點進站；可用 -dayFrom 指定日期
-				Name:     "av-dmm-video-sync-today",
-				Schedule: "0 5 * * *",
-				Enabled:  true,
-				Handler: func() {
-					avService.RunDMMVideoSync(cmp.Or(commandParams.Value("dayFrom"), time.Now().Format(time.DateOnly)), "")
-				},
-			},
-			{
-				// 當天最後一次：再同步當天作品（補白天陸續上架的），同步完把當天上架清單前 10 筆發到 Telegram；
-				// 隔天 03:50 的 av-dmm-video-sync 會再補整天一次。可用 -dayFrom 指定日期
-				Name:     "av-dmm-video-notify",
-				Schedule: "0 22 * * *",
-				Enabled:  true,
-				Handler: func() {
-					avService.RunDMMVideoSyncAndNotify(commandParams.Value("dayFrom"))
-				},
 			},
 			{
 				// joyu.fyi 即將發售：DMM 未來 30 天的預約作品寫進預約索引（DMM_UPCOMING_INDEX）；
