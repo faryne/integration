@@ -1,6 +1,9 @@
 package parameter
 
-import "flag"
+import (
+	"flag"
+	"strconv"
+)
 
 type Validator func(string) error
 
@@ -65,4 +68,10 @@ func (r Registry) Value(name string) string {
 		return ""
 	}
 	return param.Value()
+}
+
+// Bool 讀布林參數：沒帶＝false；值已在 Set 時由 Bool 驗證過，這裡解析不會失敗
+func (r Registry) Bool(name string) bool {
+	b, _ := strconv.ParseBool(r.Value(name))
+	return b
 }

@@ -253,7 +253,7 @@ var cronJobs = map[string]cronGroup{
 				Schedule: avService.VideoSyncSchedule,
 				Enabled:  true,
 				Handler: func() {
-					avService.RunDMMVideoSync(commandParams.Value("dayFrom"), commandParams.Value("dayTo"), commandParams.Value("notify") != "")
+					avService.RunDMMVideoSync(commandParams.Value("dayFrom"), commandParams.Value("dayTo"), commandParams.Bool("notify"))
 				},
 			},
 			{
