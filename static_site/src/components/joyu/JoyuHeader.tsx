@@ -7,13 +7,14 @@ import { SITE_HEADER_HEIGHT } from "@/components/common/siteLayout/siteTheme.ts"
 import { JOYU_SITE_NAME, joyuPath } from "@/helpers/joyu.ts";
 
 import { JoyuAccountMenu } from "./auth/JoyuAccountMenu.tsx";
+import { JoyuHeaderTopics } from "./JoyuHeaderTopics.tsx";
 import { JoyuSearchBox } from "./JoyuSearchBox.tsx";
 import { findJoyuSection, joyuNavItems } from "./joyuNavigation.ts";
 import { joyuInk } from "./joyuTheme.ts";
 
 /**
  * joyu.fyi 頁首：深紫底＋粉紅強調（joyu 自己的配色）；三個區塊在手機上也直接排開。
- * 搜尋框桌機直接輸入（番號到影片頁、名字到女優搜尋），手機只放圖示連到女優搜尋。
+ * 搜尋框桌機直接輸入（番號到影片頁、名字到女優搜尋），手機只放圖示連到女優搜尋；寬螢幕在搜尋框左邊多幾個亂數女優主題捷徑。
  * 帳號區是 joyu-firebase 的登入（Google＋匿名），見 components/joyu/auth。
  */
 export function JoyuHeader() {
@@ -110,6 +111,7 @@ export function JoyuHeader() {
         </Box>
 
         <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}>
+          <JoyuHeaderTopics />
           <Box sx={{ display: { xs: "none", md: "block" }, width: 260 }}>
             <JoyuSearchBox variant="header" />
           </Box>
