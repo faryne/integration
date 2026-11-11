@@ -5,7 +5,7 @@ import type {
 } from "@/apis/interfaces.ts";
 import type { Actress } from "@/types/av.ts";
 import type { ActressRef } from "@/helpers/avActressRef.ts";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
 // ActressRef：指定是哪一位（女優頁網址的參數），指定了卻對不到時回空結果
@@ -28,22 +28,40 @@ export interface ActressSearchRequest extends ActressRef {
 
 export type ActressSearchResponse = CommonResponse<Pagination<Actress[]>>;
 
+// 女優搜尋共用的請求；signal 讓 React Query 在換條件、元件卸載時取消還沒回來的請求
+const fetchActressSearch = async (
+  params: ListByPaginationRequest<ActressSearchRequest>,
+  signal?: AbortSignal,
+) =>
+  (
+    await axios.get<ActressSearchResponse>(
+      `${import.meta.env.VITE_API_BASE}/opendata/av/search/actress`,
+      { params, signal, timeout: 10000 },
+    )
+  ).data;
+
 export function useAVActressSearch(
   params: ListByPaginationRequest<ActressSearchRequest>,
   enabled: boolean = true,
 ) {
   return useQuery({
     queryKey: [params, "av/actress"],
-    queryFn: async () => {
-      const response = await axios.get<ActressSearchResponse>(
-        `${import.meta.env.VITE_API_BASE}/opendata/av/search/actress`,
-        {
-          params,
-          timeout: 10000,
-        },
-      );
-      return response.data;
-    },
+    queryFn: ({ signal }) => fetchActressSearch(params, signal),
     enabled: enabled,
+  });
+}
+
+/**
+ * joyu 搜尋框的 autocomplete：跟女優搜尋頁用同一支 API、同一組快取 key（第一頁＋名字），
+ * 選好按 Enter 進搜尋頁時直接用快取。換字時先留著上一批結果，下拉不會一閃一閃
+ */
+export function useActressSuggest(name: string, enabled: boolean) {
+  const params = { page: 1, name };
+  return useQuery({
+    queryKey: [params, "av/actress"],
+    queryFn: ({ signal }) => fetchActressSearch(params, signal),
+    enabled,
+    placeholderData: keepPreviousData,
+    staleTime: 5 * 60 * 1000,
   });
 }
