@@ -196,7 +196,7 @@ export function VideoDetail(props: IVideoDetail) {
       </Box>
 
       {/* joyu 版位：封面／資訊區與分頁之間 */}
-      <JoyuAdSlot />
+      <JoyuAdSlot placement="video" />
 
       {/* 圖片預覽與相關作品用 tab 切換（有圖片時預設停在圖片預覽）；key 讓換片時回到第一個 tab */}
       <VideoDetailTabs key={video.no} video={video} />

@@ -75,7 +75,7 @@ export function ActressDetail({
         summary={summary}
       />
       {/* joyu 版位：頂端資料與分頁之間 */}
-      <JoyuAdSlot />
+      <JoyuAdSlot placement="actress" />
       <Box>
         <Tabs
           onChange={(_, v: View) => setView(v)}

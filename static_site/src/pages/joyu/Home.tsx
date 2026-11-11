@@ -28,11 +28,11 @@ export function JoyuHome() {
         <FollowedActressesSection />
         <JoyuHero />
         <NewActressesSection />
-        {/* 版位兩格：今天有新片的女優之後、女優主題之後；slot 讓兩格推廣不同主題 */}
-        <JoyuAdSlot slot={0} />
+        {/* 版位兩格：今天有新片的女優之後、女優主題之後 */}
+        <JoyuAdSlot placement="home-1" />
         <BirthdaySection />
         <TopicsSection />
-        <JoyuAdSlot slot={1} />
+        <JoyuAdSlot placement="home-2" />
         <UpcomingSection />
         <LatestVideosSection />
       </Stack>
