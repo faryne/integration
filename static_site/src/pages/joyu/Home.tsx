@@ -5,14 +5,13 @@ import { BirthdaySection } from "@/components/joyu/home/BirthdaySection.tsx";
 import { FollowedActressesSection } from "@/components/joyu/home/FollowedActressesSection.tsx";
 import { JoyuHero } from "@/components/joyu/home/JoyuHero.tsx";
 import { JoyuAdSlot } from "@/components/joyu/promo/JoyuAdSlot.tsx";
-import { LatestVideosSection } from "@/components/joyu/home/LatestVideosSection.tsx";
-import { UpcomingSection } from "@/components/joyu/home/UpcomingSection.tsx";
 import { NewActressesSection } from "@/components/joyu/home/NewActressesSection.tsx";
+import { NewVideosSection } from "@/components/joyu/home/NewVideosSection.tsx";
 import { TopicsSection } from "@/components/joyu/home/TopicsSection.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 
 /**
- * joyu.fyi 首頁（入口頁，P2）：你追蹤的女優新片（有追蹤才顯示）、統一搜尋、今天有新片的女優、近期生日、女優主題、最新上架影片。
+ * joyu.fyi 首頁（入口頁，P2）：你追蹤的女優新片（有追蹤才顯示）、統一搜尋、今天有新片的女優、近期生日、女優主題、新片（新上架＋即將發售）。
  * 女優搜尋列表在 /actress。各區塊各自打 API，一區失敗不影響其他區
  */
 export function JoyuHome() {
@@ -33,8 +32,8 @@ export function JoyuHome() {
         <BirthdaySection />
         <TopicsSection />
         <JoyuAdSlot placement="home-2" />
-        <UpcomingSection />
-        <LatestVideosSection />
+        {/* 新上架＋即將發售合在同一區，用分頁切換 */}
+        <NewVideosSection />
       </Stack>
     </AgeConfirmationGate>
   );
