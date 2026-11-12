@@ -274,6 +274,13 @@ var cronJobs = map[string]cronGroup{
 				},
 			},
 			{
+				// joyu 女優股市上市審核；P0 只有 dry-run（印出門檻對照表與上市名單，不寫入），P1 建好資料表後才排程
+				Name:     "av-market-review",
+				Schedule: "",
+				Enabled:  true,
+				Handler:  avService.RunMarketReviewCron,
+			},
+			{
 				// 每週產生女優主題 JSON 上傳 S3（排在週三 xcity 同步之後）；非 production 只寫本機 tmp/actress-topics/
 				Name:     "av-actress-topics",
 				Schedule: "30 4 * * 4",
