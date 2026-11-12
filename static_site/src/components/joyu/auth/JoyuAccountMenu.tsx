@@ -19,23 +19,11 @@ import { joyuPath } from "@/helpers/joyu.ts";
 import { joyuFirebaseReady } from "@/lib/joyuFirebase.ts";
 
 import { useJoyuAuth } from "./JoyuAuthContext.ts";
-
-// 登入失敗時要提示的錯誤；使用者自己關掉彈窗不算錯
-const loginErrorMessage = (e: unknown) => {
-  const code = (e as { code?: string })?.code ?? "";
-  if (
-    code === "auth/popup-closed-by-user" ||
-    code === "auth/cancelled-popup-request"
-  )
-    return "";
-  if (code === "auth/popup-blocked")
-    return "登入視窗被瀏覽器擋下了，請允許彈出視窗後再試一次";
-  return "登入失敗，請稍後再試";
-};
+import { loginErrorMessage } from "./loginError.ts";
 
 /**
  * joyu 頁首的帳號區：沒登入或匿名時有「登入」（匿名會升級成 Google 帳號，追蹤保留）；
- * 有帳號（含匿名）時多一個頭像選單：我的追蹤、我的片單、個人資料、登出
+ * 有帳號（含匿名）時多一個頭像選單：我的追蹤、我的片單、我的持股（只限 Google 帳號）、個人資料、登出
  */
 export function JoyuAccountMenu() {
   const { user, loading, loginWithGoogle, logout } = useJoyuAuth();
@@ -109,6 +97,16 @@ export function JoyuAccountMenu() {
         >
           我的片單
         </MenuItem>
+        {/* 股市只限 Google 帳號 */}
+        {!user?.isAnonymous && (
+          <MenuItem
+            component={RouterLink}
+            onClick={() => setAnchor(null)}
+            to={joyuPath("me/portfolio")}
+          >
+            我的持股
+          </MenuItem>
+        )}
         <MenuItem
           component={RouterLink}
           onClick={() => setAnchor(null)}

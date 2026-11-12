@@ -155,10 +155,13 @@ func MergeJoyuAccountData(fromUID, toUID string) error {
 	return avRepo.NewJoyuComment().MoveAll(fromUID, toUID)
 }
 
-// DeleteJoyuAccountData 刪除帳號：刪掉這個 uid 的全部追蹤與片單；討論版留言保留，名字改顯示「已刪除的帳號」。
-// Firebase 帳號由前端呼叫 user.delete() 刪
+// DeleteJoyuAccountData 刪除帳號：刪掉這個 uid 的全部追蹤、片單與股市資料（錢包、持股、成交）；
+// 討論版留言保留，名字改顯示「已刪除的帳號」。Firebase 帳號由前端呼叫 user.delete() 刪
 func DeleteJoyuAccountData(uid string) error {
 	if err := avRepo.NewJoyuFollow().DeleteByUID(uid); err != nil {
+		return err
+	}
+	if err := deleteMarketData(uid); err != nil {
 		return err
 	}
 	if err := avRepo.NewJoyuVideoMark().DeleteByUID(uid); err != nil {

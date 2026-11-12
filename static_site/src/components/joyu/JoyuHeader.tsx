@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Box, Container, IconButton, Typography } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
@@ -19,6 +20,21 @@ import { joyuInk } from "./joyuTheme.ts";
 export function JoyuHeader() {
   const { pathname } = useLocation();
   const current = findJoyuSection(pathname);
+  // 手機上導覽列會左右滑，把目前這一項捲進看得到的範圍（只捲導覽列，不動整頁）。
+  // 右側的帳號按鈕晚一步才出現、導覽列會跟著變窄，所以尺寸變了要再捲一次
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const reveal = () =>
+      nav
+        .querySelector('[aria-current="page"]')
+        ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    reveal();
+    const observer = new ResizeObserver(reveal);
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, [current]);
 
   return (
     <Box
@@ -73,10 +89,23 @@ export function JoyuHeader() {
           </Typography>
         </Box>
 
-        <Box component="nav" sx={{ display: "flex", alignSelf: "stretch" }}>
+        {/* 手機上導覽項目放不下：導覽列自己左右滑（不顯示捲軸），右側的搜尋、帳號、色彩模式固定在畫面內 */}
+        <Box
+          component="nav"
+          ref={navRef}
+          sx={{
+            alignSelf: "stretch",
+            display: "flex",
+            minWidth: 0,
+            overflowX: "auto",
+            scrollbarWidth: "none",
+            "&::-webkit-scrollbar": { display: "none" },
+          }}
+        >
           {joyuNavItems.map((item) => (
             <Box
               key={item.href}
+              aria-current={item === current ? "page" : undefined}
               component={Link}
               to={item.href}
               sx={{
@@ -109,7 +138,15 @@ export function JoyuHeader() {
           ))}
         </Box>
 
-        <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}>
+        <Box
+          sx={{
+            ml: "auto",
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            flexShrink: 0,
+          }}
+        >
           <Box sx={{ display: { xs: "none", md: "block" }, width: 260 }}>
             <JoyuSearchBox variant="header" />
           </Box>

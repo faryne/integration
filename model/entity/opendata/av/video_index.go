@@ -13,6 +13,8 @@ type VideoIndexQuery struct {
 	Actresses []VideoActressFilter
 	// Upcoming 只查即將發售（配信日在明天以後的預約作品）；false 時只查已配信的。依番號查單部（No）時兩者都查得到
 	Upcoming bool
+	// ExcludeTags 有其中任一個標籤的不算（joyu 股市算部數時排除總集編）；不開放給 API 參數
+	ExcludeTags []string
 }
 
 // VideoActressFilter 出演者條件：名字完全相符或「名字（別名…）」，再依 DMM 女優 ID 區分同名
@@ -43,10 +45,12 @@ type VideoActressStats struct {
 	VideoStats
 }
 
-// VideoStatsFilter 分組統計時的標籤條件，空字串代表不限
+// VideoStatsFilter 分組統計時的條件，空字串代表不限
 type VideoStatsFilter struct {
 	Tag        string // 必須有這個標籤
 	ExcludeTag string // 不能有這個標籤
+	// From／To 配信日區間（yyyy/MM/dd），From 含、To 不含；joyu 股市算滾動年度出片數用
+	From, To string
 }
 
 // VideoPreOrder 即將發售排程寫入、還沒被每日同步覆寫的一部（有 fetched_at）：判斷要不要重抓明細用

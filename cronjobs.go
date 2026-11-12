@@ -274,6 +274,22 @@ var cronJobs = map[string]cronGroup{
 				},
 			},
 			{
+				// joyu 女優股市每月上市審核；-dryRun 1 只印出門檻對照表與名單、不寫入
+				Name:     "av-market-review",
+				Schedule: "50 4 1 * *",
+				Enabled:  true,
+				Handler: func() {
+					avService.RunMarketReviewCron(commandParams.Bool("dryRun"))
+				},
+			},
+			{
+				// joyu 女優股市每天 00:00 收盤：補齊前一天的價格紀錄、收盤價寫進昨收（漲跌幅與漲跌停的基準）
+				Name:     "av-market-close",
+				Schedule: "0 0 * * *",
+				Enabled:  true,
+				Handler:  avService.RunMarketCloseCron,
+			},
+			{
 				// 每週產生女優主題 JSON 上傳 S3（排在週三 xcity 同步之後）；非 production 只寫本機 tmp/actress-topics/
 				Name:     "av-actress-topics",
 				Schedule: "30 4 * * 4",

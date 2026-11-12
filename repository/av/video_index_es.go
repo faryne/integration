@@ -273,6 +273,9 @@ func (videoIndexES) StatsByActress(ctx context.Context, f av.VideoStatsFilter, w
 	if f.ExcludeTag != "" {
 		b["must_not"] = []any{map[string]any{"term": map[string]any{"tags.keyword": f.ExcludeTag}}}
 	}
+	if r := dateRange(f.From, f.To); r != nil {
+		b["filter"] = append(b["filter"].([]any), map[string]any{"range": map[string]any{"vod_date": r}})
+	}
 	filter := map[string]any{"bool": b}
 	var out []av.VideoActressStats
 	var after map[string]any
@@ -309,6 +312,21 @@ func (videoIndexES) StatsByActress(ctx context.Context, f av.VideoStatsFilter, w
 		}
 		after = res.Aggregations.A.AfterKey
 	}
+}
+
+// dateRange 配信日區間的 range 條件（From 含、To 不含），兩個都空就回 nil
+func dateRange(from, to string) map[string]any {
+	r := map[string]any{}
+	if from != "" {
+		r["gte"] = from
+	}
+	if to != "" {
+		r["lt"] = to
+	}
+	if len(r) == 0 {
+		return nil
+	}
+	return r
 }
 
 // Terms 只有一個子字串時先用 wildcard 縮小到有這個字的影片，再對這些影片做 terms aggregation

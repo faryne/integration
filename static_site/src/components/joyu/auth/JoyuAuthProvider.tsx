@@ -17,6 +17,7 @@ import {
   deleteJoyuAccountData,
   mergeAnonymousFollows,
 } from "@/apis/av/joyu_me.ts";
+import { MARKET_ME_KEY } from "@/apis/av/joyu_market.ts";
 import { MARKS_KEY_PREFIX } from "@/apis/av/joyu_marks.ts";
 import { PROFILE_KEY_PREFIX } from "@/apis/av/joyu_comments.ts";
 import { getJoyuAuth, joyuGoogleProvider } from "@/lib/joyuFirebase.ts";
@@ -88,6 +89,7 @@ export function JoyuAuthProvider({ children }: { children: ReactNode }) {
     qc.removeQueries({ queryKey: ["joyu/feed"] });
     qc.removeQueries({ queryKey: [MARKS_KEY_PREFIX] });
     qc.removeQueries({ queryKey: [PROFILE_KEY_PREFIX] });
+    qc.removeQueries({ queryKey: [MARKET_ME_KEY] });
   };
 
   const ensureUser = async () => {
@@ -112,6 +114,7 @@ export function JoyuAuthProvider({ children }: { children: ReactNode }) {
     qc.removeQueries({ queryKey: ["joyu/feed"] });
     qc.removeQueries({ queryKey: [MARKS_KEY_PREFIX] });
     qc.removeQueries({ queryKey: [PROFILE_KEY_PREFIX] });
+    qc.removeQueries({ queryKey: [MARKET_ME_KEY] });
   };
 
   return (

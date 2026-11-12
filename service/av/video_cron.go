@@ -48,6 +48,8 @@ func RunDMMVideoSync(dayFrom, dayTo string, notify bool) {
 		dayFrom, notify = day.Format(time.DateOnly), notify || now.Hour() == videoNotifyHour
 	}
 	syncDMMVideoRange(dayFrom, dayTo)
+	// joyu 女優股市：新片一進站就重算基本面，不然看到網站列出新片的人可以先買、穩賺
+	RefreshMarketFundamentals(context.Background())
 	if notify {
 		RunDMMVideoDailyNotify(dayFrom)
 	}

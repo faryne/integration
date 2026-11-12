@@ -4,6 +4,7 @@ import { Box, Stack, Tab, Tabs } from "@mui/material";
 
 import type { JoyuActressSummary } from "@/apis/av/joyu.ts";
 import { useComments } from "@/apis/av/joyu_comments.ts";
+import { useMarketStockByActress } from "@/apis/av/joyu_market.ts";
 import { ActressCoStars } from "@/components/av/actress_co_stars.tsx";
 import { ActressProfileHeader } from "@/components/av/actress_profile_header.tsx";
 import { ActressSameNames } from "@/components/av/actress_same_names.tsx";
@@ -11,16 +12,18 @@ import { ActressWorks } from "@/components/av/actress_works.tsx";
 import { ActressUpcoming } from "@/components/av/actress_upcoming.tsx";
 import { actressRefOf } from "@/helpers/avActressRef.ts";
 import { CommentSection } from "@/components/joyu/comments/CommentSection.tsx";
+import { ActressStockTab } from "@/components/joyu/market/ActressStockTab.tsx";
 import { JoyuAdSlot } from "@/components/joyu/promo/JoyuAdSlot.tsx";
 import type { Actress } from "@/types/av.ts";
 
 /**
- * 女優頁（P2）：同名提示 → 頂端基本資料 → 「作品／共演女優／討論」分頁。
- * 共演女優（?view=costars，有共演才出現）、討論（?view=comments）都是作品旁邊的分頁；頂端另有討論數 chip，點了切過來並捲到分頁列；
+ * 女優頁（P2）：同名提示 → 頂端基本資料 → 「作品／共演女優／股票／討論」分頁。
+ * 共演女優（?view=costars，有共演才出現）、股票（?view=stock，上市過才出現，原本獨立的個股頁併進來）、
+ * 討論（?view=comments）都是作品旁邊的分頁；頂端另有討論數 chip，點了切過來並捲到分頁列；
  * 討論版以 domain:aid 為 key，別名頁共用同一個。
  * 資料（女優、影片、facets、summary）都由頁面（pages/av/actress_detail.tsx）查好傳進來，這裡只負責排版
  */
-type View = "works" | "costars" | "comments";
+type View = "works" | "costars" | "stock" | "comments";
 
 export function ActressDetail({
   actress,
@@ -42,11 +45,13 @@ export function ActressDetail({
   const target = actress ? `actress:${actress.domain}:${actress.aid}` : "";
   const commentCount = useComments(target).data?.count ?? 0;
   const coStars = summary?.co_stars ?? [];
-  // 分頁：作品（預設）／共演女優（有共演才出現）／討論；存在網址 ?view=costars|comments
+  const stock = useMarketStockByActress(actress).data;
+  // 分頁：作品（預設）／共演女優（有共演才出現）／股票（上市過才出現）／討論；存在網址 ?view=costars|stock|comments
   const requestedView = params.get("view");
   const view: View =
     requestedView === "comments" ||
-    (requestedView === "costars" && coStars.length > 0)
+    (requestedView === "costars" && coStars.length > 0) ||
+    (requestedView === "stock" && stock)
       ? requestedView
       : "works";
   const setView = (next: View) =>
@@ -77,7 +82,9 @@ export function ActressDetail({
       {/* joyu 版位：頂端資料與分頁之間 */}
       <JoyuAdSlot placement="actress" />
       <Box>
+        {/* 「股票」分頁是查完才出現的，MUI 的底線不會跟著重新定位；分頁數量變了就重新掛載 */}
         <Tabs
+          key={stock ? "with-stock" : "no-stock"}
           onChange={(_, v: View) => setView(v)}
           ref={tabsRef}
           sx={{
@@ -92,6 +99,7 @@ export function ActressDetail({
           {coStars.length > 0 && (
             <Tab label={`共演女優（${coStars.length}）`} value="costars" />
           )}
+          {stock && <Tab label="股票" value="stock" />}
           <Tab
             label={commentCount ? `討論（${commentCount}）` : "討論"}
             value="comments"
@@ -101,6 +109,8 @@ export function ActressDetail({
           <CommentSection target={target} />
         ) : view === "costars" ? (
           <ActressCoStars items={coStars} />
+        ) : view === "stock" && stock ? (
+          <ActressStockTab stock={stock} />
         ) : (
           <>
             {/* 這個名義未來 30 天的預約作品（沒有就不顯示） */}

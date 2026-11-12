@@ -32,6 +32,22 @@ const JoyuMyVideos = lazyNamed(
   () => import("@/pages/joyu/MyVideos.tsx"),
   "JoyuMyVideos",
 );
+const JoyuMarketHome = lazyNamed(
+  () => import("@/pages/joyu/market/MarketHome.tsx"),
+  "JoyuMarketHome",
+);
+const JoyuStockRedirect = lazyNamed(
+  () => import("@/pages/joyu/market/StockRedirect.tsx"),
+  "JoyuStockRedirect",
+);
+const JoyuMarketLeaderboard = lazyNamed(
+  () => import("@/pages/joyu/market/Leaderboard.tsx"),
+  "JoyuMarketLeaderboard",
+);
+const JoyuMyPortfolio = lazyNamed(
+  () => import("@/pages/joyu/market/MyPortfolio.tsx"),
+  "JoyuMyPortfolio",
+);
 const AVActress = lazyNamed(
   () => import("@/pages/av/actress.tsx"),
   "AVActress",
@@ -80,9 +96,15 @@ export const joyuRoutes = (
     <Route path={"/video/:no/edit"} element={<AVVideoEdit />} />
     <Route path={"/video/:no"} element={<AVVideoDetail />} />
     <Route path={"/upcoming"} element={<JoyuUpcoming />} />
+    <Route path={"/market"} element={<JoyuMarketHome />} />
+    {/* 排行榜排在 :code 前面（靜態路徑本來就優先，排前面讀起來比較清楚） */}
+    <Route path={"/market/leaderboard"} element={<JoyuMarketLeaderboard />} />
+    {/* 個股已經併進女優頁的「股票」分頁，代碼網址只負責轉過去 */}
+    <Route path={"/market/:code"} element={<JoyuStockRedirect />} />
     <Route path={"/me/follows"} element={<JoyuMyFollows />} />
     <Route path={"/me/videos"} element={<JoyuMyVideos />} />
     <Route path={"/me/profile"} element={<JoyuMyProfile />} />
+    <Route path={"/me/portfolio"} element={<JoyuMyPortfolio />} />
     {/* 不能用 /mcp：nginx 會把 joyu.fyi/mcp 的請求全部轉給後端 */}
     <Route path={"/mcp-tools"} element={<JoyuMcpTools />} />
     <Route path={"*"} element={<ErrorPage code={404} />} />

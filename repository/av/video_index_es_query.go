@@ -62,6 +62,9 @@ func applyVideoConditions(input av.VideoIndexQuery, q map[string]any) {
 	if tags := nonEmpty(input.AnyTag); len(tags) > 0 {
 		esdsl.SetQuery(map[string]any{"terms": map[string]any{"tags.keyword": tags}}, true, q)
 	}
+	if tags := nonEmpty(input.ExcludeTags); len(tags) > 0 {
+		esdsl.SetQuery(map[string]any{"bool": map[string]any{"must_not": map[string]any{"terms": map[string]any{"tags.keyword": tags}}}}, true, q)
+	}
 	// 出演：每位一個 must，也就是同時出演
 	for _, f := range input.Actresses {
 		esdsl.SetQuery(videoActressQuery(f), true, q)
