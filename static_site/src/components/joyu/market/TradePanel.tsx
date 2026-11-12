@@ -15,6 +15,8 @@ import {
   marketTradeErrorMessage,
   useMarketQuote,
   useMarketTrade,
+  useMarketWallet,
+  type MarketHolding,
   type MarketStockDetail,
 } from "@/apis/av/joyu_market.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
@@ -28,6 +30,15 @@ import { useMarketUid } from "./useMarketUid.ts";
 
 const QUICK_SHARES = [10, 100, 1000];
 
+// 可賣股數的顯示：沒持股是 0；有今天買的就補一句幾股明天可賣
+const sellableText = (h?: MarketHolding) => {
+  if (!h) return "0";
+  const locked = h.shares - h.sellable;
+  return locked > 0
+    ? `${h.sellable.toLocaleString()}（${locked.toLocaleString()} 股明天可賣）`
+    : h.sellable.toLocaleString();
+};
+
 /**
  * 個股頁的交易面板：選買或賣、輸入股數 → 停止輸入 300ms 後跟後端報價（金額、手續費、成交後股價、最多可買／賣）→ 送出。
  * 送出時帶報價的合計當 limit，價格在這中間被別人動了後端會拒單，報價會自動重抓。
@@ -40,6 +51,8 @@ export function TradePanel({ stock }: { stock: MarketStockDetail }) {
   const shares = Math.max(0, Math.floor(Number(input) || 0));
   const debounced = useDebouncedValue(shares, 300);
   const quote = useMarketQuote(uid, stock.code, side, debounced);
+  // 現金與這檔的持股：成交後 useMarketTrade 會讓整個股市的快取重抓，這裡跟著更新
+  const wallet = useMarketWallet(uid);
   const trade = useMarketTrade();
   const [snack, setSnack] = useState<{ text: string; ok: boolean } | null>(
     null,
@@ -126,6 +139,18 @@ export function TradePanel({ stock }: { stock: MarketStockDetail }) {
           size="small"
         />
       </Stack>
+      {/* 買：可用現金；賣：可賣股數（今天買的明天才能賣，另外標出來） */}
+      {wallet.data &&
+        (buy ? (
+          <MarketLine label="可用現金" value={money(wallet.data.cash)} />
+        ) : (
+          <MarketLine
+            label="可賣股數"
+            value={sellableText(
+              wallet.data.holdings.find((h) => h.stock.code === stock.code),
+            )}
+          />
+        ))}
       <MarketLine
         label="成交金額"
         value={q && shares ? money(q.amount) : "—"}

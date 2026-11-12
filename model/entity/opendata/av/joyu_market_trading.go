@@ -120,9 +120,12 @@ type JoyuStockDaily struct {
 
 func (JoyuStockDaily) TableName() string { return "joyu_stock_daily" }
 
-// MarketPricePoint 走勢圖的一天（收盤價、成交量）
+// MarketPricePoint K 線圖的一天（開高低收、成交量）
 type MarketPricePoint struct {
 	Date   string  `json:"date"`
+	Open   float64 `json:"open"`
+	High   float64 `json:"high"`
+	Low    float64 `json:"low"`
 	Close  float64 `json:"close"`
 	Volume int64   `json:"volume"`
 }

@@ -84,6 +84,9 @@ export interface MarketTradeRow {
 
 export interface MarketPricePoint {
   date: string; // yyyy-MM-dd
+  open: number;
+  high: number;
+  low: number;
   close: number;
   volume: number;
 }
@@ -133,7 +136,7 @@ export function useMarketStock(code: string | undefined) {
   });
 }
 
-/** 個股走勢：最近 days 天的每日收盤（今天還沒收盤，畫圖時自己接上現價） */
+/** 個股 K 線：最近 days 天的每日開高低收與成交量（今天這一根畫圖時用現價補） */
 export function useMarketHistory(code: string | undefined, days: number) {
   return useQuery({
     queryKey: [MARKET_KEY, "history", code, days],

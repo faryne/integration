@@ -69,7 +69,8 @@ func MarketLeaderboard() ([]avEntity.MarketLeader, error) {
 	return out, nil
 }
 
-// MarketHistory 走勢圖：最近 days 天（1～365）的每日收盤；今天還沒收盤，前端自己把現價接在最後
+// MarketHistory K 線圖：最近 days 天（1～365）的每日開高低收與成交量；今天有成交或基本面變動才會有今天這一筆，
+// 沒有的話前端用昨收和現價自己補今天這一根
 func MarketHistory(code string, days int) ([]avEntity.MarketPricePoint, error) {
 	s, err := avRepo.NewJoyuStock().FindByID(avEntity.StockIDFromCode(code))
 	if err != nil {
@@ -82,7 +83,8 @@ func MarketHistory(code string, days int) ([]avEntity.MarketPricePoint, error) {
 	}
 	out := make([]avEntity.MarketPricePoint, len(rows))
 	for i, d := range rows {
-		out[i] = avEntity.MarketPricePoint{Date: d.Date.Format(time.DateOnly), Close: centsToUnits(d.Close), Volume: d.Volume}
+		out[i] = avEntity.MarketPricePoint{Date: d.Date.Format(time.DateOnly), Open: centsToUnits(d.Open), High: centsToUnits(d.High),
+			Low: centsToUnits(d.Low), Close: centsToUnits(d.Close), Volume: d.Volume}
 	}
 	return out, nil
 }
