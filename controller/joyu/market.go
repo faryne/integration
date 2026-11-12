@@ -23,6 +23,7 @@ const (
 	customCodeMarketCash         output.CustomCode = "400502"
 	customCodeMarketShares       output.CustomCode = "400503"
 	customCodeMarketNotTradable  output.CustomCode = "400504"
+	customCodeMarketSoldOut      output.CustomCode = "400505"
 	customCodeMarketRateLimited  output.CustomCode = "429007"
 )
 
@@ -47,6 +48,7 @@ func marketError(err error) error {
 		{av.ErrMarketCash, http.StatusBadRequest, customCodeMarketCash},
 		{av.ErrMarketShares, http.StatusBadRequest, customCodeMarketShares},
 		{av.ErrMarketNotTradable, http.StatusBadRequest, customCodeMarketNotTradable},
+		{av.ErrMarketSoldOut, http.StatusBadRequest, customCodeMarketSoldOut},
 		{av.ErrMarketRateLimited, http.StatusTooManyRequests, customCodeMarketRateLimited},
 		{av.ErrMarketInvalid, http.StatusBadRequest, ""},
 	}

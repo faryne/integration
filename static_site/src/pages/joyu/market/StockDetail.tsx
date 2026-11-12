@@ -179,7 +179,10 @@ export function JoyuStockDetail() {
               >
                 <Stat label="基本價" value={s.fundamental.toFixed(2)} />
                 <Stat label="近 90 天出片" value={`${s.videos_90d} 部`} />
-                <Stat label="流通股數" value={s.shares_out.toLocaleString()} />
+                <Stat
+                  label="流通／上限"
+                  value={`${s.shares_out.toLocaleString()} / ${s.share_cap.toLocaleString()}`}
+                />
                 <Stat label="今日成交量" value={s.volume.toLocaleString()} />
                 <Stat label="上市日" value={s.listed_at.slice(0, 10)} />
               </Box>

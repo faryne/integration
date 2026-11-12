@@ -74,7 +74,7 @@ func marketStocksWithPhotos(rows []avEntity.JoyuStock) ([]avEntity.MarketStock, 
 		out[i] = avEntity.MarketStock{
 			Code: avEntity.StockCode(s.ID), Domain: s.Domain, AID: s.AID, Name: s.Name, Status: s.Status,
 			Photo: photos[keys[i]], Price: centsToUnits(s.LastPrice), PrevClose: centsToUnits(s.PrevClose), Fundamental: s.Fundamental,
-			SharesOut: s.SharesOut, Videos90d: s.Videos90d, ListedAt: s.ListedAt,
+			SharesOut: s.SharesOut, ShareCap: s.ShareCap, Videos90d: s.Videos90d, ListedAt: s.ListedAt,
 		}
 	}
 	return out, nil

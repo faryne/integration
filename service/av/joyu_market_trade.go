@@ -23,6 +23,7 @@ var (
 	ErrMarketPriceLimit   = errors.New("over the daily price limit")
 	ErrMarketCash         = errors.New("not enough cash")
 	ErrMarketShares       = errors.New("not enough sellable shares")
+	ErrMarketSoldOut      = errors.New("reached the share cap")
 	ErrMarketRateLimited  = errors.New("too many trades")
 )
 
@@ -37,13 +38,13 @@ func marketToday() string {
 	return time.Now().Format(time.DateOnly)
 }
 
-// quoteFor 依目前狀態算 q 股的報價；MaxShares 是現金／可賣股數／漲跌停三者取最小
+// quoteFor 依目前狀態算 q 股的報價；MaxShares 買是現金／漲跌停／發行上限、賣是可賣股數／漲跌停，取最小
 func quoteFor(s avEntity.JoyuStock, cash int64, h avEntity.JoyuHolding, side string, q int64) avEntity.MarketQuote {
 	lo, hi := marketLimits(s.PrevClose)
 	out := avEntity.MarketQuote{Side: side, Shares: q}
 	var amount, fee, total, after int64
 	if side == avEntity.TradeBuy {
-		byLimit := maxBuyByLimit(s.Fundamental, s.SharesOut, hi)
+		byLimit := min(maxBuyByLimit(s.Fundamental, s.SharesOut, hi), max(s.ShareCap-s.SharesOut, 0))
 		out.MaxShares = maxBuyByCash(s.Fundamental, s.SharesOut, cash, byLimit)
 		if q > 0 {
 			amount = buyAmount(s.Fundamental, s.SharesOut, q)
@@ -134,6 +135,8 @@ func checkTrade(s avEntity.JoyuStock, cash int64, h avEntity.JoyuHolding, req av
 		switch {
 		case req.Side == avEntity.TradeSell && req.Shares > h.Sellable(marketToday()):
 			return ErrMarketShares
+		case req.Side == avEntity.TradeBuy && s.SharesOut+req.Shares > s.ShareCap:
+			return ErrMarketSoldOut
 		case req.Side == avEntity.TradeBuy && q.TotalCents > cash:
 			return ErrMarketCash
 		default:

@@ -29,6 +29,7 @@ export interface MarketStock {
   fundamental: number; // 基本價 F：沒人持股時股價就是 F
   prev_close: number;
   shares_out: number;
+  share_cap: number; // 發行上限：流通股數到了就暫停買進
   videos_90d: number;
   volume: number; // 今天的成交股數
   listed_at: string;
@@ -233,6 +234,7 @@ const tradeErrors: Record<string, string> = {
   "400502": "現金不夠",
   "400503": "可賣的股數不夠（今天買的明天才能賣）",
   "400504": "這檔已經下市，不能交易",
+  "400505": "已達發行上限，要等有人賣出才能再買",
   "429007": "下單太頻繁了，請稍等一下",
 };
 

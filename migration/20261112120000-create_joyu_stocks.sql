@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS `joyu_stocks` (
   `fundamental` DECIMAL(12,4) NOT NULL DEFAULT 10 COMMENT '基本面 F（單位，不是分）',
   `open_fundamental` DECIMAL(12,4) NOT NULL DEFAULT 10 COMMENT '今天開盤時的 F：基本面一天最多只能離它 ±2.5%（每天收盤時更新）',
   `shares_out` BIGINT NOT NULL DEFAULT 0 COMMENT '使用者持有的總股數 S',
+  `share_cap` BIGINT NOT NULL DEFAULT 100000 COMMENT '發行上限：流通股數最多到這裡，到了就暫停買進（之後依人氣動態調整）',
   `last_price` BIGINT NOT NULL COMMENT '現價（分）',
   `prev_close` BIGINT NOT NULL COMMENT '昨收（分），漲跌幅與漲跌停的基準',
   `videos_90d` INT NOT NULL DEFAULT 0 COMMENT '近 90 天配信部數（不含總集編）',

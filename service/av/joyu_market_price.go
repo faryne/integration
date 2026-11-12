@@ -11,6 +11,8 @@ const (
 	marketPriceLimit  = 0.2                  // 單日漲跌幅 ±20%（以昨收為準）
 	marketInitialCash = int64(100000 * 100)  // 開戶入帳 100000 單位
 	marketMaxShares   = int64(1_000_000_000) // 單筆股數上限，防止算式溢位
+	// marketDefaultShareCap 每檔預設發行上限：流通股數到了就暫停買進，股價最高約 6 倍 F（1 + 100000 / 20000）
+	marketDefaultShareCap = int64(100_000)
 )
 
 // marketPrice 現價（分，四捨五入）

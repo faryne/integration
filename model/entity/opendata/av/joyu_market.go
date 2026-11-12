@@ -21,15 +21,17 @@ type JoyuStock struct {
 	Status      string  `gorm:"column:status"`
 	Fundamental float64 `gorm:"column:fundamental"`
 	// OpenFundamental 今天開盤時的 F，基本面單日變動上限的基準（收盤時更新成當下的 F）
-	OpenFundamental float64    `gorm:"column:open_fundamental"`
-	SharesOut       int64      `gorm:"column:shares_out"`
-	LastPrice       int64      `gorm:"column:last_price"`
-	PrevClose       int64      `gorm:"column:prev_close"`
-	Videos90d       int        `gorm:"column:videos_90d"`
-	ListedAt        time.Time  `gorm:"column:listed_at"`
-	DelistedAt      *time.Time `gorm:"column:delisted_at"`
-	CreatedAt       time.Time  `gorm:"column:created_at"`
-	UpdatedAt       time.Time  `gorm:"column:updated_at"`
+	OpenFundamental float64 `gorm:"column:open_fundamental"`
+	SharesOut       int64   `gorm:"column:shares_out"`
+	// ShareCap 發行上限：流通股數最多到這裡（預設 100000，之後依看過／評分／想看／買單等人氣指標動態調整）
+	ShareCap   int64      `gorm:"column:share_cap"`
+	LastPrice  int64      `gorm:"column:last_price"`
+	PrevClose  int64      `gorm:"column:prev_close"`
+	Videos90d  int        `gorm:"column:videos_90d"`
+	ListedAt   time.Time  `gorm:"column:listed_at"`
+	DelistedAt *time.Time `gorm:"column:delisted_at"`
+	CreatedAt  time.Time  `gorm:"column:created_at"`
+	UpdatedAt  time.Time  `gorm:"column:updated_at"`
 }
 
 func (JoyuStock) TableName() string {
@@ -63,6 +65,7 @@ type MarketStock struct {
 	Fundamental float64   `json:"fundamental"`
 	PrevClose   float64   `json:"prev_close"`
 	SharesOut   int64     `json:"shares_out"`
+	ShareCap    int64     `json:"share_cap"` // 發行上限
 	Videos90d   int       `json:"videos_90d"`
 	Volume      int64     `json:"volume"` // 今天的成交股數
 	ListedAt    time.Time `json:"listed_at"`
