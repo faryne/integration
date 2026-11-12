@@ -8,6 +8,7 @@ import axios from "axios";
 
 import type { CommonResponse } from "@/apis/interfaces.ts";
 import { joyuApi } from "@/apis/av/joyu_me.ts";
+import { isJoyuSite } from "@/helpers/joyu.ts";
 
 // joyu.fyi 女優股市（規格：DevelopDocuments/opendata/joyu.fyi女優股市_2026-11-12.md）。
 // 公開讀取用 axios；錢包、報價、下單、成交紀錄走 joyuApi（只限 Google 帳號）。價格單位是「單位」，小數兩位
@@ -105,6 +106,14 @@ export interface MarketLeader {
   top_name: string;
 }
 
+export interface MarketTicker {
+  domain: string;
+  aid: number;
+  code: string;
+  price: number;
+  prev_close: number;
+}
+
 /** 漲跌幅（%），昨收是 0 時當作沒變 */
 export const stockChangePct = (s: MarketStock) =>
   s.prev_close ? ((s.price - s.prev_close) / s.prev_close) * 100 : 0;
@@ -196,6 +205,27 @@ export function useMarketStockByActress(actress?: {
       }
     },
     enabled: !!actress,
+  });
+}
+
+/**
+ * 女優卡的上市標示：上市中的全部（只有代碼、現價、昨收），整理成 domain:aid → ticker。
+ * 列表頁的每張卡共用同一份快取；只在 joyu.fyi 上查（faryne.dev 整合後台不顯示）
+ */
+export function useMarketTickers() {
+  return useQuery({
+    queryKey: [MARKET_KEY, "tickers"],
+    queryFn: async () => {
+      const rows = (
+        await axios.get<CommonResponse<MarketTicker[]>>(
+          `${api}/opendata/av/market/tickers`,
+          { timeout: 10000 },
+        )
+      ).data.data;
+      return new Map(rows.map((t) => [`${t.domain}:${t.aid}`, t]));
+    },
+    enabled: isJoyuSite(),
+    staleTime: 60 * 1000,
   });
 }
 

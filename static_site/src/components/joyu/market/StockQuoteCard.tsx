@@ -3,6 +3,7 @@ import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
 import { stockChangePct, type MarketStock } from "@/apis/av/joyu_market.ts";
 
 import { StockChange } from "./StockChange.tsx";
+import { StockPrice } from "./StockPrice.tsx";
 
 // 單日漲跌幅限制（跟後端一樣 ±20%），顯示漲停／跌停價
 const PRICE_LIMIT = 0.2;
@@ -32,11 +33,11 @@ export function StockQuoteCard({ stock: s }: { stock: MarketStock }) {
         <Typography color="text.secondary" sx={num}>
           {s.code}
         </Typography>
-        <Typography
-          sx={{ fontSize: 32, fontWeight: 800, lineHeight: 1.2, ...num }}
-        >
-          {s.price.toFixed(2)}
-        </Typography>
+        <StockPrice
+          prevClose={s.prev_close}
+          price={s.price}
+          sx={{ fontSize: 32, fontWeight: 800, lineHeight: 1.2 }}
+        />
         <StockChange pct={stockChangePct(s)} sx={{ fontSize: 16 }} />
         {s.status === "delisted" && <Chip label="已下市" size="small" />}
       </Stack>

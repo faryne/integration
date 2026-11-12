@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>joyu.fyi 女優股市：漲跌停底色＋女優卡上市標示 mockup</title>
+<style>
+  :root {
+    --plum:#2b1d2e; --plum-deep:#1c1420; --pink:#ff5c8a;
+    --bg:#faf7f9; --paper:#fff; --line:#ece4ea; --text:#2a1f2c; --muted:#7a6a77; --chip:#f6eef3;
+    --up:#d32f2f; --down:#2e7d32;
+  }
+  .dark { --bg:#17111a; --paper:#221a25; --line:#3a2e3d; --text:#f3e6ef; --muted:#b39fb0; --chip:#2e2431; --up:#f44336; --down:#66bb6a; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; background:#cfc6cd; }
+  .toolbar { position:sticky; top:0; z-index:40; background:#111; color:#fff; padding:10px 16px; font-size:13px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .toolbar button { background:#3a3a3a; color:#fff; border:0; border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; }
+  .toolbar button.on { background:var(--pink); }
+  .toolbar .sep { width:1px; height:20px; background:#555; margin:0 4px; }
+  .toolbar .label { color:#aaa; margin-right:2px; }
+  .stage { padding:24px; display:flex; overflow-x:auto; }
+  .frame { margin:0 auto; background:var(--bg); color:var(--text); border-radius:10px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.25); width:1280px; flex:0 0 auto; }
+  .frame.mobile { width:375px; }
+  .header { background:var(--plum); color:#f3e6ef; height:56px; display:flex; align-items:center; gap:18px; padding:0 20px; font-weight:800; }
+  .page { padding:20px; display:flex; flex-direction:column; gap:28px; }
+  .mobile .page { padding:14px 12px; }
+  h2 { margin:0 0 6px; font-size:18px; }
+  .note { background:#fff8db; color:#7a5b00; border:1px solid #f1d77a; border-radius:8px; padding:8px 12px; font-size:12px; margin-bottom:12px; line-height:1.7; }
+  .dark .note { background:#3a3218; color:#f1d77a; border-color:#6b5a1f; }
+  .card { background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .num { font-variant-numeric:tabular-nums; }
+  .up { color:var(--up); } .down { color:var(--down); } .flat { color:var(--muted); }
+
+  /* 漲跌停反白：台股慣例，漲停紅底白字、跌停綠底白字 */
+  .limit { display:inline-block; color:#fff; border-radius:4px; padding:1px 6px; font-weight:800; }
+  .limit.up { background:var(--up); } .limit.down { background:var(--down); }
+
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th { text-align:right; font-weight:500; color:var(--muted); font-size:12px; padding:6px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th.l, td.l { text-align:left; }
+  td { padding:8px; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap; }
+  .pic { width:30px; height:40px; border-radius:5px; display:inline-grid; place-items:center; color:#fff; font-weight:700; font-size:12px; vertical-align:middle; margin-right:8px; }
+  .mlist .item { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); }
+  .mlist .item .name { flex:1; min-width:0; }
+  .mlist .item .px { text-align:right; }
+
+  .quote { display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
+  .quote .code { color:var(--muted); }
+  .quote .price { font-size:32px; font-weight:800; line-height:1.2; }
+  .quote .price.limit { font-size:30px; padding:0 10px; border-radius:6px; }
+  .quotes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+  .mobile .quotes { grid-template-columns:1fr; }
+
+  /* 女優卡 */
+  .grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:14px; }
+  .mobile .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .acard { background:var(--paper); border:1px solid var(--line); border-radius:10px; overflow:hidden; position:relative; }
+  .acard .photo { aspect-ratio:3/4; position:relative; }
+  .acard .body { padding:10px 12px; display:flex; flex-direction:column; gap:5px; }
+  .acard .nm { font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .acard .meta { font-size:12px; color:var(--muted); }
+  .tick { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700; border-radius:999px; padding:2px 8px; background:var(--chip); white-space:nowrap; cursor:pointer; }
+  .tick .c { color:var(--muted); font-weight:600; }
+  .tick.limit-up { background:var(--up); color:#fff; } .tick.limit-up .c { color:rgba(255,255,255,.8); }
+  .tick.limit-down { background:var(--down); color:#fff; } .tick.limit-down .c { color:rgba(255,255,255,.8); }
+  /* 樣式 B：疊在照片右下角 */
+  .tick.overlay { position:absolute; right:6px; bottom:6px; background:rgba(17,12,20,.78); color:#fff; backdrop-filter:blur(2px); }
+  .tick.overlay .c { color:rgba(255,255,255,.7); }
+  .tick.overlay.up-t { color:#ff8a80; } .tick.overlay.down-t { color:#9ccc65; }
+  .tick.overlay.limit-up { background:var(--up); color:#fff; } .tick.overlay.limit-down { background:var(--down); color:#fff; }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <span class="label">上市標示樣式</span>
+  <button data-style="a" class="on">A：名字下方</button>
+  <button data-style="b">B：照片右下角</button>
+  <span class="sep"></span>
+  <button id="dark">深色</button>
+  <button id="mobile">手機</button>
+</div>
+<div class="stage"><div class="frame" id="frame"></div></div>
+<script>
+const S = { style: "a", dark: false, mobile: false };
+const data = [
+  { code: "J0003", name: "天馬ゆい", prev: 10.0, price: 12.0, hue: 330, meta: "1998/2/14・162 cm" },
+  { code: "J0001", name: "波多野結衣", prev: 10.0, price: 10.25, hue: 290, meta: "1988/5/24・163 cm" },
+  { code: "J0016", name: "逢沢みゆ", prev: 10.0, price: 9.75, hue: 10, meta: "2002/3/12・155 cm" },
+  { code: "J0029", name: "小野坂ゆいか", prev: 10.0, price: 8.0, hue: 260, meta: "2001/9/1・158 cm" },
+  { code: null, name: "三上悠亜", hue: 350, meta: "1993/8/16・159 cm" },
+  { code: "J0092", name: "月野江すい", prev: 10.0, price: 10.0, hue: 310, meta: "2003/1/4・150 cm" },
+];
+const pct = d => (d.price - d.prev) / d.prev * 100;
+const isUp = d => d.price >= +(d.prev * 1.2).toFixed(2);
+const isDown = d => d.price <= +(d.prev * 0.8).toFixed(2);
+const cls = v => v > 0.004 ? "up" : v < -0.004 ? "down" : "flat";
+const sign = v => (v > 0.004 ? "▲ +" : v < -0.004 ? "▼ " : "") + v.toFixed(2) + "%";
+const pic = d => `<span class="pic" style="background:linear-gradient(160deg,hsl(${d.hue} 55% 65%),hsl(${d.hue} 40% 35%))">${d.name[0]}</span>`;
+// 價格：漲跌停時反白（紅底／綠底白字），其他照舊只有漲跌幅變色
+const priceCell = d => isUp(d) ? `<span class="limit up">${d.price.toFixed(2)}</span>` : isDown(d) ? `<span class="limit down">${d.price.toFixed(2)}</span>` : `<b>${d.price.toFixed(2)}</b>`;
+
+function list() {
+  const rows = data.filter(d => d.code);
+  if (S.mobile) return `<div class="card mlist">${rows.map(d => `<div class="item">${pic(d)}<div class="name"><b>${d.name}</b><div style="font-size:12px;color:var(--muted)">${d.code}</div></div><div class="px num"><div>${priceCell(d)}</div><div class="${cls(pct(d))}" style="font-size:12px">${sign(pct(d))}</div></div></div>`).join("")}</div>`;
+  return `<div class="card"><table><thead><tr><th class="l">代碼</th><th class="l">女優</th><th>現價</th><th>漲跌</th></tr></thead><tbody>
+    ${rows.map(d => `<tr><td class="l num" style="color:var(--muted)">${d.code}</td><td class="l">${pic(d)}<b>${d.name}</b></td><td class="num">${priceCell(d)}</td><td class="num ${cls(pct(d))}">${sign(pct(d))}</td></tr>`).join("")}
+  </tbody></table></div>`;
+}
+
+function quotes() {
+  return `<div class="quotes">${[data[0], data[1], data[3]].map(d => {
+    const big = isUp(d) ? `<span class="price num limit up">${d.price.toFixed(2)}</span>` : isDown(d) ? `<span class="price num limit down">${d.price.toFixed(2)}</span>` : `<span class="price num">${d.price.toFixed(2)}</span>`;
+    return `<div class="card"><div class="quote"><span class="code num">${d.code}</span>${big}<span class="${cls(pct(d))}" style="font-size:16px">${sign(pct(d))}</span></div>
+      <div style="font-size:12px;color:var(--muted)" class="num">昨收 ${d.prev.toFixed(2)}・漲停 ${(d.prev * 1.2).toFixed(2)}・跌停 ${(d.prev * 0.8).toFixed(2)}</div></div>`;
+  }).join("")}</div>`;
+}
+
+// 上市標示：代碼＋現價＋漲跌幅；漲跌停時整顆反白；沒上市就不顯示
+function tick(d, overlay) {
+  if (!d.code) return "";
+  const lim = isUp(d) ? " limit-up" : isDown(d) ? " limit-down" : "";
+  const dir = overlay && !lim ? (pct(d) > 0.004 ? " up-t" : pct(d) < -0.004 ? " down-t" : "") : "";
+  const ch = lim || overlay ? sign(pct(d)) : `<span class="${cls(pct(d))}">${sign(pct(d))}</span>`;
+  return `<span class="tick${overlay ? " overlay" : ""}${lim}${dir}" title="點了到她的股票分頁"><span class="c">${d.code}</span>${d.price.toFixed(2)} ${ch}</span>`;
+}
+function cards() {
+  return `<div class="grid">${data.map(d => `<div class="acard"><div class="photo" style="background:linear-gradient(160deg,hsl(${d.hue} 55% 70%),hsl(${d.hue} 40% 38%))">${S.style === "b" ? tick(d, true) : ""}</div>
+    <div class="body"><div class="nm">${d.name}</div><div class="meta">${d.meta}</div>${S.style === "a" ? tick(d, false) : ""}</div></div>`).join("")}</div>`;
+}
+
+function render() {
+  const f = document.getElementById("frame");
+  f.className = "frame" + (S.dark ? " dark" : "") + (S.mobile ? " mobile" : "");
+  f.innerHTML = `<div class="header">joyu.fyi</div><div class="page">
+    <section><h2>1. 漲跌停反白（股市列表）</h2>
+      <div class="note">漲停（現價 ≥ 昨收 × 1.2）紅底白字、跌停（≤ 昨收 × 0.8）綠底白字；其他價格照舊，只有漲跌幅變色。範例：天馬ゆい 漲停、小野坂ゆいか 跌停。</div>${list()}</section>
+    <section><h2>1. 漲跌停反白（女優頁股票分頁的報價卡）</h2>${quotes()}</section>
+    <section><h2>2. 女優卡上市標示（女優搜尋、女優主題、首頁、共演女優共用）</h2>
+      <div class="note">已上市的女優卡多一顆標示：代碼＋現價＋漲跌幅，漲跌停時整顆反白；沒上市（三上悠亜）就不顯示。點標示到她的股票分頁、點卡片其他地方照舊到女優頁。上方工具列可切換 A／B 兩種位置。</div>${cards()}</section>
+  </div>`;
+  document.querySelectorAll("[data-style]").forEach(b => b.classList.toggle("on", b.dataset.style === S.style));
+  document.getElementById("dark").classList.toggle("on", S.dark);
+  document.getElementById("mobile").classList.toggle("on", S.mobile);
+}
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-style],#dark,#mobile");
+  if (!t) return;
+  if (t.dataset.style) S.style = t.dataset.style;
+  if (t.id === "dark") S.dark = !S.dark;
+  if (t.id === "mobile") S.mobile = !S.mobile;
+  render();
+});
+render();
+</script>
+</body>
+</html>

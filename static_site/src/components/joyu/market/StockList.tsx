@@ -18,6 +18,7 @@ import { ActressPhoto } from "@/components/av/actress_photo.tsx";
 import { stockActressPath } from "@/helpers/joyuMarket.ts";
 
 import { StockChange } from "./StockChange.tsx";
+import { StockPrice } from "./StockPrice.tsx";
 
 const num = { fontVariantNumeric: "tabular-nums" } as const;
 
@@ -85,8 +86,8 @@ export function StockList({ stocks }: { stocks: MarketStock[] }) {
               </Typography>
             </Box>
             <Box sx={{ textAlign: "right" }}>
-              <Typography sx={{ fontWeight: 700, ...num }}>
-                {s.price.toFixed(2)}
+              <Typography>
+                <StockPrice prevClose={s.prev_close} price={s.price} />
               </Typography>
               <StockChange pct={stockChangePct(s)} sx={{ fontSize: 12 }} />
             </Box>
@@ -143,8 +144,8 @@ export function StockList({ stocks }: { stocks: MarketStock[] }) {
                 </Link>
               </Stack>
             </TableCell>
-            <TableCell align="right" sx={{ fontWeight: 700, ...num }}>
-              {s.price.toFixed(2)}
+            <TableCell align="right">
+              <StockPrice prevClose={s.prev_close} price={s.price} />
             </TableCell>
             <TableCell align="right">
               <StockChange pct={stockChangePct(s)} />

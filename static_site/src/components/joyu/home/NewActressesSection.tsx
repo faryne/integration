@@ -52,6 +52,7 @@ export function NewActressesSection({ compact }: { compact?: boolean }) {
                 key={item.name}
                 name={item.name}
                 photo={item.actress?.photo}
+                stockOf={item.actress}
                 to={joyuActressLink(item)}
               >
                 <Typography

@@ -2,10 +2,12 @@ import type { ReactNode } from "react";
 import { Box, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import { ActressPhoto } from "@/components/av/actress_photo.tsx";
+import { ActressStockTag } from "@/components/joyu/market/ActressStockTag.tsx";
 
 /**
  * 女優卡片：照片＋名字，名字下方的內容由各頁決定（搜尋頁放假名與身形、主題頁放出演數）。
- * 女優搜尋頁與主題頁共用；rank 有值時在照片左上角顯示名次
+ * 女優搜尋頁、主題頁、joyu 首頁共用；rank 有值時在照片左上角顯示名次；
+ * stockOf 有值且這位已上市時，照片右下角顯示股票代碼與現價（joyu 女優股市）
  */
 export function ActressCard({
   name,
@@ -13,6 +15,7 @@ export function ActressCard({
   to,
   rank,
   dense,
+  stockOf,
   children,
 }: {
   name: string;
@@ -21,6 +24,8 @@ export function ActressCard({
   rank?: number;
   /** 窄卡片用（一屏版首頁）：名字區塊的留白與字級縮小 */
   dense?: boolean;
+  /** 這位是誰（domain＋aid），用來對上市標示；沒帶就不顯示 */
+  stockOf?: { domain: string; aid: number };
   children?: ReactNode;
 }) {
   return (
@@ -76,9 +81,11 @@ export function ActressCard({
           aspectRatio: "3 / 4",
           bgcolor: "grey.100",
           overflow: "hidden",
+          position: "relative",
           width: "100%",
         }}
       >
+        {stockOf && <ActressStockTag name={name} {...stockOf} />}
         <ActressPhoto
           alt={name}
           loading="lazy"
