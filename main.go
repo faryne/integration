@@ -51,6 +51,7 @@ var commandParams = commandParameter.Registry{
 	"csvFile":         commandParameter.New("path to a pipe-delimited eroge brand CSV file", nil),
 	"dayFrom":         commandParameter.New("start date in YYYY-MM-DD format", commandParameter.Date),
 	"dayTo":           commandParameter.New("end date in YYYY-MM-DD format (inclusive)", commandParameter.Date),
+	"dryRun":          commandParameter.New("true/1 to only print the result without writing (av-market-review)", commandParameter.Bool),
 	"days":            commandParameter.New("number of days ahead for av-upcoming-sync (default 30; smaller for local testing)", nil),
 	"notify":          commandParameter.New("true/1 to send the Telegram notify of dayFrom after av-dmm-video-sync", commandParameter.Bool),
 	"ncccKey":         commandParameter.New("single NCCC data set key, e.g. gender", nil),

@@ -23,6 +23,11 @@ export const joyuSections: JoyuSection[] = [
     href: "/upcoming",
     match: (p) => p.startsWith("/upcoming"),
   },
+  {
+    title: "股市",
+    href: "/market",
+    match: (p) => p.startsWith("/market"),
+  },
   // 不在頁首導覽裡（從帳號選單進），只用在麵包屑
   {
     title: "我的追蹤",
@@ -47,10 +52,14 @@ export const joyuSections: JoyuSection[] = [
   },
 ];
 
-// 頁首依顯示順序排（女優、主題、影片、即將發售），比對順序則是 joyuSections（主題要先於女優）
-export const joyuNavItems = ["女優", "女優主題", "影片", "即將發售"].map(
-  (title) => joyuSections.find((s) => s.title === title)!,
-);
+// 頁首依顯示順序排（女優、主題、影片、即將發售、股市），比對順序則是 joyuSections（主題要先於女優）
+export const joyuNavItems = [
+  "女優",
+  "女優主題",
+  "影片",
+  "即將發售",
+  "股市",
+].map((title) => joyuSections.find((s) => s.title === title)!);
 
 export const findJoyuSection = (pathname: string) =>
   joyuSections.find((s) => s.match(pathname));

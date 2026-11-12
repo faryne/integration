@@ -13,6 +13,8 @@ type VideoIndexQuery struct {
 	Actresses []VideoActressFilter
 	// Upcoming 只查即將發售（配信日在明天以後的預約作品）；false 時只查已配信的。依番號查單部（No）時兩者都查得到
 	Upcoming bool
+	// ExcludeTags 有其中任一個標籤的不算（joyu 股市算部數時排除總集編）；不開放給 API 參數
+	ExcludeTags []string
 }
 
 // VideoActressFilter 出演者條件：名字完全相符或「名字（別名…）」，再依 DMM 女優 ID 區分同名

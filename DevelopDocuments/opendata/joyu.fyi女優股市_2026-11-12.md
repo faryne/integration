@@ -52,22 +52,30 @@
 - 金額用整數「分」存。成本無條件進位、賣出所得無條件捨去；下單時帶 `max_cost`／`min_proceeds` 防止報價過期。
 - P4 淡化：系統的報價改成在曲線價上下加價差，價差隨活躍下單人數變大，使用者之間的掛單就會比較划算。成交紀錄現在就記 `counterparty`。
 
-## 資料表（P1／P2，一支 migration，MySQL 5.7 相容）
-- `joyu_stocks`：`id`、`code`(J0001…)、`domain`、`aid`、`name`（快照）、`status`、`fundamental`、`shares_out`、`last_price`、`prev_close`、`listed_at`、`delisted_at`、`last_release_at`。
-- `joyu_wallets`：`firebase_uid` PK、`cash`。
-- `joyu_holdings`：`(firebase_uid, stock_id)`、`shares`、`cost`、`today_bought`、`today_date`。
-- `joyu_trades`：`side`、`shares`、`amount`、`fee`、`price_after`、`counterparty`、`created_at`。
-- `joyu_stock_daily`：`(stock_id, date)`、開高低收、`volume`、`new_videos`、`fundamental`。
-- `joyu_market_index`：`date`、`value`。
+## 資料表（每期各自一支 migration，MySQL 5.7 相容，用到才建）
+- P1 `joyu_stocks`（`20261112120000-create_joyu_stocks.sql`）：`id`、`domain`、`aid`、`name`（快照）、`status`、`fundamental`、`shares_out`、`last_price`、`prev_close`（分）、`videos_90d`、`listed_at`、`delisted_at`。
+  - 代碼 J0001… 由 `id` 推出來，不另外存。上市順序是近三年部數多的在前，所以代碼小的就是上市當下最活躍的。
+- P2 之後：`joyu_wallets`、`joyu_holdings`（含 `today_bought`／`today_date`）、`joyu_trades`（含 `counterparty`）、`joyu_stock_daily`、`joyu_market_index`。
+
+## P1 實作（2026-11-12）
+- 後端
+  - 上市審核 `av-market-review`：每月 1 日 04:50，加 `-dryRun 1` 只印出結果不寫入。符合資格又沒上市過的就上市，已上市的更新名字快照與近 90 天部數；可以重跑，不會重複上市。
+  - 公開 API：`GET /opendata/av/market/stocks`（全部上市股，有 avCache）、`GET /opendata/av/market/stocks/:code`（個股，不快取，開放交易後價格隨時會動）。
+  - 同名女優逐位查也排除總集篇了：`VideoIndexQuery.ExcludeTags` 是內部條件，不開放成 API 參數。
+- 前端
+  - `/market`：總覽頁，可依近期出片或代碼排序、用名字或代碼篩選，條件存在網址。
+  - `/market/:code`：個股頁，顯示報價、漲跌停價、近 90 天出片、流通股數、上市日、近期作品，並連到女優頁。
+  - 頁首導覽加了「股市」。手機上導覽列放不下（原本就會溢出），改成導覽列自己左右滑，目前所在的項目會自動捲進畫面。
+- 本機結果：529 檔上市，48 檔近 90 天是 0 部（近三年達標、只是最近沒出片）。
+- 部署：要跑 migration，再手動執行一次 `-cmd av-market-review` 讓第一批上市。
 
 ## 分期
 - **P0**：本文件＋上市 dry-run＋基本面算法定案（皆已完成）＋前端 mockup（`joyu-market-mockup/`）。
-- **P1**：資料表＋上市寫入＋股市總覽／個股頁（唯讀）。
+- **P1**：資料表＋上市寫入＋股市總覽／個股頁（唯讀）——已完成。
 - **P2**：錢包＋交易＋我的持股＋收盤 job＋漲跌停。
 - **P3**：基本面跟著同步走＋大盤指數＋走勢圖＋排行榜＋下市審核。
 - **P4～P6**：使用者撮合、人氣因子、女優合併換股、玩家組合／ETF。
 
 ## 已知限制
 - 純別名名義發的片不算進本人（跟女優頁一致）。
-- 同名女優逐位查還沒排除總集篇（`VideoIndexQuery` 沒有排除標籤的條件），P1 補上。
 - DMM 自己網站比我們同步早幾小時公開新片，知道的人可以搶先買；當成看盤功力，不擋。
