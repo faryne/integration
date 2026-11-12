@@ -25,20 +25,30 @@ func TestMarketTargetFundamental(t *testing.T) {
 	}
 }
 
-// 目標再高，調完的股價也不能超過漲停；目標再低，也不能低於跌停
+// 一天最多離開盤 F ±2.5%；目標在範圍內就照目標
+func TestFundamentalDailyStep(t *testing.T) {
+	if f := fundamentalWithinLimit(50, 0, 1000, 10); f != 10.25 {
+		t.Errorf("up = %v", f)
+	}
+	if f := fundamentalWithinLimit(1, 0, 1000, 10); f != 9.75 {
+		t.Errorf("down = %v", f)
+	}
+	if f := fundamentalWithinLimit(10.1, 0, 1000, 10); f != 10.1 {
+		t.Errorf("within = %v", f)
+	}
+}
+
+// 單日上限之外，調完的股價也不能超過漲跌停（例如玩家已經把股價推到接近漲停）
 func TestFundamentalWithinLimit(t *testing.T) {
 	for _, s := range []int64{0, 1234, 40000} {
 		lo, hi := marketLimits(1000)
-		if f := fundamentalWithinLimit(50, s, 1000); marketPrice(f, s) > hi || marketPrice(f, s) < hi-1 {
+		// 開盤 F 設得很極端，讓單日上限不是瓶頸，只剩漲跌停在限制
+		if f := fundamentalWithinLimit(1000, s, 1000, 1000); marketPrice(f, s) > hi || marketPrice(f, s) < hi-1 {
 			t.Errorf("s=%d up: f=%v price=%d hi=%d", s, f, marketPrice(f, s), hi)
 		}
-		if f := fundamentalWithinLimit(1, s, 1000); marketPrice(f, s) < lo || marketPrice(f, s) > lo+1 {
+		if f := fundamentalWithinLimit(0.001, s, 1000, 0.001); marketPrice(f, s) < lo || marketPrice(f, s) > lo+1 {
 			t.Errorf("s=%d down: f=%v price=%d lo=%d", s, f, marketPrice(f, s), lo)
 		}
-	}
-	// 目標在範圍內就照目標
-	if f := fundamentalWithinLimit(10.5, 0, 1000); f != 10.5 {
-		t.Errorf("within = %v", f)
 	}
 }
 

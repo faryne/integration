@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS `joyu_stocks` (
   `name` VARCHAR(128) NOT NULL COMMENT '上市審核時的名字快照，識別一律看 domain＋aid',
   `status` VARCHAR(16) NOT NULL DEFAULT 'listed' COMMENT 'listed 上市中 / delisted 已下市',
   `fundamental` DECIMAL(12,4) NOT NULL DEFAULT 10 COMMENT '基本面 F（單位，不是分）',
+  `open_fundamental` DECIMAL(12,4) NOT NULL DEFAULT 10 COMMENT '今天開盤時的 F：基本面一天最多只能離它 ±2.5%（每天收盤時更新）',
   `shares_out` BIGINT NOT NULL DEFAULT 0 COMMENT '使用者持有的總股數 S',
   `last_price` BIGINT NOT NULL COMMENT '現價（分）',
   `prev_close` BIGINT NOT NULL COMMENT '昨收（分），漲跌幅與漲跌停的基準',

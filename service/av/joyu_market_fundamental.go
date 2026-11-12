@@ -17,12 +17,16 @@ import (
 
 // joyu 女優股市的基本面 F（規格「基本面 F（2026-11-12 定案）」）：
 // 目標 F* = 10 × √(她近 90 天部數 ÷ 全部上市股近 90 天部數的中位數)，夾在 1～100；
-// 實際 F 每次往 F* 調，但調完的股價不能超過當天漲跌停，所以 IPO（F=10）會在幾天內慢慢收斂到 F*。
-// 每次影片同步完、每天收盤後都整批重算（算的是絕對值，重跑不會重複加；回補舊日期也只是讓 90 天部數更準）
+// 實際 F 每次往 F* 調，但一天最多只能離「開盤時的 F」±2.5%，調完的股價也不能超過漲跌停。
+// 漲跌停（±20%）的空間是留給玩家交易的，基本面只是慢慢推（目標兩倍約 4 週到位）；
+// 而且一天 2.5% 只比來回買賣的手續費（約 2%）多一點，看到新片搶先買也賺不到什麼。
+// 上市當天不動（大家都從 10 開始）。每次影片同步完、每天收盤後都整批重算（算的是絕對值，重跑不會重複加）
 const (
 	marketFundamentalBase = 10.0
 	marketFundamentalMin  = 1.0
 	marketFundamentalMax  = 100.0
+	// marketFundamentalDailyStep 基本面一天最多變動的比例（以開盤時的 F 為準）
+	marketFundamentalDailyStep = 0.025
 )
 
 // marketTargetFundamental F*：出片量剛好是中位數時是 10；開根號壓低量產型的優勢（4 倍片量 → 2 倍）
@@ -31,11 +35,12 @@ func marketTargetFundamental(recent int, median float64) float64 {
 	return min(max(marketFundamentalBase*math.Sqrt(float64(recent)/median), marketFundamentalMin), marketFundamentalMax)
 }
 
-// fundamentalWithinLimit 把 F 夾在「調完股價還在漲跌停內」的範圍，存成小數 4 位（資料表 DECIMAL(12,4)），
-// 四捨五入後若剛好超出漲跌停一分，再往內收一格
-func fundamentalWithinLimit(target float64, s, prevClose int64) float64 {
+// fundamentalWithinLimit 把 F 夾在「離開盤 F 不超過 ±2.5%」且「調完股價還在漲跌停內」的範圍，
+// 存成小數 4 位（資料表 DECIMAL(12,4)），四捨五入後若剛好超出漲跌停一分，再往內收一格
+func fundamentalWithinLimit(target float64, s, prevClose int64, openF float64) float64 {
 	lo, hi := marketLimits(prevClose)
 	k := 100 * (1 + float64(s)/marketDepth)
+	target = min(max(target, openF*(1-marketFundamentalDailyStep)), openF*(1+marketFundamentalDailyStep))
 	f := math.Round(min(max(target, float64(lo)/k), float64(hi)/k)*10000) / 10000
 	switch {
 	case marketPrice(f, s) > hi:
@@ -90,6 +95,8 @@ func refreshMarketFundamentals(ctx context.Context, now time.Time) (int, error) 
 	today := now.Format(time.DateOnly)
 	changed := 0
 	for _, s := range stocks {
+		// 上市當天不動基本面，大家都從 10 開始；近 90 天部數照樣更新
+		listedToday := s.ListedAt.Format(time.DateOnly) == today
 		target := marketTargetFundamental(recent[s.ID], median)
 		err := repo.Transaction(func(tx *gorm.DB) error {
 			// 鎖住後重讀：重算期間可能有人成交，S 與現價要用最新的
@@ -97,7 +104,10 @@ func refreshMarketFundamentals(ctx context.Context, now time.Time) (int, error) 
 			if err != nil {
 				return err
 			}
-			f := fundamentalWithinLimit(target, cur.SharesOut, cur.PrevClose)
+			f := cur.Fundamental
+			if !listedToday {
+				f = fundamentalWithinLimit(target, cur.SharesOut, cur.PrevClose, cur.OpenFundamental)
+			}
 			if f == cur.Fundamental && recent[s.ID] == cur.Videos90d {
 				return nil
 			}

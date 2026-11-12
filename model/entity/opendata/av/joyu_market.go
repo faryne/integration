@@ -14,20 +14,22 @@ const (
 
 // JoyuStock 一檔上市的女優；金額欄位單位是「分」（1 單位 = 100）
 type JoyuStock struct {
-	ID          int        `gorm:"column:id;primaryKey"`
-	Domain      string     `gorm:"column:domain"`
-	AID         int        `gorm:"column:aid"`
-	Name        string     `gorm:"column:name"`
-	Status      string     `gorm:"column:status"`
-	Fundamental float64    `gorm:"column:fundamental"`
-	SharesOut   int64      `gorm:"column:shares_out"`
-	LastPrice   int64      `gorm:"column:last_price"`
-	PrevClose   int64      `gorm:"column:prev_close"`
-	Videos90d   int        `gorm:"column:videos_90d"`
-	ListedAt    time.Time  `gorm:"column:listed_at"`
-	DelistedAt  *time.Time `gorm:"column:delisted_at"`
-	CreatedAt   time.Time  `gorm:"column:created_at"`
-	UpdatedAt   time.Time  `gorm:"column:updated_at"`
+	ID          int     `gorm:"column:id;primaryKey"`
+	Domain      string  `gorm:"column:domain"`
+	AID         int     `gorm:"column:aid"`
+	Name        string  `gorm:"column:name"`
+	Status      string  `gorm:"column:status"`
+	Fundamental float64 `gorm:"column:fundamental"`
+	// OpenFundamental 今天開盤時的 F，基本面單日變動上限的基準（收盤時更新成當下的 F）
+	OpenFundamental float64    `gorm:"column:open_fundamental"`
+	SharesOut       int64      `gorm:"column:shares_out"`
+	LastPrice       int64      `gorm:"column:last_price"`
+	PrevClose       int64      `gorm:"column:prev_close"`
+	Videos90d       int        `gorm:"column:videos_90d"`
+	ListedAt        time.Time  `gorm:"column:listed_at"`
+	DelistedAt      *time.Time `gorm:"column:delisted_at"`
+	CreatedAt       time.Time  `gorm:"column:created_at"`
+	UpdatedAt       time.Time  `gorm:"column:updated_at"`
 }
 
 func (JoyuStock) TableName() string {

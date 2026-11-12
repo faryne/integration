@@ -104,7 +104,7 @@ func applyMarketReview(cands []marketCandidate, now time.Time) (int, int, error)
 	for i, c := range fresh {
 		rows[i] = avEntity.JoyuStock{
 			Domain: c.Row.Domain, AID: c.Row.ID, Name: c.Row.Name, Status: avEntity.StockListed,
-			Fundamental: 10, LastPrice: marketIPOPrice, PrevClose: marketIPOPrice, Videos90d: c.Recent, ListedAt: now,
+			Fundamental: 10, OpenFundamental: 10, LastPrice: marketIPOPrice, PrevClose: marketIPOPrice, Videos90d: c.Recent, ListedAt: now,
 		}
 	}
 	return len(rows), updated, repo.CreateBatch(rows)

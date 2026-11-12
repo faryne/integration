@@ -160,7 +160,7 @@ func (r *RepositoryJoyuMarket) DailyVolumes(date string) (map[int]int64, error) 
 	return out, nil
 }
 
-// CloseDay 收盤：每檔上市股補齊 date 那天的價格紀錄（沒成交的開高低收都是現價），收盤價寫進昨收。
+// CloseDay 收盤：每檔上市股補齊 date 那天的價格紀錄（沒成交的開高低收都是現價），收盤價寫進昨收、現在的 F 寫進開盤 F。
 // 兩步都可以重跑（第一步是 upsert、第二步是把現價複製過去）
 func (r *RepositoryJoyuMarket) CloseDay(date string) error {
 	return r.Transaction(func(tx *gorm.DB) error {
@@ -169,7 +169,8 @@ SELECT id, ?, last_price, last_price, last_price, last_price, 0, NOW(), NOW() FR
 ON DUPLICATE KEY UPDATE close = VALUES(close), updated_at = NOW()`, date, av.StockListed).Error; err != nil {
 			return err
 		}
-		return tx.Exec("UPDATE joyu_stocks SET prev_close = last_price, updated_at = NOW() WHERE status = ?", av.StockListed).Error
+		// 新的一天：昨收＝現價、開盤 F＝現在的 F（基本面單日變動上限的基準）
+		return tx.Exec("UPDATE joyu_stocks SET prev_close = last_price, open_fundamental = fundamental, updated_at = NOW() WHERE status = ?", av.StockListed).Error
 	})
 }
 
