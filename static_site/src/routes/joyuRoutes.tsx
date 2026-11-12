@@ -36,9 +36,9 @@ const JoyuMarketHome = lazyNamed(
   () => import("@/pages/joyu/market/MarketHome.tsx"),
   "JoyuMarketHome",
 );
-const JoyuStockDetail = lazyNamed(
-  () => import("@/pages/joyu/market/StockDetail.tsx"),
-  "JoyuStockDetail",
+const JoyuStockRedirect = lazyNamed(
+  () => import("@/pages/joyu/market/StockRedirect.tsx"),
+  "JoyuStockRedirect",
 );
 const JoyuMarketLeaderboard = lazyNamed(
   () => import("@/pages/joyu/market/Leaderboard.tsx"),
@@ -99,7 +99,8 @@ export const joyuRoutes = (
     <Route path={"/market"} element={<JoyuMarketHome />} />
     {/* 排行榜排在 :code 前面（靜態路徑本來就優先，排前面讀起來比較清楚） */}
     <Route path={"/market/leaderboard"} element={<JoyuMarketLeaderboard />} />
-    <Route path={"/market/:code"} element={<JoyuStockDetail />} />
+    {/* 個股已經併進女優頁的「股票」分頁，代碼網址只負責轉過去 */}
+    <Route path={"/market/:code"} element={<JoyuStockRedirect />} />
     <Route path={"/me/follows"} element={<JoyuMyFollows />} />
     <Route path={"/me/videos"} element={<JoyuMyVideos />} />
     <Route path={"/me/profile"} element={<JoyuMyProfile />} />

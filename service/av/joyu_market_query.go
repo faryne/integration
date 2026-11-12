@@ -1,6 +1,8 @@
 package av
 
 import (
+	"time"
+
 	avEntity "faryne.dev/model/entity/opendata/av"
 	avRepo "faryne.dev/repository/av"
 )
@@ -8,7 +10,7 @@ import (
 // marketRecentTrades 個股頁顯示的最近成交筆數
 const marketRecentTrades = 10
 
-// MarketStocks 股市總覽：上市中的全部（約 500 檔，不分頁，排序與篩選交給前端），附女優照片與今天的成交量
+// MarketStocks 股市總覽：上市中的全部（約 500 檔，不分頁，排序與篩選交給前端），附女優照片、今天的成交量與買／賣股數
 func MarketStocks() ([]avEntity.MarketStock, error) {
 	rows, err := avRepo.NewJoyuStock().ListListed()
 	if err != nil {
@@ -18,41 +20,66 @@ func MarketStocks() ([]avEntity.MarketStock, error) {
 	if err != nil {
 		return nil, err
 	}
-	volumes, err := avRepo.NewJoyuMarket().DailyVolumes(marketToday())
-	if err != nil {
+	if err := fillTodayVolumes(out, rows); err != nil {
 		return nil, err
-	}
-	for i := range out {
-		out[i].Volume = volumes[rows[i].ID]
 	}
 	return out, nil
 }
 
-// MarketStock 個股頁（含已下市的）：報價、今天成交量、最近成交；代碼格式不對或找不到都回 gorm.ErrRecordNotFound（404）
+// MarketStock 個股（含已下市的）；代碼格式不對或找不到都回 gorm.ErrRecordNotFound（404）
 func MarketStock(code string) (*avEntity.MarketStockDetail, error) {
 	row, err := avRepo.NewJoyuStock().FindByID(avEntity.StockIDFromCode(code))
 	if err != nil {
 		return nil, err
 	}
-	list, err := marketStocksWithPhotos([]avEntity.JoyuStock{*row})
+	return marketStockDetail(*row)
+}
+
+// MarketStockByActress 女優頁的「股票」分頁：這位上市過就回個股資料，沒上市回 gorm.ErrRecordNotFound（404）
+func MarketStockByActress(domain string, aid int) (*avEntity.MarketStockDetail, error) {
+	row, err := avRepo.NewJoyuStock().FindByActress(domain, aid)
 	if err != nil {
 		return nil, err
 	}
-	repo := avRepo.NewJoyuMarket()
-	volumes, err := repo.DailyVolumes(marketToday())
+	return marketStockDetail(*row)
+}
+
+// marketStockDetail 個股的報價、今天成交量與買／賣股數、最近成交
+func marketStockDetail(row avEntity.JoyuStock) (*avEntity.MarketStockDetail, error) {
+	list, err := marketStocksWithPhotos([]avEntity.JoyuStock{row})
 	if err != nil {
 		return nil, err
 	}
-	trades, err := repo.RecentTrades(row.ID, marketRecentTrades)
+	if err := fillTodayVolumes(list, []avEntity.JoyuStock{row}); err != nil {
+		return nil, err
+	}
+	trades, err := avRepo.NewJoyuMarket().RecentTrades(row.ID, marketRecentTrades)
 	if err != nil {
 		return nil, err
 	}
 	out := &avEntity.MarketStockDetail{MarketStock: list[0], RecentTrades: make([]avEntity.MarketRecentTrade, len(trades))}
-	out.Volume = volumes[row.ID]
 	for i, t := range trades {
 		out.RecentTrades[i] = avEntity.MarketRecentTrade{Side: t.Side, Shares: t.Shares, Price: centsToUnits(t.PriceAfter), CreatedAt: t.CreatedAt}
 	}
 	return out, nil
+}
+
+// fillTodayVolumes 補上今天的成交量與買進／賣出股數（out 與 rows 順序相同）
+func fillTodayVolumes(out []avEntity.MarketStock, rows []avEntity.JoyuStock) error {
+	repo := avRepo.NewJoyuMarket()
+	volumes, err := repo.DailyVolumes(marketToday())
+	if err != nil {
+		return err
+	}
+	today, _ := time.ParseInLocation(time.DateOnly, marketToday(), time.Local)
+	buy, sell, err := repo.SideVolumes(today)
+	if err != nil {
+		return err
+	}
+	for i, s := range rows {
+		out[i].Volume, out[i].BuyVolume, out[i].SellVolume = volumes[s.ID], buy[s.ID], sell[s.ID]
+	}
+	return nil
 }
 
 // marketStocksWithPhotos 從 dmm_actresses 補上照片（一次 IN 查完），價格從分換成單位

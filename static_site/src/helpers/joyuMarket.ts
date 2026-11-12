@@ -1,9 +1,20 @@
+import { actressPagePath } from "@/helpers/avActressRef.ts";
 import { joyuPath } from "@/helpers/joyu.ts";
 
 // joyu 女優股市前端共用的小工具（元件檔只能匯出元件，fast refresh 才會正常）
 
-/** 個股頁網址 */
+/** 個股網址（只有代碼時用，例如排行榜、成交紀錄）：/market/J0001 會轉到女優頁的股票分頁 */
 export const stockPath = (code: string) => joyuPath(`market/${code}`);
+
+/** 女優頁的「股票」分頁（個股已經併進女優頁）：帶這位的 xcity_id／manual_id，同名不會開錯 */
+export const stockActressPath = (s: {
+  name: string;
+  domain: string;
+  aid: number;
+}) => {
+  const path = actressPagePath(s.name, s);
+  return `${path}${path.includes("?") ? "&" : "?"}view=stock`;
+};
 
 /** 漲跌顏色照台股習慣：紅漲綠跌，沒變灰色 */
 export const changeColor = (pct: number) =>

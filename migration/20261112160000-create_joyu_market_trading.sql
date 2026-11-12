@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS `joyu_trades` (
   `created_at` DATETIME NOT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_stock_created` (`stock_id`, `created_at`),
-  KEY `idx_uid_created` (`firebase_uid`, `created_at`)
+  KEY `idx_uid_created` (`firebase_uid`, `created_at`),
+  KEY `idx_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `joyu_stock_daily` (

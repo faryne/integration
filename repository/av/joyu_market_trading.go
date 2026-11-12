@@ -144,6 +144,26 @@ func (r *RepositoryJoyuMarket) RecentTrades(stockID, size int) ([]av.JoyuTrade, 
 	return rows, err
 }
 
+// SideVolumes 從 since 起各檔的買進／賣出股數（股市總覽的今日買／賣；只算跟系統造市的成交，不含下市買回）
+func (r *RepositoryJoyuMarket) SideVolumes(since time.Time) (buy, sell map[int]int64, err error) {
+	var rows []struct {
+		StockID int
+		Side    string
+		Shares  int64
+	}
+	err = r.db.Table("joyu_trades").Select("stock_id, side, SUM(shares) AS shares").
+		Where("created_at >= ? AND counterparty = ?", since, av.TradeCounterpartySystem).Group("stock_id, side").Scan(&rows).Error
+	buy, sell = map[int]int64{}, map[int]int64{}
+	for _, row := range rows {
+		if row.Side == av.TradeBuy {
+			buy[row.StockID] = row.Shares
+		} else {
+			sell[row.StockID] = row.Shares
+		}
+	}
+	return buy, sell, err
+}
+
 // DailyVolumes 某天各檔的成交量（股市總覽）
 func (r *RepositoryJoyuMarket) DailyVolumes(date string) (map[int]int64, error) {
 	var rows []struct {

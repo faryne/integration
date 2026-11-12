@@ -67,7 +67,9 @@ type MarketStock struct {
 	SharesOut   int64     `json:"shares_out"`
 	ShareCap    int64     `json:"share_cap"` // 發行上限
 	Videos90d   int       `json:"videos_90d"`
-	Volume      int64     `json:"volume"` // 今天的成交股數
+	Volume      int64     `json:"volume"`      // 今天的成交股數
+	BuyVolume   int64     `json:"buy_volume"`  // 今天買進的股數
+	SellVolume  int64     `json:"sell_volume"` // 今天賣出的股數
 	ListedAt    time.Time `json:"listed_at"`
 }
 

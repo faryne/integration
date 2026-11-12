@@ -32,6 +32,8 @@ export interface MarketStock {
   share_cap: number; // 發行上限：流通股數到了就暫停買進
   videos_90d: number;
   volume: number; // 今天的成交股數
+  buy_volume: number; // 今天買進的股數
+  sell_volume: number; // 今天賣出的股數
   listed_at: string;
 }
 
@@ -164,6 +166,34 @@ export function useMarketLeaderboard() {
           { timeout: 10000 },
         )
       ).data.data,
+  });
+}
+
+/** 女優頁的「股票」分頁：這位上市過（含已下市）就有資料，沒上市是 null（404 不重試） */
+export function useMarketStockByActress(actress?: {
+  domain: string;
+  aid: number;
+}) {
+  return useQuery({
+    queryKey: [MARKET_KEY, "actress-stock", actress?.domain, actress?.aid],
+    queryFn: async () => {
+      try {
+        return (
+          await axios.get<CommonResponse<MarketStockDetail>>(
+            `${api}/opendata/av/market/actress-stock`,
+            {
+              params: { aid: actress!.aid, domain: actress!.domain },
+              timeout: 10000,
+            },
+          )
+        ).data.data;
+      } catch (err) {
+        if (axios.isAxiosError(err) && err.response?.status === 404)
+          return null;
+        throw err;
+      }
+    },
+    enabled: !!actress,
   });
 }
 

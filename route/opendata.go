@@ -48,6 +48,7 @@ func OpenData(app *fiber.App) {
 	// joyu.fyi 女優股市：開放交易後價格隨時會動，總覽與個股都不快取
 	g4.Get("/market/stocks", opendata.AvMarketStocks)
 	g4.Get("/market/stocks/:code", opendata.AvMarketStock)
+	g4.Get("/market/actress-stock", opendata.AvMarketActressStock)
 	// 走勢只在收盤時多一筆、排行榜後端已有 5 分鐘快取，瀏覽器快取 1 分鐘就好
 	g4.Get("/market/stocks/:code/history", httpcache.Public(time.Minute, time.Minute), opendata.AvMarketHistory)
 	g4.Get("/market/leaderboard", httpcache.Public(time.Minute, time.Minute), opendata.AvMarketLeaderboard)

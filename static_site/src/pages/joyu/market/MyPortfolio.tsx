@@ -26,6 +26,7 @@ import {
   changeColor,
   money,
   signedPct,
+  stockActressPath,
   stockPath,
 } from "@/helpers/joyuMarket.ts";
 import { useTitle } from "@/helpers/title.tsx";
@@ -165,7 +166,7 @@ export function JoyuMyPortfolio() {
                                 <Link
                                   component={RouterLink}
                                   sx={{ fontWeight: 700, whiteSpace: "nowrap" }}
-                                  to={stockPath(h.stock.code)}
+                                  to={stockActressPath(h.stock)}
                                   underline="hover"
                                 >
                                   {h.stock.name}

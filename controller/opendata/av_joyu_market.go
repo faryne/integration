@@ -73,3 +73,21 @@ func AvMarketLeaderboard(ctx fiber.Ctx) error {
 	}
 	return output.Success(out)
 }
+
+// AvMarketActressStock joyu.fyi 女優頁的「股票」分頁：這位有上市（含已下市）就回個股資料，沒有回 404
+// @Summary joyu actress market stock by actress
+// @Tags OpenData AV
+// @Produce json
+// @Param domain query string true "Actress domain (xcity / manual)"
+// @Param aid query int true "Actress id"
+// @Success 200 {object} output.CommonOutput
+// @Failure 404 {object} output.CommonOutput
+// @Router /opendata/av/market/actress-stock [get]
+func AvMarketActressStock(ctx fiber.Ctx) error {
+	aid, _ := strconv.Atoi(ctx.Query("aid"))
+	out, err := av.MarketStockByActress(ctx.Query("domain"), aid)
+	if err != nil {
+		return output.FromError(err)
+	}
+	return output.Success(out)
+}

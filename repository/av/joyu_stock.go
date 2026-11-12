@@ -42,6 +42,15 @@ func (r *RepositoryJoyuStock) FindByID(id int) (*av.JoyuStock, error) {
 	return &row, nil
 }
 
+// FindByActress 女優頁的「股票」分頁：這位有沒有上市過（含已下市）；沒有回 gorm.ErrRecordNotFound
+func (r *RepositoryJoyuStock) FindByActress(domain string, aid int) (*av.JoyuStock, error) {
+	var row av.JoyuStock
+	if err := r.GetDB().Clauses(dbresolver.Write).Where("domain = ? AND aid = ?", domain, aid).First(&row).Error; err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
 // FindByIDs 我的持股、成交紀錄要顯示的那幾檔（讀 primary，價格要是剛成交後的）
 func (r *RepositoryJoyuStock) FindByIDs(ids []int) ([]av.JoyuStock, error) {
 	if len(ids) == 0 {
