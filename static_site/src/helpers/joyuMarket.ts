@@ -19,3 +19,9 @@ export const money = (n: number) =>
 /** 帶正負號的百分比：+1.23% ／ -1.23% */
 export const signedPct = (pct: number) =>
   `${pct > 0 ? "+" : ""}${pct.toFixed(2)}%`;
+
+/** 大盤指數：每檔現價相對 IPO 價（10）的平均 × 1000，剛上市時就是 1000；prev 用昨收算 */
+export const marketIndex = (prices: number[]) =>
+  prices.length
+    ? (prices.reduce((a, b) => a + b, 0) / prices.length / 10) * 1000
+    : 0;

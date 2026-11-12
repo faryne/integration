@@ -40,6 +40,10 @@ const JoyuStockDetail = lazyNamed(
   () => import("@/pages/joyu/market/StockDetail.tsx"),
   "JoyuStockDetail",
 );
+const JoyuMarketLeaderboard = lazyNamed(
+  () => import("@/pages/joyu/market/Leaderboard.tsx"),
+  "JoyuMarketLeaderboard",
+);
 const JoyuMyPortfolio = lazyNamed(
   () => import("@/pages/joyu/market/MyPortfolio.tsx"),
   "JoyuMyPortfolio",
@@ -93,6 +97,8 @@ export const joyuRoutes = (
     <Route path={"/video/:no"} element={<AVVideoDetail />} />
     <Route path={"/upcoming"} element={<JoyuUpcoming />} />
     <Route path={"/market"} element={<JoyuMarketHome />} />
+    {/* 排行榜排在 :code 前面（靜態路徑本來就優先，排前面讀起來比較清楚） */}
+    <Route path={"/market/leaderboard"} element={<JoyuMarketLeaderboard />} />
     <Route path={"/market/:code"} element={<JoyuStockDetail />} />
     <Route path={"/me/follows"} element={<JoyuMyFollows />} />
     <Route path={"/me/videos"} element={<JoyuMyVideos />} />

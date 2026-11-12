@@ -17,6 +17,7 @@ import { VideoCoverCard } from "@/components/av/video_cover_card.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { ErrorSnack } from "@/components/joyu/home/ErrorSnack.tsx";
 import { StockChange } from "@/components/joyu/market/StockChange.tsx";
+import { StockChart } from "@/components/joyu/market/StockChart.tsx";
 import {
   RecentTradesCard,
   StockHoldingCard,
@@ -48,7 +49,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 /**
  * joyu 女優股市個股頁（/market/J0001）：報價（現價、昨收、漲跌停價、近 90 天出片、流通股數、今日成交量、上市日）、
- * 交易面板、我在這檔的持股、最近成交、她最近的作品。走勢圖在 P3 加上
+ * 基本價、走勢圖、交易面板、我在這檔的持股、最近成交、她最近的作品
  */
 export function JoyuStockDetail() {
   const { code } = useParams();
@@ -77,15 +78,15 @@ export function JoyuStockDetail() {
           display: "grid",
           gap: 2,
           gridTemplateAreas: {
-            xs: '"quote" "side" "videos"',
-            md: '"quote side" "videos side"',
+            xs: '"quote" "side" "chart" "videos"',
+            md: '"quote side" "chart side" "videos side"',
           },
           gridTemplateColumns: {
             xs: "minmax(0, 1fr)",
             md: "minmax(0, 1fr) 320px",
           },
           // 右欄比報價卡高時，多出來的高度給第二列，報價卡和作品之間才不會空一大段
-          gridTemplateRows: { md: "auto 1fr" },
+          gridTemplateRows: { md: "auto auto 1fr" },
           textAlign: "left",
         }}
       >
@@ -171,11 +172,12 @@ export function JoyuStockDetail() {
                   gap: 1,
                   gridTemplateColumns: {
                     xs: "repeat(2, minmax(0, 1fr))",
-                    md: "repeat(4, minmax(0, 1fr))",
+                    md: "repeat(5, minmax(0, 1fr))",
                   },
                   mt: 1.5,
                 }}
               >
+                <Stat label="基本價" value={s.fundamental.toFixed(2)} />
                 <Stat label="近 90 天出片" value={`${s.videos_90d} 部`} />
                 <Stat label="流通股數" value={s.shares_out.toLocaleString()} />
                 <Stat label="今日成交量" value={s.volume.toLocaleString()} />
@@ -184,6 +186,12 @@ export function JoyuStockDetail() {
             </>
           )}
         </Paper>
+
+        {s && (
+          <Box sx={{ gridArea: "chart", minWidth: 0 }}>
+            <StockChart stock={s} />
+          </Box>
+        )}
 
         {s && (
           <Stack spacing={2} sx={{ gridArea: "side", minWidth: 0 }}>

@@ -75,6 +75,12 @@ func (r *RepositoryJoyuMarket) SetStockPrice(tx *gorm.DB, id int, sharesOut, pri
 	return tx.Model(&av.JoyuStock{}).Where("id = ?", id).Updates(map[string]any{"shares_out": sharesOut, "last_price": price}).Error
 }
 
+// SetFundamental 基本面重算後的 F、現價與近 90 天部數
+func (r *RepositoryJoyuMarket) SetFundamental(tx *gorm.DB, id int, f float64, price int64, videos90d int) error {
+	return tx.Model(&av.JoyuStock{}).Where("id = ?", id).
+		Updates(map[string]any{"fundamental": f, "last_price": price, "videos_90d": videos90d}).Error
+}
+
 func (r *RepositoryJoyuMarket) SetCash(tx *gorm.DB, uid string, cash int64) error {
 	return tx.Model(&av.JoyuWallet{}).Where("firebase_uid = ?", uid).Update("cash", cash).Error
 }
@@ -164,6 +170,42 @@ ON DUPLICATE KEY UPDATE close = VALUES(close), updated_at = NOW()`, date, av.Sto
 			return err
 		}
 		return tx.Exec("UPDATE joyu_stocks SET prev_close = last_price, updated_at = NOW() WHERE status = ?", av.StockListed).Error
+	})
+}
+
+// DelistStock 下市：每位持有人的持股照現價現金買回（不收手續費，成交紀錄記 counterparty=delist），
+// 刪掉持股、流通股數歸零、狀態改成已下市。先鎖 stock，碰這檔持股的交易都會在 stock 上排隊，不會跟這裡互卡
+func (r *RepositoryJoyuMarket) DelistStock(id int) error {
+	return r.Transaction(func(tx *gorm.DB) error {
+		s, err := r.LockStock(tx, id)
+		if err != nil || s.Status != av.StockListed {
+			return err
+		}
+		var holdings []av.JoyuHolding
+		if err := tx.Clauses(forUpdate).Where("stock_id = ?", id).Order("firebase_uid").Find(&holdings).Error; err != nil {
+			return err
+		}
+		now := time.Now()
+		for _, h := range holdings {
+			w, err := r.LockWallet(tx, h.FirebaseUID)
+			if err != nil {
+				return err
+			}
+			amount := h.Shares * s.LastPrice
+			if err := r.SetCash(tx, h.FirebaseUID, w.Cash+amount); err != nil {
+				return err
+			}
+			trade := &av.JoyuTrade{FirebaseUID: h.FirebaseUID, StockID: id, Side: av.TradeSell, Shares: h.Shares, Amount: amount,
+				PriceAfter: s.LastPrice, Counterparty: av.TradeCounterpartyDelist, CreatedAt: now}
+			if err := r.InsertTrade(tx, trade); err != nil {
+				return err
+			}
+		}
+		if err := tx.Where("stock_id = ?", id).Delete(&av.JoyuHolding{}).Error; err != nil {
+			return err
+		}
+		return tx.Model(&av.JoyuStock{}).Where("id = ?", id).
+			Updates(map[string]any{"status": av.StockDelisted, "delisted_at": now, "shares_out": 0}).Error
 	})
 }
 

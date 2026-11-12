@@ -9,6 +9,8 @@ const (
 	TradeSell = "sell"
 	// TradeCounterpartySystem 對手是系統造市；之後開放使用者撮合時記對方 uid
 	TradeCounterpartySystem = "system"
+	// TradeCounterpartyDelist 下市時照最後價格現金買回（不收手續費）
+	TradeCounterpartyDelist = "delist"
 )
 
 type JoyuWallet struct {
@@ -90,6 +92,7 @@ type MarketWallet struct {
 	HoldingsValue float64         `json:"holdings_value"`
 	Total         float64         `json:"total"`
 	ReturnPct     float64         `json:"return_pct"`
+	Rank          int64           `json:"rank"` // 總資產排名
 	Holdings      []MarketHolding `json:"holdings"`
 }
 
@@ -102,4 +105,34 @@ type MarketTradeRow struct {
 	Amount    float64   `json:"amount"`
 	Fee       float64   `json:"fee"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+// JoyuStockDaily 一檔一天的開高低收與成交量（台灣時間 00:00 切日）
+type JoyuStockDaily struct {
+	StockID int       `gorm:"column:stock_id;primaryKey"`
+	Date    time.Time `gorm:"column:date;primaryKey;type:date"`
+	Open    int64     `gorm:"column:open"`
+	High    int64     `gorm:"column:high"`
+	Low     int64     `gorm:"column:low"`
+	Close   int64     `gorm:"column:close"`
+	Volume  int64     `gorm:"column:volume"`
+}
+
+func (JoyuStockDaily) TableName() string { return "joyu_stock_daily" }
+
+// MarketPricePoint 走勢圖的一天（收盤價、成交量）
+type MarketPricePoint struct {
+	Date   string  `json:"date"`
+	Close  float64 `json:"close"`
+	Volume int64   `json:"volume"`
+}
+
+// MarketLeader 排行榜的一列（不帶 uid）：暱稱沒設的顯示匿名代號；TopCode／TopName 是市值最大的持股（沒持股是空字串）
+type MarketLeader struct {
+	Rank      int     `json:"rank"`
+	Name      string  `json:"name"`
+	Total     float64 `json:"total"`
+	ReturnPct float64 `json:"return_pct"`
+	TopCode   string  `json:"top_code"`
+	TopName   string  `json:"top_name"`
 }

@@ -96,7 +96,7 @@ export function JoyuMyPortfolio() {
                 gap: 1.5,
                 gridTemplateColumns: {
                   xs: "repeat(2, minmax(0, 1fr))",
-                  md: "repeat(4, minmax(0, 1fr))",
+                  md: "repeat(5, minmax(0, 1fr))",
                 },
               }}
             >
@@ -108,6 +108,7 @@ export function JoyuMyPortfolio() {
               />
               <Summary label="現金" value={money(w.cash)} />
               <Summary label="持股市值" value={money(w.holdings_value)} />
+              <Summary label="排名" value={`#${w.rank}`} />
             </Box>
 
             <Paper

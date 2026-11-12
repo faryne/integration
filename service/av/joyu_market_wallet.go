@@ -1,6 +1,8 @@
 package av
 
 import (
+	"context"
+	"math"
 	"time"
 
 	avEntity "faryne.dev/model/entity/opendata/av"
@@ -38,6 +40,10 @@ func MarketWalletFor(uid string) (*avEntity.MarketWallet, error) {
 	}
 	out.Total = out.Cash + out.HoldingsValue
 	out.ReturnPct = (out.Total/centsToUnits(marketInitialCash) - 1) * 100
+	// 排名用分算，跟排行榜的 SQL 一致（不會因為浮點誤差差一名）
+	if out.Rank, err = avRepo.NewJoyuMarket().RankOf(w.Cash + holdingsCents(holdings, stocks)); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -85,6 +91,15 @@ func marketStocksByIDs(ids []int) (map[int]avEntity.MarketStock, error) {
 	return out, nil
 }
 
+// holdingsCents 持股市值（分）
+func holdingsCents(holdings []avEntity.JoyuHolding, stocks map[int]avEntity.MarketStock) int64 {
+	var total int64
+	for _, h := range holdings {
+		total += h.Shares * int64(math.Round(stocks[h.StockID].Price*100))
+	}
+	return total
+}
+
 func holdingStockIDs(holdings []avEntity.JoyuHolding) []int {
 	ids := make([]int, len(holdings))
 	for i, h := range holdings {
@@ -93,7 +108,8 @@ func holdingStockIDs(holdings []avEntity.JoyuHolding) []int {
 	return ids
 }
 
-// RunMarketCloseCron 每天 00:00 收盤：剛結束那天的價格紀錄補齊、收盤價寫進昨收（漲跌幅與漲跌停的基準）。
+// RunMarketCloseCron 每天 00:00 收盤：剛結束那天的價格紀錄補齊、收盤價寫進昨收（漲跌幅與漲跌停的基準），
+// 再用新的漲跌停重算基本面（90 天區間往前滑了一天、IPO 的股票也靠這一步每天往 F* 收斂）。
 // 用一小時前的日期當「剛結束那天」：00:00 跑就是前一天。白天手動跑會把當下的價格當成昨收，只在漏跑時補救用
 func RunMarketCloseCron() {
 	date := time.Now().Add(-time.Hour).Format(time.DateOnly)
@@ -102,6 +118,7 @@ func RunMarketCloseCron() {
 		return
 	}
 	log.Logger().Info("market closed: " + date)
+	RefreshMarketFundamentals(context.Background())
 }
 
 // deleteMarketData 刪帳號時清掉股市資料：持股從流通股數扣掉、價格照曲線重算，再刪持股、成交、錢包

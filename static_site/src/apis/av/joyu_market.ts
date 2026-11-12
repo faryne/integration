@@ -26,6 +26,7 @@ export interface MarketStock {
   photo: string;
   status: "listed" | "delisted";
   price: number;
+  fundamental: number; // 基本價 F：沒人持股時股價就是 F
   prev_close: number;
   shares_out: number;
   videos_90d: number;
@@ -67,6 +68,7 @@ export interface MarketWallet {
   holdings_value: number;
   total: number;
   return_pct: number;
+  rank: number; // 總資產排名
   holdings: MarketHolding[];
 }
 
@@ -78,6 +80,21 @@ export interface MarketTradeRow {
   amount: number;
   fee: number;
   created_at: string;
+}
+
+export interface MarketPricePoint {
+  date: string; // yyyy-MM-dd
+  close: number;
+  volume: number;
+}
+
+export interface MarketLeader {
+  rank: number;
+  name: string;
+  total: number;
+  return_pct: number;
+  top_code: string;
+  top_name: string;
 }
 
 /** 漲跌幅（%），昨收是 0 時當作沒變 */
@@ -113,6 +130,36 @@ export function useMarketStock(code: string | undefined) {
     // 代碼打錯是 404，重試也不會好
     retry: (count, err) =>
       !(axios.isAxiosError(err) && err.response?.status === 404) && count < 2,
+  });
+}
+
+/** 個股走勢：最近 days 天的每日收盤（今天還沒收盤，畫圖時自己接上現價） */
+export function useMarketHistory(code: string | undefined, days: number) {
+  return useQuery({
+    queryKey: [MARKET_KEY, "history", code, days],
+    queryFn: async () =>
+      (
+        await axios.get<CommonResponse<MarketPricePoint[]>>(
+          `${api}/opendata/av/market/stocks/${encodeURIComponent(code!)}/history`,
+          { params: { days }, timeout: 10000 },
+        )
+      ).data.data,
+    enabled: !!code,
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** 排行榜：總資產前 50 名（後端 5 分鐘更新一次） */
+export function useMarketLeaderboard() {
+  return useQuery({
+    queryKey: [MARKET_KEY, "leaderboard"],
+    queryFn: async () =>
+      (
+        await axios.get<CommonResponse<MarketLeader[]>>(
+          `${api}/opendata/av/market/leaderboard`,
+          { timeout: 10000 },
+        )
+      ).data.data,
   });
 }
 

@@ -18,7 +18,9 @@ import {
 } from "@/apis/av/joyu_market.ts";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { ErrorSnack } from "@/components/joyu/home/ErrorSnack.tsx";
+import { LeaderboardMini } from "@/components/joyu/market/LeaderboardMini.tsx";
 import { MarketAssetCard } from "@/components/joyu/market/MarketAssetCard.tsx";
+import { MarketIndexCard } from "@/components/joyu/market/MarketIndexCard.tsx";
 import { StockList } from "@/components/joyu/market/StockList.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 
@@ -35,7 +37,7 @@ const SORTS = [
 
 /**
  * joyu 女優股市總覽（/market）：上市中的全部女優股，可依漲跌幅、成交量、近期出片或代碼排序、用名字或代碼篩選；
- * 桌機右欄（手機在列表上面）是我的資產。
+ * 頂端是 joyu 指數；桌機右欄（手機在列表上面）是我的資產與排行榜前 5 名。
  * 條件存在網址（?sort=code&q=波多&page=2），從個股頁返回時還在原處
  */
 export function JoyuMarketHome() {
@@ -83,16 +85,10 @@ export function JoyuMarketHome() {
       panelTitle="joyu.fyi 需要年齡確認"
     >
       <Stack spacing={2} sx={{ textAlign: "left" }}>
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: "baseline" }}>
-          <Typography component="h1" sx={{ fontSize: 22, fontWeight: 800 }}>
-            女優股市
-          </Typography>
-          {stocks.data && (
-            <Typography color="text.secondary" sx={{ fontSize: 14 }}>
-              上市 {stocks.data.length} 檔
-            </Typography>
-          )}
-        </Stack>
+        <Typography component="h1" sx={{ fontSize: 22, fontWeight: 800 }}>
+          女優股市
+        </Typography>
+        {stocks.data && <MarketIndexCard stocks={stocks.data} />}
         <Box
           sx={{
             alignItems: "start",
@@ -105,9 +101,10 @@ export function JoyuMarketHome() {
             },
           }}
         >
-          <Box sx={{ gridArea: "side" }}>
+          <Stack spacing={2} sx={{ gridArea: "side", minWidth: 0 }}>
             <MarketAssetCard />
-          </Box>
+            <LeaderboardMini />
+          </Stack>
           <Paper
             sx={{ gridArea: "list", minWidth: 0, p: { xs: 1.5, md: 2 } }}
             variant="outlined"

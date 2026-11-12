@@ -15,8 +15,12 @@ import (
 // marketIPOPrice IPO 價 10 單位（分）
 const marketIPOPrice = 1000
 
-// RunMarketReviewCron 每月上市審核：符合資格又還沒上市過的上市（IPO 10 單位），已上市的更新名字快照與近 90 天部數。
-// dryRun 只印出門檻對照表與名單、不寫入（校準門檻用）。下市審核在 P3
+// marketDelistMaxRatio 一次下市超過這個比例就不下市、只記錯誤：多半是 ES 出狀況、部數全變 0，不能整個市場一起下市
+const marketDelistMaxRatio = 0.2
+
+// RunMarketReviewCron 每月審核：符合資格又還沒上市過的上市（IPO 10 單位），已上市的更新名字快照與近 90 天部數；
+// 近 12 個月沒出片（不含總集編）或女優資料不見了的下市，持股照現價買回。下市過的不會再上市。
+// dryRun 只印出門檻對照表與名單、不寫入（校準門檻用）
 func RunMarketReviewCron(dryRun bool) {
 	ctx := context.Background()
 	cands, err := marketCandidates(ctx, time.Now())
@@ -33,7 +37,39 @@ func RunMarketReviewCron(dryRun bool) {
 		log.Logger().Error("market review apply failed: " + err.Error())
 		return
 	}
-	log.Logger().Info("market review finished", zap.Int("listed", listed), zap.Int("updated", updated))
+	delisted, err := applyMarketDelist(cands)
+	if err != nil {
+		log.Logger().Error("market delist failed: " + err.Error())
+	}
+	log.Logger().Info("market review finished", zap.Int("listed", listed), zap.Int("updated", updated), zap.Int("delisted", delisted))
+}
+
+// applyMarketDelist 下市審核：上市中但近 12 個月沒出片、或已經不在候選名單（近三年都沒片、女優資料被刪）的
+func applyMarketDelist(cands []marketCandidate) (int, error) {
+	stocks, err := avRepo.NewJoyuStock().ListListedPrimary()
+	if err != nil {
+		return 0, err
+	}
+	recentYear := make(map[avRepo.ActressKey]int, len(cands))
+	for _, c := range cands {
+		recentYear[avRepo.ActressKey{Domain: c.Row.Domain, ID: c.Row.ID}] = c.Years[0]
+	}
+	var out []avEntity.JoyuStock
+	for _, s := range stocks {
+		if recentYear[avRepo.ActressKey{Domain: s.Domain, ID: s.AID}] == 0 {
+			out = append(out, s)
+		}
+	}
+	if len(out) > int(float64(len(stocks))*marketDelistMaxRatio) {
+		return 0, fmt.Errorf("refuse to delist %d of %d stocks at once", len(out), len(stocks))
+	}
+	repo := avRepo.NewJoyuMarket()
+	for _, s := range out {
+		if err := repo.DelistStock(s.ID); err != nil {
+			return 0, fmt.Errorf("delist %d: %w", s.ID, err)
+		}
+	}
+	return len(out), nil
 }
 
 // applyMarketReview 寫入審核結果；回傳新上市與更新的檔數

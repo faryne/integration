@@ -72,4 +72,5 @@ export const findJoyuSection = (pathname: string) =>
 // 有登記名稱的子頁，麵包屑多一層
 export const joyuSubPages: Record<string, string> = {
   "/actress/submit": "新增女優",
+  "/market/leaderboard": "排行榜",
 };

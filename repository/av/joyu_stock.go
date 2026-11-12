@@ -26,6 +26,13 @@ func (r *RepositoryJoyuStock) ListListed() ([]av.JoyuStock, error) {
 	return rows, err
 }
 
+// ListListedPrimary 上市中的全部（基本面重算用，讀 primary）
+func (r *RepositoryJoyuStock) ListListedPrimary() ([]av.JoyuStock, error) {
+	var rows []av.JoyuStock
+	err := r.GetDB().Clauses(dbresolver.Write).Where("status = ?", av.StockListed).Order("id").Find(&rows).Error
+	return rows, err
+}
+
 // FindByID 個股頁、報價；讀 primary，自己剛下單完重新整理要看到新價格。找不到回 gorm.ErrRecordNotFound（controller 轉 404）
 func (r *RepositoryJoyuStock) FindByID(id int) (*av.JoyuStock, error) {
 	var row av.JoyuStock

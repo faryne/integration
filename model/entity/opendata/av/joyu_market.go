@@ -50,18 +50,20 @@ func StockIDFromCode(code string) int {
 
 // MarketStock 股市 API 回傳的一檔：價格換成單位（小數兩位），附上女優照片供列表顯示
 type MarketStock struct {
-	Code      string    `json:"code"`
-	Domain    string    `json:"domain"`
-	AID       int       `json:"aid"`
-	Name      string    `json:"name"`
-	Photo     string    `json:"photo"`
-	Status    string    `json:"status"`
-	Price     float64   `json:"price"`
-	PrevClose float64   `json:"prev_close"`
-	SharesOut int64     `json:"shares_out"`
-	Videos90d int       `json:"videos_90d"`
-	Volume    int64     `json:"volume"` // 今天的成交股數
-	ListedAt  time.Time `json:"listed_at"`
+	Code   string  `json:"code"`
+	Domain string  `json:"domain"`
+	AID    int     `json:"aid"`
+	Name   string  `json:"name"`
+	Photo  string  `json:"photo"`
+	Status string  `json:"status"`
+	Price  float64 `json:"price"`
+	// Fundamental 基本價 F：股價 = F × (1 + 流通股數 ÷ 20000)，沒人持股時股價就是 F
+	Fundamental float64   `json:"fundamental"`
+	PrevClose   float64   `json:"prev_close"`
+	SharesOut   int64     `json:"shares_out"`
+	Videos90d   int       `json:"videos_90d"`
+	Volume      int64     `json:"volume"` // 今天的成交股數
+	ListedAt    time.Time `json:"listed_at"`
 }
 
 // MarketStockDetail 個股頁：報價＋最近成交（不顯示是誰）
@@ -72,8 +74,10 @@ type MarketStockDetail struct {
 
 // MarketRecentTrade 個股頁的一筆成交；Price 是成交後的股價
 type MarketRecentTrade struct {
-	Side      string    `json:"side"`
-	Shares    int64     `json:"shares"`
-	Price     float64   `json:"price"`
-	CreatedAt time.Time `json:"created_at"`
+	Side   string  `json:"side"`
+	Shares int64   `json:"shares"`
+	Price  float64 `json:"price"`
+	// Fundamental 基本價 F：股價 = F × (1 + 流通股數 ÷ 20000)，沒人持股時股價就是 F
+	Fundamental float64   `json:"fundamental"`
+	CreatedAt   time.Time `json:"created_at"`
 }
