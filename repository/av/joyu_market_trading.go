@@ -144,24 +144,32 @@ func (r *RepositoryJoyuMarket) RecentTrades(stockID, size int) ([]av.JoyuTrade, 
 	return rows, err
 }
 
-// SideVolumes 從 since 起各檔的買進／賣出股數（股市總覽的今日買／賣；只算跟系統造市的成交，不含下市買回）
-func (r *RepositoryJoyuMarket) SideVolumes(since time.Time) (buy, sell map[int]int64, err error) {
+// TradeSides 一檔從某時間起的買進／賣出股數與筆數
+type TradeSides struct {
+	BuyShares, SellShares, BuyCount, SellCount int64
+}
+
+// SideVolumes 從 since 起各檔的買進／賣出股數與筆數（股市總覽的今日買／賣；只算跟系統造市的成交，不含下市買回）
+func (r *RepositoryJoyuMarket) SideVolumes(since time.Time) (map[int]TradeSides, error) {
 	var rows []struct {
 		StockID int
 		Side    string
 		Shares  int64
+		Count   int64
 	}
-	err = r.db.Table("joyu_trades").Select("stock_id, side, SUM(shares) AS shares").
+	err := r.db.Table("joyu_trades").Select("stock_id, side, SUM(shares) AS shares, COUNT(*) AS count").
 		Where("created_at >= ? AND counterparty = ?", since, av.TradeCounterpartySystem).Group("stock_id, side").Scan(&rows).Error
-	buy, sell = map[int]int64{}, map[int]int64{}
+	out := map[int]TradeSides{}
 	for _, row := range rows {
+		t := out[row.StockID]
 		if row.Side == av.TradeBuy {
-			buy[row.StockID] = row.Shares
+			t.BuyShares, t.BuyCount = row.Shares, row.Count
 		} else {
-			sell[row.StockID] = row.Shares
+			t.SellShares, t.SellCount = row.Shares, row.Count
 		}
+		out[row.StockID] = t
 	}
-	return buy, sell, err
+	return out, err
 }
 
 // DailyVolumes 某天各檔的成交量（股市總覽）

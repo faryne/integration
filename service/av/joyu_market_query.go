@@ -64,7 +64,7 @@ func marketStockDetail(row avEntity.JoyuStock) (*avEntity.MarketStockDetail, err
 	return out, nil
 }
 
-// fillTodayVolumes 補上今天的成交量與買進／賣出股數（out 與 rows 順序相同）
+// fillTodayVolumes 補上今天的成交量、買進／賣出股數與單數（out 與 rows 順序相同）
 func fillTodayVolumes(out []avEntity.MarketStock, rows []avEntity.JoyuStock) error {
 	repo := avRepo.NewJoyuMarket()
 	volumes, err := repo.DailyVolumes(marketToday())
@@ -72,12 +72,14 @@ func fillTodayVolumes(out []avEntity.MarketStock, rows []avEntity.JoyuStock) err
 		return err
 	}
 	today, _ := time.ParseInLocation(time.DateOnly, marketToday(), time.Local)
-	buy, sell, err := repo.SideVolumes(today)
+	sides, err := repo.SideVolumes(today)
 	if err != nil {
 		return err
 	}
 	for i, s := range rows {
-		out[i].Volume, out[i].BuyVolume, out[i].SellVolume = volumes[s.ID], buy[s.ID], sell[s.ID]
+		t := sides[s.ID]
+		out[i].Volume = volumes[s.ID]
+		out[i].BuyVolume, out[i].SellVolume, out[i].BuyCount, out[i].SellCount = t.BuyShares, t.SellShares, t.BuyCount, t.SellCount
 	}
 	return nil
 }

@@ -34,6 +34,8 @@ export interface MarketStock {
   volume: number; // 今天的成交股數
   buy_volume: number; // 今天買進的股數
   sell_volume: number; // 今天賣出的股數
+  buy_count: number; // 今天的買單數（成交筆數）
+  sell_count: number; // 今天的賣單數
   listed_at: string;
 }
 
