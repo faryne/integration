@@ -40,6 +40,11 @@ export const joyuSections: JoyuSection[] = [
     match: (p) => p.startsWith("/me/videos"),
   },
   {
+    title: "我的持股",
+    href: "/me/portfolio",
+    match: (p) => p.startsWith("/me/portfolio"),
+  },
+  {
     title: "個人資料",
     href: "/me/profile",
     match: (p) => p.startsWith("/me/profile"),

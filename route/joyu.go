@@ -29,6 +29,11 @@ func Joyu(app *fiber.App) {
 	g.Post("/comments/:id/report", joyu.ReportComment)
 	g.Get("/profile", joyu.Profile)
 	g.Put("/profile", joyu.SetProfile)
+	// 女優股市：只限 Google 帳號（controller 裡擋匿名）
+	g.Get("/market/wallet", joyu.MarketWallet)
+	g.Get("/market/trades", joyu.MarketTrades)
+	g.Get("/market/stocks/:code/quote", joyu.MarketQuote)
+	g.Post("/market/stocks/:code/trades", joyu.MarketTrade)
 	g.Post("/merge", joyu.Merge)
 	g.Delete("", joyu.DeleteAccount)
 

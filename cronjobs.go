@@ -283,6 +283,13 @@ var cronJobs = map[string]cronGroup{
 				},
 			},
 			{
+				// joyu 女優股市每天 00:00 收盤：補齊前一天的價格紀錄、收盤價寫進昨收（漲跌幅與漲跌停的基準）
+				Name:     "av-market-close",
+				Schedule: "0 0 * * *",
+				Enabled:  true,
+				Handler:  avService.RunMarketCloseCron,
+			},
+			{
 				// 每週產生女優主題 JSON 上傳 S3（排在週三 xcity 同步之後）；非 production 只寫本機 tmp/actress-topics/
 				Name:     "av-actress-topics",
 				Schedule: "30 4 * * 4",

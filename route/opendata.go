@@ -45,8 +45,8 @@ func OpenData(app *fiber.App) {
 	g4.Get("/home/new-actresses", avCache, opendata.AvNewActresses)
 	g4.Get("/actress/summary", avCache, opendata.AvActressSummary)
 	g4.Get("/actress/by-names", avCache, opendata.AvActressesByNames)
-	// joyu.fyi 女優股市：總覽可以快取；個股頁在開放交易後價格隨時會動，不快取
-	g4.Get("/market/stocks", avCache, opendata.AvMarketStocks)
+	// joyu.fyi 女優股市：開放交易後價格隨時會動，總覽與個股都不快取
+	g4.Get("/market/stocks", opendata.AvMarketStocks)
 	g4.Get("/market/stocks/:code", opendata.AvMarketStock)
 	// 即將發售（DMM 預約作品，每日排程更新）
 	g4.Get("/upcoming", avCache, opendata.AvUpcoming)

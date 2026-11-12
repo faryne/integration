@@ -26,13 +26,23 @@ func (r *RepositoryJoyuStock) ListListed() ([]av.JoyuStock, error) {
 	return rows, err
 }
 
-// FindByID 個股頁；找不到回 gorm.ErrRecordNotFound（controller 轉 404）
+// FindByID 個股頁、報價；讀 primary，自己剛下單完重新整理要看到新價格。找不到回 gorm.ErrRecordNotFound（controller 轉 404）
 func (r *RepositoryJoyuStock) FindByID(id int) (*av.JoyuStock, error) {
 	var row av.JoyuStock
-	if err := r.GetDB().First(&row, id).Error; err != nil {
+	if err := r.GetDB().Clauses(dbresolver.Write).First(&row, id).Error; err != nil {
 		return nil, err
 	}
 	return &row, nil
+}
+
+// FindByIDs 我的持股、成交紀錄要顯示的那幾檔（讀 primary，價格要是剛成交後的）
+func (r *RepositoryJoyuStock) FindByIDs(ids []int) ([]av.JoyuStock, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var rows []av.JoyuStock
+	err := r.GetDB().Clauses(dbresolver.Write).Where("id IN ?", ids).Order("id").Find(&rows).Error
+	return rows, err
 }
 
 // ListAllForReview 上市審核用：含已下市的（不能重複上市同一位），讀 primary

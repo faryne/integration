@@ -17,6 +17,11 @@ import { VideoCoverCard } from "@/components/av/video_cover_card.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { ErrorSnack } from "@/components/joyu/home/ErrorSnack.tsx";
 import { StockChange } from "@/components/joyu/market/StockChange.tsx";
+import {
+  RecentTradesCard,
+  StockHoldingCard,
+} from "@/components/joyu/market/StockSideCards.tsx";
+import { TradePanel } from "@/components/joyu/market/TradePanel.tsx";
 import { actressPagePath, actressRefOf } from "@/helpers/avActressRef.ts";
 import { useBreadcrumbTail } from "@/helpers/breadcrumbTail.ts";
 import { joyuPath } from "@/helpers/joyu.ts";
@@ -42,8 +47,8 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 /**
- * joyu 女優股市個股頁（/market/J0001）：報價（現價、昨收、漲跌停價、近 90 天出片、流通股數、上市日）與她最近的作品。
- * 交易面板、走勢圖在 P2／P3 加上
+ * joyu 女優股市個股頁（/market/J0001）：報價（現價、昨收、漲跌停價、近 90 天出片、流通股數、今日成交量、上市日）、
+ * 交易面板、我在這檔的持股、最近成交、她最近的作品。走勢圖在 P3 加上
  */
 export function JoyuStockDetail() {
   const { code } = useParams();
@@ -65,8 +70,29 @@ export function JoyuStockDetail() {
       description="joyu.fyi 包含成人內容與成人作品資料。請確認你已年滿 18 歲後再繼續瀏覽。"
       panelTitle="joyu.fyi 需要年齡確認"
     >
-      <Stack spacing={2} sx={{ textAlign: "left" }}>
-        <Paper sx={{ p: { xs: 1.5, md: 2 } }} variant="outlined">
+      {/* 桌機：左欄報價＋近期作品、右欄交易相關；手機：報價 → 交易相關 → 近期作品（不用捲過作品才找得到交易） */}
+      <Box
+        sx={{
+          alignItems: "start",
+          display: "grid",
+          gap: 2,
+          gridTemplateAreas: {
+            xs: '"quote" "side" "videos"',
+            md: '"quote side" "videos side"',
+          },
+          gridTemplateColumns: {
+            xs: "minmax(0, 1fr)",
+            md: "minmax(0, 1fr) 320px",
+          },
+          // 右欄比報價卡高時，多出來的高度給第二列，報價卡和作品之間才不會空一大段
+          gridTemplateRows: { md: "auto 1fr" },
+          textAlign: "left",
+        }}
+      >
+        <Paper
+          sx={{ gridArea: "quote", p: { xs: 1.5, md: 2 } }}
+          variant="outlined"
+        >
           {!s ? (
             <Skeleton height={140} variant="rounded" />
           ) : (
@@ -145,21 +171,33 @@ export function JoyuStockDetail() {
                   gap: 1,
                   gridTemplateColumns: {
                     xs: "repeat(2, minmax(0, 1fr))",
-                    md: "repeat(3, minmax(0, 1fr))",
+                    md: "repeat(4, minmax(0, 1fr))",
                   },
                   mt: 1.5,
                 }}
               >
                 <Stat label="近 90 天出片" value={`${s.videos_90d} 部`} />
                 <Stat label="流通股數" value={s.shares_out.toLocaleString()} />
+                <Stat label="今日成交量" value={s.volume.toLocaleString()} />
                 <Stat label="上市日" value={s.listed_at.slice(0, 10)} />
               </Box>
             </>
           )}
         </Paper>
 
+        {s && (
+          <Stack spacing={2} sx={{ gridArea: "side", minWidth: 0 }}>
+            <TradePanel stock={s} />
+            <StockHoldingCard code={s.code} />
+            <RecentTradesCard stock={s} />
+          </Stack>
+        )}
+
         {(videos.data?.data.data.length ?? 0) > 0 && (
-          <Paper sx={{ p: { xs: 1.5, md: 2 } }} variant="outlined">
+          <Paper
+            sx={{ gridArea: "videos", p: { xs: 1.5, md: 2 } }}
+            variant="outlined"
+          >
             <Typography
               component="h2"
               sx={{ fontSize: 17, fontWeight: 800, mb: 1.5 }}
@@ -182,7 +220,7 @@ export function JoyuStockDetail() {
             </Box>
           </Paper>
         )}
-      </Stack>
+      </Box>
       <ErrorSnack
         message="股市資料讀取失敗，請稍後再試"
         open={stock.isError || videos.isError}

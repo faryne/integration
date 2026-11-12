@@ -60,5 +60,20 @@ type MarketStock struct {
 	PrevClose float64   `json:"prev_close"`
 	SharesOut int64     `json:"shares_out"`
 	Videos90d int       `json:"videos_90d"`
+	Volume    int64     `json:"volume"` // 今天的成交股數
 	ListedAt  time.Time `json:"listed_at"`
+}
+
+// MarketStockDetail 個股頁：報價＋最近成交（不顯示是誰）
+type MarketStockDetail struct {
+	MarketStock
+	RecentTrades []MarketRecentTrade `json:"recent_trades"`
+}
+
+// MarketRecentTrade 個股頁的一筆成交；Price 是成交後的股價
+type MarketRecentTrade struct {
+	Side      string    `json:"side"`
+	Shares    int64     `json:"shares"`
+	Price     float64   `json:"price"`
+	CreatedAt time.Time `json:"created_at"`
 }

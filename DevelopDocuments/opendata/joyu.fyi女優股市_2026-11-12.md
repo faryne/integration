@@ -55,7 +55,8 @@
 ## 資料表（每期各自一支 migration，MySQL 5.7 相容，用到才建）
 - P1 `joyu_stocks`（`20261112120000-create_joyu_stocks.sql`）：`id`、`domain`、`aid`、`name`（快照）、`status`、`fundamental`、`shares_out`、`last_price`、`prev_close`（分）、`videos_90d`、`listed_at`、`delisted_at`。
   - 代碼 J0001… 由 `id` 推出來，不另外存。上市順序是近三年部數多的在前，所以代碼小的就是上市當下最活躍的。
-- P2 之後：`joyu_wallets`、`joyu_holdings`（含 `today_bought`／`today_date`）、`joyu_trades`（含 `counterparty`）、`joyu_stock_daily`、`joyu_market_index`。
+- P2 `20261112160000-create_joyu_market_trading.sql`：`joyu_wallets`、`joyu_holdings`（含 `today_bought`／`today_date`）、`joyu_trades`（含 `counterparty`）、`joyu_stock_daily`（開高低收、成交量）。
+- P3 之後：`joyu_stock_daily` 加基本面欄位、`joyu_market_index`。
 
 ## P1 實作（2026-11-12）
 - 後端
@@ -69,10 +70,32 @@
 - 本機結果：529 檔上市，48 檔近 90 天是 0 部（近三年達標、只是最近沒出片）。
 - 部署：要跑 migration，再手動執行一次 `-cmd av-market-review` 讓第一批上市。
 
+## P2 實作（2026-11-12）
+- 後端
+  - 價格曲線、漲跌停、最多可買／可賣：`service/av/joyu_market_price.go`（純函式，有單元測試：買完立刻賣回只會虧手續費、拆單占不到便宜、漲跌停邊界）。
+  - 報價與下單：`joyu_market_trade.go`。下單在 transaction 裡依序鎖 stock → wallet → holding，重新報價後檢查最多可買／賣與 limit，才寫入成交。每位每分鐘最多 20 筆。
+  - 錢包、持股、成交紀錄、收盤：`joyu_market_wallet.go`。第一次報價或看錢包時開戶（INSERT IGNORE 入帳 100000）。
+  - 收盤 `av-market-close`：每天 00:00，補齊前一天每檔的開高低收（沒成交的就是現價），收盤價寫進昨收。
+  - 個人 API（`/joyu/me/market/*`，匿名帳號一律 403501）：`GET wallet`、`GET trades?page=`、`GET stocks/:code/quote?side=&shares=`、`POST stocks/:code/trades`。
+  - 錯誤碼：409501 報價後價格變了、400501 超過漲跌停、400502 現金不夠、400503 可賣股數不夠（T+1）、400504 已下市、429007 下單太頻繁。
+  - 公開 API 加了今日成交量與個股最近 10 筆成交；開放交易後價格隨時會動，總覽也拿掉快取。
+  - 刪帳號時一併清除股市資料：持股從流通股數扣回、價格照曲線重算，再刪持股、成交、錢包。
+- 前端
+  - 個股頁改成雙欄：右欄是交易面板（買／賣、股數、快捷股數、即時報價、送出）、我在這檔的持股、最近成交；手機依序是報價 → 交易 → 作品。
+  - 總覽頁加上「我的資產」卡，排序新增漲幅（預設）、跌幅、成交量。
+  - 新增 `/me/portfolio` 我的持股頁：總資產、報酬率、現金、持股市值、各檔持股、成交紀錄。帳號選單也加了入口（只有 Google 帳號看得到）。
+  - 沒登入或匿名帳號：交易面板、資產卡、我的持股頁都換成「用 Google 登入」。
+- 驗證：本機用自我測試直接打 service（不經過登入）驗過以下項目，測完已刪除測試碼、清掉測試資料：
+  - 開戶、報價、報價過期拒單、成交扣款、T+1、超過上限拒單。
+  - 15 筆併發下單後，流通股數與現金帳對得上。
+  - 隔天賣光只虧手續費、收盤補齊 529 檔、刪帳號後股價回到 10。
+  - 登入 Google 後的前端交易流程沒有在本機實測。
+- 部署：跑 migration `20261112160000-create_joyu_market_trading.sql`。
+
 ## 分期
 - **P0**：本文件＋上市 dry-run＋基本面算法定案（皆已完成）＋前端 mockup（`joyu-market-mockup/`）。
 - **P1**：資料表＋上市寫入＋股市總覽／個股頁（唯讀）——已完成。
-- **P2**：錢包＋交易＋我的持股＋收盤 job＋漲跌停。
+- **P2**：錢包＋交易＋我的持股＋收盤 job＋漲跌停——已完成。
 - **P3**：基本面跟著同步走＋大盤指數＋走勢圖＋排行榜＋下市審核。
 - **P4～P6**：使用者撮合、人氣因子、女優合併換股、玩家組合／ETF。
 
