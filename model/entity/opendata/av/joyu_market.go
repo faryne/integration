@@ -90,3 +90,12 @@ type MarketRecentTrade struct {
 	Fundamental float64   `json:"fundamental"`
 	CreatedAt   time.Time `json:"created_at"`
 }
+
+// MarketTicker 女優卡上的上市標示用：只有識別、代碼、現價與昨收，不查照片也不算成交量，列表頁每頁都打也很輕
+type MarketTicker struct {
+	Domain    string  `json:"domain"`
+	AID       int     `json:"aid"`
+	Code      string  `json:"code"`
+	Price     float64 `json:"price"`
+	PrevClose float64 `json:"prev_close"`
+}

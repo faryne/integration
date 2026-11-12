@@ -36,3 +36,14 @@ export const marketIndex = (prices: number[]) =>
   prices.length
     ? (prices.reduce((a, b) => a + b, 0) / prices.length / 10) * 1000
     : 0;
+
+/**
+ * 漲跌停狀態：現價 ≥ 漲停價（昨收 × 1.2，四捨五入到分）是 "up"、≤ 跌停價是 "down"，其他是 undefined。
+ * 跟後端 marketLimits 的算法一致
+ */
+export const limitState = (price: number, prevClose: number) => {
+  const cents = Math.round(price * 100);
+  if (cents >= Math.round(prevClose * 120)) return "up" as const;
+  if (cents <= Math.round(prevClose * 80)) return "down" as const;
+  return undefined;
+};

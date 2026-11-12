@@ -49,6 +49,8 @@ func OpenData(app *fiber.App) {
 	g4.Get("/market/stocks", opendata.AvMarketStocks)
 	g4.Get("/market/stocks/:code", opendata.AvMarketStock)
 	g4.Get("/market/actress-stock", opendata.AvMarketActressStock)
+	// 女優卡的上市標示：女優列表每頁都會打，快取 1 分鐘（價格晚一分鐘沒關係）
+	g4.Get("/market/tickers", httpcache.Public(time.Minute, time.Minute), opendata.AvMarketTickers)
 	// 走勢只在收盤時多一筆、排行榜後端已有 5 分鐘快取，瀏覽器快取 1 分鐘就好
 	g4.Get("/market/stocks/:code/history", httpcache.Public(time.Minute, time.Minute), opendata.AvMarketHistory)
 	g4.Get("/market/leaderboard", httpcache.Public(time.Minute, time.Minute), opendata.AvMarketLeaderboard)

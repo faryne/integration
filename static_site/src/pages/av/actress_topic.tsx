@@ -183,6 +183,7 @@ function TopicContent({
             name={m.name}
             photo={m.photo}
             rank={ranked ? (page - 1) * PER_PAGE + i + 1 : undefined}
+            stockOf={m}
             to={actressTopicMemberPath(m, topic.slug)}
           >
             <MemberStat file={file} member={m} sort={sort} />

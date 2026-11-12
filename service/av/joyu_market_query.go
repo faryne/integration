@@ -26,6 +26,20 @@ func MarketStocks() ([]avEntity.MarketStock, error) {
 	return out, nil
 }
 
+// MarketTickers 上市中的全部，只回女優卡標示需要的欄位（單一資料表查詢）
+func MarketTickers() ([]avEntity.MarketTicker, error) {
+	rows, err := avRepo.NewJoyuStock().ListListed()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]avEntity.MarketTicker, len(rows))
+	for i, s := range rows {
+		out[i] = avEntity.MarketTicker{Domain: s.Domain, AID: s.AID, Code: avEntity.StockCode(s.ID),
+			Price: centsToUnits(s.LastPrice), PrevClose: centsToUnits(s.PrevClose)}
+	}
+	return out, nil
+}
+
 // MarketStock 個股（含已下市的）；代碼格式不對或找不到都回 gorm.ErrRecordNotFound（404）
 func MarketStock(code string) (*avEntity.MarketStockDetail, error) {
 	row, err := avRepo.NewJoyuStock().FindByID(avEntity.StockIDFromCode(code))

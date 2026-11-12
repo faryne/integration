@@ -404,6 +404,7 @@ export function AVActress() {
                           key={`${actress.domain}-${actress.aid}`}
                           name={actress.name}
                           photo={actress.photo}
+                          stockOf={actress}
                           to={actressPagePath(actress.name, actress)}
                         >
                           {actress.kana && (

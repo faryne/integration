@@ -91,3 +91,17 @@ func AvMarketActressStock(ctx fiber.Ctx) error {
 	}
 	return output.Success(out)
 }
+
+// AvMarketTickers joyu.fyi 女優卡的上市標示：上市中的全部，只有 domain、aid、代碼、現價、昨收
+// @Summary joyu actress market tickers
+// @Tags OpenData AV
+// @Produce json
+// @Success 200 {object} output.CommonOutput
+// @Router /opendata/av/market/tickers [get]
+func AvMarketTickers(ctx fiber.Ctx) error {
+	out, err := av.MarketTickers()
+	if err != nil {
+		return output.FromError(err)
+	}
+	return output.Success(out)
+}
