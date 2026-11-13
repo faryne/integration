@@ -17,16 +17,19 @@ import (
 
 // joyu 女優股市的基本面 F（規格「基本面 F（2026-11-12 定案）」）：
 // 目標 F* = 10 × √(她近 90 天部數 ÷ 全部上市股近 90 天部數的中位數)，夾在 1～100；
-// 實際 F 每次往 F* 調，但一天最多只能離「開盤時的 F」±2.5%，調完的股價也不能超過漲跌停。
-// 漲跌停（±20%）的空間是留給玩家交易的，基本面只是慢慢推（目標兩倍約 4 週到位）；
-// 而且一天 2.5% 只比來回買賣的手續費（約 2%）多一點，看到新片搶先買也賺不到什麼。
-// 上市當天不動（大家都從 10 開始）。每次影片同步完、每天收盤後都整批重算（算的是絕對值，重跑不會重複加）
+// 實際 F 每天從「開盤時的 F」往 F* 移動剩下差距的 5%，單日最多 ±1.5%，調完的股價也不能超過漲跌停。
+// 離目標遠的每天動 1.5%、越接近動得越少，漲跌幅才會分散，不會整批卡在同一個上限（2026-11-13 從單純 ±2.5% 改來）。
+// 漲跌停（±20%）的空間是留給玩家交易的，基本面只是慢慢推（目標兩倍約 2～3 個月到位）；
+// 一天最多 1.5% 比來回買賣的手續費（約 2%）低，看到新片搶先買賺不到錢。
+// 上市當天不動（大家都從 10 開始）。每次影片同步完、每天收盤後都整批重算：都是從開盤 F 算起，一天內重跑幾次結果都一樣
 const (
 	marketFundamentalBase = 10.0
 	marketFundamentalMin  = 1.0
 	marketFundamentalMax  = 100.0
+	// marketFundamentalApproach 基本面每天往目標移動「剩下差距」的比例
+	marketFundamentalApproach = 0.05
 	// marketFundamentalDailyStep 基本面一天最多變動的比例（以開盤時的 F 為準）
-	marketFundamentalDailyStep = 0.025
+	marketFundamentalDailyStep = 0.015
 )
 
 // marketTargetFundamental F*：出片量剛好是中位數時是 10；開根號壓低量產型的優勢（4 倍片量 → 2 倍）
@@ -35,12 +38,13 @@ func marketTargetFundamental(recent int, median float64) float64 {
 	return min(max(marketFundamentalBase*math.Sqrt(float64(recent)/median), marketFundamentalMin), marketFundamentalMax)
 }
 
-// fundamentalWithinLimit 把 F 夾在「離開盤 F 不超過 ±2.5%」且「調完股價還在漲跌停內」的範圍，
+// fundamentalWithinLimit 從開盤 F 往目標移動差距的 5%（單日最多 ±1.5%），再夾在「調完股價還在漲跌停內」的範圍，
 // 存成小數 4 位（資料表 DECIMAL(12,4)），四捨五入後若剛好超出漲跌停一分，再往內收一格
 func fundamentalWithinLimit(target float64, s, prevClose int64, openF float64) float64 {
 	lo, hi := marketLimits(prevClose)
 	k := 100 * (1 + float64(s)/marketDepth)
-	target = min(max(target, openF*(1-marketFundamentalDailyStep)), openF*(1+marketFundamentalDailyStep))
+	step := marketFundamentalApproach * (target - openF)
+	target = openF + min(max(step, -openF*marketFundamentalDailyStep), openF*marketFundamentalDailyStep)
 	f := math.Round(min(max(target, float64(lo)/k), float64(hi)/k)*10000) / 10000
 	switch {
 	case marketPrice(f, s) > hi:

@@ -25,16 +25,19 @@ func TestMarketTargetFundamental(t *testing.T) {
 	}
 }
 
-// 一天最多離開盤 F ±2.5%；目標在範圍內就照目標
+// 每天往目標移動差距的 5%，單日最多離開盤 F ±1.5%
 func TestFundamentalDailyStep(t *testing.T) {
-	if f := fundamentalWithinLimit(50, 0, 1000, 10); f != 10.25 {
-		t.Errorf("up = %v", f)
+	cases := []struct{ target, want float64 }{
+		{50, 10.15},   // 差距 40 → 5% 是 2，超過上限 0.15
+		{1, 9.85},     // 差距 -9 → -0.45，超過下限 -0.15
+		{12, 10.1},    // 差距 2 → 0.1，沒到上限
+		{10.2, 10.01}, // 差距 0.2 → 0.01
+		{10, 10},      // 已經在目標上
 	}
-	if f := fundamentalWithinLimit(1, 0, 1000, 10); f != 9.75 {
-		t.Errorf("down = %v", f)
-	}
-	if f := fundamentalWithinLimit(10.1, 0, 1000, 10); f != 10.1 {
-		t.Errorf("within = %v", f)
+	for _, c := range cases {
+		if f := fundamentalWithinLimit(c.target, 0, 1000, 10); math.Abs(f-c.want) > 1e-9 {
+			t.Errorf("target %v: f = %v, want %v", c.target, f, c.want)
+		}
 	}
 }
 
