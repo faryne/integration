@@ -77,3 +77,25 @@ export function useJoyuActressesByNames(names: string[]) {
     enabled: names.length > 0,
   });
 }
+
+/**
+ * 影片頁出演女優卡：本名對不到的出演者改用別名找照片（例如用別名發片的名義），key 是原始名字、值是照片網址。
+ * 只拿照片，名義、罩杯、追蹤都不合併（同一個人的不同名義，對粉絲可能是不同對象）
+ */
+export function useJoyuActressAliasPhotos(names: string[]) {
+  return useQuery({
+    queryKey: [names, "av/actress/alias-photos"],
+    queryFn: async () => {
+      const response = await axios.get<CommonResponse<Record<string, string>>>(
+        `${import.meta.env.VITE_API_BASE}/opendata/av/actress/alias-photos`,
+        {
+          params: { name: names },
+          paramsSerializer: { indexes: null },
+          timeout: 10000,
+        },
+      );
+      return response.data.data;
+    },
+    enabled: names.length > 0,
+  });
+}
