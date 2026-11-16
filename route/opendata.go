@@ -45,8 +45,6 @@ func OpenData(app *fiber.App) {
 	g4.Get("/home/new-actresses", avCache, opendata.AvNewActresses)
 	g4.Get("/actress/summary", avCache, opendata.AvActressSummary)
 	g4.Get("/actress/by-names", avCache, opendata.AvActressesByNames)
-	// 影片頁出演卡：本名對不到時用別名找照片（只回照片，名義與追蹤照舊分開）
-	g4.Get("/actress/alias-photos", avCache, opendata.AvActressAliasPhotos)
 	// joyu.fyi 女優股市：開放交易後價格隨時會動，總覽與個股都不快取
 	g4.Get("/market/stocks", opendata.AvMarketStocks)
 	g4.Get("/market/stocks/:code", opendata.AvMarketStock)

@@ -1,10 +1,7 @@
 import { Link as RouterLink } from "react-router-dom";
 import { Box, Stack, Typography } from "@mui/material";
 
-import {
-  useJoyuActressAliasPhotos,
-  useJoyuActressesByNames,
-} from "@/apis/av/joyu.ts";
+import { useJoyuActressesByNames } from "@/apis/av/joyu.ts";
 import { ActressPhoto } from "@/components/av/actress_photo.tsx";
 import { FollowButton } from "@/components/joyu/FollowButton.tsx";
 import { actressBaseName, videoActressPath } from "@/helpers/avActressName.ts";
@@ -12,20 +9,20 @@ import type { Actress } from "@/types/av.ts";
 
 /**
  * 一張出演女優卡：照片＋名字＋罩杯；女優資料對不到（新人還沒建檔、同名多位）時只顯示名字。
- * 用別名發片、本名對不到的，只補上照片（aliasPhoto），名字、罩杯、追蹤照舊是這個名義自己的
+ * 用別名發片的（後端用別名對到，女優本名跟出演名字不同）只拿照片：名字、罩杯、追蹤照舊是這個名義自己的，
+ * 同一個人的不同名義對粉絲可能是不同對象（2026-11-16 決定）
  */
 function CastCard({
   credit,
   dmmId,
-  actress,
-  aliasPhoto,
+  actress: matched,
 }: {
   credit: string;
   dmmId?: string;
   actress?: Actress;
-  aliasPhoto?: string;
 }) {
   const name = actressBaseName(credit);
+  const actress = matched?.name === name ? matched : undefined;
   return (
     <Box
       component={RouterLink}
@@ -48,7 +45,7 @@ function CastCard({
       }}
     >
       <ActressPhoto
-        src={actress?.photo ?? aliasPhoto}
+        src={matched?.photo}
         alt={name}
         loading="lazy"
         sx={{
@@ -99,11 +96,6 @@ export function VideoCast({
     }))
     .filter((c) => c.credit);
   const profiles = useJoyuActressesByNames(cast.map((c) => c.credit));
-  // 本名對不到的才用別名找照片；等本名的結果回來再查，才知道哪些對不到
-  const unmatched = profiles.isSuccess
-    ? cast.map((c) => c.credit).filter((credit) => !profiles.data?.[credit])
-    : [];
-  const aliasPhotos = useJoyuActressAliasPhotos(unmatched);
   if (!cast.length) return null;
   return (
     <Box sx={{ textAlign: "left" }}>
@@ -117,7 +109,6 @@ export function VideoCast({
             credit={c.credit}
             dmmId={c.dmmId}
             actress={profiles.data?.[c.credit]}
-            aliasPhoto={aliasPhotos.data?.[c.credit]}
           />
         ))}
       </Stack>

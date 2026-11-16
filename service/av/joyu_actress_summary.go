@@ -76,7 +76,8 @@ func ActressVideoSummary(ctx context.Context, input avEntity.VideoQueryRequest) 
 const actressNamesLimit = 100
 
 // ActressesByNames 依出演者名字（影片上的寫法，可能帶括號別名）批次取女優資料，joyu 影片頁出演女優卡用。
-// 回傳 key 是傳進來的原始名字；本名對不到、或同名有多位（分不出是誰）的不會出現在結果裡
+// 回傳 key 是傳進來的原始名字；本名對不到時再用別名找（回傳的女優本名會跟名字不同，前端據此只拿照片，
+// 名義、罩杯、追蹤不合併）。對不到、或同名／同別名有多位（分不出是誰）的不會出現在結果裡
 func ActressesByNames(credits []string) (map[string]avEntity.Actress, error) {
 	if len(credits) > actressNamesLimit {
 		credits = credits[:actressNamesLimit]
@@ -91,9 +92,23 @@ func ActressesByNames(credits []string) (map[string]avEntity.Actress, error) {
 	if err != nil {
 		return nil, err
 	}
+	// 本名完全沒人用的才改用別名找（有同名多位的是分不出來，不是對不到）
+	var unmatched []string
+	for _, name := range names {
+		if len(profiles[name]) == 0 {
+			unmatched = append(unmatched, name)
+		}
+	}
+	byAlias, err := actressesByAliases(unmatched)
+	if err != nil {
+		return nil, err
+	}
 	out := map[string]avEntity.Actress{}
 	for _, c := range credits {
-		if rows := profiles[actressBaseName(c)]; len(rows) == 1 {
+		name := actressBaseName(c)
+		if rows := profiles[name]; len(rows) == 1 {
+			out[c] = rows[0]
+		} else if rows := byAlias[name]; len(rows) == 1 {
 			out[c] = rows[0]
 		}
 	}
