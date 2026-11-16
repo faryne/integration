@@ -70,6 +70,28 @@ func AvActressesByNames(ctx fiber.Ctx) error {
 	return output.Success(out)
 }
 
+// AvActressAliasPhotos joyu.fyi 影片頁出演女優卡：本名對不到的出演者改用別名找照片（只回照片）
+// @Summary Actress photos looked up by alias name
+// @Description key 是傳進來的原始名字；別名對不到或同一個別名有多位女優的不會出現
+// @Tags OpenData AV
+// @Produce json
+// @Param name query []string true "Credited names on the video"
+// @Success 200 {object} output.CommonOutput
+// @Router /opendata/av/actress/alias-photos [get]
+func AvActressAliasPhotos(ctx fiber.Ctx) error {
+	var req struct {
+		Name []string `query:"name"`
+	}
+	if err := helper.BindQuery(ctx, &req); err != nil {
+		return err
+	}
+	out, err := av.ActressAliasPhotos(req.Name)
+	if err != nil {
+		return output.FromError(err)
+	}
+	return output.Success(out)
+}
+
 // AvVideoMarkSummary joyu.fyi 影片頁的片單統計
 // @Summary Want / watched counts and rating of a video
 // @Description 評分人數少於 3 人時 rating_avg 為 null
