@@ -17,10 +17,11 @@
 - **title**：`番號 片名`。番號規則同影片頁網址：`maker_no` 優先，沒有就用大寫的 `no`。
 - **link**：影片頁加 utm，`utm_source=rss&utm_medium=feed&utm_campaign=new|upcoming`，女優的是 `actress-new|actress-upcoming`。頻道連結也帶。
 - **guid**：不帶 utm 的影片頁網址。之後改 utm 也不會讓閱讀器把舊項目當成新的。
-- **description**：封面、出演、配信日、發售商，只放摘要。
+- **description**：封面一段，出演、配信日、發售商合成一段、用 `<br>` 分行（每行各一個 `<p>` 的話在 Feedly 會隔得很開），只放摘要。
 - **category**：標籤。
+- **Feedly 的封面**：Feedly 會把第一張圖拿去當代表圖，從內文移掉。只顯示標題的版面看不到封面，切成 Cards／Magazine 就有縮圖（2026-11-19 使用者實測）。這不是 bug，不用改圖片來源。
 - **enclosure**：封面。
-- **pubDate**：`vod_date`，沒有就用 `publish_date`，日本時間當天 00:00。補抓進來的舊片排序會比較後面，但 guid 是新的，閱讀器一樣會列出來。
+- **pubDate**：`vod_date`，沒有就用 `publish_date`，**台灣時間**當天 00:00。2026-11-19 從日本時間改過來，原因是 Feedly 會把日本時間 00:00 顯示成前一天 23:00，跟內文的配信日對不上。補抓進來的舊片排序會比較後面，但 guid 是新的，閱讀器一樣會列出來。
 
 ## 架構
 - `service/rss/`：RSS 2.0 共用結構（neko.maid.tw 搜尋 RSS 也改用這套）。
@@ -54,6 +55,7 @@
      - Security Level
 3. **Caching → Cache Rules**：條件同上，設 Eligible for cache，Edge TTL 選「Use cache-control header」（後端回 `public, max-age=1800, s-maxage=1800`）。
    - Cloudflare 預設不快取沒有副檔名的路徑，不加這條規則的話，閱讀器每次輪詢都會打到後端。
+   - Browser TTL 也要選「Respect origin」。部署後實測 prod 回的是 `max-age=14400`，代表 zone 的 Browser Cache TTL（4 小時）把後端的 1800 蓋掉了，閱讀器可能因此隔 4 小時才更新。
 
 ## 驗證（2026-11-19，本機讀 prod ES）
 - 三條 feed 都回 100 筆，`Content-Type: application/rss+xml`。

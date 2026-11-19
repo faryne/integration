@@ -20,7 +20,7 @@ func TestWithJoyuUTM(t *testing.T) {
 }
 
 func TestJoyuRSSDate(t *testing.T) {
-	if got := joyuRSSDate("2026/11/19"); got.Format("2006-01-02 15:04 -0700") != "2026-11-19 00:00 +0900" {
+	if got := joyuRSSDate("2026/11/19"); got.Format("2006-01-02 15:04 -0700") != "2026-11-19 00:00 +0800" {
 		t.Fatal(got)
 	}
 	if !joyuRSSDate("").IsZero() || !joyuRSSDate("2026-11-19").IsZero() {
@@ -40,10 +40,10 @@ func TestJoyuRSSItem(t *testing.T) {
 		t.Fatal(it.GUID.Value, it.Link)
 	}
 	// 沒有 vod_date 時用 publish_date
-	if it.PubDate != "Thu, 19 Nov 2026 00:00:00 +0900" {
+	if it.PubDate != "Thu, 19 Nov 2026 00:00:00 +0800" {
 		t.Fatal(it.PubDate)
 	}
-	if !strings.Contains(it.Description.Value, "出演：A、B") || !strings.Contains(it.Description.Value, "發售商：M") {
+	if !strings.Contains(it.Description.Value, "<p>出演：A、B<br>配信：2026/11/19<br>發售商：M</p>") {
 		t.Fatal(it.Description.Value)
 	}
 	if it.Enclosure == nil || it.Enclosure.Type != "image/jpeg" {
