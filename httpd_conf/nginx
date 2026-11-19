@@ -386,7 +386,7 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
-    # RSS：/feed/new、/feed/upcoming?range=…、/feed/actress/<名字>?xcity_id=… 轉給後端 /opendata/av/feed/*。
+    # RSS：/feed/new[/<女優名字>]、/feed/upcoming[/<女優名字>]?range=…（女優帶 ?xcity_id=…）轉給後端 /opendata/av/feed/*。
     # proxy_pass 帶變數時網址原樣送出：$request_uri 是瀏覽器送來的原始編碼（含 query），女優名字的 UTF-8 不會被重複編碼
     # （用 rewrite 改網址的話 nginx 會把 % 再編碼一次）。faryne_api 是 upstream 名稱，帶變數也不用 resolver
     location ^~ /feed/ {

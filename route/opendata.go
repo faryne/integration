@@ -59,9 +59,9 @@ func OpenData(app *fiber.App) {
 	g4.Get("/upcoming/dates", avCache, opendata.AvUpcomingDates)
 	// joyu.fyi 的 RSS（nginx 把 joyu.fyi/feed/* 轉來）：同步一天三次，閱讀器輪詢頻率高，瀏覽器與 Cloudflare 都快取 30 分鐘
 	rssCache := httpcache.Public(30*time.Minute, 30*time.Minute)
-	g4.Get("/feed/new", rssCache, opendata.AvRSSNew)
-	g4.Get("/feed/upcoming", rssCache, opendata.AvRSSUpcoming)
-	g4.Get("/feed/actress/:name", rssCache, opendata.AvRSSActress)
+	// 最後一段是女優名字（可省略）：/feed/new、/feed/new/水川潤?xcity_id=4043
+	g4.Get("/feed/new/:name?", rssCache, opendata.AvRSSNew)
+	g4.Get("/feed/upcoming/:name?", rssCache, opendata.AvRSSUpcoming)
 	// 討論版（公開、no-store：剛送出的留言要馬上看得到）
 	g4.Get("/comments", opendata.AvComments)
 	g4.Get("/comments/:id/replies", opendata.AvCommentReplies)

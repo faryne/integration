@@ -16,7 +16,7 @@ import {
   formatActressBirth,
   formatActressMeasurements,
 } from "@/helpers/avActressDisplay.ts";
-import { actressFeedOf, actressPagePath } from "@/helpers/avActressRef.ts";
+import { actressFeedsOf, actressPagePath } from "@/helpers/avActressRef.ts";
 import { isJoyuSite } from "@/helpers/joyu.ts";
 import type { Actress } from "@/types/av.ts";
 
@@ -104,10 +104,8 @@ export function ActressProfileHeader({
           >
             修改資料
           </Button>
-          {/* 這位女優新片的 RSS；faryne.dev 整合後台不顯示 */}
-          {isJoyuSite() && (
-            <RssSubscribeMenu feeds={[actressFeedOf(actress)]} />
-          )}
+          {/* 這位女優的 RSS（新片、即將發售）；faryne.dev 整合後台不顯示 */}
+          {isJoyuSite() && <RssSubscribeMenu feeds={actressFeedsOf(actress)} />}
         </Stack>
         {actress.kana && (
           <Typography color="text.secondary" sx={{ fontSize: 14 }}>

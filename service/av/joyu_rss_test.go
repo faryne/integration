@@ -51,9 +51,18 @@ func TestJoyuRSSItem(t *testing.T) {
 	}
 }
 
+func TestJoyuRSSActressLink(t *testing.T) {
+	if got := joyuRSSActressLink("水川潤", avEntity.VideoQueryRequest{XCityID: 4043}); got != "https://joyu.fyi/actress/%E6%B0%B4%E5%B7%9D%E6%BD%A4?xcity_id=4043" {
+		t.Fatal(got)
+	}
+	if got := joyuRSSActressLink("x", avEntity.VideoQueryRequest{DMMID: "1"}); got != "https://joyu.fyi/actress/x" {
+		t.Fatal(got)
+	}
+}
+
 func TestJoyuRSSUpcomingRange(t *testing.T) {
 	// range 不對在查索引之前就擋掉
-	if _, err := JoyuRSSUpcoming(context.Background(), "2week"); !errors.Is(err, ErrJoyuRSSRange) {
+	if _, err := JoyuRSSUpcoming(context.Background(), "2week", "", avEntity.VideoQueryRequest{}); !errors.Is(err, ErrJoyuRSSRange) {
 		t.Fatal(err)
 	}
 }
