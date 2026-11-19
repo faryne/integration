@@ -112,18 +112,22 @@ func joyuRSSItem(v avEntity.CleanVideo, campaign string) rss.Item {
 	// 番號同影片頁網址：maker_no 優先，沒有就用大寫的 no
 	code := cmp.Or(v.MakerNo, strings.ToUpper(v.No))
 	date := cmp.Or(v.VodDate, v.PublishDate)
-	var body []string
+	// 封面一段、文字資訊一段（用換行分隔）：每行各自一個 <p> 在 Feedly 會隔得很開
+	var body, info []string
 	if v.Thumb != "" {
 		body = append(body, fmt.Sprintf(`<p><img src="%s" alt="%s"></p>`, html.EscapeString(v.Thumb), html.EscapeString(code)))
 	}
 	if len(v.Actresses) > 0 {
-		body = append(body, "<p>出演："+html.EscapeString(strings.Join(v.Actresses, "、"))+"</p>")
+		info = append(info, "出演："+html.EscapeString(strings.Join(v.Actresses, "、")))
 	}
 	if date != "" {
-		body = append(body, "<p>配信："+html.EscapeString(date)+"</p>")
+		info = append(info, "配信："+html.EscapeString(date))
 	}
 	if len(v.Makers) > 0 {
-		body = append(body, "<p>發售商："+html.EscapeString(strings.Join(v.Makers, "、"))+"</p>")
+		info = append(info, "發售商："+html.EscapeString(strings.Join(v.Makers, "、")))
+	}
+	if len(info) > 0 {
+		body = append(body, "<p>"+strings.Join(info, "<br>")+"</p>")
 	}
 	return rss.Item{
 		Title:       strings.TrimSpace(code + " " + v.Title),
@@ -136,9 +140,12 @@ func joyuRSSItem(v avEntity.CleanVideo, campaign string) rss.Item {
 	}
 }
 
-// joyuRSSDate 配信日（yyyy/MM/dd，日本時間）→ 當天 00:00；格式不對回零值（不輸出 pubDate）
+// joyuRSSZone pubDate 用台灣時間：讀者在台灣，用日本時間 00:00 的話閱讀器會顯示成前一天 23:00，跟內文的配信日對不起來
+var joyuRSSZone = time.FixedZone("CST", 8*60*60)
+
+// joyuRSSDate 配信日（yyyy/MM/dd）→ 台灣時間當天 00:00；格式不對回零值（不輸出 pubDate）
 func joyuRSSDate(s string) time.Time {
-	t, _ := time.ParseInLocation("2006/01/02", s, jst)
+	t, _ := time.ParseInLocation("2006/01/02", s, joyuRSSZone)
 	return t
 }
 
