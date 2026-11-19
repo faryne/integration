@@ -4,6 +4,8 @@ import { Box, Chip, Skeleton, Stack } from "@mui/material";
 import { useUpcoming, useUpcomingDates } from "@/apis/av/upcoming.ts";
 import { useAVVideoSearch } from "@/apis/av/video_search.ts";
 import { VideoCoverCard } from "@/components/av/video_cover_card.tsx";
+import { RssSubscribeMenu } from "@/components/joyu/RssSubscribeMenu.tsx";
+import { JOYU_SITE_FEEDS } from "@/data/joyuFeeds.ts";
 import { joyuPath } from "@/helpers/joyu.ts";
 import { jstDatePlus, shortDate } from "@/helpers/upcoming.ts";
 
@@ -93,6 +95,7 @@ export function NewVideosSection({ compact }: { compact?: boolean }) {
 
   return (
     <HomeSection
+      action={<RssSubscribeMenu feeds={JOYU_SITE_FEEDS} />}
       dense={compact}
       title="新片"
       moreTo={more.to}

@@ -5,6 +5,8 @@ import (
 
 	nekomaidService "faryne.dev/service/nekomaid"
 	"faryne.dev/service/output"
+	"faryne.dev/service/rss"
+
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -67,6 +69,6 @@ func SearchRSS(ctx fiber.Ctx) error {
 	if err != nil {
 		return output.ESError(err)
 	}
-	ctx.Set(fiber.HeaderContentType, "application/rss+xml; charset=utf-8")
+	ctx.Set(fiber.HeaderContentType, rss.ContentType)
 	return ctx.SendString(response)
 }

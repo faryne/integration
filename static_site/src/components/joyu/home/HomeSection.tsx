@@ -2,13 +2,14 @@ import type { ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { Box, Link, Stack, Typography } from "@mui/material";
 
-/** 首頁各區塊的外框：標題（可帶補充說明）＋右側「看全部」連結 */
+/** 首頁各區塊的外框：標題（可帶補充說明、標題旁的小按鈕）＋右側「看全部」連結 */
 export function HomeSection({
   title,
   note,
   moreTo,
   moreLabel = "看全部",
   dense,
+  action,
   children,
 }: {
   title: string;
@@ -17,6 +18,8 @@ export function HomeSection({
   moreLabel?: string;
   /** 一屏版首頁用：標題小一號、跟內容距離縮短 */
   dense?: boolean;
+  /** 標題旁的小按鈕（例如 RSS 訂閱） */
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -30,25 +33,28 @@ export function HomeSection({
           gap: 1,
         }}
       >
-        <Typography
-          component="h2"
-          sx={{ fontSize: dense ? 16 : 18, fontWeight: 800 }}
-        >
-          {title}
-          {note && (
-            <Box
-              component="span"
-              sx={{
-                color: "text.secondary",
-                fontSize: 13,
-                fontWeight: 400,
-                ml: 1,
-              }}
-            >
-              {note}
-            </Box>
-          )}
-        </Typography>
+        <Stack direction="row" sx={{ alignItems: "center", gap: 0.5 }}>
+          <Typography
+            component="h2"
+            sx={{ fontSize: dense ? 16 : 18, fontWeight: 800 }}
+          >
+            {title}
+            {note && (
+              <Box
+                component="span"
+                sx={{
+                  color: "text.secondary",
+                  fontSize: 13,
+                  fontWeight: 400,
+                  ml: 1,
+                }}
+              >
+                {note}
+              </Box>
+            )}
+          </Typography>
+          {action}
+        </Stack>
         {moreTo && (
           <Link
             component={RouterLink}

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAVActressSearch } from "@/apis/av/actress_search.ts";
 import type { Actress } from "@/types/av.ts";
 import { joyuPath } from "@/helpers/joyu.ts";
+import { JOYU_FEED_ORIGIN, type JoyuFeed } from "@/data/joyuFeeds.ts";
 
 /**
  * 女優頁網址的參數，指定是哪一位（同名女優才分得開）：
@@ -30,6 +31,19 @@ export const actressPagePath = (
   const ref = actressRefOf(target);
   const [key, value] = Object.entries(ref)[0];
   return `${path}?${key}=${value}`;
+};
+
+/** 這位女優新片的 RSS：網址規則同女優頁（名字＋這位自己的參數） */
+export const actressFeedOf = (a: {
+  name: string;
+  domain: string;
+  aid: number;
+}): JoyuFeed => {
+  const [key, value] = Object.entries(actressRefOf(a))[0];
+  return {
+    title: `${a.name} 新片`,
+    url: `${JOYU_FEED_ORIGIN}/actress/${encodeURIComponent(a.name)}?${key}=${value}`,
+  };
 };
 
 /** 從網址讀出參數；一個都沒有就回 undefined */
