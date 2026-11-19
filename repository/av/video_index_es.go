@@ -2,6 +2,7 @@ package av
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -48,10 +49,10 @@ func esClient() (*elasticsearch.Client, error) {
 }
 
 func (videoIndexES) Search(_ context.Context, input av.VideoIndexQuery) (search.Page[av.RawVideo], error) {
-	page := max(input.Page, 1)
+	page, size := max(input.Page, 1), cmp.Or(input.Size, videoPageSize)
 	q := map[string]any{
-		"size": videoPageSize,
-		"from": (page - 1) * videoPageSize,
+		"size": size,
+		"from": (page - 1) * size,
 		"sort": videoSort(input.Sort),
 	}
 	applyVideoConditions(input, q)

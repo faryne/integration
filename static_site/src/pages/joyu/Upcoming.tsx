@@ -18,7 +18,9 @@ import {
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { HolidayCalendar } from "@/components/common/ROCCalendar/HolidayCalendar.tsx";
 import { VideoCoverCard } from "@/components/av/video_cover_card.tsx";
+import { RssSubscribeMenu } from "@/components/joyu/RssSubscribeMenu.tsx";
 import { useJoyuAuth } from "@/components/joyu/auth/JoyuAuthContext.ts";
+import { JOYU_SITE_FEEDS } from "@/data/joyuFeeds.ts";
 import { jstDatePlus } from "@/helpers/upcoming.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import type { Video } from "@/types/av.ts";
@@ -116,9 +118,12 @@ export function JoyuUpcoming() {
       panelTitle="joyu.fyi 需要年齡確認"
     >
       <Stack spacing={2.5} sx={{ textAlign: "left" }}>
-        <Typography component="h1" sx={{ fontSize: 22, fontWeight: 800 }}>
-          即將發售
-        </Typography>
+        <Stack direction="row" sx={{ alignItems: "center", gap: 0.5 }}>
+          <Typography component="h1" sx={{ fontSize: 22, fontWeight: 800 }}>
+            即將發售
+          </Typography>
+          <RssSubscribeMenu feeds={JOYU_SITE_FEEDS} />
+        </Stack>
         <Stack direction="row" gap={0.75}>
           <Chip
             clickable

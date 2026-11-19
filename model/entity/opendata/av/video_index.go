@@ -15,6 +15,8 @@ type VideoIndexQuery struct {
 	Upcoming bool
 	// ExcludeTags 有其中任一個標籤的不算（joyu 股市算部數時排除總集編）；不開放給 API 參數
 	ExcludeTags []string
+	// Size 每頁筆數，0 用預設的 30（joyu RSS 一次要 100 筆）；不開放給 API 參數
+	Size int
 }
 
 // VideoActressFilter 出演者條件：名字完全相符或「名字（別名…）」，再依 DMM 女優 ID 區分同名

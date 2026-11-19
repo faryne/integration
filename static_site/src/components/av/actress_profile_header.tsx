@@ -10,12 +10,14 @@ import { ActressNames } from "@/components/av/actress_names.tsx";
 import { ActressPhoto } from "@/components/av/actress_photo.tsx";
 import { ActressTopicChip } from "@/components/av/actress_topic_chip.tsx";
 import { FollowButton } from "@/components/joyu/FollowButton.tsx";
+import { RssSubscribeMenu } from "@/components/joyu/RssSubscribeMenu.tsx";
 import {
   actressAge,
   formatActressBirth,
   formatActressMeasurements,
 } from "@/helpers/avActressDisplay.ts";
-import { actressPagePath } from "@/helpers/avActressRef.ts";
+import { actressFeedsOf, actressPagePath } from "@/helpers/avActressRef.ts";
+import { isJoyuSite } from "@/helpers/joyu.ts";
 import type { Actress } from "@/types/av.ts";
 
 /** 一格基本資料：上面小字標籤、下面內容；內容是空的整格不顯示（手動上稿的女優常常只有部分資料） */
@@ -102,6 +104,8 @@ export function ActressProfileHeader({
           >
             修改資料
           </Button>
+          {/* 這位女優的 RSS（新片、即將發售）；faryne.dev 整合後台不顯示 */}
+          {isJoyuSite() && <RssSubscribeMenu feeds={actressFeedsOf(actress)} />}
         </Stack>
         {actress.kana && (
           <Typography color="text.secondary" sx={{ fontSize: 14 }}>

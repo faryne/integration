@@ -7,6 +7,7 @@ import {
   SITE_BRANDING,
   type BrandedSite,
 } from "../src/data/siteBranding.ts";
+import { JOYU_SITE_FEEDS, type JoyuFeed } from "../src/data/joyuFeeds.ts";
 
 // 所有站共用同一份 index.html，裡面寫死的是 faryne.dev 的站名、描述、canonical、預覽圖。
 // Google favicon 服務、部分爬蟲不會執行 JS，看不到 runtime 換上的內容，所以獨立站的 build（VITE_SITE=xxx）
@@ -30,6 +31,11 @@ const siteIcons: Partial<
     appleTouchIcon: "/joyu-icon-180.png",
     faviconIco: "joyu-favicon.ico",
   },
+};
+
+// 有 RSS 的站：在 canonical 後面加 <link rel="alternate">，閱讀器、瀏覽器外掛貼首頁網址就找得到 feed（不用執行 JS）
+const siteFeeds: Partial<Record<BrandedSite, JoyuFeed[]>> = {
+  joyu: JOYU_SITE_FEEDS,
 };
 
 // 成人站：加上成人內容標記（Google SafeSearch 靠它分辨，不用等 JS），並拔掉 AdSense
@@ -65,6 +71,16 @@ export function siteBrandingPlugin(site?: string): Plugin {
             /<link rel="apple-touch-icon"[^>]*>/,
             `<link rel="apple-touch-icon" href="${icon.appleTouchIcon}" />`,
           );
+      }
+      const feeds = siteFeeds[site];
+      if (feeds) {
+        const links = feeds
+          .map(
+            (f) =>
+              `<link rel="alternate" type="application/rss+xml" title="${brand.siteName} ${f.title}" href="${f.url}" />`,
+          )
+          .join("\n    ");
+        out = out.replace(/(<link rel="canonical"[^>]*>)/, `$1\n    ${links}`);
       }
       if (adultSites.includes(site)) {
         out = out
